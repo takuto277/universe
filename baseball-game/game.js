@@ -1047,7 +1047,8 @@
         } else {
           view.batter.visible = true;
           msg('球種を選んで投げよう! ゾーン%が低い球はボールになりやすく四球に注意!');
-          askChoice('投げる球種は? (1〜9キー)').then(function (chosen) {
+          askChoice('投げる球種は? (1〜9キー)').then(function (choice) {
+            var chosen = choice.pitch;
             var plan = E.resolveCpuAtBat(state, chosen);
             var endEv = plan.pitch || plan.take;
             var dec = plan.dec;

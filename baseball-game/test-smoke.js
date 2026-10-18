@@ -31,6 +31,12 @@ Harness.run({
     if (state.result === 'away') h.assert(state.score.away > state.score.home, '勝敗不整合(away)');
     if (state.result === 'draw') h.assert(state.score.home === state.score.away, '引き分け不整合');
     h.assert(state.pitcherHistory.length >= 6 && state.playerHistory.length >= 9, '投球の記録が少なすぎる');
+    for (var ph = 0; ph < state.playerHistory.length; ph++) {
+      h.assert(typeof state.playerHistory[ph] === 'string', 'playerHistoryに非文字列が混入:  index ' + ph);
+    }
+    for (var pth = 0; pth < state.pitcherHistory.length; pth++) {
+      h.assert(typeof state.pitcherHistory[pth].pitch === 'string', 'pitcherHistoryに非文字列が混入: index ' + pth);
+    }
     h.assert(state.hits.home + state.hits.away > 0 || (state.score.home === 0 && state.score.away === 0),
       '安打0なのに得点あり');
     var els = h.elements;
