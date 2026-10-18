@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>9球種を読め! 10回勝負の野球ゲーム</title>
+  <title>9球種を読め! 3回勝負の野球ゲーム</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -14,8 +14,7 @@
           <thead>
             <tr>
               <th class="team"></th>
-              <th>1</th><th>2</th><th>3</th><th>4</th><th>5</th>
-              <th>6</th><th>7</th><th>8</th><th>9</th><th>10</th>
+              <th>1</th><th>2</th><th>3</th>
               <th class="sum">R</th><th class="sum">H</th>
             </tr>
           </thead>
@@ -28,6 +27,7 @@
       <div id="statusbar">
         <span id="inning-label">1回表</span>
         <span id="phase-label">あなたの守備</span>
+        <span id="ball-wrap">ボール <span id="ball-dots" class="dots">○○○○</span></span>
         <span>ストライク <span id="strike-dots" class="dots">○○○</span></span>
         <button id="sound-btn" class="ghost" type="button">サウンド: ON</button>
       </div>
@@ -38,16 +38,16 @@
       <div id="overlay">
         <section id="screen-start" class="screen visible">
           <h1>9球種を読め!</h1>
-          <p class="subtitle">10回勝負のベースボールゲーム</p>
+          <p class="subtitle">カウント制・3回勝負のベースボールゲーム</p>
           <ul class="rules">
-            <li>球種は全部で<b>9種類</b>: ストレート / カーブ / スライダー / カットボール / フォーク / チェンジアップ / シュート / シンカー / ナックル。</li>
-            <li><b>攻撃</b>(<span class="you">あなた</span>): 球種のヒントが出たら参考に、来る球を予想してボタンを押そう。当たれば<b>ヒット</b>で打者もランナーも1つ進塁、3塁ランナーは生還で1点!</li>
-            <li><b>守備</b>(<span class="you">あなた</span>): あなたが球種を選んで投げる。<span class="cpu">CPU</span>はあなたの配球のクセを読んでくる。同じ球ばかり投げると危険!</li>
-            <li>空振りはストライク。ストライクが3つたまると<b>三振=チェンジ</b>、攻守交代!</li>
-            <li>全10回。最終回でもつれればサヨナラのチャンス。得点の多いチームの勝ち!</li>
+            <li>球種は全部で<b>9種類</b>+<b>見逃し</b>。<b>3ストライクでチェンジ</b>、<b>4ボールで四球</b>のカウント制!</li>
+            <li><b>攻撃</b>(<span class="you">あなた</span>): ヒントを信じて 1〜9 でスイング予想、0 で見逃し。ボールを待つか、打ちにいくかの駆け引き!</li>
+            <li>予想が当たったら<b>タイミングバー</b>を止めろ! ど真ん中なら<b>ホームラン</b>、ズレると単打・二塁打!</li>
+            <li><b>守備</b>(<span class="you">あなた</span>): 球種を選んで投げる。<span class="cpu">CPU</span>は配球のクセ(連投・交互パターン)を読んでくる。散らして投げろ!</li>
+            <li>全3回。最終回でもつれればサヨナラのチャンス。得点の多いチームの勝ち!</li>
           </ul>
           <button id="btn-start" class="primary" type="button">プレイボール!</button>
-          <p class="tiny">ボタンまたは 1〜9 キーでも操作できます</p>
+          <p class="tiny">ボタンまたは 1〜9 / 0 キーでも操作できます</p>
         </section>
 
         <section id="screen-end" class="screen">
@@ -68,7 +68,11 @@
     <footer id="controlbar">
       <div id="message" class="message">「プレイボール!」を押して試合開始!</div>
       <div id="hint" class="hint"></div>
+      <div id="powerbar" class="hidden">
+        <div id="pb-marker" class="pb-marker"></div>
+      </div>
       <div id="buttons"></div>
+      <button id="btn-take" class="take-btn disabled" type="button">見逃す (0)</button>
     </footer>
   </div>
 

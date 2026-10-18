@@ -20,9 +20,9 @@ Harness.run({
   afterDone: 400,
   check: function (state, h) {
     if (!state || !state.over) { h.assert(false, '試合が終了していない'); return; }
-    h.assert(state.inning === 10, '10回で終わっていない: ' + state.inning);
+    h.assert(state.inning === 3, '3回で終わっていない: ' + state.inning);
     var sumH = 0, sumA = 0;
-    for (var k = 0; k < 10; k++) {
+    for (var k = 0; k < state.totalInnings; k++) {
       sumA += state.linescore.away[k] || 0;
       sumH += state.linescore.home[k] || 0;
     }

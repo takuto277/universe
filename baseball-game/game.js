@@ -27,7 +27,7 @@
 
   var FONT = '"Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif';
 
-  var T = { hit: 800, advance: 640, after: 340 };
+  var T = { hit: 800, advance: 640, after: 340, swing: 820 };
 
   /* 球種の表示情報（label は engine 側の PITCH_LABELS を使用） */
   var PITCH_INFO = {
@@ -76,6 +76,7 @@
   var state = null;
   var view = null;
   var pendingChoice = null;
+  var swing = null;
   var buttonsEnabled = false;
   var soundOn = true;
   var lastFrame = 0;
@@ -209,6 +210,11 @@
       this.tone(720, 0.16, { type: 'square', vol: 0.09, slideTo: 980 });
       this.tone(520, 0.28, { type: 'triangle', vol: 0.08, delay: 0.05 });
     },
+    hr: function () {
+      var f = [523, 659, 784, 1047, 1319];
+      for (var i = 0; i < f.length; i++) this.tone(f[i], 0.14, { type: 'square', vol: 0.07, delay: i * 0.07 });
+      this.noise(0.3, 0.25, 0.42);
+    },
     strike: function () {
       this.tone(210, 0.12, { type: 'square', vol: 0.09, slideTo: 160 });
     },
@@ -331,14 +337,16 @@
     });
   }
 
-  function animateHit() {
+  function animateHit(far) {
     var from = { x: HOME_PLATE.x + 4, y: HOME_PLATE.y - 22 };
-    var to = { x: 70 + Math.random() * (W - 140), y: -30 + Math.random() * 230 };
+    var to = far
+      ? { x: W / 2 + (Math.random() - 0.5) * 320, y: -170 }
+      : { x: 70 + Math.random() * (W - 140), y: -30 + Math.random() * 230 };
     var c1 = { x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - 150 };
     var c2 = { x: to.x, y: to.y + 50 };
     view.ball.visible = true;
     view.ball.alpha = 1;
-    return tween(T.hit, easeOut, function (t) {
+    return tween(far ? T.hit + 280 : T.hit, easeOut, function (t) {
       var p = cubicPoint(from, c1, c2, to, t);
       view.ball.x = p.x;
       view.ball.y = p.y;
@@ -370,50 +378,57 @@
 
   function basePos(i) { return { x: BASES[i].x, y: BASES[i].y }; }
 
-  function animateAdvance(team) {
+  function animateAdvance(team, bases) {
+    bases = bases || 1;
     var moves = [];
+    var scorers = [];
     var runners = view.runners;
-    var scorer = null;
     for (var i = 0; i < runners.length; i++) {
       var r = runners[i];
-      if (r.base === 2) {
-        scorer = r;
-        moves.push({
-          r: r,
-          from: { x: r.x, y: r.y },
-          to: { x: HOME_PLATE.x - 6, y: HOME_PLATE.y + 44 },
-          score: true
-        });
+      var dest = r.base + bases;
+      if (dest >= 3) {
+        scorers.push(r);
+        moves.push({ r: r, from: { x: r.x, y: r.y }, to: { x: HOME_PLATE.x - 6, y: HOME_PLATE.y + 44 } });
       } else {
-        r.base = r.base + 1;
-        var bp = basePos(r.base);
-        moves.push({ r: r, from: { x: r.x, y: r.y }, to: { x: bp.x, y: bp.y }, score: false });
+        r.base = dest;
+        var bp = basePos(dest);
+        moves.push({ r: r, from: { x: r.x, y: r.y }, to: { x: bp.x, y: bp.y } });
       }
     }
     var batterFrom = { x: view.batter.x, y: view.batter.y };
     view.batter.visible = false;
     var nr = { x: batterFrom.x, y: batterFrom.y, base: 0, team: team, color: TEAM[team].color, alpha: 1 };
     view.runners.push(nr);
-    var p0 = basePos(0);
-    moves.push({ r: nr, from: batterFrom, to: { x: p0.x, y: p0.y }, score: false });
+    if (bases >= 4) {
+      scorers.push(nr);
+      moves.push({ r: nr, from: batterFrom, to: { x: HOME_PLATE.x - 6, y: HOME_PLATE.y + 44 } });
+    } else {
+      nr.base = bases - 1;
+      var p0 = basePos(bases - 1);
+      moves.push({ r: nr, from: batterFrom, to: { x: p0.x, y: p0.y } });
+    }
 
-    return tween(T.advance, easeInOut, function (t) {
+    var dur = T.advance + (bases - 1) * 260;
+    return tween(dur, easeInOut, function (t) {
       for (var k = 0; k < moves.length; k++) {
         var m = moves[k];
         m.r.x = lerp(m.from.x, m.to.x, t);
         m.r.y = lerp(m.from.y, m.to.y, t);
       }
     }).then(function () {
-      if (scorer) {
+      if (!scorers.length) return;
+      for (var s = 0; s < scorers.length; s++) {
         view.popups.push({
-          x: HOME_PLATE.x, y: HOME_PLATE.y - 46,
+          x: HOME_PLATE.x, y: HOME_PLATE.y - 46 - s * 22,
           text: '+1', color: '#ffd166', born: now(), ttl: 1100
         });
-        return tween(240, null, function (t) { scorer.alpha = 1 - t; });
       }
+      return tween(240, null, function (t) {
+        for (var s2 = 0; s2 < scorers.length; s2++) scorers[s2].alpha = 1 - t;
+      });
     }).then(function () {
-      if (scorer) {
-        var idx = view.runners.indexOf(scorer);
+      for (var s3 = 0; s3 < scorers.length; s3++) {
+        var idx = view.runners.indexOf(scorers[s3]);
         if (idx >= 0) view.runners.splice(idx, 1);
       }
       syncRunners();
@@ -444,6 +459,7 @@
     for (var k in list) {
       if (list.hasOwnProperty(k)) list[k].classList.toggle('disabled', !enabled);
     }
+    if (els.btnTake) els.btnTake.classList.toggle('disabled', !enabled);
   }
 
   function askChoice(hint) {
@@ -452,14 +468,49 @@
     return new Promise(function (resolve) { pendingChoice = resolve; });
   }
 
-  function choosePitch(pitch) {
+  function finishChoice(payload) {
     if (!pendingChoice || !buttonsEnabled) return;
     var resolve = pendingChoice;
     pendingChoice = null;
     setButtons(false);
     els.hint.textContent = '';
     audio.ensure();
-    resolve(pitch);
+    resolve(payload);
+  }
+
+  function choosePitch(pitch) { finishChoice({ action: 'swing', pitch: pitch }); }
+  function chooseTake() { finishChoice({ action: 'take' }); }
+
+  /* ===== タイミングバー（長打狙い） ===== */
+  function askTiming() {
+    els.powerbar.classList.remove('hidden');
+    els.pbMarker.style.left = '0%';
+    msg('タイミングを合わせろ!!', 'gold');
+    return new Promise(function (resolve) {
+      swing = { start: now(), dur: T.swing, resolve: resolve, target: 0 };
+    });
+  }
+
+  function timingPos() {
+    if (!swing) return 50;
+    var t = (now() - swing.start) / swing.dur;
+    if (t > 1) t = 1;
+    return t * 100;
+  }
+
+  function stopTiming() {
+    if (!swing) return;
+    var pos = timingPos();
+    var resolve = swing.resolve;
+    swing = null;
+    els.powerbar.classList.add('hidden');
+    resolve({ pos: pos, offset: pos - 50, kind: E.timingResult(pos - 50) });
+  }
+
+  function updateSwingBar() {
+    if (!swing) return;
+    els.pbMarker.style.left = timingPos().toFixed(1) + '%';
+    if (now() >= swing.start + swing.dur + 120) stopTiming();
   }
 
   function updateUI() {
@@ -487,6 +538,15 @@
     for (var s = 0; s < state.strikesPerInning; s++) dots += (s < state.strikes ? '●' : '○');
     els.strikeDots.textContent = dots;
     els.strikeDots.classList.toggle('danger', state.strikes === state.strikesPerInning - 1);
+
+    var ballsPerWalk = state.ballsPerWalk || 4;
+    var bdots = '';
+    for (var bb = 0; bb < ballsPerWalk; bb++) bdots += (bb < state.balls ? '●' : '○');
+    els.ballDots.textContent = bdots;
+    els.ballDots.classList.toggle('danger', state.balls === ballsPerWalk - 1);
+    if (els.ballWrap) {
+      els.ballWrap.style.display = (E.battingTeam(state) === 'home' && !state.over) ? '' : 'none';
+    }
 
     els.rowAway.classList.toggle('batting', !state.over && E.battingTeam(state) === 'away');
     els.rowHome.classList.toggle('batting', !state.over && E.battingTeam(state) === 'home');
@@ -832,21 +892,64 @@
           var plan = E.planPitch();
           state.lastHint = plan.hint;
           if (plan.hint) msg('配球ヒント: 「' + E.pitchLabel(plan.hint) + '」っぽい…?', 'gold');
-          else msg('配球を読めない! 勘で勝負!!');
-          askChoice('あなたの予想は? (1〜9キー)').then(function (guess) {
+          else msg('配球を読めない…見逃して様子を見るのも手!');
+          askChoice('どうする? 1〜9=スイング予想 / 0=見逃し').then(function (choice) {
             var actual = plan.actual;
-            var ev = E.resolvePitch(state, guess, actual);
+            if (choice.action === 'take') {
+              var tev = E.resolveTake(state, plan.zone);
+              animatePitch(actual).then(function () {
+                showPitchTag(E.pitchLabel(actual), pitchColor(actual));
+                return wait(260);
+              }).then(function () {
+                if (tev.walk) {
+                  showPitchTag('フォアボール!', '#4fd1ff', 1200);
+                  if (tev.runs > 0) msg('押し出しフォアボール! ' + tev.runs + '点!!', 'gold');
+                  else msg('フォアボール! 全員1つ進塁!', 'gold');
+                  return animateAdvance('home', 1).then(function () { audio.run(); });
+                }
+                return animateCatcherCatch().then(function () {
+                  if (tev.calledStrike) {
+                    audio.strike();
+                    flash();
+                    showPitchTag('見逃しストライク!', '#ff6b5e', 1000);
+                    if (tev.strikeout) {
+                      audio.out();
+                      msg('見逃し三振!! チェンジ!', 'red');
+                      return wait(750);
+                    }
+                    msg('見逃しストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ', 'red');
+                    return;
+                  }
+                  msg('ボール! あと' + (state.ballsPerWalk - state.balls) + '球で四球', '');
+                });
+              }).then(function () {
+                updateUI();
+                if (tev.gameEnded || tev.inningEnded) { resolve(tev); return; }
+                wait(T.after).then(nextAtBat);
+              });
+              return;
+            }
+            var ev = E.resolvePitch(state, choice.pitch, actual);
             animatePitch(actual).then(function () {
               showPitchTag(E.pitchLabel(actual), pitchColor(actual));
               if (ev.correct) {
-                audio.hit();
-                if (ev.walkoff) msg('サヨナラヒット!!!', 'gold');
-                else if (ev.runs > 0) msg('タイムリーヒット! ' + ev.runs + '点ゲット!!', 'gold');
-                else msg('見事に捉えた! ヒット!', 'gold');
-                return animateHit().then(function () {
-                  return animateAdvance('home');
-                }).then(function () {
-                  if (ev.runs > 0) audio.run();
+                return wait(280).then(askTiming).then(function (sw) {
+                  var hev = E.resolveHit(state, sw.kind);
+                  if (hev.gameEnded) { ev.gameEnded = true; ev.result = hev.result; }
+                  var label;
+                  if (sw.kind === 'hr') { label = 'ホームラン!!!'; audio.hr(); }
+                  else if (sw.kind === 'double') label = '二塁打!';
+                  else label = Math.abs(sw.offset) > 30 ? '打ち損じたが…ヒット!' : 'ヒット!';
+                  if (hev.walkoff) label = 'サヨナラ' + label;
+                  audio.hit();
+                  showPitchTag(label, sw.kind === 'hr' ? '#ffd166' : '#57e08a', 1250);
+                  if (hev.runs > 0) msg(label + ' ' + hev.runs + '点!!', 'gold');
+                  else msg(label, 'gold');
+                  return animateHit(sw.kind === 'hr').then(function () {
+                    return animateAdvance('home', sw.kind === 'hr' ? 4 : (sw.kind === 'double' ? 2 : 1));
+                  }).then(function () {
+                    if (hev.runs > 0) audio.run();
+                  });
                 });
               }
               return animateCatcherCatch().then(function () {
@@ -858,7 +961,7 @@
                   msg('三振!! チェンジ!', 'red');
                   return wait(750);
                 }
-                if (plan.hint && guess === plan.hint) msg('ヒントはウソだった…! ストライク!', 'red');
+                if (plan.hint && choice.pitch === plan.hint) msg('ヒントはウソだった…! ストライク!', 'red');
                 else msg('空振り! ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ', 'red');
               });
             }).then(function () {
@@ -874,8 +977,11 @@
           askChoice('投げる球種は? (1〜9キー)').then(function (chosen) {
             var dec = E.cpuBatterDecision(state, chosen);
             var ev = E.resolvePitch(state, dec.guess, chosen);
+            var hev = ev.correct ? E.resolveHit(state, Math.random() < 0.15 ? 'double' : 'single') : null;
+            if (hev && hev.gameEnded) { ev.gameEnded = true; ev.result = hev.result; }
             var readPct = Math.round(dec.accuracy * 100);
-            var bubbleText = 'CPUは「' + E.pitchLabel(dec.guess) + '」を待っている…';
+            var readTag = dec.pattern ? ' (リズム察知!)' : (dec.streak >= 2 ? ' (連投バレ!)' : '');
+            var bubbleText = 'CPUは「' + E.pitchLabel(dec.guess) + '」を待っている' + readTag + '…';
             var bubbleShown = false;
             var bubbleTimer = setTimeout(function () {
               bubbleShown = true;
@@ -890,12 +996,13 @@
               hideBubble();
               if (ev.correct) {
                 audio.hit();
-                if (ev.runs > 0) msg('見破られた!(CPUの読み ' + readPct + '%) タイムリー… ' + ev.runs + '点取られた', 'red');
-                else msg('見破られた!(CPUの読み ' + readPct + '%) CPUにヒットを打たれた…', 'red');
-                return animateHit().then(function () {
-                  return animateAdvance('away');
+                var kindLabel = hev.kind === 'double' ? '二塁打' : 'ヒット';
+                if (hev.runs > 0) msg('見破られた' + readTag + '!(CPUの読み ' + readPct + '%) ' + kindLabel + '… ' + hev.runs + '点取られた', 'red');
+                else msg('見破られた' + readTag + '!(CPUの読み ' + readPct + '%) CPUに' + kindLabel + 'を打たれた…', 'red');
+                return animateHit(false).then(function () {
+                  return animateAdvance('away', hev.kind === 'double' ? 2 : 1);
                 }).then(function () {
-                  if (ev.runs > 0) audio.sadRun();
+                  if (hev.runs > 0) audio.sadRun();
                 });
               }
               return animateCatcherCatch().then(function () {
@@ -965,6 +1072,8 @@
   function beginGame() {
     if (running) return Promise.resolve();
     running = true;
+    pendingChoice = null;
+    swing = null;
     els.screenStart.classList.remove('visible');
     els.screenEnd.classList.remove('visible');
     state = E.createGame();
@@ -1055,6 +1164,7 @@
       if (view && view.flash > 0) {
         view.flash = Math.max(0, view.flash - dt * 1.8);
       }
+      updateSwingBar();
       draw(ts);
       requestAnimationFrame(frame);
     }
@@ -1073,10 +1183,20 @@
       beginGame();
       return;
     }
-    var idx = parseInt(k, 10);
-    if (idx >= 1 && idx <= E.PITCH_ORDER.length && pendingChoice) {
-      e.preventDefault();
-      choosePitch(E.PITCH_ORDER[idx - 1]);
+    if (swing) {
+      if (k !== 'Shift' && k !== 'Control' && k !== 'Alt' && k !== 'Meta') {
+        e.preventDefault();
+        stopTiming();
+      }
+      return;
+    }
+    if (pendingChoice) {
+      if (k === '0' || k === ' ') { e.preventDefault(); chooseTake(); return; }
+      var idx = parseInt(k, 10);
+      if (idx >= 1 && idx <= E.PITCH_ORDER.length) {
+        e.preventDefault();
+        choosePitch(E.PITCH_ORDER[idx - 1]);
+      }
     }
   }
 
@@ -1111,6 +1231,11 @@
     els.btnStart = $('btn-start');
     els.btnAgain = $('btn-again');
     els.buttons = $('buttons');
+    els.btnTake = $('btn-take');
+    els.powerbar = $('powerbar');
+    els.pbMarker = $('pb-marker');
+    els.ballDots = $('ball-dots');
+    els.ballWrap = $('ball-wrap');
     els.soundBtn = $('sound-btn');
     els.rowAway = $('row-away');
     els.rowHome = $('row-home');
@@ -1130,6 +1255,8 @@
 
     els.btnStart.addEventListener('click', function () { beginGame().catch(function () { }); });
     els.btnAgain.addEventListener('click', function () { beginGame().catch(function () { }); });
+    els.btnTake.addEventListener('click', function () { chooseTake(); });
+    els.stage.addEventListener('click', function () { if (swing) stopTiming(); });
     els.soundBtn.addEventListener('click', function () {
       soundOn = !soundOn;
       els.soundBtn.textContent = 'サウンド: ' + (soundOn ? 'ON' : 'OFF');
@@ -1146,12 +1273,22 @@
     if (typeof window !== 'undefined') {
       window.__GAME__ = {
         id: 'baseball-game',
-        title: '9球種を読め! 10回勝負ベースボール',
+        title: '9球種を読め! 3回勝負ベースボール',
         start: function () { return beginGame(); },
         autoPlayStep: function () {
+          if (swing) {
+            if (!swing.target) swing.target = swing.start + 150 + Math.random() * 620;
+            if (now() >= swing.target) stopTiming();
+            return;
+          }
           if (!pendingChoice) return;
-          if (state && E.battingTeam(state) === 'home' && state.lastHint && Math.random() < 0.7) {
-            choosePitch(state.lastHint);
+          if (state && E.battingTeam(state) === 'home') {
+            if (state.lastHint) {
+              if (Math.random() < 0.75) choosePitch(state.lastHint);
+              else chooseTake();
+            } else {
+              chooseTake();
+            }
           } else {
             choosePitch(E.randomPitch());
           }
