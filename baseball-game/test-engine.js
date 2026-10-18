@@ -43,6 +43,36 @@ var ev3b = E.resolvePitch(g, 'curve', 'straight');
 assert(ev3b.strikeout && ev3b.inningEnded, '3ストライクでチェンジ');
 assert(g.half === 'bottom' && g.strikes === 0, '攻守交代');
 
+/* 3b) resolvePlayerSwing: 予想外しでもボール球ならボール（空振りにしない） */
+g = E.createGame();
+var swb = E.resolvePlayerSwing(g, 'curve', 'straight', false);
+assert(!swb.correct && swb.ball && swb.take, '予想外し+ボール球はボール扱い');
+assert(g.strikes === 0 && g.balls === 1, '空振りストライクにならない');
+assert(!swb.strikeout && !swb.inningEnded, 'チェンジにならない');
+assert(swb.take.calledStrike === false, '見逃しストライクでもない');
+g = E.createGame();
+var swc = E.resolvePlayerSwing(g, 'straight', 'straight', true);
+assert(swc.correct && g.strikes === 0 && g.balls === 0, '正解はカウント不変');
+assert(!swc.ball && !swc.whiff, '正解はボール/空振りフラグなし');
+g = E.createGame();
+var swd = E.resolvePlayerSwing(g, 'curve', 'straight', true);
+assert(!swd.correct && swd.whiff && !swd.ball, '予想外し+ゾーン球は空振り');
+assert(g.strikes === 1, 'ゾーン球の予想外しはストライク');
+g = E.createGame();
+g.balls = 3;
+var swf = E.resolvePlayerSwing(g, 'curve', 'straight', false);
+assert(swf.ball && swf.take.walk && g.runners[0] === true, '予想外しの4球目ボール球は四球');
+g = E.createGame();
+E.resolvePlayerSwing(g, 'curve', 'straight', true);
+E.resolvePlayerSwing(g, 'curve', 'straight', true);
+var swk = E.resolvePlayerSwing(g, 'curve', 'straight', true);
+assert(swk.strikeout && swk.inningEnded, '予想外し3球でチェンジ');
+g = E.createGame();
+g.over = true;
+var swThrew = false;
+try { E.resolvePlayerSwing(g, 'a', 'b', false); } catch (e2) { swThrew = true; }
+assert(swThrew, '試合終了後は例外');
+
 /* 4) resolveHit: 単打の進塁 */
 g = E.createGame();
 g.runners = [true, false, true];
@@ -369,7 +399,7 @@ function playFullGame(cpuPitch) {
       if (act.action === 'take') {
         E.resolveTake(sg, actual.zone);
       } else {
-        var ev2 = E.resolvePitch(sg, act.pitch, actual.actual);
+        var ev2 = E.resolvePlayerSwing(sg, act.pitch, actual.actual, actual.zone);
         if (ev2.correct) E.resolveHit(sg, actual.zone ? E.timingResult(robotTiming()) : 'single');
       }
     }

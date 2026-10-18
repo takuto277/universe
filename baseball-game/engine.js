@@ -458,6 +458,46 @@
     return ev;
   }
 
+  /* 打者のスイング: 予想が当たればヒット判定へ（進塁は resolveHit が担当）。
+   * 予想を外しても実際がボール球なら空振りにせず、見送りと同じボール/四球扱い。
+   * 予想を外してゾーン球なら空振りストライク。 */
+  function resolvePlayerSwing(state, batterGuess, actualPitch, inZone) {
+    if (state.over) throw new Error('game is already over');
+    var ev = {
+      guess: batterGuess,
+      actual: actualPitch,
+      inZone: !!inZone,
+      correct: batterGuess === actualPitch,
+      ball: false,
+      whiff: false,
+      take: null,
+      strikeout: false,
+      inningEnded: false,
+      walkoff: false,
+      gameEnded: false,
+      result: null
+    };
+    if (ev.correct) return ev;
+    if (!inZone) {
+      var tev = resolveTake(state, false);
+      ev.ball = true;
+      ev.take = tev;
+      ev.strikeout = tev.strikeout;
+      ev.inningEnded = tev.inningEnded;
+      ev.walkoff = tev.walkoff;
+      ev.gameEnded = tev.gameEnded;
+      ev.result = tev.result;
+      return ev;
+    }
+    ev.whiff = true;
+    var pev = resolvePitch(state, batterGuess, actualPitch);
+    ev.strikeout = pev.strikeout;
+    ev.inningEnded = pev.inningEnded;
+    ev.gameEnded = pev.gameEnded;
+    ev.result = pev.result;
+    return ev;
+  }
+
   /* 打球結果: 'single' | 'double' | 'hr' で進塁・得点を適用 */
   function resolveHit(state, kind) {
     if (state.over) throw new Error('game is already over');
@@ -530,6 +570,7 @@
     halfLabel: halfLabel,
     resolvePitch: resolvePitch,
     resolveTake: resolveTake,
+    resolvePlayerSwing: resolvePlayerSwing,
     resolveHit: resolveHit
   };
 });

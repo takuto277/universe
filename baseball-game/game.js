@@ -1003,7 +1003,7 @@
               });
               return;
             }
-            var ev = E.resolvePitch(state, choice.pitch, actual);
+            var ev = E.resolvePlayerSwing(state, choice.pitch, actual, pitch.zone);
             animatePitch(actual).then(function () {
               showPitchTag(E.pitchLabel(actual), pitchColor(actual));
               if (ev.correct) {
@@ -1040,6 +1040,19 @@
                   }).then(function () {
                     if (hev.runs > 0) audio.run();
                   });
+                });
+              }
+              if (ev.ball) {
+                if (ev.take.walk) {
+                  showPitchTag('フォアボール!', '#4fd1ff', 1200);
+                  if (ev.take.runs > 0) msg('押し出しフォアボール! ' + ev.take.runs + '点!!', 'gold');
+                  else msg('予想は外れたがボール球! フォアボール!', 'gold');
+                  return animateAdvance('home', 1).then(function () { audio.run(); });
+                }
+                return animateCatcherCatch().then(function () {
+                  showPitchTag('ボール!', '#4fd1ff', 1000);
+                  msg('予想は外れたがボール球! 手を出さずボール! あと' +
+                    (state.ballsPerWalk - state.balls) + '球で四球', '');
                 });
               }
               return animateCatcherCatch().then(function () {
