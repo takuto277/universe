@@ -232,6 +232,46 @@ for (var c15 = 0; c15 < accRuns; c15++) {
 var rate0 = correctSum / accRuns;
 assert(Math.abs(rate0 - E.CPU_READ_BASE) < 0.03, '履歴なし精度: ' + rate0);
 
+/* 15b) 守備側のゾーン判定: 見送り→ボール、ボール球スイング、ゾーン率 */
+var script15 = function (seq) {
+  var i = 0;
+  return function () { return seq[Math.min(i++, seq.length - 1)]; };
+};
+var st15z = E.createGame();
+var pz15 = E.resolveCpuAtBat(st15z, 'straight', script15([0.9, 0.9]));
+assert(pz15.zone === false && pz15.swung === false && st15z.balls === 1, 'ボールは見送られボールカウント');
+assert(st15z.playerHistory.length === 1 && st15z.playerHistory[0] === 'straight', '見送りも履歴に残る');
+var st15c = E.createGame();
+var pc15 = E.resolveCpuAtBat(st15c, 'straight', script15([0.9, 0.1, 0.99, 0.99]));
+assert(pc15.zone === false && pc15.swung === true && pc15.chased === true, 'ボール球に手を出す');
+assert(st15c.strikes === 1, 'ボール球を空振りでストライク');
+var st15k = E.createGame();
+var pk15 = E.resolveCpuAtBat(st15k, 'straight', script15([0.1, 0.01, 0.9]));
+assert(pk15.zone === true && pk15.chased === false && pk15.hit && pk15.hit.kind === 'single', 'ゾーンで読み勝ち=ヒット');
+assert(st15k.hits.away === 1 && st15k.runners[0] === true, 'ヒットの進塁');
+
+var st15ch = E.createGame();
+assert(E.cpuChaseRate(st15ch) === E.CPU_CHASE_BASE, '基本の食い付き率');
+st15ch.strikes = 2;
+assert(E.cpuChaseRate(st15ch) === E.CPU_CHASE_PROTECT, '追い込まれると食い付く');
+st15ch = E.createGame();
+st15ch.balls = 3;
+assert(E.cpuChaseRate(st15ch) === E.CPU_CHASE_PATIENT, 'ボール先行は慎重');
+
+var N15 = 6000;
+for (var zt15 = 0; zt15 < 2; zt15++) {
+  var zk15 = zt15 === 0 ? 'straight' : 'fork';
+  var zc15 = 0;
+  var sg15 = null;
+  for (var i15 = 0; i15 < N15; i15++) {
+    if (!sg15 || sg15.over) sg15 = E.createGame();
+    var p15 = E.resolveCpuAtBat(sg15, zk15);
+    if (p15.zone) zc15++;
+  }
+  var est15 = zc15 / N15;
+  assert(Math.abs(est15 - E.ZONE_RATES[zk15]) < 0.03, 'ゾーン率(' + zk15 + '): ' + est15);
+}
+
 /* 16) フル試合の不変条件（スマート戦略1000試合） */
 var stats = { home: 0, away: 0, draw: 0, pitches: 0, runs: 0, hits: 0, homeRuns: 0, awayRuns: 0, maxPitches: 0 };
 var smartAttack = function (state) {
@@ -252,10 +292,7 @@ function playFullGame(cpuPitch) {
     assert(pitches < 2000, '試合が終わらない');
     pitches++;
     if (sg.half === 'top') {
-      var thrown = cpuPitch(sg);
-      var dec = E.cpuBatterDecision(sg, thrown);
-      var ev = E.resolvePitch(sg, dec.guess, thrown);
-      if (ev.correct) E.resolveHit(sg, Math.random() < 0.15 ? 'double' : 'single');
+      E.resolveCpuAtBat(sg, cpuPitch(sg));
     } else {
       var actual = E.pitcherPitch(sg);
       var act = smartAttack(sg);

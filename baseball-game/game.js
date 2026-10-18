@@ -545,6 +545,32 @@
     els.chartRows.innerHTML = html;
   }
 
+  function updatePitchBadges() {
+    if (!state || !els.zbadges) return;
+    var attack = E.battingTeam(state) === 'home' && !state.over;
+    var style = E.PITCH_STYLES[state.pitcherStyle] || { good: [], bad: [] };
+    for (var i = 0; i < E.PITCH_ORDER.length; i++) {
+      var key = E.PITCH_ORDER[i];
+      var badge = els.zbadges[key];
+      if (!badge) continue;
+      if (state.over) {
+        badge.textContent = '';
+        badge.className = 'zbadge';
+        continue;
+      }
+      if (attack) {
+        var isGood = style.good.indexOf(key) >= 0;
+        var isBad = style.bad.indexOf(key) >= 0;
+        badge.textContent = (isGood ? '得意 ' : isBad ? '苦手 ' : '') +
+          Math.round(E.zoneRateFor(state.pitcherStyle, key) * 100) + '%';
+        badge.className = 'zbadge' + (isGood ? ' good' : (isBad ? ' bad' : ' plain'));
+      } else {
+        badge.textContent = 'ゾーン' + Math.round((E.ZONE_RATES[key] || 0.5) * 100) + '%';
+        badge.className = 'zbadge def';
+      }
+    }
+  }
+
   function updateUI() {
     if (!state) return;
     els.inningLabel.textContent = E.halfLabel(state);
@@ -577,12 +603,13 @@
     els.ballDots.textContent = bdots;
     els.ballDots.classList.toggle('danger', state.balls === ballsPerWalk - 1);
     if (els.ballWrap) {
-      els.ballWrap.style.display = (E.battingTeam(state) === 'home' && !state.over) ? '' : 'none';
+      els.ballWrap.style.display = state.over ? 'none' : '';
     }
     if (els.chartWrap) {
       els.chartWrap.classList.toggle('hidden', E.battingTeam(state) !== 'home' || state.over);
     }
     renderChart();
+    updatePitchBadges();
 
     els.rowAway.classList.toggle('batting', !state.over && E.battingTeam(state) === 'away');
     els.rowHome.classList.toggle('batting', !state.over && E.battingTeam(state) === 'home');
@@ -927,7 +954,7 @@
           view.batter.visible = true;
           var pitch = E.pitcherPitch(state);
           msg('配球メモを見て予想しろ! (1〜9 / 0=見逃し)');
-          askChoice('どうする? 1〜9=スイング予想 / 0=見逃し').then(function (choice) {
+          askChoice('どうする? 1〜9=スイング予想 / 0=見逃し (得意/苦手バッジ=ゾーン率)').then(function (choice) {
             var actual = pitch.actual;
             if (choice.action === 'take') {
               var tev = E.resolveTake(state, pitch.zone);
@@ -1005,15 +1032,17 @@
           });
         } else {
           view.batter.visible = true;
-          msg('球種を選んで投げよう! 同じ球ばかりだと読まれるぞ');
-          askChoice('投げる球種は? (1〜9キー)').then(function (chosen) {
-            var dec = E.cpuBatterDecision(state, chosen);
-            var ev = E.resolvePitch(state, dec.guess, chosen);
-            var hev = ev.correct ? E.resolveHit(state, Math.random() < 0.15 ? 'double' : 'single') : null;
-            if (hev && hev.gameEnded) { ev.gameEnded = true; ev.result = hev.result; }
-            var readPct = Math.round(dec.accuracy * 100);
-            var readTag = dec.pattern ? ' (リズム察知!)' : (dec.streak >= 2 ? ' (連投バレ!)' : '');
-            var bubbleText = 'CPUは「' + E.pitchLabel(dec.guess) + '」を待っている' + readTag + '…';
+          msg('球種を選んで投げよう! バッジはストライクゾーン率。ボール球は四球に注意!');
+          askChoice('投げる球種は? (1〜9キー) ※バッジ=ゾーン率').then(function (chosen) {
+            var plan = E.resolveCpuAtBat(state, chosen);
+            var endEv = plan.pitch || plan.take;
+            var dec = plan.dec;
+            var readPct = dec ? Math.round(dec.accuracy * 100) : 0;
+            var readTag = dec ? (dec.pattern ? ' (リズム察知!)' : (dec.streak >= 2 ? ' (連投バレ!)' : '')) : '';
+            var bubbleText;
+            if (plan.take) bubbleText = 'CPUはボールを見送った…';
+            else if (plan.chased) bubbleText = 'CPUがボール球に手を出した! 待っているのは「' + E.pitchLabel(dec.guess) + '」' + readTag + '…';
+            else bubbleText = 'CPUは「' + E.pitchLabel(dec.guess) + '」を待っている' + readTag + '…';
             var bubbleShown = false;
             var bubbleTimer = setTimeout(function () {
               bubbleShown = true;
@@ -1026,30 +1055,49 @@
               return wait(280);
             }).then(function () {
               hideBubble();
-              if (ev.correct) {
+              if (plan.take) {
+                return animateCatcherCatch().then(function () {
+                  if (plan.take.walk) {
+                    showPitchTag('フォアボール…', '#ff9f45', 1100);
+                    if (plan.take.runs > 0) {
+                      audio.sadRun();
+                      msg('押し出し四球… ' + plan.take.runs + '点取られた', 'red');
+                    } else {
+                      audio.tone(240, 0.12, { type: 'sine', vol: 0.07 });
+                      msg('フォアボール… CPUにランナーを出した', 'red');
+                    }
+                    return animateAdvance('away', 1);
+                  }
+                  audio.tone(280, 0.1, { type: 'sine', vol: 0.06 });
+                  showPitchTag('ボール', '#ffd166', 900);
+                  msg('ボール! あと' + (state.ballsPerWalk - state.balls) + '球で四球…');
+                });
+              }
+              if (plan.hit) {
                 audio.hit();
-                var kindLabel = hev.kind === 'double' ? '二塁打' : 'ヒット';
-                if (hev.runs > 0) msg('見破られた' + readTag + '!(CPUの読み ' + readPct + '%) ' + kindLabel + '… ' + hev.runs + '点取られた', 'red');
-                else msg('見破られた' + readTag + '!(CPUの読み ' + readPct + '%) CPUに' + kindLabel + 'を打たれた…', 'red');
+                var kindLabel = plan.hit.kind === 'double' ? '二塁打' : 'ヒット';
+                var cause = plan.chased ? 'ボール球を打たれた…' : '見破られた';
+                if (plan.hit.runs > 0) msg(cause + readTag + '!(CPUの読み ' + readPct + '%) ' + kindLabel + '… ' + plan.hit.runs + '点取られた', 'red');
+                else msg(cause + readTag + '!(CPUの読み ' + readPct + '%) CPUに' + kindLabel + 'を打たれた…', 'red');
                 return animateHit(false).then(function () {
-                  return animateAdvance('away', hev.kind === 'double' ? 2 : 1);
+                  return animateAdvance('away', plan.hit.kind === 'double' ? 2 : 1);
                 }).then(function () {
-                  if (hev.runs > 0) audio.sadRun();
+                  if (plan.hit.runs > 0) audio.sadRun();
                 });
               }
               return animateCatcherCatch().then(function () {
                 audio.strike();
-                if (ev.strikeout) {
+                if (plan.pitch.strikeout) {
                   audio.out();
-                  showPitchTag('三振!!', '#ffd166', 1000);
-                  msg('三振に仕留めた!! チェンジ!', 'gold');
+                  showPitchTag(plan.chased ? '空振り三振!!' : '三振!!', '#ffd166', 1000);
+                  msg(plan.chased ? 'ボール球で三振に仕留めた!! チェンジ!' : '三振に仕留めた!! チェンジ!', 'gold');
                   return wait(750);
                 }
-                msg('CPUは空振り! ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ');
+                msg((plan.chased ? 'ボール球を空振り!' : 'CPUは空振り!') + ' ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ');
               });
             }).then(function () {
               updateUI();
-              if (ev.gameEnded || ev.inningEnded) { resolve(ev); return; }
+              if (endEv.gameEnded || endEv.inningEnded) { resolve(endEv); return; }
               wait(T.after).then(nextAtBat);
             });
           });
@@ -1235,6 +1283,7 @@
 
   function buildPitchButtons() {
     els.pitchButtons = {};
+    els.zbadges = {};
     for (var i = 0; i < E.PITCH_ORDER.length; i++) {
       (function (key, num) {
         var info = PITCH_INFO[key];
@@ -1243,10 +1292,14 @@
         btn.className = 'pitch-btn disabled';
         btn.innerHTML = ICONS[info.icon] + '<span class="pname">' + info.btn + '</span>' +
           '<span class="keynum">' + num + '</span>';
+        var zb = document.createElement('span');
+        zb.className = 'zbadge';
+        btn.appendChild(zb);
         btn.style.setProperty('--c', info.color);
         btn.addEventListener('click', function () { choosePitch(key); });
         els.buttons.appendChild(btn);
         els.pitchButtons[key] = btn;
+        els.zbadges[key] = zb;
       })(E.PITCH_ORDER[i], i + 1);
     }
   }
@@ -1326,17 +1379,22 @@
             past.pitcherHistory = state.pitcherHistory.slice(0, Math.max(0, state.pitcherHistory.length - 1));
             var tend = E.pitchTendencies(past);
             var row = tend.rows[state.strikes] || tend.rows[0];
-            if (!row.items.length) {
-              if (Math.random() < 0.5) chooseTake();
-              else choosePitch(E.randomPitch());
-              return;
+            var weights = {};
+            if (row.total >= 3) {
+              for (var wi = 0; wi < row.items.length; wi++) weights[row.items[wi].pitch] = row.items[wi].count;
+            } else {
+              weights = E.tendencyWeights(state);
             }
-            var top = row.items[0];
-            if (E.zoneRateFor(state.pitcherStyle, top.pitch) < 0.5 && Math.random() < 0.35) {
+            var best = null, bestW = -1;
+            for (var bi = 0; bi < E.PITCH_ORDER.length; bi++) {
+              if (weights[E.PITCH_ORDER[bi]] > bestW) { bestW = weights[E.PITCH_ORDER[bi]]; best = E.PITCH_ORDER[bi]; }
+            }
+            if (best == null) { chooseTake(); return; }
+            if (E.zoneRateFor(state.pitcherStyle, best) < 0.5 && Math.random() < 0.35) {
               chooseTake();
               return;
             }
-            choosePitch(top.pitch);
+            choosePitch(best);
           } else {
             choosePitch(E.randomPitch());
           }

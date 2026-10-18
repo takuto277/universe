@@ -102,6 +102,11 @@
   var CPU_PATTERN_BONUS = 0.12;
   var CPU_READ_MAX = 0.9;
 
+  /* CPU打者のボール球スイング率: 基本/追い込まれたら保護/ボール先行なら慎重 */
+  var CPU_CHASE_BASE = 0.45;
+  var CPU_CHASE_PROTECT = 0.7;
+  var CPU_CHASE_PATIENT = 0.25;
+
   /* タイミング判定のしきい値（中央からのズレ%） */
   var TIMING_BANDS = { hr: 10, double: 24 };
 
@@ -205,6 +210,35 @@
       bad: style.bad,
       rows: rows
     };
+  }
+
+  /* CPU打者の見送り/食い付きの確率: カウントで変わる */
+  function cpuChaseRate(state) {
+    if (state.strikes === 2) return CPU_CHASE_PROTECT;
+    if (state.balls >= 3) return CPU_CHASE_PATIENT;
+    return CPU_CHASE_BASE;
+  }
+
+  /* 守備側（プレイヤーの投球）の1球を処理する。
+   * ゾーン判定 → CPUが見送り(ボール/四球) or スイング(予想勝負)をまとめて行う。
+   * 戻り値: { zone, swung, chased, take, dec, pitch, hit } */
+  function resolveCpuAtBat(state, chosen, rng, chaseRate) {
+    rng = rng || Math.random;
+    var zone = rng() < (ZONE_RATES[chosen] || 0.5);
+    var swung = zone || rng() < (chaseRate == null ? cpuChaseRate(state) : chaseRate);
+    if (!swung) {
+      var hist = state.playerHistory || [];
+      hist.push(chosen);
+      if (hist.length > 30) hist.shift();
+      state.playerHistory = hist;
+      var tev = resolveTake(state, false);
+      return { zone: zone, swung: false, chased: false, take: tev, dec: null, pitch: null, hit: null };
+    }
+    var dec = cpuBatterDecision(state, chosen, rng);
+    var ev = resolvePitch(state, dec.guess, chosen);
+    var hev = null;
+    if (ev.correct) hev = resolveHit(state, rng() < 0.15 ? 'double' : 'single');
+    return { zone: zone, swung: true, chased: !zone, take: null, dec: dec, pitch: ev, hit: hev };
   }
 
   /* タイミングのズレ(%)から打球結果を決める */
@@ -457,6 +491,11 @@
     CPU_READ_BASE: CPU_READ_BASE,
     CPU_READ_BONUS: CPU_READ_BONUS,
     CPU_PATTERN_BONUS: CPU_PATTERN_BONUS,
+    CPU_CHASE_BASE: CPU_CHASE_BASE,
+    CPU_CHASE_PROTECT: CPU_CHASE_PROTECT,
+    CPU_CHASE_PATIENT: CPU_CHASE_PATIENT,
+    cpuChaseRate: cpuChaseRate,
+    resolveCpuAtBat: resolveCpuAtBat,
     TIMING_BANDS: TIMING_BANDS,
     pitchLabel: pitchLabel,
     weightedPick: weightedPick,
