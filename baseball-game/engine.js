@@ -61,10 +61,10 @@
 
   /* 配球ヒント: HINT_RATE の確率でヒント提示、そのうち HINT_MATCH の割合で本当にその球が来る */
   var HINT_RATE = 0.72;
-  var HINT_MATCH = 0.47;
+  var HINT_MATCH = 0.62;
 
   /* CPU打者の読み: 頻度・連投・交互パターンで精度が上がる */
-  var CPU_READ_BASE = 0.42;
+  var CPU_READ_BASE = 0.44;
   var CPU_READ_BONUS = 0.28;
   var CPU_READ_WINDOW = 10;
   var CPU_STREAK_BONUS = 0.03;
