@@ -1,0 +1,1078 @@
+/* game.js : ストレート or カーブ! 野球ゲームの描画・UI・進行 */
+(function () {
+  'use strict';
+
+  var E = (typeof window !== 'undefined' && window.BaseballEngine) ? window.BaseballEngine :
+    (typeof require === 'function' ? require('./engine.js') : null);
+  if (!E) throw new Error('engine.js が読み込まれていません');
+
+  /* ===== フィールド座標 ===== */
+  var W = 900, H = 780;
+  var FENCE_R = 585;
+  var HOME_PLATE = { x: 450, y: 650 };
+  var MOUND = { x: 450, y: 465 };
+  var BASES = [
+    { x: 645, y: 455 },
+    { x: 450, y: 260 },
+    { x: 255, y: 455 }
+  ];
+  var BATTER_POS = { x: HOME_PLATE.x - 30, y: HOME_PLATE.y - 8 };
+  var CATCHER_POS = { x: HOME_PLATE.x + 8, y: HOME_PLATE.y + 54 };
+  var PITCHER_POS = { x: MOUND.x, y: MOUND.y - 6 };
+
+  var TEAM = {
+    home: { name: 'あなた', color: '#3d86f5' },
+    away: { name: 'CPU', color: '#e2584d' }
+  };
+
+  var FONT = '"Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif';
+
+  var T = { pitch: 620, hit: 800, advance: 640, after: 340 };
+
+  /* ===== 状態 ===== */
+  var canvas, ctx;
+  var els = {};
+  var state = null;
+  var view = null;
+  var pendingChoice = null;
+  var buttonsEnabled = false;
+  var soundOn = true;
+  var lastFrame = 0;
+  var running = false;
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ===== ユーティリティ ===== */
+  function now() {
+    return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
+  }
+  function lerp(a, b, t) { return a + (b - a) * t; }
+  function easeInOut(t) { return t < 0.5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2; }
+  function easeOut(t) { return 1 - Math.pow(1 - t, 3); }
+
+  function wait(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  function tween(dur, ease, update) {
+    return new Promise(function (resolve) {
+      var t0 = now();
+      function frame(ts) {
+        if (ts == null) ts = now();
+        var t = dur <= 0 ? 1 : Math.min(1, (ts - t0) / dur);
+        update(ease ? ease(t) : t, t);
+        if (t < 1) requestAnimationFrame(frame); else resolve();
+      }
+      requestAnimationFrame(frame);
+    });
+  }
+
+  function cubicPoint(p0, p1, p2, p3, t) {
+    var u = 1 - t;
+    var a = u * u * u, b = 3 * u * u * t, c = 3 * u * t * t, d = t * t * t;
+    return {
+      x: a * p0.x + b * p1.x + c * p2.x + d * p3.x,
+      y: a * p0.y + b * p1.y + c * p2.y + d * p3.y
+    };
+  }
+
+  function unit(dx, dy) {
+    var len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return { x: dx / len, y: dy / len };
+  }
+
+  function extend(B, A, e) {
+    var u = unit(A.x - B.x, A.y - B.y);
+    return { x: B.x + u.x * e, y: B.y + u.y * e };
+  }
+
+  function roundRectPath(c, x, y, w, h, r) {
+    c.beginPath();
+    c.moveTo(x + r, y);
+    c.lineTo(x + w - r, y);
+    c.quadraticCurveTo(x + w, y, x + w, y + r);
+    c.lineTo(x + w, y + h - r);
+    c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+    c.lineTo(x + r, y + h);
+    c.quadraticCurveTo(x, y + h, x, y + h - r);
+    c.lineTo(x, y + r);
+    c.quadraticCurveTo(x, y, x + r, y);
+    c.closePath();
+  }
+
+  /* ===== サウンド（WebAudio 簡単な効果音） ===== */
+  var audio = {
+    ctx: null,
+    ensure: function () {
+      if (!soundOn) return null;
+      try {
+        if (!this.ctx) {
+          var AC = (typeof window !== 'undefined') && (window.AudioContext || window.webkitAudioContext);
+          if (!AC) return null;
+          this.ctx = new AC();
+        }
+        if (this.ctx.state === 'suspended') this.ctx.resume();
+        return this.ctx;
+      } catch (e) { return null; }
+    },
+    tone: function (freq, dur, opts) {
+      var ctx = this.ensure(); if (!ctx) return;
+      opts = opts || {};
+      try {
+        var t0 = ctx.currentTime + (opts.delay || 0);
+        var osc = ctx.createOscillator();
+        var gain = ctx.createGain();
+        osc.type = opts.type || 'sine';
+        osc.frequency.setValueAtTime(freq, t0);
+        if (opts.slideTo) osc.frequency.exponentialRampToValueAtTime(opts.slideTo, t0 + dur);
+        var vol = opts.vol == null ? 0.12 : opts.vol;
+        gain.gain.setValueAtTime(0.0001, t0);
+        gain.gain.exponentialRampToValueAtTime(vol, t0 + 0.014);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.start(t0); osc.stop(t0 + dur + 0.06);
+      } catch (e) { }
+    },
+    noise: function (dur, vol, delay) {
+      var ctx = this.ensure(); if (!ctx) return;
+      try {
+        var t0 = ctx.currentTime + (delay || 0);
+        var n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+        var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+        var d = buf.getChannelData(0);
+        for (var i = 0; i < n; i++) d[i] = (Math.random() * 2 - 1) * (1 - i / n);
+        var src = ctx.createBufferSource(); src.buffer = buf;
+        var gain = ctx.createGain();
+        gain.gain.setValueAtTime(vol == null ? 0.2 : vol, t0);
+        gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+        if (ctx.createBiquadFilter) {
+          var filt = ctx.createBiquadFilter();
+          filt.type = 'lowpass';
+          filt.frequency.value = 2400;
+          src.connect(filt); filt.connect(gain);
+        } else {
+          src.connect(gain);
+        }
+        gain.connect(ctx.destination);
+        src.start(t0);
+      } catch (e) { }
+    },
+    pitchWhoosh: function () {
+      this.noise(0.13, 0.12);
+      this.tone(340, 0.12, { type: 'triangle', vol: 0.05, slideTo: 130 });
+    },
+    hit: function () {
+      this.noise(0.08, 0.3);
+      this.tone(720, 0.16, { type: 'square', vol: 0.09, slideTo: 980 });
+      this.tone(520, 0.28, { type: 'triangle', vol: 0.08, delay: 0.05 });
+    },
+    strike: function () {
+      this.tone(210, 0.12, { type: 'square', vol: 0.09, slideTo: 160 });
+    },
+    out: function () {
+      this.tone(300, 0.16, { type: 'sawtooth', vol: 0.09, slideTo: 180 });
+      this.tone(180, 0.3, { type: 'sawtooth', vol: 0.09, delay: 0.14, slideTo: 90 });
+    },
+    run: function () {
+      var f = [523, 659, 784, 1047];
+      for (var i = 0; i < f.length; i++) this.tone(f[i], 0.16, { type: 'triangle', vol: 0.09, delay: i * 0.09 });
+    },
+    sadRun: function () {
+      this.tone(330, 0.2, { type: 'triangle', vol: 0.08, slideTo: 260 });
+    },
+    change: function () {
+      this.tone(392, 0.16, { type: 'triangle', vol: 0.1 });
+      this.tone(494, 0.2, { type: 'triangle', vol: 0.1, delay: 0.14 });
+      this.tone(587, 0.3, { type: 'triangle', vol: 0.1, delay: 0.28 });
+    },
+    win: function () {
+      var f = [523, 659, 784, 1047, 784, 1047];
+      for (var i = 0; i < f.length; i++) this.tone(f[i], 0.22, { type: 'triangle', vol: 0.1, delay: i * 0.13 });
+    },
+    lose: function () {
+      var f = [392, 330, 262, 196];
+      for (var i = 0; i < f.length; i++) this.tone(f[i], 0.3, { type: 'sine', vol: 0.1, delay: i * 0.16 });
+    },
+    drawS: function () {
+      this.tone(440, 0.22, { type: 'sine', vol: 0.09 });
+      this.tone(440, 0.22, { type: 'sine', vol: 0.09, delay: 0.28 });
+    }
+  };
+
+  /* ===== ビュー（描画用の状態） ===== */
+  function resetView() {
+    view = {
+      ball: { x: MOUND.x, y: MOUND.y - 10, r: 8, rot: 0, visible: false, alpha: 1 },
+      runners: [],
+      batter: { visible: true, x: BATTER_POS.x, y: BATTER_POS.y, team: 'home' },
+      pitcher: { team: 'away' },
+      catcher: { team: 'away' },
+      bubble: null,
+      pitchTag: null,
+      popups: [],
+      flash: 0
+    };
+  }
+
+  function updateTeams() {
+    if (!state) return;
+    var batting = E.battingTeam(state);
+    view.batter.team = batting;
+    view.pitcher.team = batting === 'home' ? 'away' : 'home';
+    view.catcher.team = view.pitcher.team;
+  }
+
+  function syncRunners() {
+    if (!state) { view.runners = []; return; }
+    var team = E.battingTeam(state);
+    var list = [];
+    for (var i = 0; i < 3; i++) {
+      if (state.runners[i]) {
+        list.push({ x: BASES[i].x, y: BASES[i].y, base: i, team: team, color: TEAM[team].color, alpha: 1 });
+      }
+    }
+    view.runners = list;
+  }
+
+  /* ===== アニメーション ===== */
+  function pitchStart() { return { x: MOUND.x, y: MOUND.y - 10 }; }
+  function pitchTarget() { return { x: HOME_PLATE.x + 2, y: HOME_PLATE.y - 20 }; }
+
+  function animatePitch(type) {
+    var from = pitchStart();
+    var to = pitchTarget();
+    var c1, c2;
+    if (type === E.STRAIGHT) {
+      c1 = { x: lerp(from.x, to.x, 0.4), y: lerp(from.y, to.y, 0.4) };
+      c2 = { x: lerp(from.x, to.x, 0.75), y: lerp(from.y, to.y, 0.75) };
+    } else {
+      var dir = Math.random() < 0.5 ? -1 : 1;
+      var u = unit(to.x - from.x, to.y - from.y);
+      var px = -u.y * dir, py = u.x * dir;
+      var amp = 100;
+      c1 = { x: lerp(from.x, to.x, 0.5), y: lerp(from.y, to.y, 0.5) };
+      c2 = {
+        x: lerp(from.x, to.x, 0.84) + px * amp,
+        y: lerp(from.y, to.y, 0.84) + py * amp
+      };
+    }
+    view.ball.visible = true;
+    view.ball.alpha = 1;
+    audio.pitchWhoosh();
+    return tween(T.pitch, null, function (t) {
+      var p = cubicPoint(from, c1, c2, to, t);
+      view.ball.x = p.x;
+      view.ball.y = p.y;
+      view.ball.r = lerp(6.5, 9.5, t);
+      view.ball.rot += 0.3;
+    });
+  }
+
+  function animateHit() {
+    var from = { x: HOME_PLATE.x + 4, y: HOME_PLATE.y - 22 };
+    var to = { x: 70 + Math.random() * (W - 140), y: -30 + Math.random() * 230 };
+    var c1 = { x: (from.x + to.x) / 2, y: Math.min(from.y, to.y) - 150 };
+    var c2 = { x: to.x, y: to.y + 50 };
+    view.ball.visible = true;
+    view.ball.alpha = 1;
+    return tween(T.hit, easeOut, function (t) {
+      var p = cubicPoint(from, c1, c2, to, t);
+      view.ball.x = p.x;
+      view.ball.y = p.y;
+      view.ball.r = lerp(10, 4, t);
+      view.ball.rot += 0.45;
+    }).then(function () {
+      return tween(180, null, function (t) { view.ball.alpha = 1 - t; });
+    }).then(function () {
+      view.ball.visible = false;
+      view.ball.alpha = 1;
+    });
+  }
+
+  function animateCatcherCatch() {
+    var from = { x: view.ball.x, y: view.ball.y };
+    var to = { x: CATCHER_POS.x, y: CATCHER_POS.y - 4 };
+    return tween(240, null, function (t) {
+      view.ball.x = lerp(from.x, to.x, t);
+      view.ball.y = lerp(from.y, to.y, t);
+      view.ball.r = lerp(9.5, 7.5, t);
+      view.ball.rot += 0.2;
+    }).then(function () {
+      return tween(150, null, function (t) { view.ball.alpha = 1 - t; });
+    }).then(function () {
+      view.ball.visible = false;
+      view.ball.alpha = 1;
+    });
+  }
+
+  function basePos(i) { return { x: BASES[i].x, y: BASES[i].y }; }
+
+  function animateAdvance(team) {
+    var moves = [];
+    var runners = view.runners;
+    var scorer = null;
+    for (var i = 0; i < runners.length; i++) {
+      var r = runners[i];
+      if (r.base === 2) {
+        scorer = r;
+        moves.push({
+          r: r,
+          from: { x: r.x, y: r.y },
+          to: { x: HOME_PLATE.x - 6, y: HOME_PLATE.y + 44 },
+          score: true
+        });
+      } else {
+        r.base = r.base + 1;
+        var bp = basePos(r.base);
+        moves.push({ r: r, from: { x: r.x, y: r.y }, to: { x: bp.x, y: bp.y }, score: false });
+      }
+    }
+    var batterFrom = { x: view.batter.x, y: view.batter.y };
+    view.batter.visible = false;
+    var nr = { x: batterFrom.x, y: batterFrom.y, base: 0, team: team, color: TEAM[team].color, alpha: 1 };
+    view.runners.push(nr);
+    var p0 = basePos(0);
+    moves.push({ r: nr, from: batterFrom, to: { x: p0.x, y: p0.y }, score: false });
+
+    return tween(T.advance, easeInOut, function (t) {
+      for (var k = 0; k < moves.length; k++) {
+        var m = moves[k];
+        m.r.x = lerp(m.from.x, m.to.x, t);
+        m.r.y = lerp(m.from.y, m.to.y, t);
+      }
+    }).then(function () {
+      if (scorer) {
+        view.popups.push({
+          x: HOME_PLATE.x, y: HOME_PLATE.y - 46,
+          text: '+1', color: '#ffd166', born: now(), ttl: 1100
+        });
+        return tween(240, null, function (t) { scorer.alpha = 1 - t; });
+      }
+    }).then(function () {
+      if (scorer) {
+        var idx = view.runners.indexOf(scorer);
+        if (idx >= 0) view.runners.splice(idx, 1);
+      }
+      syncRunners();
+    });
+  }
+
+  /* ===== 表示エフェクト ===== */
+  function showPitchTag(text, color, ttl) {
+    view.pitchTag = { text: text, color: color || '#ffd166', born: now(), ttl: ttl || 950 };
+  }
+  function showBubble(text) {
+    view.bubble = { text: text, born: now(), ttl: 1500 };
+  }
+  function hideBubble() { view.bubble = null; }
+  function flash() { view.flash = 1; }
+
+  /* ===== メッセージ・UI ===== */
+  function msg(text, kind) {
+    els.message.textContent = text;
+    els.message.className = 'message' + (kind ? ' ' + kind : '');
+    if (els.message.offsetWidth != null) { /* reflow でアニメ再開 */ var _r = els.message.offsetWidth; }
+    els.message.classList.add('pop');
+  }
+
+  function setButtons(enabled) {
+    buttonsEnabled = enabled;
+    els.btnStraight.classList.toggle('disabled', !enabled);
+    els.btnCurve.classList.toggle('disabled', !enabled);
+  }
+
+  function askChoice(hint) {
+    els.hint.textContent = hint;
+    setButtons(true);
+    return new Promise(function (resolve) { pendingChoice = resolve; });
+  }
+
+  function choosePitch(pitch) {
+    if (!pendingChoice || !buttonsEnabled) return;
+    var resolve = pendingChoice;
+    pendingChoice = null;
+    setButtons(false);
+    els.hint.textContent = '';
+    audio.ensure();
+    resolve(pitch);
+  }
+
+  function updateUI() {
+    if (!state) return;
+    els.inningLabel.textContent = E.halfLabel(state);
+    els.phaseLabel.textContent = E.battingTeam(state) === 'home' ? 'あなたの攻撃' : 'あなたの守備';
+
+    var teams = ['away', 'home'];
+    for (var ti = 0; ti < teams.length; ti++) {
+      var t = teams[ti];
+      var cells = els.liCells[t];
+      for (var i = 0; i < state.totalInnings; i++) {
+        var v = state.linescore[t][i];
+        cells[i].textContent = (v === null ? '-' : String(v));
+        cells[i].classList.remove('current');
+        if (!state.over && state.inning === i + 1 && E.battingTeam(state) === t) {
+          cells[i].classList.add('current');
+        }
+      }
+      els.runCells[t].textContent = String(state.score[t]);
+      els.hitCells[t].textContent = String(state.hits[t]);
+    }
+
+    var dots = '';
+    for (var s = 0; s < state.strikesPerInning; s++) dots += (s < state.strikes ? '●' : '○');
+    els.strikeDots.textContent = dots;
+    els.strikeDots.classList.toggle('danger', state.strikes === state.strikesPerInning - 1);
+
+    els.rowAway.classList.toggle('batting', !state.over && E.battingTeam(state) === 'away');
+    els.rowHome.classList.toggle('batting', !state.over && E.battingTeam(state) === 'home');
+  }
+
+  /* ===== 描画 ===== */
+  function drawField(c) {
+    c.fillStyle = '#0f1723';
+    c.fillRect(0, 0, W, H);
+
+    c.save();
+    c.beginPath();
+    c.arc(HOME_PLATE.x, HOME_PLATE.y, FENCE_R, 0, Math.PI * 2);
+    c.clip();
+
+    var g = c.createLinearGradient(0, 0, 0, H);
+    g.addColorStop(0, '#37995c');
+    g.addColorStop(1, '#2c7f4c');
+    c.fillStyle = g;
+    c.fillRect(0, 0, W, H);
+
+    c.fillStyle = 'rgba(255,255,255,0.045)';
+    for (var sx = -260; sx < W + 260; sx += 120) {
+      c.save();
+      c.translate(sx, 0);
+      c.rotate(-0.09);
+      c.fillRect(0, -400, 60, H + 800);
+      c.restore();
+    }
+
+    c.beginPath();
+    c.arc(HOME_PLATE.x, HOME_PLATE.y, FENCE_R - 13, 0, Math.PI * 2);
+    c.lineWidth = 26;
+    c.strokeStyle = '#c39b63';
+    c.stroke();
+    c.restore();
+
+    c.beginPath();
+    c.arc(HOME_PLATE.x, HOME_PLATE.y, FENCE_R, 0, Math.PI * 2);
+    c.lineWidth = 7;
+    c.strokeStyle = '#6e4f33';
+    c.stroke();
+
+    drawInfieldDirt(c);
+    drawLines(c);
+    drawBases(c);
+  }
+
+  function drawInfieldDirt(c) {
+    var pts = [HOME_PLATE, BASES[0], BASES[1], BASES[2]];
+    var e = 34;
+    var verts = [];
+    for (var i = 0; i < 4; i++) {
+      var B = pts[i], A = pts[(i + 3) % 4], C = pts[(i + 1) % 4];
+      verts.push({ p1: extend(B, A, e), p2: extend(B, C, e), b: B });
+    }
+    c.beginPath();
+    c.moveTo(verts[0].p2.x, verts[0].p2.y);
+    for (var j = 1; j <= 4; j++) {
+      var v = verts[j % 4];
+      c.lineTo(v.p1.x, v.p1.y);
+      c.quadraticCurveTo(v.b.x, v.b.y, v.p2.x, v.p2.y);
+    }
+    c.closePath();
+    var dg = c.createRadialGradient(HOME_PLATE.x, HOME_PLATE.y - 140, 80, HOME_PLATE.x, HOME_PLATE.y - 140, 520);
+    dg.addColorStop(0, '#cfa76f');
+    dg.addColorStop(1, '#b98f58');
+    c.fillStyle = dg;
+    c.fill();
+    c.lineWidth = 3;
+    c.strokeStyle = 'rgba(110,70,30,0.35)';
+    c.stroke();
+
+    c.beginPath();
+    c.arc(HOME_PLATE.x, HOME_PLATE.y + 6, 86, 0, Math.PI * 2);
+    c.fillStyle = '#c69d66';
+    c.fill();
+
+    c.beginPath();
+    c.arc(MOUND.x, MOUND.y, 46, 0, Math.PI * 2);
+    c.fillStyle = '#cfa76f';
+    c.fill();
+    c.lineWidth = 2;
+    c.strokeStyle = 'rgba(110,70,30,0.3)';
+    c.stroke();
+  }
+
+  function drawLines(c) {
+    var u1 = unit(BASES[0].x - HOME_PLATE.x, BASES[0].y - HOME_PLATE.y);
+    var u3 = unit(BASES[2].x - HOME_PLATE.x, BASES[2].y - HOME_PLATE.y);
+    c.lineWidth = 4;
+    c.strokeStyle = 'rgba(255,255,255,0.85)';
+    c.beginPath();
+    c.moveTo(HOME_PLATE.x, HOME_PLATE.y);
+    c.lineTo(HOME_PLATE.x + u1.x * FENCE_R, HOME_PLATE.y + u1.y * FENCE_R);
+    c.moveTo(HOME_PLATE.x, HOME_PLATE.y);
+    c.lineTo(HOME_PLATE.x + u3.x * FENCE_R, HOME_PLATE.y + u3.y * FENCE_R);
+    c.stroke();
+
+    c.beginPath();
+    c.moveTo(BASES[0].x, BASES[0].y);
+    c.lineTo(BASES[1].x, BASES[1].y);
+    c.lineTo(BASES[2].x, BASES[2].y);
+    c.stroke();
+  }
+
+  function drawDiamond(c, x, y, s, fill) {
+    c.beginPath();
+    c.moveTo(x, y - s);
+    c.lineTo(x + s, y);
+    c.lineTo(x, y + s);
+    c.lineTo(x - s, y);
+    c.closePath();
+    c.fillStyle = fill;
+    c.fill();
+    c.lineWidth = 2;
+    c.strokeStyle = 'rgba(0,0,0,0.25)';
+    c.stroke();
+  }
+
+  function drawBases(c) {
+    for (var i = 0; i < 3; i++) drawDiamond(c, BASES[i].x, BASES[i].y, 13, '#ffffff');
+
+    c.beginPath();
+    c.moveTo(HOME_PLATE.x - 11, HOME_PLATE.y - 14);
+    c.lineTo(HOME_PLATE.x + 11, HOME_PLATE.y - 14);
+    c.lineTo(HOME_PLATE.x + 11, HOME_PLATE.y - 2);
+    c.lineTo(HOME_PLATE.x, HOME_PLATE.y + 8);
+    c.lineTo(HOME_PLATE.x - 11, HOME_PLATE.y - 2);
+    c.closePath();
+    c.fillStyle = '#ffffff';
+    c.fill();
+    c.lineWidth = 2;
+    c.strokeStyle = 'rgba(0,0,0,0.25)';
+    c.stroke();
+
+    c.fillStyle = '#f2f2f2';
+    c.fillRect(MOUND.x - 15, MOUND.y + 9, 30, 7);
+  }
+
+  function drawPerson(c, x, y, color, opts) {
+    opts = opts || {};
+    var r = opts.r || 13;
+    c.beginPath();
+    c.ellipse(x + 2, y + r * 0.75, r * 0.95, r * 0.5, 0, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(0,0,0,0.22)';
+    c.fill();
+
+    var pg = c.createRadialGradient(x - r * 0.35, y - r * 0.45, r * 0.2, x, y, r);
+    pg.addColorStop(0, 'rgba(255,255,255,0.75)');
+    pg.addColorStop(1, color);
+    c.beginPath();
+    c.arc(x, y, r, 0, Math.PI * 2);
+    c.fillStyle = pg;
+    c.fill();
+    c.lineWidth = 2.5;
+    c.strokeStyle = '#ffffff';
+    c.stroke();
+
+    c.beginPath();
+    c.arc(x, y, r * 0.42, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(0,0,0,0.22)';
+    c.fill();
+
+    if (opts.bat) {
+      c.save();
+      c.translate(x, y);
+      c.rotate(-0.85);
+      c.fillStyle = '#c9975b';
+      c.fillRect(-2.5, -r - 22, 5, 24);
+      c.restore();
+    }
+    if (opts.mitt) {
+      c.beginPath();
+      c.arc(x + r * 0.85, y - r * 0.55, 5, 0, Math.PI * 2);
+      c.fillStyle = '#8a5a2b';
+      c.fill();
+    }
+  }
+
+  function drawBall(c) {
+    var b = view.ball;
+    if (!b.visible) return;
+    c.save();
+    if (b.alpha != null) c.globalAlpha = b.alpha;
+    c.beginPath();
+    c.ellipse(b.x + 2, b.y + 3, b.r * 0.9, b.r * 0.55, 0, 0, Math.PI * 2);
+    c.fillStyle = 'rgba(0,0,0,0.25)';
+    c.fill();
+
+    c.translate(b.x, b.y);
+    c.rotate(b.rot);
+    var bg = c.createRadialGradient(-b.r * 0.35, -b.r * 0.4, b.r * 0.15, 0, 0, b.r);
+    bg.addColorStop(0, '#ffffff');
+    bg.addColorStop(1, '#d8dde6');
+    c.beginPath();
+    c.arc(0, 0, b.r, 0, Math.PI * 2);
+    c.fillStyle = bg;
+    c.fill();
+    c.lineWidth = 1.2;
+    c.strokeStyle = 'rgba(80,90,110,0.55)';
+    c.stroke();
+
+    c.strokeStyle = '#d84a3f';
+    c.lineWidth = Math.max(1.2, b.r * 0.16);
+    c.beginPath();
+    c.arc(-b.r * 0.55, 0, b.r * 0.75, -0.85, 0.85);
+    c.stroke();
+    c.beginPath();
+    c.arc(b.r * 0.55, 0, b.r * 0.75, Math.PI - 0.85, Math.PI + 0.85);
+    c.stroke();
+    c.restore();
+  }
+
+  function drawBubble(c, ts) {
+    var bub = view.bubble;
+    if (!bub) return;
+    var age = ts - bub.born;
+    if (age > bub.ttl) { view.bubble = null; return; }
+    var fadeIn = Math.min(1, age / 160);
+    var fadeOut = Math.min(1, (bub.ttl - age) / 220);
+    var alpha = Math.min(fadeIn, fadeOut);
+    var x = HOME_PLATE.x + 14, y = HOME_PLATE.y - 100;
+    c.save();
+    c.globalAlpha = alpha;
+    c.font = 'bold 20px ' + FONT;
+    var tw = c.measureText(bub.text).width;
+    var bw = tw + 26, bh = 38;
+    roundRectPath(c, x - bw / 2, y - bh, bw, bh, 10);
+    c.fillStyle = '#ffffff';
+    c.fill();
+    c.strokeStyle = '#2a3346';
+    c.lineWidth = 2.5;
+    c.stroke();
+    c.beginPath();
+    c.moveTo(x - 6, y);
+    c.lineTo(x + 6, y);
+    c.lineTo(x, y + 14);
+    c.closePath();
+    c.fillStyle = '#ffffff';
+    c.fill();
+    c.fillStyle = '#1b2333';
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.fillText(bub.text, x, y - bh / 2 + 1);
+    c.restore();
+  }
+
+  function drawPitchTag(c, ts) {
+    var tag = view.pitchTag;
+    if (!tag) return;
+    var age = ts - tag.born;
+    if (age > tag.ttl) { view.pitchTag = null; return; }
+    var t = Math.min(1, age / 150);
+    var scale = 0.6 + 0.4 * easeOut(t);
+    var alpha = age > tag.ttl - 200 ? (tag.ttl - age) / 200 : 1;
+    c.save();
+    c.globalAlpha = Math.max(0, Math.min(1, alpha));
+    c.translate(HOME_PLATE.x + 2, HOME_PLATE.y - 64);
+    c.scale(scale, scale);
+    c.font = '900 40px ' + FONT;
+    c.textAlign = 'center';
+    c.textBaseline = 'middle';
+    c.lineWidth = 8;
+    c.strokeStyle = 'rgba(15,20,32,0.9)';
+    c.strokeText(tag.text, 0, 0);
+    c.fillStyle = tag.color;
+    c.fillText(tag.text, 0, 0);
+    c.restore();
+  }
+
+  function drawPopups(c, ts) {
+    for (var i = view.popups.length - 1; i >= 0; i--) {
+      var p = view.popups[i];
+      var age = ts - p.born;
+      if (age > p.ttl) { view.popups.splice(i, 1); continue; }
+      var t = age / p.ttl;
+      c.save();
+      c.globalAlpha = Math.max(0, 1 - t * t);
+      c.font = '900 34px ' + FONT;
+      c.textAlign = 'center';
+      c.lineWidth = 7;
+      c.strokeStyle = 'rgba(15,20,32,0.9)';
+      c.strokeText(p.text, p.x, p.y - t * 70);
+      c.fillStyle = p.color;
+      c.fillText(p.text, p.x, p.y - t * 70);
+      c.restore();
+    }
+  }
+
+  function draw(ts) {
+    if (ts == null) ts = now();
+    if (!ctx) return;
+    var c = ctx;
+    drawField(c);
+
+    var i;
+    for (i = 0; i < view.runners.length; i++) {
+      var r = view.runners[i];
+      c.save();
+      if (r.alpha != null) c.globalAlpha = r.alpha;
+      drawPerson(c, r.x, r.y, r.color, { r: 12 });
+      c.restore();
+    }
+
+    if (view.batter.visible) {
+      drawPerson(c, view.batter.x, view.batter.y, TEAM[view.batter.team].color, { bat: true });
+    }
+    drawPerson(c, PITCHER_POS.x, PITCHER_POS.y, TEAM[view.pitcher.team].color, {});
+    drawPerson(c, CATCHER_POS.x, CATCHER_POS.y, TEAM[view.catcher.team].color, { r: 10, mitt: true });
+
+    drawBall(c);
+    drawPitchTag(c, ts);
+    drawBubble(c, ts);
+    drawPopups(c, ts);
+
+    if (view.flash > 0) {
+      c.fillStyle = 'rgba(228,74,64,' + (view.flash * 0.22) + ')';
+      c.fillRect(0, 0, W, H);
+    }
+  }
+
+  /* ===== ゲーム進行 ===== */
+  function updateHalfMessage() {
+    if (!state) return;
+    var batting = E.battingTeam(state);
+    var role = batting === 'home' ? 'あなたの攻撃' : 'あなたの守備';
+    msg(E.halfLabel(state) + ' ' + role + '!', batting === 'home' ? 'gold' : '');
+  }
+
+  function playHalfInning() {
+    return new Promise(function (resolve) {
+      updateTeams();
+      syncRunners();
+      updateUI();
+      var batting = E.battingTeam(state);
+
+      function nextAtBat() {
+        if (state.over) { resolve(null); return; }
+
+        if (batting === 'home') {
+          view.batter.visible = true;
+          msg('球種を予想してボタンを押そう!');
+          askChoice('あなたの予想は?').then(function (guess) {
+            var actual = E.randomPitch();
+            var ev = E.resolvePitch(state, guess, actual);
+            animatePitch(actual).then(function () {
+              showPitchTag(E.pitchLabel(actual), actual === E.STRAIGHT ? '#ffd166' : '#b39dff');
+              if (ev.correct) {
+                audio.hit();
+                if (ev.walkoff) msg('サヨナラヒット!!!', 'gold');
+                else if (ev.runs > 0) msg('タイムリーヒット! ' + ev.runs + '点ゲット!!', 'gold');
+                else msg('見事に捉えた! ヒット!', 'gold');
+                return animateHit().then(function () {
+                  return animateAdvance('home');
+                }).then(function () {
+                  if (ev.runs > 0) audio.run();
+                });
+              }
+              return animateCatcherCatch().then(function () {
+                audio.strike();
+                flash();
+                if (ev.strikeout) {
+                  audio.out();
+                  showPitchTag('三振!!', '#ff6b5e', 1000);
+                  msg('三振!! チェンジ!', 'red');
+                  return wait(750);
+                }
+                msg('ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ', 'red');
+              });
+            }).then(function () {
+              updateUI();
+              if (ev.gameEnded || ev.inningEnded) { resolve(ev); return; }
+              wait(T.after).then(nextAtBat);
+            });
+          });
+        } else {
+          view.batter.visible = true;
+          msg('球種を選んで投げよう! CPUの予想を裏切れ!');
+          askChoice('投げる球種は?').then(function (chosen) {
+            var cpuGuess = E.randomPitch();
+            var ev = E.resolvePitch(state, cpuGuess, chosen);
+            var bubbleShown = false;
+            var bubbleTimer = setTimeout(function () {
+              bubbleShown = true;
+              showBubble('CPUは「' + E.pitchLabel(cpuGuess) + '」を待っている…');
+            }, 240);
+            animatePitch(chosen).then(function () {
+              clearTimeout(bubbleTimer);
+              if (!bubbleShown) showBubble('CPUは「' + E.pitchLabel(cpuGuess) + '」を待っている…');
+              return wait(280);
+            }).then(function () {
+              hideBubble();
+              if (ev.correct) {
+                audio.hit();
+                if (ev.runs > 0) msg('見破られた! CPUにタイムリー… ' + ev.runs + '点取られた', 'red');
+                else msg('見破られた! CPUにヒットを打たれた…', 'red');
+                return animateHit().then(function () {
+                  return animateAdvance('away');
+                }).then(function () {
+                  if (ev.runs > 0) audio.sadRun();
+                });
+              }
+              return animateCatcherCatch().then(function () {
+                audio.strike();
+                if (ev.strikeout) {
+                  audio.out();
+                  showPitchTag('三振!!', '#ffd166', 1000);
+                  msg('三振に仕留めた!! チェンジ!', 'gold');
+                  return wait(750);
+                }
+                msg('CPUは空振り! ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ');
+              });
+            }).then(function () {
+              updateUI();
+              if (ev.gameEnded || ev.inningEnded) { resolve(ev); return; }
+              wait(T.after).then(nextAtBat);
+            });
+          });
+        }
+      }
+
+      nextAtBat();
+    });
+  }
+
+  function showBanner(main, sub, ms) {
+    els.bannerMain.textContent = main;
+    els.bannerSub.textContent = sub || '';
+    els.banner.classList.add('show');
+    return wait(ms || 1500).then(function () {
+      els.banner.classList.remove('show');
+    });
+  }
+
+  function changeSides() {
+    var batting = E.battingTeam(state);
+    var role = batting === 'home' ? 'あなたの攻撃!' : 'あなたの守備!';
+    msg('攻守交代!', 'gold');
+    audio.change();
+    return showBanner('チェンジ!', E.halfLabel(state) + ' ' + role, 1600).then(function () {
+      return wait(280);
+    }).then(function () {
+      updateTeams();
+      syncRunners();
+      updateUI();
+      updateHalfMessage();
+    });
+  }
+
+  function showResult() {
+    var r = state.result;
+    els.endScore.textContent = 'あなた ' + state.score.home + ' - ' + state.score.away + ' CPU';
+    var text, cls;
+    if (r === 'home') { text = 'あなたの勝利!!'; cls = 'win'; audio.win(); }
+    else if (r === 'away') { text = 'CPUの勝利…'; cls = 'lose'; audio.lose(); }
+    else { text = '引き分け'; cls = 'draw'; audio.drawS(); }
+    els.endResult.textContent = text;
+    els.endResult.className = 'end-result ' + cls;
+    els.endHits.textContent = '安打数  あなた ' + state.hits.home + ' / CPU ' + state.hits.away +
+      '   (' + state.totalInnings + '回終了)';
+    msg(text, cls === 'win' ? 'gold' : (cls === 'lose' ? 'red' : ''));
+    return wait(700).then(function () {
+      els.screenEnd.classList.add('visible');
+    });
+  }
+
+  function beginGame() {
+    if (running) return Promise.resolve();
+    running = true;
+    els.screenStart.classList.remove('visible');
+    els.screenEnd.classList.remove('visible');
+    state = E.createGame();
+    resetView();
+    updateTeams();
+    syncRunners();
+    updateUI();
+    setButtons(false);
+    audio.ensure();
+    msg('プレイボール!', 'gold');
+
+    function loop() {
+      if (state.over) return Promise.resolve();
+      return playHalfInning().then(function () {
+        if (state.over) return;
+        return changeSides().then(loop);
+      });
+    }
+
+    return wait(900).then(function () {
+      return updateHalfMessage();
+    }).then(function () {
+      return wait(650);
+    }).then(loop).then(function () {
+      return wait(500);
+    }).then(showResult).then(function () {
+      running = false;
+    }, function (err) {
+      running = false;
+      if (typeof console !== 'undefined' && console.error) console.error(err);
+      throw err;
+    });
+  }
+
+  /* ===== 初期化 ===== */
+  function buildScoreCells() {
+    els.liCells = {};
+    els.runCells = {};
+    els.hitCells = {};
+    var teams = ['away', 'home'];
+    for (var i = 0; i < teams.length; i++) {
+      var t = teams[i];
+      var row = t === 'away' ? els.rowAway : els.rowHome;
+      var cells = [];
+      for (var n = 1; n <= E.TOTAL_INNINGS; n++) {
+        var td = document.createElement('td');
+        td.className = 'inn';
+        row.appendChild(td);
+        cells.push(td);
+      }
+      var rTd = document.createElement('td');
+      rTd.className = 'sum';
+      row.appendChild(rTd);
+      var hTd = document.createElement('td');
+      hTd.className = 'sum';
+      row.appendChild(hTd);
+      els.liCells[t] = cells;
+      els.runCells[t] = rTd;
+      els.hitCells[t] = hTd;
+    }
+  }
+
+  function resizeCanvas() {
+    if (!canvas) return;
+    var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
+    var availW = (els.stage && els.stage.clientWidth) ? els.stage.clientWidth - 16 : W;
+    var availH = (els.stage && els.stage.clientHeight) ? els.stage.clientHeight - 8 : H;
+    if (availW <= 0) availW = W;
+    if (availH <= 0) availH = H;
+    var scale = Math.min(availW / W, availH / H);
+    if (!isFinite(scale) || scale <= 0) scale = 1;
+    canvas.width = Math.round(W * dpr);
+    canvas.height = Math.round(H * dpr);
+    canvas.style.width = Math.floor(W * scale) + 'px';
+    canvas.style.height = Math.floor(H * scale) + 'px';
+    if (canvas.getContext) {
+      ctx = canvas.getContext('2d');
+      if (ctx && ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+  }
+
+  function startLoop() {
+    function frame(ts) {
+      if (ts == null) ts = now();
+      var dt = 0.016;
+      if (lastFrame > 0) dt = Math.min(0.05, (ts - lastFrame) / 1000);
+      lastFrame = ts;
+      if (view && view.flash > 0) {
+        view.flash = Math.max(0, view.flash - dt * 1.8);
+      }
+      draw(ts);
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+  }
+
+  function onKey(e) {
+    var k = (e && e.key) || '';
+    if (els.screenStart.classList.contains('visible') && (k === 'Enter' || k === ' ')) {
+      e.preventDefault();
+      beginGame();
+      return;
+    }
+    if (els.screenEnd.classList.contains('visible') && (k === 'Enter' || k === ' ')) {
+      e.preventDefault();
+      beginGame();
+      return;
+    }
+    if (k === '1' || k === 'ArrowLeft' || k === 'ArrowUp') {
+      if (pendingChoice) { e.preventDefault(); choosePitch(E.STRAIGHT); }
+    } else if (k === '2' || k === 'ArrowRight' || k === 'ArrowDown') {
+      if (pendingChoice) { e.preventDefault(); choosePitch(E.CURVE); }
+    }
+  }
+
+  function init() {
+    canvas = $('field');
+    els.message = $('message');
+    els.hint = $('hint');
+    els.overlay = $('overlay');
+    els.screenStart = $('screen-start');
+    els.screenEnd = $('screen-end');
+    els.endScore = $('end-score');
+    els.endResult = $('end-result');
+    els.endHits = $('end-hits');
+    els.btnStart = $('btn-start');
+    els.btnAgain = $('btn-again');
+    els.btnStraight = $('btn-straight');
+    els.btnCurve = $('btn-curve');
+    els.soundBtn = $('sound-btn');
+    els.rowAway = $('row-away');
+    els.rowHome = $('row-home');
+    els.inningLabel = $('inning-label');
+    els.phaseLabel = $('phase-label');
+    els.strikeDots = $('strike-dots');
+    els.stage = $('stage');
+    els.banner = $('banner');
+    els.bannerMain = $('banner-main');
+    els.bannerSub = $('banner-sub');
+
+    buildScoreCells();
+    resetView();
+    resizeCanvas();
+    draw();
+
+    els.btnStraight.addEventListener('click', function () { choosePitch(E.STRAIGHT); });
+    els.btnCurve.addEventListener('click', function () { choosePitch(E.CURVE); });
+    els.btnStart.addEventListener('click', function () { beginGame().catch(function () { }); });
+    els.btnAgain.addEventListener('click', function () { beginGame().catch(function () { }); });
+    els.soundBtn.addEventListener('click', function () {
+      soundOn = !soundOn;
+      els.soundBtn.textContent = 'サウンド: ' + (soundOn ? 'ON' : 'OFF');
+      if (soundOn) {
+        audio.ensure();
+        audio.tone(660, 0.1, { type: 'triangle', vol: 0.08 });
+      }
+    });
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('resize', resizeCanvas);
+
+    startLoop();
+
+    if (typeof window !== 'undefined') {
+      window.__GAME__ = {
+        id: 'baseball-game',
+        title: 'ストレート or カーブ!',
+        start: function () { return beginGame(); },
+        autoPlayStep: function () {
+          if (pendingChoice) choosePitch(Math.random() < 0.5 ? E.STRAIGHT : E.CURVE);
+        },
+        isAwaiting: function () { return !!pendingChoice; },
+        isDone: function () { return !!(state && state.over); },
+        getState: function () { return state; },
+        getView: function () { return view; }
+      };
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+})();

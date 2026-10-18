@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>universe - 自作ゲーム&アプリのハブ</title>
+  <style>
+    :root {
+      --bg: #0b1019;
+      --panel: #131c2b;
+      --panel-2: #1a2538;
+      --line: #24324a;
+      --text: #e8eefb;
+      --muted: #8fa1bd;
+      --gold: #ffd166;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(1200px 800px at 50% 0%, #16233a 0%, var(--bg) 60%);
+      color: var(--text);
+      font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 48px 20px;
+    }
+    header { text-align: center; margin-bottom: 36px; }
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 6vw, 56px);
+      letter-spacing: 4px;
+      background: linear-gradient(180deg, #ffffff, #9db7e8);
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+    }
+    .subtitle { color: var(--muted); margin: 8px 0 0; }
+    .cards {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 18px;
+      width: 100%;
+      max-width: 960px;
+    }
+    .cards a {
+      display: block;
+      text-decoration: none;
+      color: var(--text);
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      border: 1px solid var(--line);
+      border-radius: 16px;
+      padding: 22px 20px 18px;
+      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+    .cards a:hover {
+      transform: translateY(-3px);
+      border-color: var(--gold);
+      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+    }
+    .tag {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 1px;
+      color: #101722;
+      background: var(--gold);
+      border-radius: 6px;
+      padding: 2px 8px;
+      margin-bottom: 10px;
+    }
+    .cards h2 { margin: 0 0 6px; font-size: 20px; }
+    .cards p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.7; }
+    footer { margin-top: auto; padding-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
+    code { color: var(--gold); font-family: ui-monospace, Menlo, monospace; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>universe</h1>
+    <p class="subtitle">自作アプリ・ゲームのハブ</p>
+  </header>
+
+  <ul class="cards">
+    <li>
+      <a href="baseball-game/">
+        <span class="tag">GAME</span>
+        <h2>ストレート or カーブ!</h2>
+        <p>10回勝負の野球ゲーム。相手の球種を読み切って打ち崩せ。攻守交代・サヨナラあり。</p>
+      </a>
+    </li>
+  </ul>
+
+  <footer>
+    ローカルで動かすには <code>python3 -m http.server</code> をこのフォルダで実行して開く（各ゲームは依存ゼロの静的ファイル）。
+  </footer>
+</body>
+</html>
