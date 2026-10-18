@@ -70,6 +70,11 @@
     return (PITCH_INFO[key] && PITCH_INFO[key].color) || '#ffd166';
   }
 
+  var SHORT = {
+    straight: 'スト', curve: 'カー', slider: 'スラ', cutter: 'カッ', fork: 'フォ',
+    changeup: 'チェ', shoot: 'シュ', sinker: 'シン', knuckle: 'ナッ'
+  };
+
   /* ===== 状態 ===== */
   var canvas, ctx;
   var els = {};
@@ -513,6 +518,33 @@
     if (now() >= swing.start + swing.dur + 120) stopTiming();
   }
 
+  function renderChart() {
+    if (!state || !els.chartRows) return;
+    var tend = E.pitchTendencies(state);
+    els.chartStyle.textContent = 'CPUピッチャー: ' + tend.styleName;
+    var goodNames = [];
+    for (var g = 0; g < tend.good.length; g++) goodNames.push(E.pitchLabel(tend.good[g]));
+    var badNames = [];
+    for (var bd = 0; bd < tend.bad.length; bd++) badNames.push(E.pitchLabel(tend.bad[bd]));
+    var html = '<div class="chart-note">得意: ' + goodNames.join('・') +
+      ' (ゾーンに入りやすい) / 苦手: ' + badNames.join('・') + ' (ボールになりやすい)</div>';
+    for (var i = 0; i < tend.rows.length; i++) {
+      var row = tend.rows[i];
+      html += '<div class="chart-row"><span class="chart-label">' + row.strikes + 'ストライク:</span>';
+      if (!row.items.length) {
+        html += '<span class="chart-empty">まだデータなし</span>';
+      } else {
+        for (var j = 0; j < row.items.length && j < 4; j++) {
+          var it = row.items[j];
+          html += '<span class="chip" style="--c:' + pitchColor(it.pitch) + '">' +
+            (SHORT[it.pitch] || it.pitch) + '×' + it.count + '</span>';
+        }
+      }
+      html += '</div>';
+    }
+    els.chartRows.innerHTML = html;
+  }
+
   function updateUI() {
     if (!state) return;
     els.inningLabel.textContent = E.halfLabel(state);
@@ -547,6 +579,10 @@
     if (els.ballWrap) {
       els.ballWrap.style.display = (E.battingTeam(state) === 'home' && !state.over) ? '' : 'none';
     }
+    if (els.chartWrap) {
+      els.chartWrap.classList.toggle('hidden', E.battingTeam(state) !== 'home' || state.over);
+    }
+    renderChart();
 
     els.rowAway.classList.toggle('batting', !state.over && E.battingTeam(state) === 'away');
     els.rowHome.classList.toggle('batting', !state.over && E.battingTeam(state) === 'home');
@@ -889,14 +925,12 @@
 
         if (batting === 'home') {
           view.batter.visible = true;
-          var plan = E.planPitch();
-          state.lastHint = plan.hint;
-          if (plan.hint) msg('配球ヒント: 「' + E.pitchLabel(plan.hint) + '」っぽい…?', 'gold');
-          else msg('配球を読めない…見逃して様子を見るのも手!');
+          var pitch = E.pitcherPitch(state);
+          msg('配球メモを見て予想しろ! (1〜9 / 0=見逃し)');
           askChoice('どうする? 1〜9=スイング予想 / 0=見逃し').then(function (choice) {
-            var actual = plan.actual;
+            var actual = pitch.actual;
             if (choice.action === 'take') {
-              var tev = E.resolveTake(state, plan.zone);
+              var tev = E.resolveTake(state, pitch.zone);
               animatePitch(actual).then(function () {
                 showPitchTag(E.pitchLabel(actual), pitchColor(actual));
                 return wait(260);
@@ -961,8 +995,7 @@
                   msg('三振!! チェンジ!', 'red');
                   return wait(750);
                 }
-                if (plan.hint && choice.pitch === plan.hint) msg('ヒントはウソだった…! ストライク!', 'red');
-                else msg('空振り! ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ', 'red');
+                msg('空振り! ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ', 'red');
               });
             }).then(function () {
               updateUI();
@@ -972,7 +1005,6 @@
           });
         } else {
           view.batter.visible = true;
-          state.lastHint = null;
           msg('球種を選んで投げよう! 同じ球ばかりだと読まれるぞ');
           askChoice('投げる球種は? (1〜9キー)').then(function (chosen) {
             var dec = E.cpuBatterDecision(state, chosen);
@@ -1083,7 +1115,8 @@
     updateUI();
     setButtons(false);
     audio.ensure();
-    msg('プレイボール!', 'gold');
+    var styleName = (E.PITCH_STYLES[state.pitcherStyle] || {}).name || '';
+    msg('プレイボール! CPUピッチャーは「' + styleName + '」タイプ!', 'gold');
 
     function loop() {
       if (state.over) return Promise.resolve();
@@ -1236,6 +1269,9 @@
     els.pbMarker = $('pb-marker');
     els.ballDots = $('ball-dots');
     els.ballWrap = $('ball-wrap');
+    els.chartWrap = $('chart');
+    els.chartStyle = $('chart-style');
+    els.chartRows = $('chart-rows');
     els.soundBtn = $('sound-btn');
     els.rowAway = $('row-away');
     els.rowHome = $('row-home');
@@ -1283,12 +1319,24 @@
           }
           if (!pendingChoice) return;
           if (state && E.battingTeam(state) === 'home') {
-            if (state.lastHint) {
-              if (Math.random() < 0.75) choosePitch(state.lastHint);
-              else chooseTake();
-            } else {
-              chooseTake();
+            var past = {};
+            for (var pk in state) {
+              if (Object.prototype.hasOwnProperty.call(state, pk)) past[pk] = state[pk];
             }
+            past.pitcherHistory = state.pitcherHistory.slice(0, Math.max(0, state.pitcherHistory.length - 1));
+            var tend = E.pitchTendencies(past);
+            var row = tend.rows[state.strikes] || tend.rows[0];
+            if (!row.items.length) {
+              if (Math.random() < 0.5) chooseTake();
+              else choosePitch(E.randomPitch());
+              return;
+            }
+            var top = row.items[0];
+            if (E.zoneRateFor(state.pitcherStyle, top.pitch) < 0.5 && Math.random() < 0.35) {
+              chooseTake();
+              return;
+            }
+            choosePitch(top.pitch);
           } else {
             choosePitch(E.randomPitch());
           }

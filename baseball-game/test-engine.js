@@ -125,32 +125,86 @@ assert(eg2.gameEnded && g.result === 'draw', '同点引き分け');
 
 /* 13) timingResult のしきい値 */
 assert(E.timingResult(0) === 'hr', '中央はHR');
-assert(E.timingResult(-7) === 'hr' && E.timingResult(7) === 'hr', 'HR帯の端');
-assert(E.timingResult(8) === 'double' && E.timingResult(-18) === 'double', '二塁打帯');
-assert(E.timingResult(19) === 'single' && E.timingResult(-50) === 'single', '単打帯');
+assert(E.timingResult(-10) === "hr" && E.timingResult(10) === "hr", "HR帯の端");
+assert(E.timingResult(11) === "double" && E.timingResult(-24) === "double", "二塁打帯");
+assert(E.timingResult(25) === "single" && E.timingResult(-50) === "single", "単打帯");
 
-/* 14) planPitch: ヒント率・的中率・ゾーン率 */
-var N14 = 30000, hinted = 0, matched = 0, zoneByType = {}, typeCount = {};
-for (var t14 = 0; t14 < N14; t14++) {
-  var pl = E.planPitch();
-  assert(E.PITCH_LABELS[pl.actual], 'planPitch が未知の球種: ' + pl.actual);
-  if (pl.hint) {
-    hinted++;
-    if (pl.actual === pl.hint) matched++;
+/* 14) 配球スタイル: 重み・得意/苦手・ゾーン率補正 */
+var styleKeys14 = Object.keys(E.PITCH_STYLES);
+assert(styleKeys14.length === 4, '4つの配球スタイル');
+for (var s14 = 0; s14 < styleKeys14.length; s14++) {
+  var sk14 = styleKeys14[s14];
+  var st14 = E.PITCH_STYLES[sk14];
+  assert(typeof st14.name === 'string' && st14.name.length > 0, 'スタイル名: ' + sk14);
+  for (var w14 = 0; w14 < E.PITCH_ORDER.length; w14++) {
+    assert(st14.weights[E.PITCH_ORDER[w14]] > 0, sk14 + ' の重み: ' + E.PITCH_ORDER[w14]);
   }
-  typeCount[pl.actual] = (typeCount[pl.actual] || 0) + 1;
-  if (pl.zone) zoneByType[pl.actual] = (zoneByType[pl.actual] || 0) + 1;
+  assert(st14.good.length >= 1 && st14.bad.length >= 1, sk14 + ' の得意/苦手が空');
+  for (var gi14 = 0; gi14 < st14.good.length; gi14++) {
+    var gp14 = st14.good[gi14];
+    assert(E.PITCH_LABELS[gp14], '得意球が未知: ' + gp14);
+    assert(st14.bad.indexOf(gp14) < 0, '得意と苦手が重複: ' + gp14);
+    assert(E.zoneRateFor(sk14, gp14) > E.ZONE_RATES[gp14], '得意球はゾーン率UP: ' + sk14 + '/' + gp14);
+  }
+  for (var bi14 = 0; bi14 < st14.bad.length; bi14++) {
+    var bp14 = st14.bad[bi14];
+    assert(E.PITCH_LABELS[bp14], '苦手球が未知: ' + bp14);
+    assert(E.zoneRateFor(sk14, bp14) < E.ZONE_RATES[bp14], '苦手球はゾーン率DOWN: ' + sk14 + '/' + bp14);
+  }
+  for (var pk14 = 0; pk14 < E.PITCH_ORDER.length; pk14++) {
+    var z14 = E.zoneRateFor(sk14, E.PITCH_ORDER[pk14]);
+    assert(z14 >= 0.12 && z14 <= 0.92, 'ゾーン率の範囲: ' + z14);
+  }
 }
-var hintRate = hinted / N14;
-var matchRate = matched / hinted;
-assert(Math.abs(hintRate - E.HINT_RATE) < 0.03, 'ヒント提示率: ' + hintRate);
-assert(matchRate > E.HINT_MATCH - 0.02 && matchRate < E.HINT_MATCH + 0.17,
-  'ヒント的中率: ' + matchRate);
-for (var zi = 0; zi < E.PITCH_ORDER.length; zi++) {
-  var zk = E.PITCH_ORDER[zi];
-  var zr = zoneByType[zk] / typeCount[zk];
-  assert(Math.abs(zr - E.ZONE_RATES[zk]) < 0.04, 'ゾーン率(' + zk + '): ' + zr);
+
+/* 14b) pitcherPitch: 履歴記録・傾向集計・ゾーン率の実測 */
+var st14c = E.createGame('breaking');
+st14c.strikes = 2;
+var N14 = 30000, zoneCount14 = {}, typeCount14 = {};
+for (var t14 = 0; t14 < N14; t14++) {
+  var pp14 = E.pitcherPitch(st14c);
+  assert(E.PITCH_LABELS[pp14.actual], '未知の球種: ' + pp14.actual);
+  typeCount14[pp14.actual] = (typeCount14[pp14.actual] || 0) + 1;
+  if (pp14.zone) zoneCount14[pp14.actual] = (zoneCount14[pp14.actual] || 0) + 1;
 }
+assert(st14c.pitcherHistory.length === N14, '投球履歴が記録される');
+assert(st14c.pitcherHistory[0].strikes === 2 && st14c.pitcherHistory[0].balls === 0, '履歴にカウント');
+var tend14 = E.pitchTendencies(st14c);
+assert(tend14.style === 'breaking' && tend14.styleName === '変化球派', '傾向のスタイル情報');
+assert(tend14.rows[2].total === N14, '2ストライク行の集計数: ' + tend14.rows[2].total);
+var sum14 = 0;
+for (var j14 = 0; j14 < tend14.rows[2].items.length; j14++) sum14 += tend14.rows[2].items[j14].count;
+assert(sum14 === N14, '行の内訳合計');
+assert(tend14.rows[2].items[0].pitch === 'slider', '変化球派の2ストライクはスライダー最多: ' + tend14.rows[2].items[0].pitch);
+assert(tend14.rows[0].items.length === 0 && tend14.rows[1].items.length === 0, '他カウントは空');
+var slz14 = zoneCount14.slider / typeCount14.slider;
+var stz14 = zoneCount14.straight / typeCount14.straight;
+assert(Math.abs(slz14 - E.zoneRateFor('breaking', 'slider')) < 0.03, '得意球ゾーン率実測: ' + slz14);
+assert(Math.abs(stz14 - E.zoneRateFor('breaking', 'straight')) < 0.03, '苦手球ゾーン率実測: ' + stz14);
+
+/* 14c) tendencyWeights: カウントでクセが変わる */
+var w14a = E.tendencyWeights(E.createGame('power'));
+assert(Math.abs(w14a.straight - 34 * 1.6) < 1e-9, '0-0はストレート賭け: ' + w14a.straight);
+var st14b = E.createGame('power');
+st14b.balls = 2;
+var w14b = E.tendencyWeights(st14b);
+assert(Math.abs(w14b.straight - 34 * 1.8) < 1e-9, 'ボール先行はストレート: ' + w14b.straight);
+assert(Math.abs(w14b.cutter - 14 * 1.3) < 1e-9, 'ボール先行はカット: ' + w14b.cutter);
+var st14d = E.createGame('power');
+st14d.strikes = 2;
+var w14d = E.tendencyWeights(st14d);
+assert(Math.abs(w14d.straight - 34 * 1.9) < 1e-9, '2ストライクの剛球派はストレート: ' + w14d.straight);
+assert(Math.abs(w14d.slider - 12 * 1.4) < 1e-9, '2ストライクの剛球派はスライダー: ' + w14d.slider);
+
+/* 14d) createGame: スタイルはランダムに選ばれ、指定もできる */
+var seen14 = {};
+for (var n14 = 0; n14 < 400; n14++) {
+  var g14 = E.createGame();
+  seen14[g14.pitcherStyle] = true;
+  assert(g14.pitcherHistory.length === 0, '履歴は初期化');
+}
+assert(Object.keys(seen14).length === 4, 'ランダムに4スタイル登場: ' + Object.keys(seen14).join(','));
+assert(E.createGame('tricky').pitcherStyle === 'tricky', 'スタイル指定');
 
 /* 15) CPUの読み: 基本・連投・パターン */
 var st15 = E.createGame();
@@ -161,7 +215,7 @@ assert(st15.playerHistory.length === 1, '投球履歴が記録される');
 st15 = E.createGame();
 for (var h15 = 0; h15 < 10; h15++) st15.playerHistory.push('curve');
 var dec15b = E.cpuBatterDecision(st15, 'curve');
-assert(dec15b.accuracy > 0.7, '10連投は読みが鋭い: ' + dec15b.accuracy);
+assert(dec15b.accuracy > 0.65, '10連投は読みが鋭い: ' + dec15b.accuracy);
 assert(dec15b.streak >= 10, '連投数検出');
 
 st15 = E.createGame();
@@ -179,10 +233,15 @@ var rate0 = correctSum / accRuns;
 assert(Math.abs(rate0 - E.CPU_READ_BASE) < 0.03, '履歴なし精度: ' + rate0);
 
 /* 16) フル試合の不変条件（スマート戦略1000試合） */
-var stats = { home: 0, away: 0, draw: 0, pitches: 0, runs: 0, hits: 0, maxPitches: 0 };
-var smartAttack = function (plan) {
-  if (plan.hint) return { action: 'swing', pitch: plan.hint };
-  return { action: 'take' };
+var stats = { home: 0, away: 0, draw: 0, pitches: 0, runs: 0, hits: 0, homeRuns: 0, awayRuns: 0, maxPitches: 0 };
+var smartAttack = function (state) {
+  var w = E.tendencyWeights(state);
+  var best = null, bestW = -1;
+  for (var i = 0; i < E.PITCH_ORDER.length; i++) {
+    if (w[E.PITCH_ORDER[i]] > bestW) { bestW = w[E.PITCH_ORDER[i]]; best = E.PITCH_ORDER[i]; }
+  }
+  if (E.zoneRateFor(state.pitcherStyle, best) < 0.5 && Math.random() < 0.3) return { action: 'take' };
+  return { action: 'swing', pitch: best };
 };
 var robotTiming = function () { return (Math.random() + Math.random() - 1) * 30; };
 
@@ -198,12 +257,12 @@ function playFullGame(cpuPitch) {
       var ev = E.resolvePitch(sg, dec.guess, thrown);
       if (ev.correct) E.resolveHit(sg, Math.random() < 0.15 ? 'double' : 'single');
     } else {
-      var plan = E.planPitch();
-      var act = smartAttack(plan);
+      var actual = E.pitcherPitch(sg);
+      var act = smartAttack(sg);
       if (act.action === 'take') {
-        E.resolveTake(sg, plan.zone);
+        E.resolveTake(sg, actual.zone);
       } else {
-        var ev2 = E.resolvePitch(sg, act.pitch, plan.actual);
+        var ev2 = E.resolvePitch(sg, act.pitch, actual.actual);
         if (ev2.correct) E.resolveHit(sg, E.timingResult(robotTiming()));
       }
     }
@@ -226,6 +285,8 @@ for (var i16 = 0; i16 < 1000; i16++) {
   stats.pitches += res.pitches;
   stats.runs += sg2.score.home + sg2.score.away;
   stats.hits += sg2.hits.home + sg2.hits.away;
+  stats.homeRuns += sg2.score.home;
+  stats.awayRuns += sg2.score.away;
   if (res.pitches > stats.maxPitches) stats.maxPitches = res.pitches;
 }
 
@@ -244,6 +305,6 @@ log('engine tests OK (' + passed + ' アサーション + スマート1000試合
 log('  勝敗: home ' + stats.home + ' / away ' + stats.away + ' / draw ' + stats.draw);
 log('  平均投球数: ' + (stats.pitches / 1000).toFixed(1) + ' / 最大: ' + stats.maxPitches);
 log('  平均合計得点: ' + (stats.runs / 1000).toFixed(1) + ' / 平均合計安打: ' + (stats.hits / 1000).toFixed(1));
-log('  ヒント提示率: ' + (hintRate * 100).toFixed(1) + '% / 的中率: ' + (matchRate * 100).toFixed(1) + '%');
+log('  平均得点: home ' + (stats.homeRuns / 1000).toFixed(1) + ' / away ' + (stats.awayRuns / 1000).toFixed(1));
 log('  CPU得点: 配球を散らす ' + (mixed.cpuRuns / SIM_N).toFixed(1) +
   ' / ストレート連投 ' + (spam.cpuRuns / SIM_N).toFixed(1));

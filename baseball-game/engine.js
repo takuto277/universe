@@ -33,19 +33,6 @@
     knuckle: 'ナックル'
   };
 
-  /* CPUピッチャーの球種使用率（合計100） */
-  var BASE_WEIGHTS = {
-    straight: 22,
-    curve: 12,
-    slider: 16,
-    cutter: 10,
-    fork: 11,
-    changeup: 10,
-    shoot: 7,
-    sinker: 7,
-    knuckle: 5
-  };
-
   /* 球種ごとのストライクゾーン率（見逃したときストライクになる確率） */
   var ZONE_RATES = {
     straight: 0.70,
@@ -59,12 +46,55 @@
     knuckle: 0.50
   };
 
-  /* 配球ヒント: HINT_RATE の確率でヒント提示、そのうち HINT_MATCH の割合で本当にその球が来る */
-  var HINT_RATE = 0.72;
-  var HINT_MATCH = 0.62;
+  /* CPUピッチャーの配球スタイル（ゲーム開始時にランダムで1つ選ばれる）
+   * good = 得意球（ゾーンに入りやすい）、bad = 苦手球（ボールになりやすい） */
+  var PITCH_STYLES = {
+    power: {
+      name: '剛球派',
+      weights: { straight: 34, cutter: 14, slider: 12, curve: 6, fork: 10, changeup: 6, shoot: 6, sinker: 8, knuckle: 4 },
+      finish: { straight: 1.9, slider: 1.4 },
+      good: ['straight', 'cutter'],
+      bad: ['curve', 'knuckle']
+    },
+    breaking: {
+      name: '変化球派',
+      weights: { straight: 16, cutter: 8, slider: 24, curve: 18, fork: 8, changeup: 10, shoot: 6, sinker: 6, knuckle: 4 },
+      finish: { slider: 2.0, curve: 1.6 },
+      good: ['slider', 'curve'],
+      bad: ['straight', 'changeup']
+    },
+    vertical: {
+      name: '縦変化派',
+      weights: { straight: 18, cutter: 8, slider: 8, curve: 8, fork: 22, changeup: 16, shoot: 4, sinker: 12, knuckle: 4 },
+      finish: { fork: 2.1, changeup: 1.5, sinker: 1.3 },
+      good: ['fork', 'sinker'],
+      bad: ['slider', 'curve']
+    },
+    tricky: {
+      name: '技巧派',
+      weights: { straight: 14, cutter: 12, slider: 12, curve: 12, fork: 12, changeup: 12, shoot: 10, sinker: 8, knuckle: 8 },
+      finish: { knuckle: 1.9, changeup: 1.6, shoot: 1.4 },
+      good: ['knuckle', 'changeup'],
+      bad: ['straight', 'fork']
+    }
+  };
+
+  /* ゾーン率の補正: 得意球は×1.3、苦手球は×0.55（見逃しでボールを稼げる） */
+  var ZONE_GOOD_MULT = 1.3;
+  var ZONE_BAD_MULT = 0.55;
+
+  function zoneRateFor(styleKey, pitch) {
+    var style = PITCH_STYLES[styleKey] || PITCH_STYLES.power;
+    var rate = ZONE_RATES[pitch] || 0.5;
+    if (style.good.indexOf(pitch) >= 0) rate *= ZONE_GOOD_MULT;
+    if (style.bad.indexOf(pitch) >= 0) rate *= ZONE_BAD_MULT;
+    if (rate > 0.92) rate = 0.92;
+    if (rate < 0.12) rate = 0.12;
+    return rate;
+  }
 
   /* CPU打者の読み: 頻度・連投・交互パターンで精度が上がる */
-  var CPU_READ_BASE = 0.44;
+  var CPU_READ_BASE = 0.32;
   var CPU_READ_BONUS = 0.28;
   var CPU_READ_WINDOW = 10;
   var CPU_STREAK_BONUS = 0.03;
@@ -73,7 +103,7 @@
   var CPU_READ_MAX = 0.9;
 
   /* タイミング判定のしきい値（中央からのズレ%） */
-  var TIMING_BANDS = { hr: 7, double: 18 };
+  var TIMING_BANDS = { hr: 10, double: 24 };
 
   function pitchLabel(pitch) { return PITCH_LABELS[pitch] || String(pitch); }
 
@@ -106,19 +136,75 @@
     return k;
   }
 
-  /* 相手ピッチャーの1球を計画:
-   * { hint: 球種|または null, actual: 実際の球種, zone: ストライクゾーンか } */
-  function planPitch(rng) {
-    rng = rng || Math.random;
-    var hint = null;
-    var actual;
-    if (rng() < HINT_RATE) {
-      hint = weightedPick(BASE_WEIGHTS, rng);
-      actual = (rng() < HINT_MATCH) ? hint : weightedPick(BASE_WEIGHTS, rng);
-    } else {
-      actual = weightedPick(BASE_WEIGHTS, rng);
+  /* 現在のカウント・スタイルから球種の重みを計算（配球のクセ） */
+  function tendencyWeights(state) {
+    var style = PITCH_STYLES[state.pitcherStyle] || PITCH_STYLES.power;
+    var w = {};
+    var i, k;
+    for (i = 0; i < PITCH_ORDER.length; i++) {
+      k = PITCH_ORDER[i];
+      w[k] = style.weights[k] || 1;
     }
-    return { hint: hint, actual: actual, zone: rng() < (ZONE_RATES[actual] || 0.5) };
+    if (state.balls === 0 && state.strikes === 0) {
+      w.straight *= 1.6;
+    }
+    if (state.balls >= 2) {
+      w.straight *= 1.8;
+      w.cutter *= 1.3;
+    }
+    if (state.strikes === 2) {
+      for (k in style.finish) {
+        if (Object.prototype.hasOwnProperty.call(style.finish, k)) w[k] *= style.finish[k];
+      }
+    }
+    return w;
+  }
+
+  /* CPUピッチャーが1球投げる（配球のクセに従う）。state.pitcherHistory に記録する。 */
+  function pitcherPitch(state, rng) {
+    rng = rng || Math.random;
+    var actual = weightedPick(tendencyWeights(state), rng);
+    var zone = rng() < zoneRateFor(state.pitcherStyle, actual);
+    state.pitcherHistory.push({ pitch: actual, balls: state.balls, strikes: state.strikes, zone: zone });
+    return { actual: actual, zone: zone };
+  }
+
+  /* 配球メモ: ストライク数ごとの球種集計（ゾーン率つき） */
+  function pitchTendencies(state) {
+    var style = PITCH_STYLES[state.pitcherStyle] || PITCH_STYLES.power;
+    var rows = [];
+    for (var s = 0; s < STRIKES_PER_INNING; s++) {
+      var counts = {};
+      var zones = {};
+      var total = 0;
+      for (var i = 0; i < state.pitcherHistory.length; i++) {
+        var h = state.pitcherHistory[i];
+        if (h.strikes !== s) continue;
+        counts[h.pitch] = (counts[h.pitch] || 0) + 1;
+        if (h.zone) zones[h.pitch] = (zones[h.pitch] || 0) + 1;
+        total++;
+      }
+      var items = [];
+      for (var k in counts) {
+        if (counts.hasOwnProperty(k)) {
+          items.push({
+            pitch: k,
+            count: counts[k],
+            pct: counts[k] / total,
+            zoneCount: zones[k] || 0
+          });
+        }
+      }
+      items.sort(function (a, b) { return b.count - a.count; });
+      rows.push({ strikes: s, total: total, items: items });
+    }
+    return {
+      style: state.pitcherStyle,
+      styleName: style.name,
+      good: style.good,
+      bad: style.bad,
+      rows: rows
+    };
   }
 
   /* タイミングのズレ(%)から打球結果を決める */
@@ -164,12 +250,17 @@
     };
   }
 
-  function createGame() {
+  function createGame(styleKey) {
     var linescore = { away: [], home: [] };
     for (var i = 0; i < TOTAL_INNINGS; i++) {
       linescore.away.push(null);
       linescore.home.push(null);
     }
+    var styleKeys = [];
+    for (var sk in PITCH_STYLES) {
+      if (Object.prototype.hasOwnProperty.call(PITCH_STYLES, sk)) styleKeys.push(sk);
+    }
+    var style = styleKey || styleKeys[Math.floor(Math.random() * styleKeys.length) % styleKeys.length];
     return {
       totalInnings: TOTAL_INNINGS,
       strikesPerInning: STRIKES_PER_INNING,
@@ -182,6 +273,8 @@
       score: { away: 0, home: 0 },
       hits: { away: 0, home: 0 },
       linescore: linescore,
+      pitcherStyle: style,
+      pitcherHistory: [],
       playerHistory: [],
       over: false,
       result: null
@@ -358,10 +451,9 @@
     BALLS_PER_WALK: BALLS_PER_WALK,
     PITCH_ORDER: PITCH_ORDER,
     PITCH_LABELS: PITCH_LABELS,
-    BASE_WEIGHTS: BASE_WEIGHTS,
+    PITCH_STYLES: PITCH_STYLES,
     ZONE_RATES: ZONE_RATES,
-    HINT_RATE: HINT_RATE,
-    HINT_MATCH: HINT_MATCH,
+    zoneRateFor: zoneRateFor,
     CPU_READ_BASE: CPU_READ_BASE,
     CPU_READ_BONUS: CPU_READ_BONUS,
     CPU_PATTERN_BONUS: CPU_PATTERN_BONUS,
@@ -370,7 +462,9 @@
     weightedPick: weightedPick,
     randomPitch: randomPitch,
     randomPitchExcept: randomPitchExcept,
-    planPitch: planPitch,
+    tendencyWeights: tendencyWeights,
+    pitcherPitch: pitcherPitch,
+    pitchTendencies: pitchTendencies,
     timingResult: timingResult,
     cpuBatterDecision: cpuBatterDecision,
     createGame: createGame,

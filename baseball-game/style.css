@@ -271,6 +271,56 @@ th.team.home { color: var(--home); }
   width: 100%;
 }
 
+/* ===== 配球メモ ===== */
+#chart {
+  max-width: 780px;
+  width: 100%;
+  margin: 0 auto 6px;
+  padding: 7px 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(19, 28, 43, 0.78);
+  text-align: left;
+}
+#chart.hidden { display: none; }
+.chart-style {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 2px;
+}
+.chart-note {
+  color: var(--muted);
+  font-size: 11px;
+  margin-bottom: 3px;
+}
+.chart-row {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  margin-top: 3px;
+}
+.chart-label {
+  color: var(--muted);
+  font-size: 11px;
+  min-width: 64px;
+}
+.chart-empty {
+  color: var(--muted);
+  font-size: 11px;
+  opacity: 0.7;
+}
+.chip {
+  border: 1px solid var(--c, var(--line));
+  color: var(--c, #eaf2ff);
+  border-radius: 7px;
+  padding: 0 6px 1px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
 /* ===== タイミングバー ===== */
 #powerbar {
   position: relative;
@@ -282,11 +332,11 @@ th.team.home { color: var(--home); }
   border: 1px solid var(--line);
   overflow: hidden;
   background: linear-gradient(90deg,
-    #3c4a68 0%, #3c4a68 32%,
-    #ff9f45 32%, #ff9f45 43%,
-    #ff6b5e 43%, #ff6b5e 57%,
-    #ff9f45 57%, #ff9f45 68%,
-    #3c4a68 68%, #3c4a68 100%);
+    #3c4a68 0%, #3c4a68 26%,
+    #ff9f45 26%, #ff9f45 40%,
+    #ff6b5e 40%, #ff6b5e 60%,
+    #ff9f45 60%, #ff9f45 74%,
+    #3c4a68 74%, #3c4a68 100%);
 }
 #powerbar.hidden { display: none; }
 .pb-marker {
