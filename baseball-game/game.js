@@ -521,12 +521,16 @@
   function renderChart() {
     if (!state || !els.chartRows) return;
     var tend = E.pitchTendencies(state);
-    els.chartStyle.textContent = 'CPUピッチャー: ' + tend.styleName;
+    els.chartStyle.textContent = 'CPUピッチャー: ' + tend.styleName + ' (持ち球5球種)';
+    var arsenalNames = [];
+    for (var an = 0; an < tend.arsenal.length; an++) arsenalNames.push(E.pitchLabel(tend.arsenal[an]));
     var goodNames = [];
     for (var g = 0; g < tend.good.length; g++) goodNames.push(E.pitchLabel(tend.good[g]));
     var badNames = [];
     for (var bd = 0; bd < tend.bad.length; bd++) badNames.push(E.pitchLabel(tend.bad[bd]));
-    var html = '<div class="chart-note">得意: ' + goodNames.join('・') +
+    var html = '<div class="chart-note">持ち球: ' + arsenalNames.join('・') +
+      ' の中からしか投げてこない</div>' +
+      '<div class="chart-note">得意: ' + goodNames.join('・') +
       ' (ゾーンに入りやすい) / 苦手: ' + badNames.join('・') + ' (ボールになりやすい)</div>';
     for (var i = 0; i < tend.rows.length; i++) {
       var row = tend.rows[i];
@@ -548,16 +552,27 @@
   function updatePitchBadges() {
     if (!state || !els.zbadges) return;
     var attack = E.battingTeam(state) === 'home' && !state.over;
-    var style = E.PITCH_STYLES[state.pitcherStyle] || { good: [], bad: [] };
+    var style = E.PITCH_STYLES[state.pitcherStyle] || { good: [], bad: [], arsenal: [] };
     for (var i = 0; i < E.PITCH_ORDER.length; i++) {
       var key = E.PITCH_ORDER[i];
       var badge = els.zbadges[key];
       if (!badge) continue;
+      var btn = els.pitchButtons ? els.pitchButtons[key] : null;
       if (state.over) {
         badge.innerHTML = '';
         badge.className = 'zbadge';
+        if (btn) btn.classList.remove('off');
         continue;
       }
+      var inArsenal = style.arsenal.indexOf(key) >= 0;
+      if (attack && !inArsenal) {
+        badge.innerHTML = '×持ち球以外';
+        badge.className = 'zbadge out';
+        badge.style.setProperty('--z', '50%');
+        if (btn) btn.classList.add('off');
+        continue;
+      }
+      if (btn) btn.classList.remove('off');
       var zr = attack ? E.zoneRateFor(state.pitcherStyle, key) : (E.ZONE_RATES[key] || 0.5);
       var zp = Math.round(zr * 100);
       var isGood = attack && style.good.indexOf(key) >= 0;
@@ -951,7 +966,7 @@
         if (batting === 'home') {
           view.batter.visible = true;
           var pitch = E.pitcherPitch(state);
-          msg('配球メモを見て予想しろ! (1〜9 / 0=見逃し)');
+          msg('配球メモで持ち球のクセを読め! (1〜9 / 0=見逃し)');
           askChoice('どうする? 1〜9=スイング予想 / 0=見逃し').then(function (choice) {
             var actual = pitch.actual;
             if (choice.action === 'take') {
@@ -1178,8 +1193,13 @@
     updateUI();
     setButtons(false);
     audio.ensure();
-    var styleName = (E.PITCH_STYLES[state.pitcherStyle] || {}).name || '';
-    msg('プレイボール! CPUピッチャーは「' + styleName + '」タイプ!', 'gold');
+    var styleObj = E.PITCH_STYLES[state.pitcherStyle] || {};
+    var styleName = styleObj.name || '';
+    var arsenalNames = [];
+    if (styleObj.arsenal) {
+      for (var ai = 0; ai < styleObj.arsenal.length; ai++) arsenalNames.push(E.pitchLabel(styleObj.arsenal[ai]));
+    }
+    msg('プレイボール! CPUピッチャーは「' + styleName + '」タイプ! 持ち球は ' + arsenalNames.join('・'), 'gold');
 
     function loop() {
       if (state.over) return Promise.resolve();

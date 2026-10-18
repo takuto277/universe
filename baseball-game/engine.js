@@ -47,20 +47,23 @@
   };
 
   /* CPUピッチャーの配球スタイル（ゲーム開始時にランダムで1つ選ばれる）
+   * arsenal = 持ち球（この5球種しか投げない。打者は最初から知っている）
    * good = 得意球（ゾーンに入りやすい）、bad = 苦手球（ボールになりやすい）
-   * primary = 看板球（初球と1ストライク時に多くなる） */
+   * primary = 看板球（初球と1ストライク時に多くなる。得意球の1番手と一致させる） */
   var PITCH_STYLES = {
     power: {
       name: '剛球派',
       primary: 'straight',
+      arsenal: ['straight', 'cutter', 'slider', 'fork', 'sinker'],
       weights: { straight: 34, cutter: 14, slider: 12, curve: 6, fork: 10, changeup: 6, shoot: 6, sinker: 8, knuckle: 4 },
       finish: { straight: 1.9, slider: 1.4 },
       good: ['straight', 'cutter'],
-      bad: ['curve', 'knuckle']
+      bad: ['slider', 'fork']
     },
     breaking: {
       name: '変化球派',
       primary: 'slider',
+      arsenal: ['straight', 'cutter', 'slider', 'curve', 'changeup'],
       weights: { straight: 16, cutter: 8, slider: 24, curve: 18, fork: 8, changeup: 10, shoot: 6, sinker: 6, knuckle: 4 },
       finish: { slider: 2.0, curve: 1.6 },
       good: ['slider', 'curve'],
@@ -69,18 +72,20 @@
     vertical: {
       name: '縦変化派',
       primary: 'fork',
+      arsenal: ['straight', 'slider', 'fork', 'changeup', 'sinker'],
       weights: { straight: 18, cutter: 8, slider: 8, curve: 8, fork: 22, changeup: 16, shoot: 4, sinker: 12, knuckle: 4 },
       finish: { fork: 2.1, changeup: 1.5, sinker: 1.3 },
       good: ['fork', 'sinker'],
-      bad: ['slider', 'curve']
+      bad: ['slider', 'changeup']
     },
     tricky: {
       name: '技巧派',
       primary: 'changeup',
+      arsenal: ['straight', 'slider', 'changeup', 'shoot', 'knuckle'],
       weights: { straight: 14, cutter: 10, slider: 10, curve: 10, fork: 8, changeup: 20, shoot: 10, sinker: 9, knuckle: 10 },
       finish: { changeup: 2.0, knuckle: 2.1, shoot: 1.4 },
-      good: ['knuckle', 'changeup'],
-      bad: ['straight', 'fork']
+      good: ['changeup', 'knuckle'],
+      bad: ['straight', 'shoot']
     }
   };
 
@@ -107,10 +112,11 @@
   var CPU_PATTERN_BONUS = 0.12;
   var CPU_READ_MAX = 0.9;
 
-  /* CPU打者のボール球スイング率: 基本/追い込まれたら保護/ボール先行なら慎重 */
-  var CPU_CHASE_BASE = 0.45;
-  var CPU_CHASE_PROTECT = 0.7;
-  var CPU_CHASE_PATIENT = 0.25;
+  /* CPU打者のボール球スイング率: 基本/追い込まれたら保護/ボール先行なら慎重
+   * 明らかなボール球には手を出さない（基本はMLB平均並みの28%） */
+  var CPU_CHASE_BASE = 0.28;
+  var CPU_CHASE_PROTECT = 0.5;
+  var CPU_CHASE_PATIENT = 0.08;
 
   /* タイミング判定のしきい値（中央からのズレ%） */
   var TIMING_BANDS = { hr: 10, double: 24 };
@@ -155,7 +161,7 @@
     var i, k;
     for (i = 0; i < PITCH_ORDER.length; i++) {
       k = PITCH_ORDER[i];
-      w[k] = style.weights[k] || 1;
+      w[k] = style.arsenal.indexOf(k) >= 0 ? (style.weights[k] || 1) : 0;
     }
     if (state.balls === 0 && state.strikes === 0) {
       w[style.primary] *= 1.6;
@@ -216,8 +222,10 @@
     return {
       style: state.pitcherStyle,
       styleName: style.name,
+      arsenal: style.arsenal,
       good: style.good,
       bad: style.bad,
+      primary: style.primary,
       rows: rows
     };
   }

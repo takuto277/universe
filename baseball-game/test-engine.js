@@ -129,26 +129,39 @@ assert(E.timingResult(-10) === "hr" && E.timingResult(10) === "hr", "HR帯の端
 assert(E.timingResult(11) === "double" && E.timingResult(-24) === "double", "二塁打帯");
 assert(E.timingResult(25) === "single" && E.timingResult(-50) === "single", "単打帯");
 
-/* 14) 配球スタイル: 重み・得意/苦手・ゾーン率補正 */
+/* 14) 配球スタイル: 持ち球(arsenal)・重み・得意/苦手・ゾーン率補正 */
 var styleKeys14 = Object.keys(E.PITCH_STYLES);
 assert(styleKeys14.length === 4, '4つの配球スタイル');
 for (var s14 = 0; s14 < styleKeys14.length; s14++) {
   var sk14 = styleKeys14[s14];
   var st14 = E.PITCH_STYLES[sk14];
   assert(typeof st14.name === 'string' && st14.name.length > 0, 'スタイル名: ' + sk14);
-  for (var w14 = 0; w14 < E.PITCH_ORDER.length; w14++) {
-    assert(st14.weights[E.PITCH_ORDER[w14]] > 0, sk14 + ' の重み: ' + E.PITCH_ORDER[w14]);
+  assert(st14.arsenal && st14.arsenal.length === 5, sk14 + ' の持ち球は5球種');
+  for (var a14 = 0; a14 < st14.arsenal.length; a14++) {
+    var ap14 = st14.arsenal[a14];
+    assert(E.PITCH_ORDER.indexOf(ap14) >= 0, '持ち球が未知: ' + ap14);
+    assert(E.PITCH_LABELS[ap14], '持ち球にラベルがない: ' + ap14);
+    assert(st14.weights[ap14] > 0, sk14 + ' の持ち球の重み: ' + ap14);
+  }
+  assert(st14.arsenal.indexOf(st14.primary) >= 0, sk14 + ' の看板球は持ち球');
+  assert(st14.primary === st14.good[0], sk14 + ' の得意1番手は看板球');
+  for (var fk14 in st14.finish) {
+    if (Object.prototype.hasOwnProperty.call(st14.finish, fk14)) {
+      assert(st14.arsenal.indexOf(fk14) >= 0, sk14 + ' の決め球は持ち球: ' + fk14);
+    }
   }
   assert(st14.good.length >= 1 && st14.bad.length >= 1, sk14 + ' の得意/苦手が空');
   for (var gi14 = 0; gi14 < st14.good.length; gi14++) {
     var gp14 = st14.good[gi14];
     assert(E.PITCH_LABELS[gp14], '得意球が未知: ' + gp14);
+    assert(st14.arsenal.indexOf(gp14) >= 0, '得意球は持ち球: ' + sk14 + '/' + gp14);
     assert(st14.bad.indexOf(gp14) < 0, '得意と苦手が重複: ' + gp14);
     assert(E.zoneRateFor(sk14, gp14) > E.ZONE_RATES[gp14], '得意球はゾーン率UP: ' + sk14 + '/' + gp14);
   }
   for (var bi14 = 0; bi14 < st14.bad.length; bi14++) {
     var bp14 = st14.bad[bi14];
     assert(E.PITCH_LABELS[bp14], '苦手球が未知: ' + bp14);
+    assert(st14.arsenal.indexOf(bp14) >= 0, '苦手球は持ち球: ' + sk14 + '/' + bp14);
     assert(E.zoneRateFor(sk14, bp14) < E.ZONE_RATES[bp14], '苦手球はゾーン率DOWN: ' + sk14 + '/' + bp14);
   }
   for (var pk14 = 0; pk14 < E.PITCH_ORDER.length; pk14++) {
@@ -169,6 +182,12 @@ for (var t14 = 0; t14 < N14; t14++) {
 }
 assert(st14c.pitcherHistory.length === N14, '投球履歴が記録される');
 assert(st14c.pitcherHistory[0].strikes === 2 && st14c.pitcherHistory[0].balls === 0, '履歴にカウント');
+var arsenal14 = E.PITCH_STYLES.breaking.arsenal;
+for (var tk14 in typeCount14) {
+  if (Object.prototype.hasOwnProperty.call(typeCount14, tk14)) {
+    assert(arsenal14.indexOf(tk14) >= 0, '持ち球以外を投げた: ' + tk14);
+  }
+}
 var tend14 = E.pitchTendencies(st14c);
 assert(tend14.style === 'breaking' && tend14.styleName === '変化球派', '傾向のスタイル情報');
 assert(tend14.rows[2].total === N14, '2ストライク行の集計数: ' + tend14.rows[2].total);
@@ -212,6 +231,28 @@ var st14g = E.createGame('power');
 st14g.balls = 2; st14g.strikes = 2;
 var w14g = E.tendencyWeights(st14g);
 assert(Math.abs(w14g.straight - 34 * 1.9) < 1e-9, '2ストライクはボール先行でも決め球優先: ' + w14g.straight);
+
+/* 14c-2) tendencyWeights: 持ち球以外の重みは常に0 */
+var countSeqs14 = [[0, 0], [1, 0], [0, 1], [1, 1], [0, 2], [3, 2]];
+for (var s14b = 0; s14b < styleKeys14.length; s14b++) {
+  for (var c14 = 0; c14 < countSeqs14.length; c14++) {
+    var sg14 = E.createGame(styleKeys14[s14b]);
+    sg14.balls = countSeqs14[c14][0];
+    sg14.strikes = countSeqs14[c14][1];
+    var ww14 = E.tendencyWeights(sg14);
+    for (var p14 = 0; p14 < E.PITCH_ORDER.length; p14++) {
+      var kk14 = E.PITCH_ORDER[p14];
+      var inAr14 = E.PITCH_STYLES[styleKeys14[s14b]].arsenal.indexOf(kk14) >= 0;
+      assert(inAr14 ? ww14[kk14] > 0 : ww14[kk14] === 0,
+        '持ち球の重み: ' + styleKeys14[s14b] + ' ' + kk14 + ' @' + countSeqs14[c14].join('-'));
+    }
+  }
+}
+
+/* 14c-3) pitchTendencies: 持ち球と看板球を返す */
+var tend14x = E.pitchTendencies(E.createGame('tricky'));
+assert(tend14x.arsenal === E.PITCH_STYLES.tricky.arsenal, '傾向に持ち球が含まれる');
+assert(tend14x.primary === 'changeup', '傾向に看板球が含まれる');
 
 /* 14d) createGame: スタイルはランダムに選ばれ、指定もできる */
 var seen14 = {};
@@ -274,6 +315,18 @@ assert(E.cpuChaseRate(st15ch) === E.CPU_CHASE_PROTECT, '追い込まれると食
 st15ch = E.createGame();
 st15ch.balls = 3;
 assert(E.cpuChaseRate(st15ch) === E.CPU_CHASE_PATIENT, 'ボール先行は慎重');
+
+/* 15c) CPUは明らかなボール球に手を出さない（3ボールなら見送って四球） */
+var st15d = E.createGame();
+st15d.balls = 3;
+var pd15 = E.resolveCpuAtBat(st15d, 'fork', script15([0.9, 0.2]));
+assert(pd15.zone === false && pd15.swung === false && pd15.take.walk,
+  '3ボールのボール球は振らずに四球');
+
+/* 15d) ゾーン内の球は必ずスイング */
+var st15e = E.createGame();
+var pe15 = E.resolveCpuAtBat(st15e, 'straight', script15([0.1, 0.9, 0.99, 0.99]));
+assert(pe15.zone === true && pe15.swung === true, 'ゾーン内は必ずスイング');
 
 var N15 = 6000;
 for (var zt15 = 0; zt15 < 2; zt15++) {
