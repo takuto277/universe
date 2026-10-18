@@ -47,10 +47,12 @@
   };
 
   /* CPUピッチャーの配球スタイル（ゲーム開始時にランダムで1つ選ばれる）
-   * good = 得意球（ゾーンに入りやすい）、bad = 苦手球（ボールになりやすい） */
+   * good = 得意球（ゾーンに入りやすい）、bad = 苦手球（ボールになりやすい）
+   * primary = 看板球（初球と1ストライク時に多くなる） */
   var PITCH_STYLES = {
     power: {
       name: '剛球派',
+      primary: 'straight',
       weights: { straight: 34, cutter: 14, slider: 12, curve: 6, fork: 10, changeup: 6, shoot: 6, sinker: 8, knuckle: 4 },
       finish: { straight: 1.9, slider: 1.4 },
       good: ['straight', 'cutter'],
@@ -58,6 +60,7 @@
     },
     breaking: {
       name: '変化球派',
+      primary: 'slider',
       weights: { straight: 16, cutter: 8, slider: 24, curve: 18, fork: 8, changeup: 10, shoot: 6, sinker: 6, knuckle: 4 },
       finish: { slider: 2.0, curve: 1.6 },
       good: ['slider', 'curve'],
@@ -65,6 +68,7 @@
     },
     vertical: {
       name: '縦変化派',
+      primary: 'fork',
       weights: { straight: 18, cutter: 8, slider: 8, curve: 8, fork: 22, changeup: 16, shoot: 4, sinker: 12, knuckle: 4 },
       finish: { fork: 2.1, changeup: 1.5, sinker: 1.3 },
       good: ['fork', 'sinker'],
@@ -72,16 +76,17 @@
     },
     tricky: {
       name: '技巧派',
-      weights: { straight: 14, cutter: 12, slider: 12, curve: 12, fork: 12, changeup: 12, shoot: 10, sinker: 8, knuckle: 8 },
-      finish: { knuckle: 1.9, changeup: 1.6, shoot: 1.4 },
+      primary: 'changeup',
+      weights: { straight: 14, cutter: 10, slider: 10, curve: 10, fork: 8, changeup: 20, shoot: 10, sinker: 9, knuckle: 10 },
+      finish: { changeup: 2.0, knuckle: 2.1, shoot: 1.4 },
       good: ['knuckle', 'changeup'],
       bad: ['straight', 'fork']
     }
   };
 
-  /* ゾーン率の補正: 得意球は×1.3、苦手球は×0.55（見逃しでボールを稼げる） */
+  /* ゾーン率の補正: 得意球は×1.3、苦手球は×0.5（見逃しでボールを稼げる） */
   var ZONE_GOOD_MULT = 1.3;
-  var ZONE_BAD_MULT = 0.55;
+  var ZONE_BAD_MULT = 0.5;
 
   function zoneRateFor(styleKey, pitch) {
     var style = PITCH_STYLES[styleKey] || PITCH_STYLES.power;
@@ -94,7 +99,7 @@
   }
 
   /* CPU打者の読み: 頻度・連投・交互パターンで精度が上がる */
-  var CPU_READ_BASE = 0.32;
+  var CPU_READ_BASE = 0.36;
   var CPU_READ_BONUS = 0.28;
   var CPU_READ_WINDOW = 10;
   var CPU_STREAK_BONUS = 0.03;
@@ -141,7 +146,9 @@
     return k;
   }
 
-  /* 現在のカウント・スタイルから球種の重みを計算（配球のクセ） */
+  /* 現在のカウント・スタイルから球種の重みを計算（配球のクセ）
+   * 0-0は看板球、1ストライクは看板球を多め、2ストライクは決め球、
+   * ボール先行はストレートで取り返しに来る */
   function tendencyWeights(state) {
     var style = PITCH_STYLES[state.pitcherStyle] || PITCH_STYLES.power;
     var w = {};
@@ -151,11 +158,14 @@
       w[k] = style.weights[k] || 1;
     }
     if (state.balls === 0 && state.strikes === 0) {
-      w.straight *= 1.6;
+      w[style.primary] *= 1.6;
     }
-    if (state.balls >= 2) {
+    if (state.balls >= 1 && state.strikes !== 2) {
       w.straight *= 1.8;
       w.cutter *= 1.3;
+    }
+    if (state.strikes === 1 && state.balls <= 1) {
+      w[style.primary] *= 1.5;
     }
     if (state.strikes === 2) {
       for (k in style.finish) {

@@ -196,6 +196,23 @@ var w14d = E.tendencyWeights(st14d);
 assert(Math.abs(w14d.straight - 34 * 1.9) < 1e-9, '2ストライクの剛球派はストレート: ' + w14d.straight);
 assert(Math.abs(w14d.slider - 12 * 1.4) < 1e-9, '2ストライクの剛球派はスライダー: ' + w14d.slider);
 
+var st14e = E.createGame('breaking');
+st14e.balls = 0; st14e.strikes = 1;
+var w14e = E.tendencyWeights(st14e);
+assert(Math.abs(w14e.slider - 24 * 1.5) < 1e-9, '1ストライクは看板球(変化球派): ' + w14e.slider);
+assert(Math.abs(w14e.straight - 16) < 1e-9, '1ストライク(0-1)はストレート補正なし: ' + w14e.straight);
+
+var st14f = E.createGame('power');
+st14f.balls = 1; st14f.strikes = 0;
+var w14f = E.tendencyWeights(st14f);
+assert(Math.abs(w14f.straight - 34 * 1.8) < 1e-9, '1ボール先行でもストレート: ' + w14f.straight);
+assert(Math.abs(w14f.cutter - 14 * 1.3) < 1e-9, '1ボール先行でもカット: ' + w14f.cutter);
+
+var st14g = E.createGame('power');
+st14g.balls = 2; st14g.strikes = 2;
+var w14g = E.tendencyWeights(st14g);
+assert(Math.abs(w14g.straight - 34 * 1.9) < 1e-9, '2ストライクはボール先行でも決め球優先: ' + w14g.straight);
+
 /* 14d) createGame: スタイルはランダムに選ばれ、指定もできる */
 var seen14 = {};
 for (var n14 = 0; n14 < 400; n14++) {
@@ -300,7 +317,7 @@ function playFullGame(cpuPitch) {
         E.resolveTake(sg, actual.zone);
       } else {
         var ev2 = E.resolvePitch(sg, act.pitch, actual.actual);
-        if (ev2.correct) E.resolveHit(sg, E.timingResult(robotTiming()));
+        if (ev2.correct) E.resolveHit(sg, actual.zone ? E.timingResult(robotTiming()) : 'single');
       }
     }
     assert(sg.inning >= 1 && sg.inning <= 3, 'イニング範囲: ' + sg.inning);

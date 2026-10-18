@@ -992,6 +992,22 @@
             animatePitch(actual).then(function () {
               showPitchTag(E.pitchLabel(actual), pitchColor(actual));
               if (ev.correct) {
+                if (!pitch.zone) {
+                  return wait(280).then(function () {
+                    var hev = E.resolveHit(state, 'single');
+                    if (hev.gameEnded) { ev.gameEnded = true; ev.result = hev.result; }
+                    var label = hev.walkoff ? 'サヨナラタイムリー!' : 'ボール球をすくい上げた! 単打!';
+                    audio.hit();
+                    showPitchTag(hev.walkoff ? 'サヨナラヒット!' : 'ボール球をヒット!', '#57e08a', 1250);
+                    if (hev.runs > 0) msg(label + ' ' + hev.runs + '点!!', 'gold');
+                    else msg(label, 'gold');
+                    return animateHit(false).then(function () {
+                      return animateAdvance('home', 1);
+                    }).then(function () {
+                      if (hev.runs > 0) audio.run();
+                    });
+                  });
+                }
                 return wait(280).then(askTiming).then(function (sw) {
                   var hev = E.resolveHit(state, sw.kind);
                   if (hev.gameEnded) { ev.gameEnded = true; ev.result = hev.result; }
