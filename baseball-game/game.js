@@ -554,20 +554,18 @@
       var badge = els.zbadges[key];
       if (!badge) continue;
       if (state.over) {
-        badge.textContent = '';
+        badge.innerHTML = '';
         badge.className = 'zbadge';
         continue;
       }
-      if (attack) {
-        var isGood = style.good.indexOf(key) >= 0;
-        var isBad = style.bad.indexOf(key) >= 0;
-        badge.textContent = (isGood ? '得意 ' : isBad ? '苦手 ' : '') +
-          Math.round(E.zoneRateFor(state.pitcherStyle, key) * 100) + '%';
-        badge.className = 'zbadge' + (isGood ? ' good' : (isBad ? ' bad' : ' plain'));
-      } else {
-        badge.textContent = 'ゾーン' + Math.round((E.ZONE_RATES[key] || 0.5) * 100) + '%';
-        badge.className = 'zbadge def';
-      }
+      var zr = attack ? E.zoneRateFor(state.pitcherStyle, key) : (E.ZONE_RATES[key] || 0.5);
+      var zp = Math.round(zr * 100);
+      var isGood = attack && style.good.indexOf(key) >= 0;
+      var isBad = attack && style.bad.indexOf(key) >= 0;
+      badge.innerHTML = (isGood ? '得意 ' : isBad ? '苦手 ' : '') +
+        '<span class="zv">ゾーン' + zp + '%</span> <span class="bv">ボール' + (100 - zp) + '%</span>';
+      badge.className = 'zbadge' + (attack ? (isGood ? ' good' : (isBad ? ' bad' : ' plain')) : ' def');
+      badge.style.setProperty('--z', zp + '%');
     }
   }
 
@@ -954,7 +952,7 @@
           view.batter.visible = true;
           var pitch = E.pitcherPitch(state);
           msg('配球メモを見て予想しろ! (1〜9 / 0=見逃し)');
-          askChoice('どうする? 1〜9=スイング予想 / 0=見逃し (得意/苦手バッジ=ゾーン率)').then(function (choice) {
+          askChoice('どうする? 1〜9=スイング予想 / 0=見逃し').then(function (choice) {
             var actual = pitch.actual;
             if (choice.action === 'take') {
               var tev = E.resolveTake(state, pitch.zone);
@@ -1032,8 +1030,8 @@
           });
         } else {
           view.batter.visible = true;
-          msg('球種を選んで投げよう! バッジはストライクゾーン率。ボール球は四球に注意!');
-          askChoice('投げる球種は? (1〜9キー) ※バッジ=ゾーン率').then(function (chosen) {
+          msg('球種を選んで投げよう! ゾーン%が低い球はボールになりやすく四球に注意!');
+          askChoice('投げる球種は? (1〜9キー)').then(function (chosen) {
             var plan = E.resolveCpuAtBat(state, chosen);
             var endEv = plan.pitch || plan.take;
             var dec = plan.dec;

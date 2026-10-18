@@ -405,11 +405,16 @@ th.team.home { color: var(--home); }
   border-radius: 7px;
   border: 1px solid var(--line);
   color: var(--muted);
-  background: rgba(15, 23, 35, 0.65);
+  background:
+    linear-gradient(90deg,
+      rgba(79, 209, 255, 0.30) 0%, rgba(79, 209, 255, 0.30) var(--z, 50%),
+      rgba(255, 159, 69, 0.26) var(--z, 50%), rgba(255, 159, 69, 0.26) 100%);
 }
-.pitch-btn .zbadge.good { color: #57e08a; border-color: rgba(87, 224, 138, 0.6); }
-.pitch-btn .zbadge.bad { color: #ff9f45; border-color: rgba(255, 159, 69, 0.6); }
-.pitch-btn .zbadge.def { color: #4fd1ff; border-color: rgba(79, 209, 255, 0.5); }
+.pitch-btn .zbadge .zv { color: #8fdcff; }
+.pitch-btn .zbadge .bv { color: #ffb87a; }
+.pitch-btn .zbadge.good { border-color: rgba(87, 224, 138, 0.7); color: #57e08a; }
+.pitch-btn .zbadge.bad { border-color: rgba(255, 159, 69, 0.7); color: #ff9f45; }
+.pitch-btn .zbadge.def { border-color: rgba(79, 209, 255, 0.5); }
 .pitch-btn:hover { transform: translateY(-2px); border-color: var(--c, var(--gold)); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4); }
 .pitch-btn:active { transform: translateY(0); }
 .pitch-btn.disabled { opacity: 0.38; pointer-events: none; filter: grayscale(0.5); }
