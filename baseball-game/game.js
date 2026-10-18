@@ -27,7 +27,48 @@
 
   var FONT = '"Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif';
 
-  var T = { pitch: 620, hit: 800, advance: 640, after: 340 };
+  var T = { hit: 800, advance: 640, after: 340 };
+
+  /* 球種の表示情報（label は engine 側の PITCH_LABELS を使用） */
+  var PITCH_INFO = {
+    straight: { btn: 'ストレート', color: '#ffd166', icon: 'line' },
+    curve: { btn: 'カーブ', color: '#b39dff', icon: 'curve' },
+    slider: { btn: 'スライダー', color: '#4fd1ff', icon: 'slider' },
+    cutter: { btn: 'カット', color: '#ff9f45', icon: 'cut' },
+    fork: { btn: 'フォーク', color: '#5f8dff', icon: 'drop' },
+    changeup: { btn: 'チェンジ', color: '#ff7bc1', icon: 'line' },
+    shoot: { btn: 'シュート', color: '#57e08a', icon: 'shoot' },
+    sinker: { btn: 'シンカー', color: '#3fd4c4', icon: 'drop' },
+    knuckle: { btn: 'ナックル', color: '#c8d2e3', icon: 'wobble' }
+  };
+
+  /* 球種ごとの軌道パラメータ */
+  var TRAJ = {
+    straight: { dur: 600, kind: 'line' },
+    curve: { dur: 840, kind: 'arc', amp: 135, early: true },
+    slider: { dur: 660, kind: 'arc', amp: 90 },
+    cutter: { dur: 610, kind: 'arc', amp: 34 },
+    fork: { dur: 640, kind: 'line', drop: 1 },
+    changeup: { dur: 900, kind: 'line', slow: true },
+    shoot: { dur: 620, kind: 'arc', amp: 42 },
+    sinker: { dur: 640, kind: 'arc', amp: 30, drop: 1 },
+    knuckle: { dur: 800, kind: 'wobble', amp: 26 }
+  };
+
+  /* ボタン用ミニSVG */
+  var ICONS = {
+    line: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 42 L24 8 M13 20 L24 8 L35 20" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    curve: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M12 42 C10 22 22 12 38 9" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M28 6 L38 9 L36 19" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    slider: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M16 42 C16 30 20 28 36 16" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M26 14 L36 16 L33 25" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    cut: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M22 42 L26 26 L36 12" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M28 14 L36 12 L37 20" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    shoot: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M26 42 L22 26 L12 12" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M20 14 L12 12 L11 20" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    drop: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 8 L24 34" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M15 25 L24 36 L33 25" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    wobble: '<svg viewBox="0 0 48 48" aria-hidden="true"><path d="M24 42 C36 34 12 30 24 22 C36 14 16 12 24 5" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round"/><path d="M17 12 L24 5 L30 13" fill="none" stroke="currentColor" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+
+  function pitchColor(key) {
+    return (PITCH_INFO[key] && PITCH_INFO[key].color) || '#ffd166';
+  }
 
   /* ===== 状態 ===== */
   var canvas, ctx;
@@ -75,6 +116,8 @@
       y: a * p0.y + b * p1.y + c * p2.y + d * p3.y
     };
   }
+
+  function lerpPt(a, b, t) { return { x: lerp(a.x, b.x, t), y: lerp(a.y, b.y, t) }; }
 
   function unit(dx, dy) {
     var len = Math.sqrt(dx * dx + dy * dy) || 1;
@@ -157,9 +200,9 @@
         src.start(t0);
       } catch (e) { }
     },
-    pitchWhoosh: function () {
-      this.noise(0.13, 0.12);
-      this.tone(340, 0.12, { type: 'triangle', vol: 0.05, slideTo: 130 });
+    pitchWhoosh: function (slow) {
+      this.noise(slow ? 0.2 : 0.13, slow ? 0.1 : 0.12);
+      this.tone(slow ? 250 : 340, slow ? 0.18 : 0.12, { type: 'triangle', vol: 0.05, slideTo: slow ? 90 : 130 });
     },
     hit: function () {
       this.noise(0.08, 0.3);
@@ -239,32 +282,52 @@
   function pitchTarget() { return { x: HOME_PLATE.x + 2, y: HOME_PLATE.y - 20 }; }
 
   function animatePitch(type) {
+    var traj = TRAJ[type] || TRAJ.straight;
     var from = pitchStart();
     var to = pitchTarget();
-    var c1, c2;
-    if (type === E.STRAIGHT) {
-      c1 = { x: lerp(from.x, to.x, 0.4), y: lerp(from.y, to.y, 0.4) };
-      c2 = { x: lerp(from.x, to.x, 0.75), y: lerp(from.y, to.y, 0.75) };
-    } else {
-      var dir = Math.random() < 0.5 ? -1 : 1;
-      var u = unit(to.x - from.x, to.y - from.y);
-      var px = -u.y * dir, py = u.x * dir;
-      var amp = 100;
-      c1 = { x: lerp(from.x, to.x, 0.5), y: lerp(from.y, to.y, 0.5) };
-      c2 = {
-        x: lerp(from.x, to.x, 0.84) + px * amp,
-        y: lerp(from.y, to.y, 0.84) + py * amp
-      };
+    if (traj.drop) to = { x: to.x + 3, y: to.y + 18 };
+    var dir = Math.random() < 0.5 ? -1 : 1;
+    var u = unit(to.x - from.x, to.y - from.y);
+    var px = -u.y * dir, py = u.x * dir;
+    var c1 = null, c2 = null;
+    var wobPhase = Math.random() * Math.PI * 2;
+    if (traj.kind === 'line') {
+      c1 = lerpPt(from, to, 0.4);
+      c2 = lerpPt(from, to, 0.75);
+    } else if (traj.kind === 'arc') {
+      if (traj.early) {
+        c1 = {
+          x: lerp(from.x, to.x, 0.35) + px * traj.amp * 0.85,
+          y: lerp(from.y, to.y, 0.35) + py * traj.amp * 0.85
+        };
+        c2 = {
+          x: lerp(from.x, to.x, 0.72) + px * traj.amp * 0.6,
+          y: lerp(from.y, to.y, 0.72) + py * traj.amp * 0.6
+        };
+      } else {
+        c1 = lerpPt(from, to, 0.5);
+        c2 = {
+          x: lerp(from.x, to.x, 0.85) + px * traj.amp,
+          y: lerp(from.y, to.y, 0.85) + py * traj.amp
+        };
+      }
     }
+    var endR = traj.drop ? 5.5 : 9.5;
     view.ball.visible = true;
     view.ball.alpha = 1;
-    audio.pitchWhoosh();
-    return tween(T.pitch, null, function (t) {
-      var p = cubicPoint(from, c1, c2, to, t);
+    audio.pitchWhoosh(!!traj.slow);
+    return tween(traj.dur, null, function (t) {
+      var p;
+      if (traj.kind === 'wobble') {
+        var off = Math.sin(t * 14 + wobPhase) * traj.amp * Math.sin(Math.PI * t);
+        p = { x: lerp(from.x, to.x, t) + px * off, y: lerp(from.y, to.y, t) + py * off };
+      } else {
+        p = cubicPoint(from, c1, c2, to, t);
+      }
       view.ball.x = p.x;
       view.ball.y = p.y;
-      view.ball.r = lerp(6.5, 9.5, t);
-      view.ball.rot += 0.3;
+      view.ball.r = lerp(6.5, endR, t);
+      view.ball.rot += traj.slow ? 0.16 : 0.3;
     });
   }
 
@@ -377,8 +440,10 @@
 
   function setButtons(enabled) {
     buttonsEnabled = enabled;
-    els.btnStraight.classList.toggle('disabled', !enabled);
-    els.btnCurve.classList.toggle('disabled', !enabled);
+    var list = els.pitchButtons || {};
+    for (var k in list) {
+      if (list.hasOwnProperty(k)) list[k].classList.toggle('disabled', !enabled);
+    }
   }
 
   function askChoice(hint) {
@@ -764,12 +829,15 @@
 
         if (batting === 'home') {
           view.batter.visible = true;
-          msg('球種を予想してボタンを押そう!');
-          askChoice('あなたの予想は?').then(function (guess) {
-            var actual = E.randomPitch();
+          var plan = E.planPitch();
+          state.lastHint = plan.hint;
+          if (plan.hint) msg('配球ヒント: 「' + E.pitchLabel(plan.hint) + '」っぽい…?', 'gold');
+          else msg('配球を読めない! 勘で勝負!!');
+          askChoice('あなたの予想は? (1〜9キー)').then(function (guess) {
+            var actual = plan.actual;
             var ev = E.resolvePitch(state, guess, actual);
             animatePitch(actual).then(function () {
-              showPitchTag(E.pitchLabel(actual), actual === E.STRAIGHT ? '#ffd166' : '#b39dff');
+              showPitchTag(E.pitchLabel(actual), pitchColor(actual));
               if (ev.correct) {
                 audio.hit();
                 if (ev.walkoff) msg('サヨナラヒット!!!', 'gold');
@@ -790,7 +858,8 @@
                   msg('三振!! チェンジ!', 'red');
                   return wait(750);
                 }
-                msg('ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ', 'red');
+                if (plan.hint && guess === plan.hint) msg('ヒントはウソだった…! ストライク!', 'red');
+                else msg('空振り! ストライク! あと' + (state.strikesPerInning - state.strikes) + 'つでチェンジ', 'red');
               });
             }).then(function () {
               updateUI();
@@ -800,25 +869,29 @@
           });
         } else {
           view.batter.visible = true;
-          msg('球種を選んで投げよう! CPUの予想を裏切れ!');
-          askChoice('投げる球種は?').then(function (chosen) {
-            var cpuGuess = E.randomPitch();
-            var ev = E.resolvePitch(state, cpuGuess, chosen);
+          state.lastHint = null;
+          msg('球種を選んで投げよう! 同じ球ばかりだと読まれるぞ');
+          askChoice('投げる球種は? (1〜9キー)').then(function (chosen) {
+            var dec = E.cpuBatterDecision(state, chosen);
+            var ev = E.resolvePitch(state, dec.guess, chosen);
+            var readPct = Math.round(dec.accuracy * 100);
+            var bubbleText = 'CPUは「' + E.pitchLabel(dec.guess) + '」を待っている…';
             var bubbleShown = false;
             var bubbleTimer = setTimeout(function () {
               bubbleShown = true;
-              showBubble('CPUは「' + E.pitchLabel(cpuGuess) + '」を待っている…');
+              showBubble(bubbleText);
             }, 240);
             animatePitch(chosen).then(function () {
               clearTimeout(bubbleTimer);
-              if (!bubbleShown) showBubble('CPUは「' + E.pitchLabel(cpuGuess) + '」を待っている…');
+              if (!bubbleShown) showBubble(bubbleText);
+              showPitchTag(E.pitchLabel(chosen), pitchColor(chosen));
               return wait(280);
             }).then(function () {
               hideBubble();
               if (ev.correct) {
                 audio.hit();
-                if (ev.runs > 0) msg('見破られた! CPUにタイムリー… ' + ev.runs + '点取られた', 'red');
-                else msg('見破られた! CPUにヒットを打たれた…', 'red');
+                if (ev.runs > 0) msg('見破られた!(CPUの読み ' + readPct + '%) タイムリー… ' + ev.runs + '点取られた', 'red');
+                else msg('見破られた!(CPUの読み ' + readPct + '%) CPUにヒットを打たれた…', 'red');
                 return animateHit().then(function () {
                   return animateAdvance('away');
                 }).then(function () {
@@ -1000,10 +1073,28 @@
       beginGame();
       return;
     }
-    if (k === '1' || k === 'ArrowLeft' || k === 'ArrowUp') {
-      if (pendingChoice) { e.preventDefault(); choosePitch(E.STRAIGHT); }
-    } else if (k === '2' || k === 'ArrowRight' || k === 'ArrowDown') {
-      if (pendingChoice) { e.preventDefault(); choosePitch(E.CURVE); }
+    var idx = parseInt(k, 10);
+    if (idx >= 1 && idx <= E.PITCH_ORDER.length && pendingChoice) {
+      e.preventDefault();
+      choosePitch(E.PITCH_ORDER[idx - 1]);
+    }
+  }
+
+  function buildPitchButtons() {
+    els.pitchButtons = {};
+    for (var i = 0; i < E.PITCH_ORDER.length; i++) {
+      (function (key, num) {
+        var info = PITCH_INFO[key];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'pitch-btn disabled';
+        btn.innerHTML = ICONS[info.icon] + '<span class="pname">' + info.btn + '</span>' +
+          '<span class="keynum">' + num + '</span>';
+        btn.style.setProperty('--c', info.color);
+        btn.addEventListener('click', function () { choosePitch(key); });
+        els.buttons.appendChild(btn);
+        els.pitchButtons[key] = btn;
+      })(E.PITCH_ORDER[i], i + 1);
     }
   }
 
@@ -1019,8 +1110,7 @@
     els.endHits = $('end-hits');
     els.btnStart = $('btn-start');
     els.btnAgain = $('btn-again');
-    els.btnStraight = $('btn-straight');
-    els.btnCurve = $('btn-curve');
+    els.buttons = $('buttons');
     els.soundBtn = $('sound-btn');
     els.rowAway = $('row-away');
     els.rowHome = $('row-home');
@@ -1033,12 +1123,11 @@
     els.bannerSub = $('banner-sub');
 
     buildScoreCells();
+    buildPitchButtons();
     resetView();
     resizeCanvas();
     draw();
 
-    els.btnStraight.addEventListener('click', function () { choosePitch(E.STRAIGHT); });
-    els.btnCurve.addEventListener('click', function () { choosePitch(E.CURVE); });
     els.btnStart.addEventListener('click', function () { beginGame().catch(function () { }); });
     els.btnAgain.addEventListener('click', function () { beginGame().catch(function () { }); });
     els.soundBtn.addEventListener('click', function () {
@@ -1057,10 +1146,15 @@
     if (typeof window !== 'undefined') {
       window.__GAME__ = {
         id: 'baseball-game',
-        title: 'ストレート or カーブ!',
+        title: '9球種を読め! 10回勝負ベースボール',
         start: function () { return beginGame(); },
         autoPlayStep: function () {
-          if (pendingChoice) choosePitch(Math.random() < 0.5 ? E.STRAIGHT : E.CURVE);
+          if (!pendingChoice) return;
+          if (state && E.battingTeam(state) === 'home' && state.lastHint && Math.random() < 0.7) {
+            choosePitch(state.lastHint);
+          } else {
+            choosePitch(E.randomPitch());
+          }
         },
         isAwaiting: function () { return !!pendingChoice; },
         isDone: function () { return !!(state && state.over); },

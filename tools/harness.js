@@ -66,7 +66,11 @@
     var classes = {};
     var el = {
       id: id || '',
-      style: {},
+      style: {
+        setProperty: function () { },
+        removeProperty: function () { },
+        getPropertyValue: function () { return ''; }
+      },
       children: [],
       textContent: '',
       innerHTML: '',

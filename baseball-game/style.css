@@ -261,29 +261,43 @@ th.team.home { color: var(--home); }
   margin-bottom: 6px;
 }
 
-#buttons { display: flex; gap: 14px; justify-content: center; }
+#buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+}
 
 .pitch-btn {
+  position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  width: min(230px, 42vw);
-  padding: 10px 8px 8px;
-  border-radius: 16px;
+  justify-content: center;
+  gap: 6px;
+  padding: 11px 8px;
+  border-radius: 12px;
   border: 2px solid var(--line);
   background: linear-gradient(180deg, var(--panel-2), var(--panel));
   color: var(--text);
-  font-size: 18px;
+  font-size: 14px;
   font-weight: 800;
   cursor: pointer;
   transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
   font-family: inherit;
+  white-space: nowrap;
 }
-.pitch-btn svg { width: 34px; height: 34px; }
-.pitch-btn.straight svg { color: var(--gold); }
-.pitch-btn.curve svg { color: #b39dff; }
-.pitch-btn:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4); }
+.pitch-btn svg { width: 20px; height: 20px; flex: 0 0 auto; color: var(--c, var(--gold)); }
+.pitch-btn .keynum {
+  position: absolute;
+  top: 4px;
+  right: 7px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.pitch-btn:hover { transform: translateY(-2px); border-color: var(--c, var(--gold)); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4); }
 .pitch-btn:active { transform: translateY(0); }
 .pitch-btn.disabled { opacity: 0.38; pointer-events: none; filter: grayscale(0.5); }
 
@@ -291,7 +305,8 @@ th.team.home { color: var(--home); }
   #score-table th, #score-table td { font-size: 11px; }
   #score-table td.inn { min-width: 18px; }
   .rules { font-size: 12.5px; line-height: 1.8; }
-  .pitch-btn { font-size: 15px; padding: 8px 6px 6px; }
-  .pitch-btn svg { width: 26px; height: 26px; }
+  .pitch-btn { font-size: 11.5px; padding: 9px 4px; gap: 4px; }
+  .pitch-btn svg { width: 15px; height: 15px; }
+  .pitch-btn .keynum { top: 3px; right: 4px; font-size: 8px; }
   #statusbar { gap: 8px; font-size: 12px; }
 }

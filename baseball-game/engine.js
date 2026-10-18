@@ -1,4 +1,4 @@
-/* engine.js : ストレート or カーブ! 野球ゲームのコアロジック（UI非依存） */
+/* engine.js : 9球種ベースボールゲームのコアロジック（UI非依存） */
 (function (root, factory) {
   'use strict';
   var api = factory();
@@ -14,11 +14,108 @@
   var CURVE = 'curve';
   var TOTAL_INNINGS = 10;
   var STRIKES_PER_INNING = 3;
-  var PITCH_LABELS = { straight: 'ストレート', curve: 'カーブ' };
+
+  var PITCH_ORDER = [
+    'straight', 'curve', 'slider', 'cutter', 'fork',
+    'changeup', 'shoot', 'sinker', 'knuckle'
+  ];
+
+  var PITCH_LABELS = {
+    straight: 'ストレート',
+    curve: 'カーブ',
+    slider: 'スライダー',
+    cutter: 'カットボール',
+    fork: 'フォーク',
+    changeup: 'チェンジアップ',
+    shoot: 'シュート',
+    sinker: 'シンカー',
+    knuckle: 'ナックル'
+  };
+
+  /* CPUピッチャーの球種使用率（合計100） */
+  var BASE_WEIGHTS = {
+    straight: 22,
+    curve: 12,
+    slider: 16,
+    cutter: 10,
+    fork: 11,
+    changeup: 10,
+    shoot: 7,
+    sinker: 7,
+    knuckle: 5
+  };
+
+  /* 配球ヒント: HINT_RATE の確率でヒント提示、そのうち HINT_MATCH の割合で本当にその球が来る */
+  var HINT_RATE = 0.72;
+  var HINT_MATCH = 0.55;
+
+  /* CPU打者の読み: 直近の同じ球の多さで精度が上がる */
+  var CPU_READ_BASE = 0.36;
+  var CPU_READ_BONUS = 0.28;
+  var CPU_READ_WINDOW = 10;
 
   function pitchLabel(pitch) { return PITCH_LABELS[pitch] || String(pitch); }
 
-  function randomPitch() { return Math.random() < 0.5 ? STRAIGHT : CURVE; }
+  function weightedPick(weights, rng) {
+    rng = rng || Math.random;
+    var total = 0, k;
+    for (k in weights) {
+      if (Object.prototype.hasOwnProperty.call(weights, k)) total += weights[k];
+    }
+    var r = rng() * total;
+    for (var i = 0; i < PITCH_ORDER.length; i++) {
+      k = PITCH_ORDER[i];
+      if (weights[k] == null) continue;
+      r -= weights[k];
+      if (r <= 0) return k;
+    }
+    return PITCH_ORDER[0];
+  }
+
+  function randomPitch(rng) {
+    rng = rng || Math.random;
+    return PITCH_ORDER[Math.floor(rng() * PITCH_ORDER.length) % PITCH_ORDER.length];
+  }
+
+  function randomPitchExcept(key, rng) {
+    rng = rng || Math.random;
+    var k = randomPitch(rng);
+    var guard = 0;
+    while (k === key && guard < 50) { k = randomPitch(rng); guard++; }
+    return k;
+  }
+
+  /* 相手ピッチャーの1球を計画: { hint: 球種|または null, actual: 実際の球種 } */
+  function planPitch(rng) {
+    rng = rng || Math.random;
+    if (rng() < HINT_RATE) {
+      var hint = weightedPick(BASE_WEIGHTS, rng);
+      var actual = (rng() < HINT_MATCH) ? hint : weightedPick(BASE_WEIGHTS, rng);
+      return { hint: hint, actual: actual };
+    }
+    return { hint: null, actual: weightedPick(BASE_WEIGHTS, rng) };
+  }
+
+  /* CPU打者の予想を決める（プレイヤーの投球履歴を読む）。
+   * state.playerHistory に投球を記録する副作用あり。 */
+  function cpuBatterDecision(state, chosenPitch, rng) {
+    rng = rng || Math.random;
+    var hist = state.playerHistory || [];
+    var count = 0;
+    for (var i = Math.max(0, hist.length - CPU_READ_WINDOW); i < hist.length; i++) {
+      if (hist[i] === chosenPitch) count++;
+    }
+    var accuracy = CPU_READ_BASE + CPU_READ_BONUS * Math.min(1, count / 5);
+    var correct = rng() < accuracy;
+    hist.push(chosenPitch);
+    if (hist.length > 30) hist.shift();
+    state.playerHistory = hist;
+    return {
+      guess: correct ? chosenPitch : randomPitchExcept(chosenPitch, rng),
+      correct: correct,
+      accuracy: accuracy
+    };
+  }
 
   function createGame() {
     var linescore = { away: [], home: [] };
@@ -36,6 +133,7 @@
       score: { away: 0, home: 0 },
       hits: { away: 0, home: 0 },
       linescore: linescore,
+      playerHistory: [],
       over: false,
       result: null
     };
@@ -136,8 +234,17 @@
     CURVE: CURVE,
     TOTAL_INNINGS: TOTAL_INNINGS,
     STRIKES_PER_INNING: STRIKES_PER_INNING,
+    PITCH_ORDER: PITCH_ORDER,
+    PITCH_LABELS: PITCH_LABELS,
+    BASE_WEIGHTS: BASE_WEIGHTS,
+    HINT_RATE: HINT_RATE,
+    HINT_MATCH: HINT_MATCH,
     pitchLabel: pitchLabel,
+    weightedPick: weightedPick,
     randomPitch: randomPitch,
+    randomPitchExcept: randomPitchExcept,
+    planPitch: planPitch,
+    cpuBatterDecision: cpuBatterDecision,
     createGame: createGame,
     battingTeam: battingTeam,
     fieldingTeam: fieldingTeam,
