@@ -30,6 +30,7 @@ ADR 0003 でレビューとマージを分離したが、PR ごとに `/pr-deliv
 
 - Mac がログイン状態で起動している必要がある。スリープ中は遅延する
 - AI レビューの実行に opencode の認証が必要
+- 既定モデルは `opencode/deepseek-v4.1-flash-free`。変更は `UNIVERSE_AUTO_PR_MODEL` で行う
 - Blocker の自動修正はしない
 - 非 Draft の PR は原則として自動対象になるため、作業中は Draft か `ai-pause` を使う
 

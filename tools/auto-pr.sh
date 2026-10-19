@@ -10,6 +10,10 @@ LOCK_DIR="${TMPDIR:-/tmp}/universe-auto-pr.lock"
 GH="${GH_BIN:-$(command -v gh || true)}"
 OPENCODE="${OPENCODE_BIN:-$(command -v opencode || true)}"
 PYTHON="${PYTHON_BIN:-$(command -v python3 || true)}"
+GIT="${GIT_BIN:-$(command -v git || true)}"
+GATE_WAIT="${UNIVERSE_AUTO_PR_GATE_WAIT:-90}"
+OPENCODE_TIMEOUT="${UNIVERSE_AUTO_PR_TIMEOUT:-900}"
+OPENCODE_MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
 
 DRY_RUN=0
 FORCE=0
@@ -25,7 +29,7 @@ gate passes is squash-merged. PRs with a Blocker are reported and skipped.
 
 Options:
   --dry-run  Show what would happen without reviewing or merging.
-  --force    Ignore recent-failure cooldowns.
+  --force    Ignore recent-failure cooldowns and re-send notifications.
   --verbose  Log runs even when there are no matching pull requests.
 
 Pause the watcher:
@@ -33,7 +37,7 @@ Pause the watcher:
   rm ~/.local/state/universe-auto-pr/pause
 
 Per-PR pause:
-  Keep the PR as a Draft, or add the "ai-pause" label.
+  Keep the PR as a Draft, or add the "ai-pause" / "do-not-merge" label.
 EOF
 }
 
@@ -76,7 +80,7 @@ if [ "${UNIVERSE_AUTO_PR_DISABLE:-0}" = "1" ] || [ -f "$STATE_DIR/pause" ]; then
   exit 0
 fi
 
-for name in GH OPENCODE PYTHON; do
+for name in GH OPENCODE PYTHON GIT; do
   value="${!name}"
   if [ -z "$value" ] || [ ! -x "$value" ]; then
     log "missing executable: $name"
@@ -87,16 +91,28 @@ done
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   old_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
   if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-    if [ "$VERBOSE" = "1" ]; then
-      log "another run is active (pid $old_pid); skip"
+    if [ -n "$(find "$LOCK_DIR" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
+      log "stale lock older than 30 minutes; recovering pid $old_pid"
+      kill "$old_pid" 2>/dev/null || true
+      sleep 2
+      kill -9 "$old_pid" 2>/dev/null || true
+      rm -rf "$LOCK_DIR"
+      mkdir "$LOCK_DIR"
+    else
+      if [ "$VERBOSE" = "1" ]; then
+        log "another run is active (pid $old_pid); skip"
+      fi
+      exit 0
     fi
-    exit 0
+  else
+    rm -rf "$LOCK_DIR"
+    mkdir "$LOCK_DIR"
   fi
-  rm -rf "$LOCK_DIR"
-  mkdir "$LOCK_DIR"
 fi
 printf '%s\n' "$$" >"$LOCK_DIR/pid"
 trap 'rm -rf "$LOCK_DIR"' EXIT
+
+find "$STATE_DIR" -type f -mtime +14 -delete 2>/dev/null || true
 
 if [ -f "$LOG_FILE" ] && [ "$(wc -c <"$LOG_FILE" | tr -d ' ')" -gt 1048576 ]; then
   mv "$LOG_FILE" "$LOG_FILE.1"
@@ -126,7 +142,7 @@ print("%s\t%s" % (blockers if blockers is not None else "none", " | ".join(data.
 
 run_gate() {
   local number="$1"
-  if gate_output="$("$PYTHON" "$ROOT/tools/pr_gate.py" --pr "$number" --repo "$REPO" 2>>"$LOG_FILE")"; then
+  if gate_output="$("$PYTHON" "$ROOT/tools/pr_gate.py" --pr "$number" --repo "$REPO" --base "$BASE" --wait "$GATE_WAIT" 2>>"$LOG_FILE")"; then
     GATE_OK=1
   else
     GATE_OK=0
@@ -181,7 +197,19 @@ run_review() {
     return 0
   fi
 
-  if "$OPENCODE" run --dir "$ROOT" --auto --command pr-review "$number" >>"$LOG_FILE" 2>&1; then
+  if ! "$GIT" -C "$ROOT" fetch --quiet origin "+refs/pull/$number/head:refs/remotes/origin/pr/$number" >>"$LOG_FILE" 2>&1; then
+    log "PR #$number: failed to fetch the pull request head; continuing with the local objects"
+  fi
+
+  local status=0
+  if command -v perl >/dev/null 2>&1; then
+    perl -e 'alarm shift; exec @ARGV' "$OPENCODE_TIMEOUT" \
+      "$OPENCODE" run --model "$OPENCODE_MODEL" --dir "$ROOT" --auto --command pr-review "$number" >>"$LOG_FILE" 2>&1 || status=$?
+  else
+    "$OPENCODE" run --model "$OPENCODE_MODEL" --dir "$ROOT" --auto --command pr-review "$number" >>"$LOG_FILE" 2>&1 || status=$?
+  fi
+
+  if [ "$status" = "0" ]; then
     rm -f "$failed"
     log "PR #$number: review command completed"
     return 0
@@ -208,7 +236,7 @@ merge_pr() {
     return 0
   fi
 
-  if "$PYTHON" "$ROOT/tools/pr_merge.py" --pr "$number" --repo "$REPO" >>"$LOG_FILE" 2>&1; then
+  if "$PYTHON" "$ROOT/tools/pr_merge.py" --pr "$number" --repo "$REPO" --base "$BASE" --no-ready >>"$LOG_FILE" 2>&1; then
     rm -f "$STATE_DIR/${number}-"*
     log "PR #$number: merged"
     notify "PR #$number をマージしました"
@@ -246,6 +274,15 @@ fi
 
 while IFS=$'\t' read -r number head; do
   [ -n "$number" ] || continue
+
+  if recent "$STATE_DIR/${number}-${head}.blocked" 30; then
+    log "PR #$number: blocked recently; skip"
+    continue
+  fi
+  if recent "$STATE_DIR/${number}-${head}.gate-failed" 30; then
+    log "PR #$number: gate failed recently; skip"
+    continue
+  fi
 
   log "PR #$number: checking head $head"
   run_gate "$number"
@@ -294,6 +331,10 @@ while IFS=$'\t' read -r number head; do
       notify "PR #$number に Blocker があります"
       continue
     fi
+    if is_wait_error "$GATE_ERRORS"; then
+      log "PR #$number: waiting for checks or mergeability: $GATE_ERRORS"
+      continue
+    fi
 
     case "$GATE_ERRORS" in
       *"no AI review marker found"*|*"latest AI review covers"*|*"AI review marker head does not match"*|*"unsupported AI review marker version"*|*"AI review must be a COMMENT review"*)
@@ -303,6 +344,11 @@ while IFS=$'\t' read -r number head; do
         continue
         ;;
     esac
+  fi
+
+  if is_wait_error "$GATE_ERRORS"; then
+    log "PR #$number: waiting for checks or mergeability: $GATE_ERRORS"
+    continue
   fi
 
   gate_failed="$STATE_DIR/${number}-${head}.gate-failed"
