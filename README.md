@@ -33,7 +33,7 @@ http://localhost:8000/ を開きます。
 
 ## 開発フロー
 
-main へ直接 push せず、作業ブランチと PR を使います。PR では GitHub Actions の `tests` と `site`、CodeRabbit の承認が必須です。詳しくは [docs/pr-workflow.md](docs/pr-workflow.md) を参照してください。
+main へ直接 push せず、作業ブランチと PR を使います。PR では GitHub Actions の `tests` と `site` が必須です。CodeRabbit のセットアップ完了後は、CodeRabbit の承認と status check も必須になります。詳しくは [docs/pr-workflow.md](docs/pr-workflow.md) を参照してください。
 
 ## アプリを追加する
 
