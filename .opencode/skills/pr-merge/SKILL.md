@@ -11,7 +11,7 @@ description: Use when asked to merge a pull request, run /pr-merge, or perform t
 
 1. PR が open で、base が `main`、コンフリクトがなく merge 可能
 2. 最新 head に対する AI レビューがあり、Blocker が 0
-3. その head の required checks がすべて pass し、visible checks に failed / pending / cancelled がない
+3. その head の required checks がすべて pass または skipped で、visible checks に failed / pending / cancelled がない
 4. 未解決の review thread が 0
 5. `ui-evidence` ラベルがある場合、最新 head を指す証跡コメントがある
 

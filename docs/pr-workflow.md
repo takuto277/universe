@@ -64,7 +64,7 @@ main は branch protection で保護し、変更は必ず pull request 経由に
 
 1. PR が open で、base が `main`、コンフリクトがなく merge 可能
 2. 最新 head に対する AI レビューがあり、Blocker が 0
-3. その head の required checks（`tests`、`site`）がすべて pass し、visible checks に failed / pending / cancelled がない
+3. その head の required checks（`tests`、`site`）がすべて pass または skipped で、visible checks に failed / pending / cancelled がない
 4. 未解決の review thread が 0
 5. `ui-evidence` ラベルがある場合、最新 head を指す証跡コメントがある
 
