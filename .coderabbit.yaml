@@ -1,39 +1,9 @@
+# CodeRabbit is disabled. AI review is handled by .opencode/agents/pr-reviewer.md.
 language: ja-JP
-early_access: false
 
 reviews:
-  profile: chill
-  request_changes_workflow: true
-  allow_author_approval: false
-  high_level_summary: true
-  review_status: true
-  collapse_walkthrough: true
-  poem: false
   auto_review:
-    enabled: true
-    drafts: false
-    auto_incremental_review: true
-    auto_pause_after_reviewed_commits: 0
-  path_instructions:
-    - path: "**/*.js"
-      instructions: |
-        - ゲームは window.__GAME__ の契約（id / title / start / autoPlayStep / isDone / getState）を維持しているか確認する。
-        - 挙動を変えた場合、test-*.js が利用者から見た振る舞いを検証しているか確認する。
-        - DOM や Canvas の操作が tools/harness.js のスタブでテスト可能か確認する。
-        - 依存ゼロの静的構成を崩すライブラリ追加がないか確認する。
-    - path: "**/*.html"
-      instructions: |
-        - apps.json の URL と index.html のカードが一致しているか確認する。
-        - 外部 CDN やビルド依存を増やしていないか確認する。
-        - 日本語の表示とモバイル幅での崩れがないか確認する。
-    - path: "docs/**"
-      instructions: |
-        - 日本語で、判断の理由と代替案が書かれているか確認する。
-        - 現在の実装と矛盾する説明がないか確認する。
-    - path: ".github/**"
-      instructions: |
-        - GITHUB_TOKEN の権限が最小限か確認する。
-        - fork からの pull request に secrets を渡していないか確認する。
-  tools:
-    markdownlint:
-      enabled: false
+    enabled: false
+  review_status: false
+  request_changes_workflow: false
+  poem: false

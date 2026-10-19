@@ -1,6 +1,6 @@
 # 0002 PR の承認を CodeRabbit に任せる
 
-- Status: Accepted
+- Status: Superseded by [0003](0003-ai-review-and-merge.md)
 - Date: 2026-10-19
 
 ## Context

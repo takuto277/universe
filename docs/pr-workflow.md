@@ -34,67 +34,70 @@ main は branch protection で保護し、変更は必ず pull request 経由に
 
    本文は `.github/pull_request_template.md` に沿って埋めます。
 
-6. CI の `tests` と `site`、CodeRabbit のレビュー結果を確認する
+6. AI にレビューとマージを任せる
 
-   ```sh
-   gh pr checks --watch   # CI の status check
-   gh pr status           # レビューと承認の状態
+   opencode で次のどちらかを実行します。
+
+   ```text
+   /pr-deliver 123
    ```
 
-   レビュー内容と承認は GitHub の PR ページでも確認できます。CodeRabbit が指摘した場合は、修正するか理由をコメントして resolve し、再レビューを受けます。
+   `/pr-deliver` は「レビュー → Blocker 修正 → 再レビュー → 五点ゲート → squash merge」を最大3ラウンドで行います。レビューだけ、マージだけを分けて実行する場合は `/pr-review 123`、`/pr-merge 123` を使います。
 
-7. CodeRabbit の承認が付いたら main にマージする
+## AI レビュー
 
-   ```sh
-   gh pr merge --merge
-   ```
+レビューは `pr-reviewer` subagent、マージは `pr-merger` subagent が担当します。両者は別の役割で、レビュアーは編集・承認・マージをせず、マージ担当はレビュー・編集をしません。
 
-   このリポジトリでは、コミット単位の履歴を残すために merge commit を基本とします。squash に統一したい場合は、リポジトリ設定でマージ方法を固定してください。
+レビュアーは `COMMENT` レビューだけを投稿します。GitHub の `APPROVE` は使いません。レビュー本文には次の marker が自動で付き、マージゲートが対象 head と Blocker 数を検証します。
+
+```text
+<!-- ai-pr-review
+{"version":1,"head":"<sha>","blockers":0,"findings":0,"reviewer":"opencode"}
+-->
+```
+
+レビューの観点と手順は [`.opencode/skills/pr-review/SKILL.md`](../.opencode/skills/pr-review/SKILL.md) にあります。CodeRabbit は無効化しており、必須承認にも必須 check にも含めません。
+
+## 五点ゲート
+
+マージ担当は `python3 tools/pr_merge.py --pr <n>` を実行します。ゲートは次の5点を確認します。
+
+1. PR が open で、base が `main`、コンフリクトがなく merge 可能
+2. 最新 head に対する AI レビューがあり、Blocker が 0
+3. その head の required checks（`tests`、`site`）がすべて pass し、visible checks に failed / pending / cancelled がない
+4. 未解決の review thread が 0
+5. `ui-evidence` ラベルがある場合、最新 head を指す証跡コメントがある
+
+すべて通ると Draft を Ready にし、head SHA を固定して squash merge します。
+
+```sh
+python3 tools/pr_merge.py --pr 123
+```
+
+ゲートが失敗した場合はマージしません。`--admin`、`--auto`、`--delete-branch` は使いません。
 
 ## main の保護
 
 `main` には次の設定を適用します。
 
-- pull request を必須にし、承認者数を 1 にする（CodeRabbit の approving review で満たす）
-- `tests`、`site`、`CodeRabbit` の status check を必須にする
-- 新しい push で古い承認を無効にし、最後の push に対する承認を必須にする
-- 未解決の review thread がある間はマージできないようにする
+- pull request を必須にする
+- required approvals を 0 にする
+- `tests`、`site` の status check を必須にする
 - 管理者も保護を回避できないようにする
 - force push とブランチ削除を禁止する
+- マージ方法は squash のみにする
 
-設定は GitHub の `Settings > Branches` から変更できます。CLI で設定する場合は `gh api` を使います。
+レビューとマージのゲートは GitHub の required review ではなく、`tools/pr_merge.py` の五点ゲートで担保します。マージ権限を持つ人がスクリプトを使わずに UI からマージすることは技術的には可能なので、通常は `/pr-deliver` か `/pr-merge` を使ってください。
 
-## AI レビュー（CodeRabbit）
+## UI 証跡
 
-PR のレビューと承認は CodeRabbit に任せます。設定の判断理由は [ADR 0002](decisions/0002-ai-review-with-coderabbit.md) にあります。
+見た目の変更を含む PR で証跡を必須にする場合は、`ui-evidence` ラベルを付けます。マージ担当は、次の marker を含むコメントが最新 head を指していることを確認します。
 
-### 初回セットアップ
+```text
+<!-- ui-evidence: <head SHA> -->
+```
 
-1. [CodeRabbit の GitHub App](https://github.com/marketplace/coderabbitai) をインストールする
-2. リポジトリへのアクセスは `takuto277/universe` だけに絞る
-3. リポジトリ直下の `.coderabbit.yaml` が使われていることを確認する
-4. branch protection で承認者数を 1 にし、`CodeRabbit` の status check を必須にする
-
-### レビューの流れ
-
-1. PR を作ると CodeRabbit が自動でレビューする
-2. 修正が必要な指摘があると `request changes` になり、マージがブロックされる
-3. 指摘を修正するか、対応しない理由をコメントして thread を resolve する
-4. 最新コミットがレビューされ、未解決 thread と pre-merge check がなくなると CodeRabbit が承認する
-5. `tests` / `site` / `CodeRabbit` の check が通り、承認が 1 つあればマージできる
-
-作者自身の `@coderabbitai approve` / `@coderabbitai resolve` は `allow_author_approval: false` で禁止しています。ただし、作者以外のコメント投稿者は `@coderabbitai approve` を実行できます。承認コメントだけで判断せず、CodeRabbit のレビュー内容と `CodeRabbit` の status check を確認し、外部の人からの承認だけでマージしないでください。
-
-### CodeRabbit が使えないとき
-
-CodeRabbit の障害やレート制限で承認が得られない場合は、次の順で一時的に保護を緩めます。
-
-1. GitHub の `Settings > Branches` で `main` の承認者数を 0 にする
-2. 必須 status check から `CodeRabbit` を外す
-3. CodeRabbit の `request changes` レビューが残っている場合は、権限者がレビューを Dismiss する
-4. マージ後、承認者数を 1 に戻し、`CodeRabbit` を必須 check に戻す
-
-一時的に緩めた理由とマージした PR は、PR のコメントか `docs/learning-log.md` に残します。
+証跡コメントはオーケストレーターが PR に投稿します。スクリーンショットや動画の添付方法は、変更内容に応じて PR 本文に書きます。
 
 ## マージ後にやること
 
@@ -104,4 +107,4 @@ git pull --ff-only
 git branch -d feat/my-change
 ```
 
-リモートブランチも消す場合は、PR 作成時に `--delete-branch` を付けるか、マージ後に削除します。
+リモートブランチは GitHub の設定で自動削除するか、マージ後に削除します。
