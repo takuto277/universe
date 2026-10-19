@@ -17,6 +17,7 @@ universe は GitHub Pages で静的サイトとして公開します。
 ```text
 https://takuto277.github.io/universe/
 https://takuto277.github.io/universe/baseball-game/
+https://takuto277.github.io/universe/janken-game/
 ```
 
 アプリのディレクトリ名は公開 URL の一部です。名前を変えるとブックマークや外部リンクが壊れるため、変更する場合は旧パスからのリダイレクトを用意します。

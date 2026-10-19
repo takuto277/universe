@@ -11,6 +11,7 @@ universe/
 ├── apps.json          # 公開するアプリの一覧（正）
 ├── index.html         # ハブ画面
 ├── baseball-game/     # アプリ本体・テスト・README
+├── janken-game/       # アプリ本体・テスト・README
 ├── docs/              # 開発・学習ドキュメント
 └── tools/             # 共通テストハーネスと検査スクリプト
 ```

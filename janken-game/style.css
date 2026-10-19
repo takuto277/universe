@@ -1,0 +1,395 @@
+:root {
+  --bg: #0b1019;
+  --panel: #131c2b;
+  --panel-2: #1a2538;
+  --line: #24324a;
+  --text: #e8eefb;
+  --muted: #8fa1bd;
+  --gold: #ffd166;
+  --red: #ff6b5e;
+  --blue: #3d86f5;
+  --cpu: #ff8d7a;
+  --green: #57e08a;
+  --cyan: #4fd1ff;
+}
+
+* { box-sizing: border-box; }
+
+html, body { margin: 0; height: 100%; }
+
+body {
+  background: radial-gradient(1200px 800px at 50% 0%, #16233a 0%, var(--bg) 60%);
+  color: var(--text);
+  font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
+  overflow: hidden;
+}
+
+#app {
+  height: 100vh;
+  height: 100dvh;
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(220px, 1fr) auto auto auto;
+  overflow-y: auto;
+  grid-template-areas:
+    "topbar"
+    "stage"
+    "msgbar"
+    "hud"
+    "control";
+}
+
+#topbar { grid-area: topbar; padding: 8px 12px 0; }
+#stage { grid-area: stage; }
+#msgbar { grid-area: msgbar; padding: 0 12px; }
+#hud { grid-area: hud; }
+#controlbar { grid-area: control; padding: 0 12px 14px; }
+
+/* ===== 上部: HP・ラウンド・クセ ===== */
+#hud-top {
+  max-width: 980px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 8px 12px;
+}
+
+.side { min-width: 0; }
+.side.player { text-align: right; }
+
+.side-label {
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 3px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.side.cpu .side-name { color: var(--cpu); font-weight: 800; }
+.side.player .side-name { color: var(--blue); font-weight: 800; }
+#style-chip { color: var(--gold); font-weight: 700; }
+
+.hp-bar {
+  height: 10px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.10);
+  overflow: hidden;
+}
+.hp-bar i {
+  display: block;
+  height: 100%;
+  width: 100%;
+  border-radius: 5px;
+  transition: width 0.35s ease;
+}
+.side.cpu .hp-bar i { background: linear-gradient(90deg, #ff9f45, var(--red)); }
+.side.player { direction: rtl; }
+.side.player .hp-bar i { background: linear-gradient(270deg, #6ea8ff, var(--blue)); }
+.side.player .side-label { direction: ltr; }
+.hp-bar i.low { animation: hpPulse 0.8s infinite alternate; }
+@keyframes hpPulse { from { filter: brightness(1); } to { filter: brightness(1.7); } }
+
+#center-info { text-align: center; }
+#round-label { font-size: 15px; font-weight: 800; letter-spacing: 0.5px; }
+#style-note { font-size: 11px; color: var(--muted); white-space: nowrap; }
+
+/* ===== ステージ ===== */
+#stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 8px;
+}
+
+#arena {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: 14px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.45);
+  background: radial-gradient(80% 90% at 50% 20%, #17233a 0%, #0b1019 70%);
+}
+
+#overlay {
+  position: absolute;
+  inset: 6px 8px;
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 14px;
+  overflow: hidden;
+}
+
+.screen {
+  position: absolute;
+  inset: 0;
+  display: none;
+  align-items: center;
+  justify-content: safe center;
+  flex-direction: column;
+  gap: 10px;
+  background: rgba(7, 11, 18, 0.78);
+  backdrop-filter: blur(3px);
+  -webkit-backdrop-filter: blur(3px);
+  pointer-events: auto;
+  text-align: center;
+  padding: 24px;
+  overflow-y: auto;
+}
+.screen.visible { display: flex; animation: fadeIn 0.25s ease; }
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+.screen h1 {
+  font-size: clamp(30px, 6vw, 56px);
+  margin: 0;
+  letter-spacing: 2px;
+  text-shadow: 0 0 34px rgba(255, 209, 102, 0.35);
+}
+
+.subtitle { margin: 0 0 6px; color: var(--muted); }
+
+.rules {
+  text-align: left;
+  max-width: 640px;
+  flex: 0 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  margin: 0;
+  padding: 14px 18px 14px 36px;
+  background: rgba(19, 28, 43, 0.85);
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  font-size: 14px;
+  line-height: 1.9;
+}
+
+/* ルールが伸びてもタイトル・開始ボタンは常に見えるようにする */
+.screen > *:not(.rules) { flex: 0 0 auto; }
+.rules b { color: var(--gold); }
+
+.primary {
+  margin-top: 8px;
+  font-size: 20px;
+  font-weight: 800;
+  padding: 14px 42px;
+  border-radius: 999px;
+  border: none;
+  cursor: pointer;
+  color: #101722;
+  background: linear-gradient(180deg, #ffe28f, var(--gold));
+  box-shadow: 0 8px 24px rgba(255, 209, 102, 0.3);
+  font-family: inherit;
+}
+.primary:hover { filter: brightness(1.06); transform: translateY(-1px); }
+.primary:active { transform: translateY(1px); }
+
+.tiny { font-size: 12px; color: var(--muted); margin: 2px 0 0; }
+
+.end-title {
+  margin: 0;
+  font-size: clamp(30px, 6vw, 52px);
+  font-weight: 900;
+  letter-spacing: 2px;
+}
+.end-title.win { color: var(--gold); text-shadow: 0 0 40px rgba(255, 209, 102, 0.4); }
+.end-title.lose { color: var(--red); }
+.end-detail { color: var(--muted); font-size: 14px; }
+
+/* ===== メッセージ ===== */
+.message {
+  max-width: 980px;
+  margin: 0 auto 4px;
+  text-align: center;
+  font-size: clamp(15px, 2.2vw, 20px);
+  font-weight: 700;
+  min-height: 28px;
+}
+.message.gold { color: var(--gold); text-shadow: 0 0 18px rgba(255, 209, 102, 0.35); }
+.message.red { color: var(--red); }
+
+.hint {
+  text-align: center;
+  color: var(--muted);
+  font-size: 13px;
+  min-height: 18px;
+  margin-bottom: 6px;
+}
+
+/* ===== HUD（情報レール） ===== */
+.panel {
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(19, 28, 43, 0.78);
+  padding: 8px 10px 9px;
+  margin-bottom: 8px;
+}
+.hud-title {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--gold);
+  margin-bottom: 4px;
+}
+.hud-sub { color: var(--muted); font-weight: 600; font-size: 10.5px; }
+.hud-note { color: var(--muted); font-size: 10.5px; margin-top: 3px; }
+
+.memo { display: flex; flex-wrap: wrap; gap: 4px; min-height: 22px; }
+.mi {
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  padding: 1px 6px 2px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+.mi.win { color: var(--green); border-color: rgba(87, 224, 138, 0.55); }
+.mi.lose { color: var(--red); border-color: rgba(255, 107, 94, 0.55); }
+.mi.draw { color: var(--muted); }
+
+.read-bar {
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+#read-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, var(--cyan), #ff9f45, var(--red));
+  transition: width 0.25s ease;
+}
+.read-pct { float: right; color: var(--cyan); font-size: 12px; }
+.read-pct.hot { color: var(--red); }
+
+.dots { letter-spacing: 3px; font-size: 17px; color: var(--muted); }
+.dots.full { color: var(--gold); text-shadow: 0 0 14px rgba(255, 209, 102, 0.55); animation: gaugeGlow 0.9s infinite alternate; }
+@keyframes gaugeGlow { from { filter: brightness(1); } to { filter: brightness(1.4); } }
+
+/* ===== 操作バー ===== */
+#hand-buttons {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 8px;
+  max-width: 780px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.hand-btn {
+  position: relative;
+  padding: 13px 8px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  font-size: 17px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+  font-family: inherit;
+}
+.hand-btn .keynum {
+  position: absolute;
+  top: 4px;
+  right: 7px;
+  font-size: 9px;
+  font-weight: 600;
+  color: var(--muted);
+}
+.hand-btn:hover { transform: translateY(-2px); border-color: var(--gold); box-shadow: 0 10px 26px rgba(0, 0, 0, 0.4); }
+.hand-btn:active { transform: translateY(0); }
+.hand-btn.disabled { opacity: 0.38; pointer-events: none; filter: grayscale(0.5); }
+
+.read-btn {
+  display: block;
+  margin: 9px auto 0;
+  padding: 10px 34px;
+  border-radius: 12px;
+  border: 2px solid var(--line);
+  background: linear-gradient(180deg, var(--panel-2), var(--panel));
+  color: var(--text);
+  font-size: 15px;
+  font-weight: 800;
+  cursor: pointer;
+  font-family: inherit;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s, color 0.12s;
+}
+.read-btn.ready {
+  border-color: var(--gold);
+  color: var(--gold);
+  box-shadow: 0 0 22px rgba(255, 209, 102, 0.35);
+  animation: gaugeGlow 0.9s infinite alternate;
+}
+.read-btn:hover { transform: translateY(-2px); }
+.read-btn:active { transform: translateY(0); }
+.read-btn.disabled { opacity: 0.38; pointer-events: none; filter: grayscale(0.5); }
+
+/* ===== ワイド画面: HUD を右レールに ===== */
+@media (min-width: 1000px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr) 300px;
+    grid-template-rows: auto minmax(220px, 1fr) auto auto;
+    grid-template-areas:
+      "topbar hud"
+      "stage  hud"
+      "msgbar hud"
+      "control hud";
+  }
+  #hud {
+    min-height: 0;
+    overflow-y: auto;
+    padding: 8px 12px 8px 4px;
+    scrollbar-width: thin;
+  }
+}
+
+@media (max-width: 999px) {
+  #hud { padding: 0 12px; }
+}
+
+@media (max-width: 720px) {
+  .screen { padding: 14px; gap: 8px; }
+  .screen h1 { font-size: clamp(24px, 8vw, 34px); }
+  .subtitle { font-size: 12px; margin-bottom: 2px; }
+  .rules { font-size: 11.5px; line-height: 1.65; padding: 8px 12px 8px 26px; }
+  .primary { font-size: 17px; padding: 11px 32px; }
+  .tiny { font-size: 11px; }
+  .hand-btn { font-size: 14px; padding: 11px 4px; }
+  .hand-btn .keynum { top: 3px; right: 4px; font-size: 8px; }
+  .read-btn { font-size: 13px; padding: 9px 24px; }
+  #round-label { font-size: 13px; }
+  .side-label { font-size: 11px; }
+}
+
+/* ノートPC程度の高さでは、ルールを少し詰めて全項目を見せる */
+@media (max-height: 780px) {
+  .screen { padding: 16px; gap: 8px; }
+  .screen h1 { font-size: clamp(26px, 5vw, 40px); }
+  .rules { font-size: 13px; line-height: 1.8; padding: 12px 16px 12px 30px; }
+  .primary { margin-top: 4px; }
+}
+
+@media (max-height: 640px) {
+  .screen { padding: 12px; gap: 8px; }
+  .screen h1 { font-size: clamp(22px, 6vw, 30px); }
+  .rules { font-size: 11.5px; line-height: 1.6; padding: 8px 12px 8px 26px; }
+  .primary { font-size: 17px; padding: 10px 30px; }
+}
+
+/* 横向きスマホや小型端末など低い画面では、ルールを潰さず画面全体をスクロールさせる */
+@media (max-height: 700px) {
+  .screen { justify-content: flex-start; }
+  .rules { flex: 0 0 auto; overflow: visible; }
+}
