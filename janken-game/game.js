@@ -10,6 +10,7 @@
   var canvas = null;
   var stageObserver = null;
   var els = {};
+  var revealTimers = [];
 
   /* phase: idle -> select <-> preview -> reveal -> select / over */
   var view = {
@@ -26,6 +27,12 @@
   }
 
   function $(id) { return document.getElementById(id); }
+
+  /* 試合を開始し直したときに、前の試合のリビール用タイマーが残らないようにする */
+  function clearRevealTimers() {
+    for (var i = 0; i < revealTimers.length; i++) clearTimeout(revealTimers[i]);
+    revealTimers = [];
+  }
 
   /* ===== 表示更新 ===== */
   function setMessage(text, cls) {
@@ -109,11 +116,13 @@
 
   /* ===== 進行 ===== */
   function beginMatch() {
+    clearRevealTimers();
     state = E.createGame({});
     view.phase = 'select';
     view.playerShown = 'rock';
     view.cpuShown = 'rock';
     view.result = null;
+    view.revealAt = 0;
     view.hit = null;
     els.screenStart.classList.remove('visible');
     els.screenEnd.classList.remove('visible');
@@ -138,8 +147,8 @@
     view.cpuShown = 'rock';
     setMessage('せーの…', null);
     setHint('');
-    setTimeout(function () { view.cpuShown = result.cpuHand; }, 480);
-    setTimeout(finishReveal, 1050);
+    revealTimers.push(setTimeout(function () { view.cpuShown = result.cpuHand; }, 480));
+    revealTimers.push(setTimeout(finishReveal, 1050));
     updateUI();
   }
 
@@ -153,6 +162,7 @@
   }
 
   function finishReveal() {
+    clearRevealTimers();
     var result = view.result;
     view.result = null;
     if (result) {
@@ -226,8 +236,8 @@
   function resizeCanvas() {
     if (!canvas) return;
     var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
-    var w = (els.stage && els.stage.clientWidth) ? els.stage.clientWidth : 800;
-    var h = (els.stage && els.stage.clientHeight) ? els.stage.clientHeight : 600;
+    var w = canvas.clientWidth || (els.stage && els.stage.clientWidth) || 800;
+    var h = canvas.clientHeight || (els.stage && els.stage.clientHeight) || 600;
     if (w <= 0) w = 800;
     if (h <= 0) h = 600;
     if (renderer) renderer.resize(w, h, dpr);

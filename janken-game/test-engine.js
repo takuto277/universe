@@ -17,6 +17,12 @@ function assert(cond, m) {
 }
 function log(m) { print(m); }
 
+function assertThrows(fn, m) {
+  var threw = false;
+  try { fn(); } catch (e) { threw = true; }
+  assert(threw, m);
+}
+
 /* 決定的な rng: 与えた数列を順番に返す（使い切ったら最後の値を返し続ける） */
 function seq(values) {
   var i = 0;
@@ -86,8 +92,7 @@ assert(g.hp.player === 8 - 1 - 1 - 2 && g.cpuStreak === 3, 'CPU連勝ボーナ�
 
 /* 6) 見切りゲージと必殺「先読み」 */
 g = E.createGame({ style: 'rocky', rng: seq([0.1]) });
-try { E.startRead(g, seq([0.5])); assert(false, 'ゲージ未満で先読みできてしまう'); }
-catch (e) { passed++; }
+assertThrows(function () { E.startRead(g, seq([0.5])); }, 'ゲージ未満で先読みできてしまう');
 E.resolveRound(g, 'paper', seq([0.1]));
 E.resolveRound(g, 'paper', seq([0.1]));
 E.resolveRound(g, 'paper', seq([0.99, 0.1]));
@@ -104,16 +109,14 @@ assert(g.preview === null, 'プレビューはリセットされる');
 
 /* 7) 不正入力と終了後の操作 */
 g = E.createGame({ style: 'rocky', rng: seq([0.1]) });
-try { E.resolveRound(g, 'gun', seq([0.1])); assert(false, '不正な手を受け付けてしまう'); }
-catch (e) { passed++; }
+assertThrows(function () { E.resolveRound(g, 'gun', seq([0.1])); }, '不正な手を受け付けてしまう');
 g = E.createGame({ style: 'rocky', hp: 3, rng: seq([0.1]) });
 E.resolveRound(g, 'paper', seq([0.1]));
 E.resolveRound(g, 'paper', seq([0.1]));
 var fin = E.resolveRound(g, 'paper', seq([0.99, 0.1]));
 assert(fin.over && fin.winner === 'player', 'HP0で決着');
 assert(g.hp.cpu === 0 && g.over && g.winner === 'player', '決着状態');
-try { E.resolveRound(g, 'paper', seq([0.1])); assert(false, '終了後も打ててしまう'); }
-catch (e) { passed++; }
+assertThrows(function () { E.resolveRound(g, 'paper', seq([0.1])); }, '終了後も打ててしまう');
 assert(E.snapshot(g).over === true, 'snapshotに決着状態');
 assert(E.snapshot(g).history.length === 3, 'snapshotに履歴');
 

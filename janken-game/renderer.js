@@ -250,14 +250,27 @@
     if (typeof version !== 'string') return null;
 
     var vertex = compile(gl, gl.VERTEX_SHADER, VERTEX_SRC);
+    if (!vertex) return null;
     var fragment = compile(gl, gl.FRAGMENT_SHADER, FRAGMENT_SRC);
-    if (!vertex || !fragment) return null;
+    if (!fragment) {
+      gl.deleteShader(vertex);
+      return null;
+    }
     var program = gl.createProgram();
-    if (!program) return null;
+    if (!program) {
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
+      return null;
+    }
     gl.attachShader(program, vertex);
     gl.attachShader(program, fragment);
     gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) return null;
+    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+      gl.deleteProgram(program);
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
+      return null;
+    }
     gl.useProgram(program);
 
     var loc = {
@@ -270,6 +283,9 @@
       uLight: gl.getUniformLocation(program, 'uLight')
     };
     if (loc.aPos < 0 || loc.aNormal < 0 || !loc.uProj || !loc.uView || !loc.uModel || !loc.uColor || !loc.uLight) {
+      gl.deleteProgram(program);
+      gl.deleteShader(vertex);
+      gl.deleteShader(fragment);
       return null;
     }
 

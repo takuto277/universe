@@ -162,6 +162,8 @@ body {
 .rules {
   text-align: left;
   max-width: 640px;
+  max-height: 52%;
+  overflow-y: auto;
   margin: 0;
   padding: 14px 18px 14px 36px;
   background: rgba(19, 28, 43, 0.85);
@@ -354,10 +356,22 @@ body {
 }
 
 @media (max-width: 720px) {
-  .rules { font-size: 12.5px; line-height: 1.8; }
+  .screen { padding: 14px; gap: 8px; }
+  .screen h1 { font-size: clamp(24px, 8vw, 34px); }
+  .subtitle { font-size: 12px; margin-bottom: 2px; }
+  .rules { font-size: 11.5px; line-height: 1.65; padding: 8px 12px 8px 26px; }
+  .primary { font-size: 17px; padding: 11px 32px; }
+  .tiny { font-size: 11px; }
   .hand-btn { font-size: 14px; padding: 11px 4px; }
   .hand-btn .keynum { top: 3px; right: 4px; font-size: 8px; }
   .read-btn { font-size: 13px; padding: 9px 24px; }
   #round-label { font-size: 13px; }
   .side-label { font-size: 11px; }
+}
+
+@media (max-height: 640px) {
+  .screen { padding: 12px; gap: 8px; }
+  .screen h1 { font-size: clamp(22px, 6vw, 30px); }
+  .rules { font-size: 11.5px; line-height: 1.6; max-height: 42%; padding: 8px 12px 8px 26px; }
+  .primary { font-size: 17px; padding: 10px 30px; }
 }
