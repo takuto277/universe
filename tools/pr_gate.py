@@ -302,6 +302,9 @@ def evaluate(args):
     errors = []
     if pull.get("state") != "OPEN":
         errors.append("pull request is not open")
+    for label in ("ai-pause", "do-not-merge"):
+        if label in labels:
+            errors.append("%s label is present" % label)
     if pull.get("baseRefName") != args.base:
         errors.append("base branch is %s, expected %s" % (pull.get("baseRefName"), args.base))
     if pull.get("reviewDecision") == "CHANGES_REQUESTED":

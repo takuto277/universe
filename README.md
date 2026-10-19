@@ -54,7 +54,9 @@ http://localhost:8000/ を開きます。
 
 ## 開発フロー
 
-実装まで無人で進めたい場合は、`agent:ready` ラベルを付けた Issue を [無人実装ランナー](docs/unattended-agents.md) が拾って PR にします。main へ直接 push せず、作業ブランチと PR を使います。PR では GitHub Actions の `tests` と `site` が必須です。レビューとマージは分離した AI エージェントが担当し、五点ゲートを通った PR だけを squash merge します。opencode では `/pr-deliver <PR番号>`、`/pr-review <PR番号>`、`/pr-merge <PR番号>` を使います。詳しくは [docs/pr-workflow.md](docs/pr-workflow.md) を参照してください。
+実装まで無人で進めたい場合は、`agent:ready` ラベルを付けた Issue を [無人実装ランナー](docs/unattended-agents.md) が拾って PR にします。main へ直接 push せず、作業ブランチと PR を使います。PR では GitHub Actions の `tests` と `site` が必須です。レビューとマージは分離した AI エージェントが担当し、五点ゲートを通った PR だけを squash merge します。
+
+初回だけ `./tools/install-auto-pr.sh` を実行すると、Ready にした PR をローカルの watcher が自動でレビュー・マージします。作業中は Draft にするか `ai-pause` ラベルで止められます。opencode では `/pr-deliver <PR番号>`、`/pr-review <PR番号>`、`/pr-merge <PR番号>` も使えます。詳しくは [docs/auto-pr.md](docs/auto-pr.md) と [docs/pr-workflow.md](docs/pr-workflow.md) を参照してください。
 
 ## アプリを追加する
 

@@ -26,6 +26,7 @@ ADR 0002 では CodeRabbit の approving review を必須にした。しかし�
   4. 未解決 review thread が 0
   5. `ui-evidence` ラベルがある場合、最新 head を指す証跡コメントがある
 - レビューとマージは `/pr-review`、`/pr-merge`、`/pr-deliver` から実行する
+- PR を Ready にした後の自動起動は [0004](0004-auto-pr-watcher.md) で追加する
 
 ## Consequences
 

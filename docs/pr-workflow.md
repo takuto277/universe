@@ -34,9 +34,11 @@ main は branch protection で保護し、変更は必ず pull request 経由に
 
    本文は `.github/pull_request_template.md` に沿って埋めます。
 
-6. AI にレビューとマージを任せる
+6. PR を Ready にする
 
-   opencode で次のどちらかを実行します。
+   初回だけ `./tools/install-auto-pr.sh` を実行しておけば、PR を Ready にした後はローカルの watcher がレビューとマージを進めます。Blocker やゲート失敗がある場合は通知して止まります。設定と止め方は [PR の自動レビューと自動マージ](auto-pr.md) を参照してください。
+
+   すぐに実行したい場合や、Blocker の修正まで AI に任せたい場合は、opencode で次を実行します。
 
    ```text
    /pr-deliver 123
