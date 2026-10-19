@@ -387,3 +387,9 @@ body {
   .rules { font-size: 11.5px; line-height: 1.6; padding: 8px 12px 8px 26px; }
   .primary { font-size: 17px; padding: 10px 30px; }
 }
+
+/* 横向きスマホなど極端に低い画面では、ルールを潰さず画面全体をスクロールさせる */
+@media (max-height: 520px) {
+  .screen { justify-content: flex-start; }
+  .rules { flex: 0 0 auto; overflow: visible; }
+}
