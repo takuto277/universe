@@ -59,4 +59,4 @@ JSC=/path/to/jsc ./tools/run-tests.sh
 
 ## CI
 
-GitHub Actions の `CI` ワークフローが、push と pull request で `tests` と `site` を実行します。main は branch protection で保護されているため、この2つが通るまで PR はマージできません。
+GitHub Actions の `CI` ワークフローが、push と pull request で `tests` と `site` を実行します。main は branch protection で保護されているため、この2つが通り、CodeRabbit が承認するまで PR はマージできません。
