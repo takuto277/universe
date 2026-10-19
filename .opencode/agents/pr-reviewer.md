@@ -5,8 +5,10 @@ permission:
   edit:
     "*": deny
     "/tmp/pr-review-*": allow
+    "/private/tmp/pr-review-*": allow
   external_directory:
     "/tmp/pr-review-*": allow
+    "/private/tmp/pr-review-*": allow
   bash:
     "*": deny
     "git status*": allow
