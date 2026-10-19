@@ -43,26 +43,30 @@ var ev3b = E.resolvePitch(g, 'curve', 'straight');
 assert(ev3b.strikeout && ev3b.inningEnded, '3ストライクでチェンジ');
 assert(g.half === 'bottom' && g.strikes === 0, '攻守交代');
 
-/* 3b) resolvePlayerSwing: 予想外しでもボール球ならボール（空振りにしない） */
-g = E.createGame();
-var swb = E.resolvePlayerSwing(g, 'curve', 'straight', false);
-assert(!swb.correct && swb.ball && swb.take, '予想外し+ボール球はボール扱い');
+/* 3b) resolvePlayerSwing: 予想外しは明らかなボール球だけボール、際どいボール/ゾーン球は空振り */
+g = E.createGame('power'); /* 剛球派: ストレート91% / フォーク20% / カーブ48% */
+var swb = E.resolvePlayerSwing(g, 'curve', 'fork', false);
+assert(!swb.correct && swb.ball && swb.take, '明らかなボール球(ゾーン20%)はボール扱い');
 assert(g.strikes === 0 && g.balls === 1, '空振りストライクにならない');
 assert(!swb.strikeout && !swb.inningEnded, 'チェンジにならない');
 assert(swb.take.calledStrike === false, '見逃しストライクでもない');
-g = E.createGame();
+g = E.createGame('power');
+var swb2 = E.resolvePlayerSwing(g, 'curve', 'straight', false);
+assert(!swb2.correct && swb2.whiff && !swb2.ball, '際どいボール球(ゾーン91%)は空振り');
+assert(g.strikes === 1 && g.balls === 0, '際どいボール球の予想外しはストライク');
+g = E.createGame('power');
 var swc = E.resolvePlayerSwing(g, 'straight', 'straight', true);
 assert(swc.correct && g.strikes === 0 && g.balls === 0, '正解はカウント不変');
 assert(!swc.ball && !swc.whiff, '正解はボール/空振りフラグなし');
-g = E.createGame();
+g = E.createGame('power');
 var swd = E.resolvePlayerSwing(g, 'curve', 'straight', true);
 assert(!swd.correct && swd.whiff && !swd.ball, '予想外し+ゾーン球は空振り');
 assert(g.strikes === 1, 'ゾーン球の予想外しはストライク');
-g = E.createGame();
+g = E.createGame('power');
 g.balls = 3;
-var swf = E.resolvePlayerSwing(g, 'curve', 'straight', false);
-assert(swf.ball && swf.take.walk && g.runners[0] === true, '予想外しの4球目ボール球は四球');
-g = E.createGame();
+var swf = E.resolvePlayerSwing(g, 'curve', 'fork', false);
+assert(swf.ball && swf.take.walk && g.runners[0] === true, '予想外しの4球目明らかなボールは四球');
+g = E.createGame('power');
 E.resolvePlayerSwing(g, 'curve', 'straight', true);
 E.resolvePlayerSwing(g, 'curve', 'straight', true);
 var swk = E.resolvePlayerSwing(g, 'curve', 'straight', true);
