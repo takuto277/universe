@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>手を読め! 心理戦じゃんけん</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div id="hud-top">
+        <div class="side cpu">
+          <div class="side-label"><span class="side-name">CPU</span> <span id="style-chip"></span></div>
+          <div class="hp-bar"><i id="hp-cpu"></i></div>
+        </div>
+        <div id="center-info">
+          <div id="round-label">Round 1</div>
+          <div id="style-note"></div>
+        </div>
+        <div class="side player">
+          <div class="side-label"><span class="side-name">あなた</span></div>
+          <div class="hp-bar"><i id="hp-player"></i></div>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="800" height="600"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <h1>手を読め!</h1>
+          <p class="subtitle">心理戦じゃんけん・3D</p>
+          <ul class="rules">
+            <li>お互い <b>HP 8</b>。じゃんけんで勝って相手のHPを0にしたら勝ち!</li>
+            <li>勝つと <b>1ダメージ</b>。<b>3連勝目からは連勝ボーナス</b>で <b>2ダメージ</b>!</li>
+            <li>勝つと <b>見切りゲージ</b>が1つ溜まる(最大3)。満タンで必殺 <b>「先読み」</b>! CPUの手を見てから選べて、勝てば <b>3ダメージ</b>!</li>
+            <li>ただしあなたの<b>出しグセ</b>はCPUに読まれていく。同じ流れを繰り返すほど <b>「CPUの読み」</b> が上がる!</li>
+            <li>あいこはノーカウント(連勝は途切れない)。読み合いを制して勝ち切れ!</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">はじめる</button>
+          <p class="tiny">1:グー / 2:チョキ / 3:パー / 4:先読み・Space:開始</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <h2 id="end-title" class="end-title">決着!</h2>
+          <div id="end-detail" class="end-detail"></div>
+          <button id="btn-again" class="primary" type="button">もう一度あそぶ</button>
+        </section>
+      </div>
+    </main>
+
+    <div id="msgbar">
+      <div id="message" class="message"></div>
+      <div id="hint" class="hint"></div>
+    </div>
+
+    <aside id="hud">
+      <div id="memo-wrap" class="panel">
+        <div class="hud-title">手の履歴 <span class="hud-sub">あなた&gt;CPU</span></div>
+        <div id="memo" class="memo"></div>
+      </div>
+      <div id="read-wrap" class="panel">
+        <div class="hud-title">CPUの読み <span id="read-pct" class="read-pct">0%</span></div>
+        <div class="read-bar"><i id="read-fill"></i></div>
+        <div class="hud-note">出す手が偏るほど読まれる</div>
+      </div>
+      <div id="gauge-wrap" class="panel">
+        <div class="hud-title">見切りゲージ</div>
+        <div id="gauge-dots" class="dots">○○○</div>
+        <div class="hud-note">満タンで先読み (4キー)</div>
+      </div>
+    </aside>
+
+    <footer id="controlbar">
+      <div id="hand-buttons">
+        <button id="btn-rock" class="hand-btn disabled" type="button"><b>グー</b><span class="keynum">1</span></button>
+        <button id="btn-scissors" class="hand-btn disabled" type="button"><b>チョキ</b><span class="keynum">2</span></button>
+        <button id="btn-paper" class="hand-btn disabled" type="button"><b>パー</b><span class="keynum">3</span></button>
+      </div>
+      <button id="btn-read" class="read-btn disabled" type="button">先読み (4)</button>
+    </footer>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="renderer.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
