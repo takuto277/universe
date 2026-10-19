@@ -26,11 +26,14 @@ http://localhost:8000/ を開きます。
 ## テスト
 
 ```sh
-./tools/run-tests.sh
-python3 tools/check_site.py
+./tools/verify.sh
 ```
 
-`run-tests.sh` は各アプリの `test-*.js` を JavaScriptCore の `jsc` で実行します。`check_site.py` は `apps.json`、`index.html`、アプリ内のリンクの整合性を検査します。
+`verify.sh` は各アプリの `test-*.js` を JavaScriptCore の `jsc` で実行し、`apps.json`、`index.html`、アプリ内のリンクの整合性を検査します。
+
+## 開発フロー
+
+main へ直接 push せず、作業ブランチと PR を使います。PR では GitHub Actions の `tests` と `site` が必須です。詳しくは [docs/pr-workflow.md](docs/pr-workflow.md) を参照してください。
 
 ## アプリを追加する
 

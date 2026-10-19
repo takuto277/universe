@@ -4,6 +4,14 @@ universe のテストは、外部依存を増やさず JavaScriptCore の `jsc` 
 
 ## 実行方法
 
+テストとサイト検査をまとめて実行します。
+
+```sh
+./tools/verify.sh
+```
+
+テストだけを実行する場合:
+
 ```sh
 ./tools/run-tests.sh
 ```
@@ -51,4 +59,4 @@ JSC=/path/to/jsc ./tools/run-tests.sh
 
 ## CI
 
-GitHub Actions の `CI` ワークフローが、push と pull request で `run-tests.sh` と `check_site.py` を実行します。
+GitHub Actions の `CI` ワークフローが、push と pull request で `tests` と `site` を実行します。main は branch protection で保護されているため、この2つが通るまで PR はマージできません。
