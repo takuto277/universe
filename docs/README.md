@@ -9,7 +9,8 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | テストの書き方と実行方法を知る | [テスト](testing.md) |
 | GitHub Pages への公開と URL の扱いを知る | [公開](deployment.md) |
 | なぜこの構成なのかを知る | [0001 universe を静的モノレポとして維持する](decisions/0001-universe-as-static-monorepo.md) |
-| AI に PR を承認させる仕組みを知る | [0002 PR の承認を CodeRabbit に任せる](decisions/0002-ai-review-with-coderabbit.md) |
+| AI に PR をレビュー・マージさせる仕組みを知る | [0003 PR のレビューとマージを分離した AI に任せる](decisions/0003-ai-review-and-merge.md) |
+| CodeRabbit を使っていたときの判断を知る | [0002 PR の承認を CodeRabbit に任せる](decisions/0002-ai-review-with-coderabbit.md) |
 | 学んだことを記録する | [学習ログ](learning-log.md) |
 
 ## 更新の原則

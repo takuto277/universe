@@ -57,6 +57,8 @@ JSC=/path/to/jsc ./tools/run-tests.sh
 - 見た目の微調整は自動テストではなく手動確認にする
 - 失敗したとき、どの仕様が壊れたか分かるメッセージにする
 
-## CI
+## CI とマージゲート
 
-GitHub Actions の `CI` ワークフローが、push と pull request で `tests` と `site` を実行します。main は branch protection で保護されているため、この2つが通るまで PR はマージできません。CodeRabbit App の導入と branch protection の設定が完了した後は、CodeRabbit の承認と status check も必要になります。
+GitHub Actions の `CI` ワークフローが、push と pull request で `tests` と `site` を実行します。main は branch protection で保護されているため、この2つが通るまで PR はマージできません。
+
+マージは `python3 tools/pr_merge.py --pr <n>` の五点ゲートを通した後に行います。ゲートは CI に加えて、最新 head の AI レビュー（Blocker 0）、未解決 review thread 0、必要に応じた UI 証跡を確認します。詳細は [PR 運用](pr-workflow.md) を参照してください。

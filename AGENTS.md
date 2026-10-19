@@ -5,9 +5,10 @@ universe は自作ゲーム・アプリを静的ファイルで公開する個�
 ## コマンド
 
 ```sh
-./tools/verify.sh             # テスト + サイト検査
+./tools/verify.sh             # テスト + サイト検査 + PR スクリプトの構文検査
 ./tools/run-tests.sh          # 全アプリの test-*.js
 python3 tools/check_site.py   # apps.json / index.html / ローカルリンクの検査
+python3 tools/pr_merge.py --pr <n>  # 五点ゲート + squash merge
 python3 -m http.server 8000   # ローカル確認
 ```
 
@@ -23,8 +24,11 @@ python3 -m http.server 8000   # ローカル確認
 - 依存ゼロの静的構成を基本とする。ビルドや外部ランタイムを増やす場合は、先に理由を `docs/decisions/` に記録する
 - 公開 URL を壊さない。アプリのディレクトリ名やパスを変えるときはリダイレクトを用意する
 - アプリを追加・変更したら、`apps.json`、`index.html`、`README.md`、テストを同じ変更で更新する
-- main へ直接 push せず、作業ブランチを作って PR を出す。main は branch protection で保護され、`tests` / `site` が必須。CodeRabbit のセットアップ完了後は、CodeRabbit の承認と status check も必須になる
-- CodeRabbit の指摘は修正するか理由をコメントして resolve する。作者自身の `@coderabbitai approve` は使わない。作者以外の承認コメントだけでマージしない
+- main へ直接 push せず、作業ブランチを作って PR を出す。main は branch protection で保護され、`tests` / `site` が必須
+- PR のレビューは `pr-reviewer` subagent、マージは `pr-merger` subagent に任せる。レビュアーは編集・承認・マージをせず、マージ担当はレビュー・編集をしない
+- 通常は `/pr-deliver <PR番号>` を使う。レビューだけなら `/pr-review`、マージだけなら `/pr-merge` を使う
+- マージ前に `python3 tools/pr_merge.py --pr <PR番号>` の五点ゲートを通す。ゲートが失敗した状態でマージしない。`--admin`、`--auto`、直接の `gh pr merge` は使わない
+- レビュー本文は `COMMENT` で投稿し、`APPROVE` / `REQUEST_CHANGES` は使わない。対象 head SHA と Blocker 数は `ai-pr-review` marker で記録する
 - PR の本文は `.github/pull_request_template.md` に沿って書く。マージ前に `./tools/verify.sh` を通す
 - コミットメッセージは `baseball-game: ...` のようにアプリ名または `repo:` で始め、日本語で理由が分かるように書く
 - テストは利用者から見た挙動を検証する。実装の詳細やソース文字列の一致に依存しすぎない
