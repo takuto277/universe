@@ -29,7 +29,8 @@ body {
   margin: 0 auto;
   display: grid;
   grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-rows: auto minmax(220px, 1fr) auto auto auto;
+  overflow-y: auto;
   grid-template-areas:
     "topbar"
     "stage"
@@ -401,15 +402,13 @@ th.team.home { color: var(--home); }
 
 /* ===== HUD（フィールド右の情報レール） ===== */
 #hud {
-  min-height: 0;
-  overflow-y: auto;
   scrollbar-width: thin;
 }
 
 @media (min-width: 1000px) {
   #app {
     grid-template-columns: minmax(0, 1fr) 320px;
-    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-rows: auto minmax(220px, 1fr) auto auto;
     grid-template-areas:
       "topbar hud"
       "stage  hud"
@@ -417,6 +416,8 @@ th.team.home { color: var(--home); }
       "control hud";
   }
   #hud {
+    min-height: 0;
+    overflow-y: auto;
     padding: 12px 12px 12px 4px;
   }
   #hud #chart,
@@ -428,7 +429,6 @@ th.team.home { color: var(--home); }
 
 @media (max-width: 999px) {
   #hud {
-    max-height: 190px;
     padding: 0 12px;
   }
 }
