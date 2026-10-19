@@ -162,7 +162,8 @@ body {
 .rules {
   text-align: left;
   max-width: 640px;
-  max-height: 52%;
+  flex: 0 1 auto;
+  min-height: 0;
   overflow-y: auto;
   margin: 0;
   padding: 14px 18px 14px 36px;
@@ -172,6 +173,9 @@ body {
   font-size: 14px;
   line-height: 1.9;
 }
+
+/* ルールが伸びてもタイトル・開始ボタンは常に見えるようにする */
+.screen > *:not(.rules) { flex: 0 0 auto; }
 .rules b { color: var(--gold); }
 
 .primary {
@@ -369,9 +373,17 @@ body {
   .side-label { font-size: 11px; }
 }
 
+/* ノートPC程度の高さでは、ルールを少し詰めて全項目を見せる */
+@media (max-height: 780px) {
+  .screen { padding: 16px; gap: 8px; }
+  .screen h1 { font-size: clamp(26px, 5vw, 40px); }
+  .rules { font-size: 13px; line-height: 1.8; padding: 12px 16px 12px 30px; }
+  .primary { margin-top: 4px; }
+}
+
 @media (max-height: 640px) {
   .screen { padding: 12px; gap: 8px; }
   .screen h1 { font-size: clamp(22px, 6vw, 30px); }
-  .rules { font-size: 11.5px; line-height: 1.6; max-height: 42%; padding: 8px 12px 8px 26px; }
+  .rules { font-size: 11.5px; line-height: 1.6; padding: 8px 12px 8px 26px; }
   .primary { font-size: 17px; padding: 10px 30px; }
 }
