@@ -2,7 +2,9 @@
 description: Reviews a pull request and posts a COMMENT review with the AI review marker. Use for /pr-review and the review phase of /pr-deliver.
 mode: subagent
 permission:
-  edit: deny
+  edit:
+    "*": deny
+    "/tmp/pr-review-*": allow
   bash:
     "*": deny
     "git status*": allow

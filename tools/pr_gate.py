@@ -96,7 +96,13 @@ def wait_for_checks(repo, number, ignored, timeout):
         return
     deadline = time.time() + timeout
     while time.time() < deadline:
-        checks = get_checks(repo, number, False, ignored)
+        try:
+            checks = get_checks(repo, number, False, ignored)
+        except GateError as error:
+            if "no checks" not in str(error):
+                raise
+            time.sleep(5)
+            continue
         if not any(check.get("bucket") in PENDING_CHECK_BUCKETS for check in checks):
             return
         time.sleep(5)
@@ -188,6 +194,8 @@ def check_review(repo, number, head):
         raise GateError("unsupported AI review marker version")
     if marker.get("head") != head:
         raise GateError("AI review marker head does not match the current head")
+    if review.get("state") != "COMMENTED":
+        raise GateError("AI review must be a COMMENT review")
     if marker.get("blockers") != 0:
         raise GateError("latest AI review still has %s blocker(s)" % marker.get("blockers"))
 
@@ -227,7 +235,10 @@ def check_threads(repo, number):
         if after:
             args.extend(["-f", "after=" + after])
         data = gh_json(args)
-        threads = data["data"]["repository"]["pullRequest"]["reviewThreads"]
+        try:
+            threads = data["data"]["repository"]["pullRequest"]["reviewThreads"]
+        except (KeyError, TypeError):
+            raise GateError("cannot read review threads: %s" % json.dumps(data, ensure_ascii=False))
         for thread in threads["nodes"]:
             if not thread.get("isResolved"):
                 unresolved.append(thread)

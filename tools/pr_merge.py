@@ -50,6 +50,8 @@ def gate(args):
         "--wait",
         str(args.wait),
     ]
+    if args.repo:
+        command.extend(["--repo", args.repo])
     for name in args.ignore_check:
         command.extend(["--ignore-check", name])
     proc = run(command)

@@ -38,7 +38,7 @@ Pull request の最新 head を独立にレビューし、`COMMENT` レビュー
 
 4. 各指摘に `Blocker` / `Nit` / `Consider` / `FYI` のラベルを付ける。`Blocker` はマージ前に修正が必要な不具合、仕様違反、セキュリティ問題、データ破壊、主要機能の停止だけにする。推測だけの指摘は `Consider` 以下にする。
 
-5. レビュー本文を作る。先頭に結論、対象 SHA、Blocker 数を書き、その後にファイルと行、失敗経路、修正案を続ける。指摘がなければ `LGTM` と検証範囲を書く。
+5. レビュー本文を作る。先頭に結論、対象 SHA、Blocker 数を書き、その後にファイルと行、失敗経路、修正案を続ける。指摘がなければ `LGTM` と検証範囲を書く。本文は `/tmp/pr-review-<n>.md` に write ツールで保存する。リポジトリ内のファイルは編集しない。
 
    ```text
    **Blocker: 1件**
@@ -49,10 +49,11 @@ Pull request の最新 head を独立にレビューし、`COMMENT` レビュー
    - Nit: ...
    ```
 
-6. レビューを投稿する。本文に marker を自分で入れない。スクリプトが付与する。
+6. レビューを投稿する。本文に marker を自分で入れない。スクリプトが付与する。`--head` には手順1で固定した SHA を渡す。head が変わっていた場合はスクリプトが投稿を拒否するので、最新 head でレビューをやり直す。
 
    ```sh
-   python3 tools/pr_review.py --pr <n> --body-file /tmp/pr-review-<n>.md \
+   python3 tools/pr_review.py --pr <n> --head <head> \
+     --body-file /tmp/pr-review-<n>.md \
      --blockers <Blocker数> --findings <全指摘数>
    ```
 

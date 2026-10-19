@@ -40,6 +40,11 @@ def parse_args():
     )
     parser.add_argument("--pr", type=int, required=True, help="Pull request number")
     parser.add_argument(
+        "--head",
+        required=True,
+        help="Head SHA that was reviewed. The review is rejected if the PR head moved.",
+    )
+    parser.add_argument(
         "--body-file",
         required=True,
         help="Review body file. Use - to read from stdin.",
@@ -99,10 +104,15 @@ def main():
     )
     if pull["state"] != "OPEN":
         raise ReviewError("pull request is not open")
+    if pull["headRefOid"] != args.head:
+        raise ReviewError(
+            "pull request head changed from %s to %s; review again"
+            % (args.head, pull["headRefOid"])
+        )
 
     marker_data = {
         "version": 1,
-        "head": pull["headRefOid"],
+        "head": args.head,
         "blockers": args.blockers,
         "findings": args.findings,
         "reviewer": "opencode",
@@ -113,7 +123,7 @@ def main():
     review_body = marker + "\n\n" + body
 
     payload = {
-        "commit_id": pull["headRefOid"],
+        "commit_id": args.head,
         "body": review_body,
         "event": "COMMENT",
     }
@@ -142,8 +152,8 @@ def main():
             "repos/%s/pulls/%d/reviews/%d" % (repo, args.pr, review["id"]),
         ]
     )
-    if saved.get("commit_id") != pull["headRefOid"]:
-        raise ReviewError("posted review does not match the pull request head")
+    if saved.get("commit_id") != args.head:
+        raise ReviewError("posted review does not match the reviewed head")
     if "ai-pr-review" not in (saved.get("body") or ""):
         raise ReviewError("posted review does not contain the marker")
 
@@ -153,7 +163,7 @@ def main():
                 "ok": True,
                 "repo": repo,
                 "pr": args.pr,
-                "head": pull["headRefOid"],
+                "head": args.head,
                 "review_id": review["id"],
                 "review_url": review.get("html_url"),
                 "blockers": args.blockers,
