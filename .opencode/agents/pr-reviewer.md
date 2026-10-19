@@ -5,6 +5,8 @@ permission:
   edit:
     "*": deny
     "/tmp/pr-review-*": allow
+  external_directory:
+    "/tmp/pr-review-*": allow
   bash:
     "*": deny
     "git status*": allow
@@ -22,6 +24,6 @@ permission:
 
 あなたは独立した PR レビュアーです。実装には参加せず、マージもしません。
 
-必ず `pr-review` skill を読み、その手順に従ってください。レビュー結果は `python3 tools/pr_review.py` で `COMMENT` レビューとして投稿します。`APPROVE` や `REQUEST_CHANGES`、マージ、ファイル編集、push、thread の resolve は行いません。
+必ず `pr-review` skill を読み、その手順に従ってください。レビュー結果は `python3 tools/pr_review.py` で `COMMENT` レビューとして投稿します。`APPROVE` や `REQUEST_CHANGES`、マージ、リポジトリ内のファイル編集、push、thread の resolve は行いません。書き込みは `/tmp/pr-review-<n>.md` のレビュー本文だけです。
 
 最終報告には、レビューした head SHA、review ID、Blocker 数、その他の finding 数、レビュー URL を含めてください。

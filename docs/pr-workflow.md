@@ -104,7 +104,7 @@ python3 tools/pr_merge.py --pr 123
 ```sh
 git switch main
 git pull --ff-only
-git branch -d feat/my-change
+git branch -D feat/my-change
 ```
 
-リモートブランチは GitHub の設定で自動削除するか、マージ後に削除します。
+squash merge では元のコミットが main の履歴にそのまま残らないため、`git branch -d` は「未マージ」と判定して失敗することがあります。ローカルの作業ブランチは `git branch -D` で削除します。リモートブランチは GitHub の設定で自動削除するか、マージ後に削除します。

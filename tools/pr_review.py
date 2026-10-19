@@ -154,8 +154,10 @@ def main():
     )
     if saved.get("commit_id") != args.head:
         raise ReviewError("posted review does not match the reviewed head")
-    if "ai-pr-review" not in (saved.get("body") or ""):
-        raise ReviewError("posted review does not contain the marker")
+    if saved.get("state") != "COMMENTED":
+        raise ReviewError("posted review is not a COMMENT review")
+    if marker not in (saved.get("body") or ""):
+        raise ReviewError("posted review does not contain the expected marker")
 
     print(
         json.dumps(

@@ -94,11 +94,12 @@ def main():
     args = parse_args()
     repo = args.repo
     if not repo:
-        repo = run_gh(
+        proc = run_gh(
             ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]
-        ).stdout.strip()
-    if not repo:
-        raise MergeError("cannot resolve the repository")
+        )
+        repo = proc.stdout.strip()
+        if proc.returncode != 0 or not repo:
+            raise MergeError(proc.stderr.strip() or "cannot resolve the repository")
 
     first = gate(args)
 

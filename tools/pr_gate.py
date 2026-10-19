@@ -51,9 +51,13 @@ def flatten_pages(value):
 def get_repo(args):
     if args.repo:
         return args.repo
-    return run_gh(
+    proc = run_gh(
         ["repo", "view", "--json", "nameWithOwner", "--jq", ".nameWithOwner"]
-    ).stdout.strip()
+    )
+    repo = proc.stdout.strip()
+    if proc.returncode != 0 or not repo:
+        raise GateError(proc.stderr.strip() or "cannot resolve the repository")
+    return repo
 
 
 def get_pull(repo, number, attempts=6):
@@ -71,6 +75,8 @@ def get_pull(repo, number, attempts=6):
                 "mergeStateStatus,reviewDecision,labels,url",
             ]
         )
+        if not pull:
+            raise GateError("pull request not found")
         last = pull
         if pull.get("mergeable") != "UNKNOWN" and pull.get("mergeStateStatus") != "UNKNOWN":
             return pull
@@ -114,7 +120,7 @@ def check_ci(repo, number, ignored):
         raise GateError("no required checks found")
 
     for check in required:
-        if check.get("bucket") != "pass":
+        if check.get("bucket") not in PASS_CHECK_BUCKETS:
             raise GateError(
                 "required check %s is %s" % (check.get("name"), check.get("bucket"))
             )
