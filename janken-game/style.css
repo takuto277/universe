@@ -388,8 +388,8 @@ body {
   .primary { font-size: 17px; padding: 10px 30px; }
 }
 
-/* 横向きスマホなど極端に低い画面では、ルールを潰さず画面全体をスクロールさせる */
-@media (max-height: 520px) {
+/* 横向きスマホや小型端末など低い画面では、ルールを潰さず画面全体をスクロールさせる */
+@media (max-height: 700px) {
   .screen { justify-content: flex-start; }
   .rules { flex: 0 0 auto; overflow: visible; }
 }
