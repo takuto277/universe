@@ -80,6 +80,7 @@
   var els = {};
   var state = null;
   var view = null;
+  var stageObserver = null;
   var pendingChoice = null;
   var swing = null;
   var lastReadPct = null;
@@ -666,6 +667,7 @@
 
     els.rowAway.classList.toggle('batting', !state.over && E.battingTeam(state) === 'away');
     els.rowHome.classList.toggle('batting', !state.over && E.battingTeam(state) === 'home');
+    resizeCanvas();
   }
 
   /* ===== 描画 ===== */
@@ -1308,6 +1310,16 @@
     }
   }
 
+  function watchStageSize() {
+    if (typeof ResizeObserver === 'undefined' || !els.stage) return;
+    if (!stageObserver) {
+      stageObserver = new ResizeObserver(function () {
+        resizeCanvas();
+      });
+    }
+    stageObserver.observe(els.stage);
+  }
+
   function resizeCanvas() {
     if (!canvas) return;
     var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
@@ -1317,10 +1329,12 @@
     if (availH <= 0) availH = H;
     var scale = Math.min(availW / W, availH / H);
     if (!isFinite(scale) || scale <= 0) scale = 1;
-    canvas.width = Math.round(W * dpr);
-    canvas.height = Math.round(H * dpr);
-    canvas.style.width = Math.floor(W * scale) + 'px';
-    canvas.style.height = Math.floor(H * scale) + 'px';
+    var bw = Math.round(W * dpr), bh = Math.round(H * dpr);
+    if (canvas.width !== bw) canvas.width = bw;
+    if (canvas.height !== bh) canvas.height = bh;
+    var sw = Math.floor(W * scale) + 'px', sh = Math.floor(H * scale) + 'px';
+    if (canvas.style.width !== sw) canvas.style.width = sw;
+    if (canvas.style.height !== sh) canvas.style.height = sh;
     if (canvas.getContext) {
       ctx = canvas.getContext('2d');
       if (ctx && ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -1452,6 +1466,7 @@
     });
     window.addEventListener('keydown', onKey);
     window.addEventListener('resize', resizeCanvas);
+    watchStageSize();
 
     startLoop();
 
