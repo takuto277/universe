@@ -104,7 +104,7 @@
   }
 
   /* CPU打者の読み: 頻度・連投・交互パターンで精度が上がる */
-  var CPU_READ_BASE = 0.36;
+  var CPU_READ_BASE = 0.40;
   var CPU_READ_BONUS = 0.28;
   var CPU_READ_WINDOW = 10;
   var CPU_STREAK_BONUS = 0.03;
@@ -267,10 +267,9 @@
     return 'single';
   }
 
-  /* CPU打者の予想を決める（プレイヤーの投球履歴を読む）。
-   * state.playerHistory に投球を記録する副作用あり。 */
-  function cpuBatterDecision(state, chosenPitch, rng) {
-    rng = rng || Math.random;
+  /* 現在の投球履歴から、その球種へのCPUの読み精度を計算する（副作用なし）。
+   * streak = その球種の連投数、pattern = 交互リズム検出 */
+  function readAccuracy(state, chosenPitch) {
     var hist = state.playerHistory || [];
     var count = 0;
     for (var i = Math.max(0, hist.length - CPU_READ_WINDOW); i < hist.length; i++) {
@@ -289,16 +288,25 @@
       Math.min(CPU_STREAK_CAP, CPU_STREAK_BONUS * streak) +
       (pattern ? CPU_PATTERN_BONUS : 0);
     if (accuracy > CPU_READ_MAX) accuracy = CPU_READ_MAX;
-    var correct = rng() < accuracy;
+    return { accuracy: accuracy, streak: streak, pattern: pattern, count: count };
+  }
+
+  /* CPU打者の予想を決める（プレイヤーの投球履歴を読む）。
+   * state.playerHistory に投球を記録する副作用あり。 */
+  function cpuBatterDecision(state, chosenPitch, rng) {
+    rng = rng || Math.random;
+    var read = readAccuracy(state, chosenPitch);
+    var hist = state.playerHistory || [];
+    var correct = rng() < read.accuracy;
     hist.push(chosenPitch);
     if (hist.length > 30) hist.shift();
     state.playerHistory = hist;
     return {
       guess: correct ? chosenPitch : randomPitchExcept(chosenPitch, rng),
       correct: correct,
-      accuracy: accuracy,
-      streak: streak,
-      pattern: pattern
+      accuracy: read.accuracy,
+      streak: read.streak,
+      pattern: read.pattern
     };
   }
 
@@ -564,6 +572,7 @@
     pitchTendencies: pitchTendencies,
     timingResult: timingResult,
     cpuBatterDecision: cpuBatterDecision,
+    readAccuracy: readAccuracy,
     createGame: createGame,
     battingTeam: battingTeam,
     fieldingTeam: fieldingTeam,

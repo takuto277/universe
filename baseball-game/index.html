@@ -44,13 +44,13 @@
             <li>CPUピッチャーの<b>持ち球は5球種だけ</b>。試合開始と配球メモでわかる。持ち球以外のボタンは「×持ち球以外」!</li>
             <li><b>攻撃</b>(<span class="you">あなた</span>): <b>配球メモ</b>(カウント別の球種集計)と<b>得意/苦手</b>でCPUのクセを読んで 1〜9 で予想、0 で見逃し!</li>
             <li>「ゾーン26% / ボール74%」= その球が100球中26球はストライク、74球はボールになるという意味。ゾーン率が低い苦手球はボールになりやすい!</li>
-            <li>予想が当たったら、<b>ゾーン球</b>なら<b>タイミングバー</b>を止めろ! ど真ん中なら<b>ホームラン</b>、ズレると単打・二塁打! <b>ボール球</b>はすくい上げて<b>単打</b>!</li>
+            <li>予想が当たったら、<b>ゾーン球</b>なら<b>タイミングバー</b>を止めろ! ど真ん中なら<b>ホームラン</b>、ズレると単打・二塁打! <b>ボール球</b>はすくい上げて<b>単打</b>! バーは <b>Space</b> かタップで止まる!</li>
             <li>予想を外しても、その球が<b>ボール球</b>なら空振りにならず<b>ボール</b>になる! <b>ゾーン球</b>で外すと空振りストライク!</li>
-            <li><b>守備</b>(<span class="you">あなた</span>): ボタンの<b>ゾーン%/ボール%</b>がそのまま当たる確率。ボール率が高い球は四球に注意! <span class="cpu">CPU</span>はボール球にはあまり手を出さない。クセも読まれるぞ!</li>
+            <li><b>守備</b>(<span class="you">あなた</span>): ボタンの<b>ゾーン%/ボール%</b>がそのまま当たる確率。ボール率が高い球は四球に注意! <span class="cpu">CPU</span>はボール球にはあまり手を出さない。同じ球の連投は読まれるので「<b>あなたの投球クセ</b>」を見て散らせ!</li>
             <li>全3回。最終回でもつれればサヨナラのチャンス。得点の多いチームの勝ち!</li>
           </ul>
           <button id="btn-start" class="primary" type="button">プレイボール!</button>
-          <p class="tiny">ボタンまたは 1〜9 / 0 キーでも操作できます</p>
+          <p class="tiny">ボタンまたは 1〜9 / 0 キーでも操作できます。タイミングバーは Space / タップ!</p>
         </section>
 
         <section id="screen-end" class="screen">
@@ -75,7 +75,26 @@
         <div id="chart-style" class="chart-style"></div>
         <div id="chart-rows"></div>
       </div>
+      <div id="defense-panel" class="hidden">
+        <div class="def-head">
+          <span class="def-title">あなたの投球クセ</span>
+          <span id="def-warn" class="def-warn"></span>
+        </div>
+        <div class="def-body">
+          <div id="def-chips" class="def-chips"></div>
+          <div class="def-readwrap">
+            <span class="def-readlabel">CPUの読み</span>
+            <div class="read-bar"><span id="def-read-fill"></span></div>
+            <span id="def-read-pct" class="def-readpct">—</span>
+          </div>
+        </div>
+      </div>
       <div id="powerbar" class="hidden">
+        <span class="pb-band" style="left: 13%">1B</span>
+        <span class="pb-band" style="left: 33%">2B</span>
+        <span class="pb-band pb-hr" style="left: 50%">HR</span>
+        <span class="pb-band" style="left: 67%">2B</span>
+        <span class="pb-band" style="left: 87%">1B</span>
         <div id="pb-marker" class="pb-marker"></div>
       </div>
       <div id="buttons"></div>

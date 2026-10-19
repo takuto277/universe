@@ -320,6 +320,23 @@ for (var c15 = 0; c15 < accRuns; c15++) {
 var rate0 = correctSum / accRuns;
 assert(Math.abs(rate0 - E.CPU_READ_BASE) < 0.03, '履歴なし精度: ' + rate0);
 
+/* 15a) readAccuracy: 読み精度の計算（副作用なし） */
+var st15r = E.createGame();
+var r15 = E.readAccuracy(st15r, 'straight');
+assert(Math.abs(r15.accuracy - E.CPU_READ_BASE) < 1e-9, 'readAccuracy: 履歴なしの基本精度');
+assert(r15.streak === 0 && !r15.pattern && r15.count === 0, 'readAccuracy: 初期状態');
+st15r.playerHistory = ['straight', 'curve', 'straight', 'curve'];
+var r15b = E.readAccuracy(st15r, 'straight');
+assert(r15b.pattern && r15b.count === 2, 'readAccuracy: 交互パターン検出');
+assert(st15r.playerHistory.length === 4, 'readAccuracyは履歴を変更しない');
+var exp15 = E.CPU_READ_BASE + E.CPU_READ_BONUS * (2 / 5) + E.CPU_PATTERN_BONUS;
+assert(Math.abs(r15b.accuracy - exp15) < 1e-9, 'readAccuracy: 精度計算: ' + r15b.accuracy);
+var dec15r = E.cpuBatterDecision(st15r, 'straight', function () { return 0.999; });
+assert(Math.abs(dec15r.accuracy - r15b.accuracy) < 1e-9, 'cpuBatterDecisionとreadAccuracyの精度一致');
+assert(st15r.playerHistory.length === 5, 'cpuBatterDecisionは履歴を1件追加');
+var r15c = E.readAccuracy(st15r, 'straight');
+assert(r15c.streak === 1, '直前の1球だけでは連投扱いにしない: ' + r15c.streak);
+
 /* 15b) 守備側のゾーン判定: 見送り→ボール、ボール球スイング、ゾーン率 */
 var script15 = function (seq) {
   var i = 0;

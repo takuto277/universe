@@ -82,6 +82,7 @@
   var view = null;
   var pendingChoice = null;
   var swing = null;
+  var lastReadPct = null;
   var buttonsEnabled = false;
   var soundOn = true;
   var lastFrame = 0;
@@ -532,6 +533,8 @@
       ' の中からしか投げてこない</div>' +
       '<div class="chart-note">得意: ' + goodNames.join('・') +
       ' (ゾーンに入りやすい) / 苦手: ' + badNames.join('・') + ' (ボールになりやすい)</div>';
+    var lastPitch = state.pitcherHistory.length
+      ? state.pitcherHistory[state.pitcherHistory.length - 1] : null;
     for (var i = 0; i < tend.rows.length; i++) {
       var row = tend.rows[i];
       html += '<div class="chart-row"><span class="chart-label">' + row.strikes + 'ストライク:</span>';
@@ -540,13 +543,46 @@
       } else {
         for (var j = 0; j < row.items.length && j < 4; j++) {
           var it = row.items[j];
-          html += '<span class="chip" style="--c:' + pitchColor(it.pitch) + '">' +
-            (SHORT[it.pitch] || it.pitch) + '×' + it.count + '</span>';
+          var zr = it.count ? Math.round((it.zoneCount / it.count) * 100) : 0;
+          var latest = (lastPitch && lastPitch.strikes === row.strikes && lastPitch.pitch === it.pitch)
+            ? ' latest' : '';
+          html += '<span class="chip' + latest + '" style="--c:' + pitchColor(it.pitch) + '">' +
+            (SHORT[it.pitch] || it.pitch) + '×' + it.count +
+            '<small>ゾーン' + zr + '%</small></span>';
+        }
+        if (row.items.length > 4) {
+          html += '<span class="chip more">+' + (row.items.length - 4) + '球種</span>';
         }
       }
       html += '</div>';
     }
     els.chartRows.innerHTML = html;
+  }
+
+  function renderDefensePanel() {
+    if (!state || !els.defChips) return;
+    var hist = state.playerHistory || [];
+    var html = '';
+    var start = Math.max(0, hist.length - 6);
+    for (var i = hist.length - 1; i >= start; i--) {
+      var p = hist[i];
+      html += '<span class="chip' + (i === hist.length - 1 ? ' latest' : '') +
+        '" style="--c:' + pitchColor(p) + '">' + (SHORT[p] || E.pitchLabel(p)) + '</span>';
+    }
+    if (!hist.length) html = '<span class="chart-empty">まだ投げていない</span>';
+    els.defChips.innerHTML = html;
+
+    var streak = 0;
+    for (var s = hist.length - 1; s >= 0 && hist[s] === hist[hist.length - 1]; s--) streak++;
+    var warn = '';
+    var warnCls = '';
+    if (streak >= 3) { warn = '同じ球を' + streak + '連投! 完全に読まれている'; warnCls = 'bad'; }
+    else if (streak === 2) { warn = '同じ球を2連投。次は読まれるぞ'; warnCls = 'warn'; }
+    els.defWarn.textContent = warn;
+    els.defWarn.className = 'def-warn' + (warnCls ? ' ' + warnCls : '');
+
+    els.defReadPct.textContent = lastReadPct == null ? '—' : lastReadPct + '%';
+    els.defReadFill.style.width = (lastReadPct == null ? 0 : lastReadPct) + '%';
   }
 
   function updatePitchBadges() {
@@ -622,6 +658,10 @@
       els.chartWrap.classList.toggle('hidden', E.battingTeam(state) !== 'home' || state.over);
     }
     renderChart();
+    if (els.defensePanel) {
+      els.defensePanel.classList.toggle('hidden', E.battingTeam(state) === 'home' || state.over);
+    }
+    renderDefensePanel();
     updatePitchBadges();
 
     els.rowAway.classList.toggle('batting', !state.over && E.battingTeam(state) === 'away');
@@ -962,6 +1002,7 @@
 
       function nextAtBat() {
         if (state.over) { resolve(null); return; }
+        lastReadPct = null;
 
         if (batting === 'home') {
           view.batter.visible = true;
@@ -1081,6 +1122,7 @@
             var endEv = plan.pitch || plan.take;
             var dec = plan.dec;
             var readPct = dec ? Math.round(dec.accuracy * 100) : 0;
+            lastReadPct = dec ? readPct : null;
             var readTag = dec ? (dec.pattern ? ' (リズム察知!)' : (dec.streak >= 2 ? ' (連投バレ!)' : '')) : '';
             var bubbleText;
             if (plan.take) bubbleText = 'CPUはボールを見送った…';
@@ -1197,6 +1239,7 @@
     running = true;
     pendingChoice = null;
     swing = null;
+    lastReadPct = null;
     els.screenStart.classList.remove('visible');
     els.screenEnd.classList.remove('visible');
     state = E.createGame();
@@ -1313,7 +1356,7 @@
       return;
     }
     if (swing) {
-      if (k !== 'Shift' && k !== 'Control' && k !== 'Alt' && k !== 'Meta') {
+      if (k === ' ' || k === 'Enter') {
         e.preventDefault();
         stopTiming();
       }
@@ -1373,6 +1416,11 @@
     els.chartWrap = $('chart');
     els.chartStyle = $('chart-style');
     els.chartRows = $('chart-rows');
+    els.defensePanel = $('defense-panel');
+    els.defChips = $('def-chips');
+    els.defWarn = $('def-warn');
+    els.defReadPct = $('def-read-pct');
+    els.defReadFill = $('def-read-fill');
     els.soundBtn = $('sound-btn');
     els.rowAway = $('row-away');
     els.rowHome = $('row-home');

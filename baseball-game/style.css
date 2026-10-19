@@ -319,6 +319,70 @@ th.team.home { color: var(--home); }
   font-size: 11px;
   font-weight: 700;
   line-height: 1.5;
+  display: inline-block;
+  text-align: center;
+}
+.chip small {
+  display: block;
+  font-size: 9px;
+  line-height: 1.25;
+  font-weight: 600;
+  color: var(--muted);
+}
+.chip.latest { box-shadow: 0 0 0 1px var(--gold) inset; }
+.chip.more { border-style: dashed; color: var(--muted); }
+
+/* ===== 守備: 自分の投球クセ/読まれ度 ===== */
+#defense-panel {
+  max-width: 780px;
+  width: 100%;
+  margin: 0 auto 6px;
+  padding: 7px 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(19, 28, 43, 0.78);
+}
+#defense-panel.hidden { display: none; }
+.def-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 4px;
+}
+.def-title { font-size: 12px; font-weight: 700; color: var(--gold); }
+.def-warn { font-size: 11px; font-weight: 700; color: var(--muted); }
+.def-warn.warn { color: #ff9f45; }
+.def-warn.bad { color: var(--red); }
+.def-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.def-chips { display: flex; gap: 4px; flex-wrap: wrap; flex: 1 1 auto; }
+.def-readwrap { display: flex; align-items: center; gap: 6px; margin-left: auto; }
+.def-readlabel { font-size: 11px; color: var(--muted); }
+.read-bar {
+  width: 110px;
+  height: 8px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+#def-read-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  background: linear-gradient(90deg, #4fd1ff, #ff9f45, #ff6b5e);
+  transition: width 0.25s ease;
+}
+.def-readpct {
+  font-size: 12px;
+  font-weight: 800;
+  color: #4fd1ff;
+  min-width: 44px;
+  text-align: right;
 }
 
 /* ===== タイミングバー ===== */
@@ -348,7 +412,21 @@ th.team.home { color: var(--home); }
   margin-left: -2px;
   background: #ffffff;
   box-shadow: 0 0 8px rgba(255, 255, 255, 0.95);
+  z-index: 2;
 }
+.pb-band {
+  position: absolute;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 9px;
+  font-weight: 800;
+  color: rgba(255, 255, 255, 0.7);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  z-index: 1;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.65);
+}
+.pb-band.pb-hr { color: #fff3c4; font-size: 10px; }
 
 .take-btn {
   display: block;
