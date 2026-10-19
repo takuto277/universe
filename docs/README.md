@@ -5,6 +5,7 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | 目的 | 文書 |
 | --- | --- |
 | アプリを追加する | [アプリの追加手順](adding-an-app.md) |
+| ブランチ・PR・マージの流れを知る | [PR 運用](pr-workflow.md) |
 | テストの書き方と実行方法を知る | [テスト](testing.md) |
 | GitHub Pages への公開と URL の扱いを知る | [公開](deployment.md) |
 | なぜこの構成なのかを知る | [0001 universe を静的モノレポとして維持する](decisions/0001-universe-as-static-monorepo.md) |
