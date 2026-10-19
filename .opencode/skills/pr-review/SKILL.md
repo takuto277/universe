@@ -12,6 +12,7 @@ Pull request の最新 head を独立にレビューし、`COMMENT` レビュー
 - ファイルを編集しない。commit / push をしない。
 - `APPROVE` レビュー、`REQUEST_CHANGES` レビュー、マージ、Issue close をしない。
 - review thread を resolve しない。指摘はレビュー本文に書く。
+- レビュー対象は依頼された PR 番号だけとする。他の open PR を探したり、レビューしたりしない。
 - レビュー対象は `gh pr view` で固定した head SHA とする。投稿直前に head が変わっていたら、投稿せずに報告する。
 - `python3 tools/pr_review.py` だけがレビューを投稿する。`gh pr review --approve` や `gh api` による独自投稿は使わない。
 

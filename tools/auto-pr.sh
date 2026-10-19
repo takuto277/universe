@@ -12,9 +12,9 @@ OPENCODE="${OPENCODE_BIN:-$(command -v opencode || true)}"
 PYTHON="${PYTHON_BIN:-$(command -v python3 || true)}"
 GIT="${GIT_BIN:-$(command -v git || true)}"
 GATE_WAIT="${UNIVERSE_AUTO_PR_GATE_WAIT:-90}"
-OPENCODE_TIMEOUT="${UNIVERSE_AUTO_PR_TIMEOUT:-900}"
+OPENCODE_TIMEOUT="${UNIVERSE_AUTO_PR_TIMEOUT:-1800}"
 OPENCODE_MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
-LOCK_STALE="${UNIVERSE_AUTO_PR_LOCK_STALE:-3600}"
+LOCK_STALE="${UNIVERSE_AUTO_PR_LOCK_STALE:-7200}"
 
 . "$ROOT/tools/auto-pr-lib.sh"
 
@@ -111,7 +111,17 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     fi
     exit 0
   fi
+  if [ -d "$LOCK_DIR.recover" ] && [ -n "$(find "$LOCK_DIR.recover" -maxdepth 0 -mmin +5 2>/dev/null)" ]; then
+    rm -rf "$LOCK_DIR.recover"
+  fi
+  if ! mkdir "$LOCK_DIR.recover" 2>/dev/null; then
+    if [ "$VERBOSE" = "1" ]; then
+      log "lock recovery is already running; skip"
+    fi
+    exit 0
+  fi
   if ! mv "$LOCK_DIR" "$LOCK_DIR.stale.$$" 2>/dev/null; then
+    rmdir "$LOCK_DIR.recover" 2>/dev/null || true
     if [ "$VERBOSE" = "1" ]; then
       log "lock recovery race; skip"
     fi
@@ -119,11 +129,13 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   fi
   rm -rf "$LOCK_DIR.stale.$$"
   if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    rmdir "$LOCK_DIR.recover" 2>/dev/null || true
     if [ "$VERBOSE" = "1" ]; then
       log "lock recovery race; skip"
     fi
     exit 0
   fi
+  rmdir "$LOCK_DIR.recover" 2>/dev/null || true
 fi
 printf '%s\n' "$$" >"$LOCK_DIR/pid"
 printf '%s\n' "$(date +%s)" >"$LOCK_DIR/started"
@@ -158,12 +170,21 @@ run_gate() {
     GATE_OK=0
   fi
   GATE_OUTPUT="$gate_output"
-  local summary rest
+  local summary rest rest2
   summary="$(printf '%s' "$GATE_OUTPUT" | summarize_gate)"
   GATE_BLOCKERS="${summary%%$'\t'*}"
   rest="${summary#*$'\t'}"
   GATE_ERRORS="${rest%%$'\t'*}"
-  GATE_WAITING="${rest##*$'\t'}"
+  rest2="${rest#*$'\t'}"
+  GATE_WAITING="${rest2%%$'\t'*}"
+  GATE_HEAD="${rest2##*$'\t'}"
+}
+
+is_paused_gate() {
+  case "$1" in
+    *"ai-pause label is present"*|*"do-not-merge label is present"*|*"pull request is not open"*) return 0 ;;
+  esac
+  return 1
 }
 
 is_positive_integer() {
@@ -285,11 +306,13 @@ prs="$("$GH" pr list \
   --author @me \
   --limit 100 \
   --json number,isDraft,headRefOid,labels \
-  --jq '.[]
+  --jq '[.[]
     | select(.isDraft == false)
     | select(([.labels[].name] | index("ai-pause")) | not)
     | select(([.labels[].name] | index("do-not-merge")) | not)
-    | "\(.number)\t\(.headRefOid)"')" || {
+    | {number: .number, head: .headRefOid}]
+    | sort_by(.number)[]
+    | "\(.number)\t\(.head)"')" || {
   log "failed to list pull requests"
   exit 1
 }
@@ -318,6 +341,10 @@ while IFS=$'\t' read -r number head; do
 
   if [ "$GATE_OK" = "1" ]; then
     merge_pr "$number" "$head"
+    continue
+  fi
+  if is_paused_gate "$GATE_ERRORS"; then
+    log "PR #$number: paused or closed; skip"
     continue
   fi
 
@@ -353,6 +380,10 @@ while IFS=$'\t' read -r number head; do
       merge_pr "$number" "$head"
       continue
     fi
+    if is_paused_gate "$GATE_ERRORS"; then
+      log "PR #$number: paused or closed; skip"
+      continue
+    fi
     if is_positive_integer "$GATE_BLOCKERS"; then
       blocked="$STATE_DIR/${number}-${head}.blocked"
       mark "$blocked"
@@ -367,7 +398,13 @@ while IFS=$'\t' read -r number head; do
 
     case "$GATE_ERRORS" in
       *"latest AI review covers"*|*"AI review marker head does not match"*)
-        log "PR #$number: review is stale for the current head; retry next cycle"
+        if [ "$GATE_HEAD" != "$head" ]; then
+          log "PR #$number: head changed during review; retry next cycle"
+          continue
+        fi
+        mark "$STATE_DIR/${number}-${head}.review-failed"
+        log "PR #$number: review marker is still stale for the same head"
+        notify "PR #$number のAIレビュー結果を確認できませんでした"
         continue
         ;;
 

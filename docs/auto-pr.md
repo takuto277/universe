@@ -46,7 +46,7 @@ rm ~/.local/state/universe-auto-pr/pause
 
 PR 単位で止める:
 
-- PR を Draft に戻す（マージ直前の再確認で止まります。再確認の直後に戻した場合は、次回の周期で止まります）
+- PR を Draft に戻す（マージ直前の再確認で止まります。再確認を通過した後の Draft 化は、現在のマージを止められません）
 - `ai-pause` ラベルまたは `do-not-merge` ラベルを付ける
 
 ## ログ
@@ -70,8 +70,8 @@ tail -f ~/Library/Logs/universe-auto-pr.log
 - `gh` と `opencode` の認証が必要です
 - AI レビューは `opencode run --auto` で実行します。既定モデルは `opencode/deepseek-v4.1-flash-free` です
 - `tests` / `site` の完了を最大90秒待ってからゲートを判定します
-- AI レビューは15分で打ち切ります（perl の alarm を使用）
-- ロックが60分以上残った場合は次回に回収します。回収時は稼働中のプロセスを強制終了することがあります
+- AI レビューは30分で打ち切ります（perl の alarm を使用）
+- ロックが120分以上残った場合は次回に回収します。回収時は稼働中のプロセスを強制終了することがあります
 - Blocker の自動修正はしません。修正して push するか、`/pr-deliver` を使ってください
 - 五点ゲートはローカル手順なので、マージ権限を持つ人が迂回できます
 
@@ -81,9 +81,10 @@ LaunchAgent の plist に反映されるもの:
 
 - `UNIVERSE_AUTO_PR_MODEL`: AI レビューに使う opencode のモデル。既定は `opencode/deepseek-v4.1-flash-free`
 - `UNIVERSE_AUTO_PR_REPO`: 対象リポジトリ。既定は `takuto277/universe`
+- `UNIVERSE_AUTO_PR_BASE`: 対象 base branch。既定は `main`
 
 手動実行時だけ有効なもの:
 
 - `UNIVERSE_AUTO_PR_GATE_WAIT`: ゲートが checks を待つ秒数。既定は `90`
-- `UNIVERSE_AUTO_PR_TIMEOUT`: AI レビューの上限秒数。既定は `900`
-- `UNIVERSE_AUTO_PR_LOCK_STALE`: ロックを回収するまでの秒数。既定は `3600`
+- `UNIVERSE_AUTO_PR_TIMEOUT`: AI レビューの上限秒数。既定は `1800`
+- `UNIVERSE_AUTO_PR_LOCK_STALE`: ロックを回収するまでの秒数。既定は `7200`

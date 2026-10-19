@@ -4,6 +4,6 @@ agent: pr-reviewer
 subtask: true
 ---
 
-PR $ARGUMENTS をレビューしてください。
+PR $ARGUMENTS だけをレビューしてください。他の PR を探したり、レビューしたり、既存レビューを投稿し直したりしないでください。`gh pr list` で別の PR に切り替えないでください。
 
 `pr-review` skill に従い、最新 head の差分、関連ファイル、テスト、ドキュメント、CI を確認し、Blocker / Nit / Consider / FYI に分類してください。結果は `python3 tools/pr_review.py --pr <番号> --head <レビューしたSHA> --body-file /tmp/pr-review-<番号>.md --blockers <件数> --findings <件数>` で COMMENT レビューとして投稿してください。承認・マージ・リポジトリ内の編集はしないでください。

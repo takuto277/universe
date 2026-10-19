@@ -20,6 +20,7 @@ WAIT_ERROR_PATTERNS = (
     " is still pending",
     "mergeable is UNKNOWN",
     "merge state is UNKNOWN",
+    "merge state is BLOCKED",
     "merge state is not allowed: UNKNOWN",
     "no required checks found",
     "no visible checks found",
@@ -34,6 +35,17 @@ class GateError(Exception):
 
 def is_wait_error(message):
     return any(pattern in message for pattern in WAIT_ERROR_PATTERNS)
+
+
+def wait_state(errors):
+    if not errors:
+        return False
+    blocked = any("merge state is BLOCKED" in error for error in errors)
+    pending = any(
+        is_wait_error(error) and "merge state is BLOCKED" not in error
+        for error in errors
+    )
+    return all(is_wait_error(error) for error in errors) and (not blocked or pending)
 
 
 def run_gh(args, input_text=None):
@@ -372,7 +384,7 @@ def evaluate(args):
         "review": review,
         "unresolved_threads": unresolved,
         "ui_evidence": ui_evidence,
-        "waiting": bool(errors) and all(is_wait_error(error) for error in errors),
+        "waiting": wait_state(errors),
         "errors": errors,
     }
     return result

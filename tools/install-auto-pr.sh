@@ -7,6 +7,7 @@ DOMAIN="gui/$(id -u)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/Library/Logs"
 REPO="${UNIVERSE_AUTO_PR_REPO:-takuto277/universe}"
+BASE="${UNIVERSE_AUTO_PR_BASE:-main}"
 MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
 GH="${GH_BIN:-$(command -v gh || true)}"
 
@@ -53,6 +54,8 @@ PLIST_ROOT="$(xml_escape "$ROOT")"
 PLIST_HOME="$(xml_escape "$HOME")"
 PLIST_LOG_DIR="$(xml_escape "$LOG_DIR")"
 PLIST_MODEL="$(xml_escape "$MODEL")"
+PLIST_REPO="$(xml_escape "$REPO")"
+PLIST_BASE="$(xml_escape "$BASE")"
 
 cat >"$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -76,6 +79,10 @@ cat >"$PLIST" <<EOF
     <string>ja_JP.UTF-8</string>
     <key>UNIVERSE_AUTO_PR_MODEL</key>
     <string>$PLIST_MODEL</string>
+    <key>UNIVERSE_AUTO_PR_REPO</key>
+    <string>$PLIST_REPO</string>
+    <key>UNIVERSE_AUTO_PR_BASE</key>
+    <string>$PLIST_BASE</string>
   </dict>
   <key>StartInterval</key>
   <integer>60</integer>
