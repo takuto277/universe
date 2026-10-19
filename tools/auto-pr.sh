@@ -105,6 +105,7 @@ fi
 summarize_gate() {
   "$PYTHON" -c '
 import json
+import re
 import sys
 
 try:
@@ -113,7 +114,13 @@ except Exception:
     print("none\tinvalid gate output")
     raise SystemExit
 review = data.get("review") or {}
-print("%s\t%s" % (review.get("blockers", "none"), " | ".join(data.get("errors", []))))
+blockers = review.get("blockers")
+for error in data.get("errors", []):
+    match = re.search(r"latest AI review still has (\d+) blocker", error)
+    if match:
+        blockers = int(match.group(1))
+        break
+print("%s\t%s" % (blockers if blockers is not None else "none", " | ".join(data.get("errors", []))))
 '
 }
 
@@ -149,8 +156,12 @@ mark() {
 recent() {
   local path="$1"
   local minutes="$2"
-  [ -f "$path" ] || return 1
-  [ "$FORCE" = "1" ] && return 1
+  if [ "$FORCE" = "1" ]; then
+    return 1
+  fi
+  if [ ! -f "$path" ]; then
+    return 1
+  fi
   [ -n "$(find "$path" -mmin "-$minutes" 2>/dev/null)" ]
 }
 
@@ -258,13 +269,16 @@ while IFS=$'\t' read -r number head; do
 
   needs_review=0
   case "$GATE_ERRORS" in
-    *"no AI review marker found"*|*"latest AI review covers"*|*"AI review marker head does not match"*|*"AI review must be a COMMENT review"*)
+    *"no AI review marker found"*|*"latest AI review covers"*|*"AI review marker head does not match"*|*"unsupported AI review marker version"*|*"AI review must be a COMMENT review"*)
       needs_review=1
       ;;
   esac
 
   if [ "$needs_review" = "1" ]; then
     if ! run_review "$number" "$head"; then
+      continue
+    fi
+    if [ "$DRY_RUN" = "1" ]; then
       continue
     fi
 
@@ -280,6 +294,15 @@ while IFS=$'\t' read -r number head; do
       notify "PR #$number に Blocker があります"
       continue
     fi
+
+    case "$GATE_ERRORS" in
+      *"no AI review marker found"*|*"latest AI review covers"*|*"AI review marker head does not match"*|*"unsupported AI review marker version"*|*"AI review must be a COMMENT review"*)
+        mark "$STATE_DIR/${number}-${head}.review-failed"
+        log "PR #$number: review command completed but no usable marker"
+        notify "PR #$number のAIレビュー結果を確認できませんでした"
+        continue
+        ;;
+    esac
   fi
 
   gate_failed="$STATE_DIR/${number}-${head}.gate-failed"
