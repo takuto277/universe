@@ -15,7 +15,7 @@ permission:
     "git diff*": allow
     "git log*": allow
     "git show*": allow
-    "git fetch *": allow
+    "git fetch*": allow
     "gh pr view *": allow
     "gh pr diff *": allow
     "gh pr checks *": allow

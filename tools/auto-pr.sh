@@ -14,6 +14,9 @@ GIT="${GIT_BIN:-$(command -v git || true)}"
 GATE_WAIT="${UNIVERSE_AUTO_PR_GATE_WAIT:-90}"
 OPENCODE_TIMEOUT="${UNIVERSE_AUTO_PR_TIMEOUT:-900}"
 OPENCODE_MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
+LOCK_STALE="${UNIVERSE_AUTO_PR_LOCK_STALE:-3600}"
+
+. "$ROOT/tools/auto-pr-lib.sh"
 
 DRY_RUN=0
 FORCE=0
@@ -90,26 +93,40 @@ done
 
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   old_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
-  if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-    if [ -n "$(find "$LOCK_DIR" -maxdepth 0 -mmin +30 2>/dev/null)" ]; then
-      log "stale lock older than 30 minutes; recovering pid $old_pid"
-      kill "$old_pid" 2>/dev/null || true
-      sleep 2
-      kill -9 "$old_pid" 2>/dev/null || true
-      rm -rf "$LOCK_DIR"
-      mkdir "$LOCK_DIR"
-    else
-      if [ "$VERBOSE" = "1" ]; then
-        log "another run is active (pid $old_pid); skip"
-      fi
-      exit 0
+  started="$(cat "$LOCK_DIR/started" 2>/dev/null || true)"
+  if [ -z "$started" ]; then
+    started="$(stat -f %m "$LOCK_DIR" 2>/dev/null || true)"
+  fi
+  now="$(date +%s)"
+  stale=0
+  if [ -z "$old_pid" ] || ! kill -0 "$old_pid" 2>/dev/null; then
+    stale=1
+  elif [ -n "$started" ] && [ "$((now - started))" -gt "$LOCK_STALE" ]; then
+    stale=1
+  fi
+  if [ "$stale" != "1" ]; then
+    if [ "$VERBOSE" = "1" ]; then
+      log "another run is active (pid $old_pid); skip"
     fi
-  else
-    rm -rf "$LOCK_DIR"
-    mkdir "$LOCK_DIR"
+    exit 0
+  fi
+  if ! mv "$LOCK_DIR" "$LOCK_DIR.stale.$$" 2>/dev/null; then
+    if [ "$VERBOSE" = "1" ]; then
+      log "lock recovery race; skip"
+    fi
+    exit 0
+  fi
+  rm -rf "$LOCK_DIR.stale.$$"
+  mkdir "$LOCK_DIR"
+  if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+    log "stale lock older than ${LOCK_STALE}s; killing pid $old_pid"
+    kill "$old_pid" 2>/dev/null || true
+    sleep 2
+    kill -9 "$old_pid" 2>/dev/null || true
   fi
 fi
 printf '%s\n' "$$" >"$LOCK_DIR/pid"
+printf '%s\n' "$(date +%s)" >"$LOCK_DIR/started"
 trap 'rm -rf "$LOCK_DIR"' EXIT
 
 find "$STATE_DIR" -type f -mtime +14 -delete 2>/dev/null || true
@@ -117,28 +134,6 @@ find "$STATE_DIR" -type f -mtime +14 -delete 2>/dev/null || true
 if [ -f "$LOG_FILE" ] && [ "$(wc -c <"$LOG_FILE" | tr -d ' ')" -gt 1048576 ]; then
   mv "$LOG_FILE" "$LOG_FILE.1"
 fi
-
-summarize_gate() {
-  "$PYTHON" -c '
-import json
-import re
-import sys
-
-try:
-    data = json.loads(sys.stdin.read())
-except Exception:
-    print("none\tinvalid gate output")
-    raise SystemExit
-review = data.get("review") or {}
-blockers = review.get("blockers")
-for error in data.get("errors", []):
-    match = re.search(r"latest AI review still has (\d+) blocker", error)
-    if match:
-        blockers = int(match.group(1))
-        break
-print("%s\t%s" % (blockers if blockers is not None else "none", " | ".join(data.get("errors", []))))
-'
-}
 
 run_gate() {
   local number="$1"
@@ -236,12 +231,29 @@ merge_pr() {
     return 0
   fi
 
-  if "$PYTHON" "$ROOT/tools/pr_merge.py" --pr "$number" --repo "$REPO" --base "$BASE" --no-ready >>"$LOG_FILE" 2>&1; then
+  local paused
+  paused="$("$GH" pr view "$number" --repo "$REPO" --json isDraft,labels --jq 'if .isDraft then "draft" elif ([.labels[].name] | index("ai-pause")) then "ai-pause" elif ([.labels[].name] | index("do-not-merge")) then "do-not-merge" else "" end' 2>/dev/null || true)"
+  if [ -n "$paused" ]; then
+    log "PR #$number: paused ($paused); skip merge"
+    return 0
+  fi
+
+  local output
+  if output="$("$PYTHON" "$ROOT/tools/pr_merge.py" --pr "$number" --repo "$REPO" --base "$BASE" --no-ready 2>&1)"; then
+    printf '%s\n' "$output" >>"$LOG_FILE"
     rm -f "$STATE_DIR/${number}-"*
     log "PR #$number: merged"
     notify "PR #$number をマージしました"
     return 0
   fi
+
+  printf '%s\n' "$output" >>"$LOG_FILE"
+  case "$output" in
+    *"pull request is a draft"*|*"ai-pause label is present"*|*"do-not-merge label is present"*)
+      log "PR #$number: paused during merge; skip"
+      return 0
+      ;;
+  esac
 
   mark "$failed"
   log "PR #$number: merge failed"
