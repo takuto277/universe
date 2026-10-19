@@ -10,40 +10,40 @@ fail() {
   exit 1
 }
 
-expect_wait() {
-  if ! is_wait_error "$1"; then
-    fail "expected wait error: $1"
+expect_gate() {
+  local input="$1"
+  local expected="$2"
+  local label="$3"
+  local output
+  output="$(printf '%s' "$input" | summarize_gate)"
+  if [ "$output" != "$expected" ]; then
+    fail "$label: [$output] != [$expected]"
   fi
 }
 
-expect_not_wait() {
-  if is_wait_error "$1"; then
-    fail "expected non-wait error: $1"
-  fi
-}
+expect_gate \
+  '{"ok":false,"review":null,"waiting":false,"errors":["latest AI review still has 2 blocker(s)"]}' \
+  "$(printf '2\tlatest AI review still has 2 blocker(s)\t0')" \
+  "blocker extraction"
 
-expect_wait "required check tests is pending"
-expect_wait "mergeable is UNKNOWN"
-expect_wait "merge state is UNKNOWN"
-expect_wait "no required checks found"
-expect_wait "no visible checks found"
-expect_not_wait "no AI review marker found"
-expect_not_wait "required check tests is failing"
-expect_not_wait "1 unresolved review thread(s): app.js:3"
+expect_gate \
+  '{"ok":false,"review":null,"waiting":false,"errors":["no AI review marker found"]}' \
+  "$(printf 'none\tno AI review marker found\t0')" \
+  "marker extraction"
 
-output="$(printf '%s' '{"ok":false,"review":null,"errors":["latest AI review still has 2 blocker(s)"]}' | summarize_gate)"
-if [ "$output" != "$(printf '2\tlatest AI review still has 2 blocker(s)')" ]; then
-  fail "blocker extraction: $output"
-fi
+expect_gate \
+  '{"ok":false,"review":null,"waiting":true,"errors":["required check tests is pending"]}' \
+  "$(printf 'none\trequired check tests is pending\t1')" \
+  "wait extraction"
 
-output="$(printf '%s' '{"ok":false,"review":null,"errors":["no AI review marker found"]}' | summarize_gate)"
-if [ "$output" != "$(printf 'none\tno AI review marker found')" ]; then
-  fail "marker extraction: $output"
-fi
+expect_gate \
+  '{"ok":true,"review":{"blockers":0},"waiting":false,"errors":[]}' \
+  "$(printf '0\t\t0')" \
+  "ok extraction"
 
-output="$(printf '%s' '{"ok":true,"review":{"blockers":0},"errors":[]}' | summarize_gate)"
-if [ "$output" != "$(printf '0\t')" ]; then
-  fail "ok extraction: $output"
-fi
+expect_gate \
+  '{"ok":false,"review":null,"waiting":false,"errors":["check tests is still pending","1 unresolved review thread(s)"]}' \
+  "$(printf 'none\tcheck tests is still pending | 1 unresolved review thread(s)\t0')" \
+  "mixed extraction"
 
 printf 'auto pr tests OK\n'

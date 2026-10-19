@@ -91,6 +91,7 @@ for name in GH OPENCODE PYTHON GIT; do
   fi
 done
 
+old_pid=""
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   old_pid="$(cat "$LOCK_DIR/pid" 2>/dev/null || true)"
   started="$(cat "$LOCK_DIR/started" 2>/dev/null || true)"
@@ -117,17 +118,31 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     exit 0
   fi
   rm -rf "$LOCK_DIR.stale.$$"
-  mkdir "$LOCK_DIR"
-  if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-    log "stale lock older than ${LOCK_STALE}s; killing pid $old_pid"
-    kill "$old_pid" 2>/dev/null || true
-    sleep 2
-    kill -9 "$old_pid" 2>/dev/null || true
+  if ! mkdir "$LOCK_DIR" 2>/dev/null; then
+    if [ "$VERBOSE" = "1" ]; then
+      log "lock recovery race; skip"
+    fi
+    exit 0
   fi
 fi
 printf '%s\n' "$$" >"$LOCK_DIR/pid"
 printf '%s\n' "$(date +%s)" >"$LOCK_DIR/started"
-trap 'rm -rf "$LOCK_DIR"' EXIT
+LOCK_TOKEN="$$-$(date +%s)-${RANDOM:-0}"
+printf '%s\n' "$LOCK_TOKEN" >"$LOCK_DIR/token"
+
+release_lock() {
+  if [ -n "$LOCK_TOKEN" ] && [ "$(cat "$LOCK_DIR/token" 2>/dev/null || true)" = "$LOCK_TOKEN" ]; then
+    rm -rf "$LOCK_DIR"
+  fi
+}
+trap release_lock EXIT
+
+if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
+  log "stale lock older than ${LOCK_STALE}s; killing pid $old_pid"
+  kill "$old_pid" 2>/dev/null || true
+  sleep 2
+  kill -9 "$old_pid" 2>/dev/null || true
+fi
 
 find "$STATE_DIR" -type f -mtime +14 -delete 2>/dev/null || true
 
@@ -143,10 +158,12 @@ run_gate() {
     GATE_OK=0
   fi
   GATE_OUTPUT="$gate_output"
-  local summary
+  local summary rest
   summary="$(printf '%s' "$GATE_OUTPUT" | summarize_gate)"
   GATE_BLOCKERS="${summary%%$'\t'*}"
-  GATE_ERRORS="${summary#*$'\t'}"
+  rest="${summary#*$'\t'}"
+  GATE_ERRORS="${rest%%$'\t'*}"
+  GATE_WAITING="${rest##*$'\t'}"
 }
 
 is_positive_integer() {
@@ -343,12 +360,17 @@ while IFS=$'\t' read -r number head; do
       notify "PR #$number に Blocker があります"
       continue
     fi
-    if is_wait_error "$GATE_ERRORS"; then
+    if [ "$GATE_WAITING" = "1" ]; then
       log "PR #$number: waiting for checks or mergeability: $GATE_ERRORS"
       continue
     fi
 
     case "$GATE_ERRORS" in
+      *"latest AI review covers"*|*"AI review marker head does not match"*)
+        log "PR #$number: review is stale for the current head; retry next cycle"
+        continue
+        ;;
+
       *"no AI review marker found"*|*"latest AI review covers"*|*"AI review marker head does not match"*|*"unsupported AI review marker version"*|*"AI review must be a COMMENT review"*)
         mark "$STATE_DIR/${number}-${head}.review-failed"
         log "PR #$number: review command completed but no usable marker"
@@ -358,7 +380,7 @@ while IFS=$'\t' read -r number head; do
     esac
   fi
 
-  if is_wait_error "$GATE_ERRORS"; then
+  if [ "$GATE_WAITING" = "1" ]; then
     log "PR #$number: waiting for checks or mergeability: $GATE_ERRORS"
     continue
   fi

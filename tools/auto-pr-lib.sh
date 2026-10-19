@@ -1,12 +1,5 @@
 #!/usr/bin/env bash
 
-is_wait_error() {
-  case "$1" in
-    *" is pending"*|*"mergeable is UNKNOWN"*|*"merge state is UNKNOWN"*|*"merge state is not allowed: UNKNOWN"*|*"no required checks found"*|*"no visible checks found"*|*"no checks returned"*) return 0 ;;
-  esac
-  return 1
-}
-
 summarize_gate() {
   "${PYTHON:-python3}" -c '
 import json
@@ -16,7 +9,7 @@ import sys
 try:
     data = json.loads(sys.stdin.read())
 except Exception:
-    print("none\tinvalid gate output")
+    print("none\tinvalid gate output\t0")
     raise SystemExit
 review = data.get("review") or {}
 blockers = review.get("blockers")
@@ -25,6 +18,13 @@ for error in data.get("errors", []):
     if match:
         blockers = int(match.group(1))
         break
-print("%s\t%s" % (blockers if blockers is not None else "none", " | ".join(data.get("errors", []))))
+print(
+    "%s\t%s\t%s"
+    % (
+        blockers if blockers is not None else "none",
+        " | ".join(data.get("errors", [])),
+        "1" if data.get("waiting") else "0",
+    )
+)
 '
 }
