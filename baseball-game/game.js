@@ -1087,12 +1087,12 @@
                 if (ev.take.walk) {
                   showPitchTag('フォアボール!', '#4fd1ff', 1200);
                   if (ev.take.runs > 0) msg('押し出しフォアボール! ' + ev.take.runs + '点!!', 'gold');
-                  else msg('予想は外れたがボール球! フォアボール!', 'gold');
+                  else msg('予想は外れたが明らかなボール球! フォアボール!', 'gold');
                   return animateAdvance('home', 1).then(function () { audio.run(); });
                 }
                 return animateCatcherCatch().then(function () {
                   showPitchTag('ボール!', '#4fd1ff', 1000);
-                  msg('予想は外れたがボール球! 手を出さずボール! あと' +
+                  msg('予想は外れたが明らかなボール球! 空振りにならずボール! あと' +
                     (state.ballsPerWalk - state.balls) + '球で四球', '');
                 });
               }

@@ -467,8 +467,9 @@
   }
 
   /* 打者のスイング: 予想が当たればヒット判定へ（進塁は resolveHit が担当）。
-   * 予想を外しても実際がボール球なら空振りにせず、見送りと同じボール/四球扱い。
-   * 予想を外してゾーン球なら空振りストライク。 */
+   * 予想を外したとき、明らかなボール球（ゾーン率50%以下）は空振りにせずボール扱い。
+   * 際どいボール球やゾーン球を外すと空振りストライク。
+   * 際どい球まで見逃すと「常に振る」が最適になり、見逃しが死ぬための線引き。 */
   function resolvePlayerSwing(state, batterGuess, actualPitch, inZone) {
     if (state.over) throw new Error('game is already over');
     var ev = {
@@ -486,7 +487,7 @@
       result: null
     };
     if (ev.correct) return ev;
-    if (!inZone) {
+    if (!inZone && zoneRateFor(state.pitcherStyle, actualPitch) <= 0.5) {
       var tev = resolveTake(state, false);
       ev.ball = true;
       ev.take = tev;
