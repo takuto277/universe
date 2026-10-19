@@ -25,12 +25,24 @@ body {
 #app {
   height: 100vh;
   height: 100dvh;
-  display: flex;
-  flex-direction: column;
+  max-width: 1440px;
+  margin: 0 auto;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto auto auto;
+  grid-template-areas:
+    "topbar"
+    "stage"
+    "msgbar"
+    "hud"
+    "control";
 }
 
-#topbar { padding: 8px 12px 0; }
-
+#topbar { grid-area: topbar; padding: 8px 12px 0; }
+#stage { grid-area: stage; }
+#msgbar { grid-area: msgbar; }
+#hud { grid-area: hud; }
+#controlbar { grid-area: control; }
 #scoreboard {
   max-width: 980px;
   margin: 0 auto;
@@ -141,7 +153,7 @@ th.team.home { color: var(--home); }
   inset: 0;
   display: none;
   align-items: center;
-  justify-content: center;
+  justify-content: safe center;
   flex-direction: column;
   gap: 10px;
   background: rgba(7, 11, 18, 0.78);
@@ -150,6 +162,7 @@ th.team.home { color: var(--home); }
   pointer-events: auto;
   text-align: center;
   padding: 24px;
+  overflow-y: auto;
 }
 .screen.visible { display: flex; animation: fadeIn 0.25s ease; }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
@@ -236,7 +249,8 @@ th.team.home { color: var(--home); }
   text-shadow: 0 2px 8px rgba(0, 0, 0, 0.6);
 }
 
-#controlbar { padding: 6px 12px 14px; }
+#controlbar { padding: 0 12px 14px; }
+#msgbar { padding: 0 12px; }
 
 .message {
   max-width: 980px;
@@ -385,6 +399,40 @@ th.team.home { color: var(--home); }
   text-align: right;
 }
 
+/* ===== HUD（フィールド右の情報レール） ===== */
+#hud {
+  min-height: 0;
+  overflow-y: auto;
+  scrollbar-width: thin;
+}
+
+@media (min-width: 1000px) {
+  #app {
+    grid-template-columns: minmax(0, 1fr) 320px;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    grid-template-areas:
+      "topbar hud"
+      "stage  hud"
+      "msgbar hud"
+      "control hud";
+  }
+  #hud {
+    padding: 12px 12px 12px 4px;
+  }
+  #hud #chart,
+  #hud #defense-panel {
+    max-width: none;
+    margin: 0 0 8px;
+  }
+}
+
+@media (max-width: 999px) {
+  #hud {
+    max-height: 190px;
+    padding: 0 12px;
+  }
+}
+
 /* ===== タイミングバー ===== */
 #powerbar {
   position: relative;
@@ -402,7 +450,7 @@ th.team.home { color: var(--home); }
     #ff9f45 60%, #ff9f45 74%,
     #3c4a68 74%, #3c4a68 100%);
 }
-#powerbar.hidden { display: none; }
+#powerbar.hidden { visibility: hidden; }
 .pb-marker {
   position: absolute;
   top: -2px;
