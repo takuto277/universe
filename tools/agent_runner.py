@@ -23,6 +23,7 @@
 """
 
 import argparse
+import fcntl
 import json
 import os
 import shutil
@@ -41,8 +42,14 @@ DEFAULT_AGENT = "builder"
 DEFAULT_PLANNER = "planner"
 DEFAULT_TIMEOUT = 2700
 DEFAULT_VERIFY_TIMEOUT = 600
-LOCK_STALE_SECONDS = 6 * 3600
 LOG_RETENTION_DAYS = 14
+PROTECTED_PATHS = (
+    "tools/verify.sh",
+    "tools/run-tests.sh",
+    "tools/check_site.py",
+    "tools/harness.js",
+    ".github/workflows/",
+)
 
 LABELS = {
     "agent:ready": ("0E8A16", "無人エージェントの実装キュー"),
@@ -95,12 +102,13 @@ class Commands:
                 env=self.env,
                 start_new_session=True,
             )
-        except FileNotFoundError as exc:
+        except (FileNotFoundError, OSError) as exc:
             return Result(127, "", str(exc))
         try:
             out, err = proc.communicate(timeout=timeout)
             return Result(proc.returncode or 0, out or "", err or "")
-        except subprocess.TimeoutExpired:
+        except subprocess.TimeoutExpired as exc:
+            partial = exc.stdout or ""
             try:
                 os.killpg(proc.pid, signal.SIGTERM)
             except OSError:
@@ -112,8 +120,16 @@ class Commands:
                     os.killpg(proc.pid, signal.SIGKILL)
                 except OSError:
                     pass
-                out, err = proc.communicate()
-            return Result(124, out or "", err or "", timed_out=True)
+                try:
+                    out, err = proc.communicate(timeout=5)
+                except subprocess.TimeoutExpired:
+                    out, err = "", ""
+                    for stream in (proc.stdout, proc.stderr):
+                        try:
+                            stream.close()
+                        except OSError:
+                            pass
+            return Result(124, out or partial or "", err or "", timed_out=True)
 
 
 @dataclass
@@ -165,76 +181,42 @@ class Config:
 
 
 class Lock:
-    """mkdir による排他ロック。死んだ pid や古いロックは回収する。"""
+    """flock による排他ロック。プロセス終了時に OS が自動で解放する。"""
 
     def __init__(self, state_dir: Path) -> None:
         self.path = state_dir / "lock"
-        self.token = "%d-%d" % (os.getpid(), int(time.time()))
-        self.acquired = False
-
-    def _read_pid(self) -> Optional[int]:
-        try:
-            return int((self.path / "pid").read_text().strip())
-        except (OSError, ValueError):
-            return None
-
-    def _alive(self, pid: Optional[int]) -> bool:
-        if not pid:
-            return False
-        try:
-            os.kill(pid, 0)
-            return True
-        except OSError:
-            return False
+        self.fh = None
 
     def acquire(self) -> bool:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        for attempt in range(2):
-            try:
-                self.path.mkdir()
-                (self.path / "pid").write_text(str(os.getpid()))
-                (self.path / "token").write_text(self.token)
-                self.acquired = True
-                return True
-            except FileExistsError:
-                pid = self._read_pid()
-                try:
-                    age = time.time() - self.path.stat().st_mtime
-                except OSError:
-                    age = 0
-                if self._alive(pid):
-                    if age < LOCK_STALE_SECONDS:
-                        return False
-                    self.log("stale lock の pid %s を終了します (age=%ds)" % (pid, age))
-                    try:
-                        os.kill(pid, signal.SIGTERM)
-                    except OSError:
-                        pass
-                    time.sleep(1)
-                    if self._alive(pid):
-                        try:
-                            os.kill(pid, signal.SIGKILL)
-                        except OSError:
-                            pass
-                if attempt == 0:
-                    self.log("stale lock を回収します (pid=%s, age=%ds)" % (pid, age))
-                    shutil.rmtree(self.path, ignore_errors=True)
-        return False
+        fh = self.path.open("a+")
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            fh.close()
+            return False
+        fh.seek(0)
+        fh.truncate()
+        fh.write(str(os.getpid()))
+        fh.flush()
+        self.fh = fh
+        return True
 
     def release(self) -> None:
-        if not self.acquired:
+        if not self.fh:
             return
         try:
-            token = (self.path / "token").read_text().strip()
-        except OSError:
-            token = ""
-        if token == self.token:
-            shutil.rmtree(self.path, ignore_errors=True)
-        self.acquired = False
+            fcntl.flock(self.fh.fileno(), fcntl.LOCK_UN)
+        finally:
+            self.fh.close()
+            self.fh = None
 
-    @staticmethod
-    def log(message: str) -> None:
-        sys.stderr.write(message + "\n")
+    def held(self) -> bool:
+        probe = Lock(self.path.parent)
+        if probe.acquire():
+            probe.release()
+            return False
+        return probe.fh is None and self.path.exists()
 
 
 class Runner:
@@ -315,17 +297,19 @@ class Runner:
             raise TaskError("Issue の JSON を解釈できません: %s" % exc)
 
     def edit_labels(self, number: int, add: Iterable[str] = (),
-                    remove: Iterable[str] = ()) -> None:
+                    remove: Iterable[str] = ()) -> bool:
         args = ["issue", "edit", str(number), "--repo", self.cfg.repo]
         for name in add:
             args += ["--add-label", name]
         for name in remove:
             args += ["--remove-label", name]
         if len(args) == 4:
-            return
+            return True
         result = self.gh(*args)
-        if not result.ok and "not found" not in (result.stderr or ""):
+        if not result.ok:
             self.log("label 更新に失敗 (issue #%s): %s" % (number, tail(result.stderr, 400)))
+            return False
+        return True
 
     def comment(self, number: int, body: str) -> None:
         result = self.gh("issue", "comment", str(number), "--repo", self.cfg.repo,
@@ -334,15 +318,19 @@ class Runner:
             self.log("コメントに失敗 (issue #%s): %s" % (number, tail(result.stderr, 400)))
 
     def find_pr(self, branch: str) -> Optional[dict]:
-        result = self.gh("pr", "list", "--repo", self.cfg.repo, "--head", branch,
-                         "--state", "all", "--limit", "1", "--json", "number,state,url")
-        if not result.ok:
-            return None
-        try:
-            items = json.loads(result.stdout or "[]")
-        except ValueError:
-            return None
-        return items[0] if items else None
+        for state in ("open", "all"):
+            result = self.gh("pr", "list", "--repo", self.cfg.repo, "--head", branch,
+                             "--state", state, "--limit", "20",
+                             "--json", "number,state,url")
+            if not result.ok:
+                raise TaskError("PR 一覧の取得に失敗しました: %s" % tail(result.stderr))
+            try:
+                items = json.loads(result.stdout or "[]")
+            except ValueError as exc:
+                raise TaskError("PR 一覧の JSON を解釈できません: %s" % exc)
+            if items:
+                return items[0]
+        return None
 
     # ---- 実行 ----
     def run_once(self, dry_run: bool = False, issue_number: Optional[int] = None,
@@ -353,6 +341,31 @@ class Runner:
             return 0
         if verbose:
             self.log("queue を確認します (repo=%s, base=%s)" % (self.cfg.repo, self.cfg.base))
+
+        if dry_run:
+            target = None
+            if issue_number is not None:
+                target = self.view_issue(issue_number)
+            else:
+                result = self.gh("issue", "list", "--repo", self.cfg.repo,
+                                 "--state", "open", "--limit", "100",
+                                 "--json", "number,title,labels")
+                if not result.ok:
+                    raise TaskError("Issue 一覧の取得に失敗しました: %s" % tail(result.stderr))
+                try:
+                    issues = json.loads(result.stdout or "[]")
+                except ValueError as exc:
+                    raise TaskError("Issue 一覧の JSON を解釈できません: %s" % exc)
+                ready = [item for item in issues
+                         if "agent:ready" in self._issue_label_names(item)]
+                ready.sort(key=lambda item: item.get("number", 0))
+                target = ready[0] if ready else None
+            if target:
+                self.log("dry-run: Issue #%s「%s」を実装します" %
+                         (target.get("number"), target.get("title")))
+            else:
+                self.log("dry-run: agent:ready の Issue はありません")
+            return 0
 
         self.ensure_labels()
 
@@ -371,11 +384,6 @@ class Runner:
 
         number = int(issue["number"])
         title = (issue.get("title") or "").strip() or ("issue-%s" % number)
-
-        if dry_run:
-            self.log("dry-run: Issue #%s「%s」を実装します" % (number, title))
-            return 0
-
         return self.process(issue, title, verbose=verbose)
 
     def process(self, issue: dict, title: str, verbose: bool = False) -> int:
@@ -389,17 +397,21 @@ class Runner:
         self.ensure_labels()
 
         existing = self.find_pr(branch)
-        if existing and (existing.get("state") or "").upper() in ("OPEN", "MERGED"):
+        existing_state = (existing or {}).get("state", "").upper()
+        if existing_state in ("OPEN", "MERGED"):
             self.log("Issue #%s: 既存 PR %s があるためスキップ" % (number, existing.get("url")))
             self.edit_labels(number, add=["agent:done"],
                              remove=["agent:running", "agent:ready"])
             self.comment(number, "既存の PR があるためスキップしました: %s" % existing.get("url"))
             return 0
-
-        self.edit_labels(number, add=["agent:running"], remove=["agent:ready"])
-        self.comment(number, "無人エージェントが着手しました。\n対象: `%s` (%s)" % (branch, cfg.base))
+        retry = existing_state == "CLOSED"
 
         try:
+            if not self.edit_labels(number, add=["agent:running"], remove=["agent:ready"]):
+                raise TaskError("agent:running ラベルを付けられませんでした")
+            self.comment(number, "無人エージェントが着手しました。\n対象: `%s` (%s)" %
+                         (branch, cfg.base))
+
             self._prepare_worktree(worktree, branch)
             prompt = self.build_prompt(number, title, body)
             result = self._run_agent(prompt, worktree, issue_log, verbose)
@@ -418,20 +430,36 @@ class Runner:
             if not count.ok or commits == 0:
                 raise TaskError("origin/%s からの変更がありません" % cfg.base)
 
-            verify = self.cmd.run(["bash", str(cfg.root / "tools" / "verify.sh")],
+            self._assert_tools_untouched(worktree)
+            verify_script = worktree / "tools" / "verify.sh"
+            verify = self.cmd.run(["bash", str(verify_script)],
                                   cwd=str(worktree), timeout=cfg.verify_timeout)
             self._append_log(issue_log, "\n$ ./tools/verify.sh\n" +
                              (verify.stdout or "") + (verify.stderr or ""))
+            if verify.timed_out:
+                raise TaskError("verify.sh がタイムアウトしました (%ss)" % cfg.verify_timeout)
             if not verify.ok:
                 raise TaskError("./tools/verify.sh が失敗しました\n```\n%s\n```" %
                                 tail(verify.stdout + verify.stderr, 1200))
 
+            if self.paused():
+                raise TaskError("pause されたため push 前に中断しました")
+            latest = self.find_pr(branch)
+            latest_state = (latest or {}).get("state", "").upper()
+            if latest_state in ("OPEN", "MERGED"):
+                raise TaskError("PR が既に存在します: %s" % latest.get("url"))
+            if retry:
+                self.git("push", "origin", "--delete", branch, cwd=worktree, timeout=120)
             push = self.git("push", "-u", "origin", branch, cwd=worktree, timeout=180)
             if not push.ok:
                 raise TaskError("push に失敗しました: %s" % tail(push.stderr, 600))
 
+            if self.paused():
+                raise TaskError("pause されたため PR 作成前に中断しました")
             url = self.create_pr(number, title, branch, issue_log)
-            self.edit_labels(number, add=["agent:done"], remove=["agent:running", "agent:failed"])
+            if not self.edit_labels(number, add=["agent:done"],
+                                    remove=["agent:running", "agent:failed"]):
+                self.log("Issue #%s: agent:done の付与に失敗しました" % number)
             self.comment(
                 number,
                 "実装が完了し、PR を作成しました: %s\n"
@@ -440,18 +468,24 @@ class Runner:
             self.log("Issue #%s: PR を作成しました %s" % (number, url))
             return 0
         except TaskError as exc:
-            reason = str(exc)
-            self.log("Issue #%s: 失敗 - %s" % (number, reason))
-            self._append_log(issue_log, "\nFAILED: " + reason + "\n")
-            self.edit_labels(number, add=["agent:failed"],
-                             remove=["agent:running", "agent:ready"])
-            self.comment(
-                number,
-                "実行に失敗しました。\n\n```\n%s\n```\n\nログ: `%s`" % (tail(reason, 1200), issue_log),
-            )
+            self._fail(number, issue_log, str(exc))
+            return 1
+        except Exception as exc:  # noqa: BLE001 - 無人実行を止めないため
+            self._fail(number, issue_log, "予期しないエラー: %s" % exc)
             return 1
         finally:
             self._cleanup_worktree(worktree)
+
+    def _fail(self, number: int, issue_log: Path, reason: str) -> None:
+        self.log("Issue #%s: 失敗 - %s" % (number, reason))
+        self._append_log(issue_log, "\nFAILED: " + reason + "\n")
+        self.edit_labels(number, add=["agent:failed"],
+                         remove=["agent:running", "agent:ready"])
+        self.comment(
+            number,
+            "実行に失敗しました。\n\n```\n%s\n```\n\nログ: `%s`" %
+            (tail(reason, 1200), issue_log),
+        )
 
     def _issue_label_names(self, issue: dict) -> List[str]:
         names = []
@@ -465,17 +499,31 @@ class Runner:
     def _prepare_worktree(self, worktree: Path, branch: str) -> None:
         if worktree.exists():
             self.git("worktree", "remove", "--force", str(worktree))
+        self.git("worktree", "prune")
         shutil.rmtree(worktree, ignore_errors=True)
-        self.git("branch", "-D", branch)
-        self.git("push", "origin", "--delete", branch, timeout=120)
         fetched = self.git("fetch", "origin", self.cfg.base, timeout=180)
         if not fetched.ok:
             raise TaskError("origin/%s の取得に失敗しました" % self.cfg.base)
         worktree.parent.mkdir(parents=True, exist_ok=True)
-        added = self.git("worktree", "add", "-b", branch, str(worktree),
+        added = self.git("worktree", "add", "-B", branch, str(worktree),
                          "origin/%s" % self.cfg.base, timeout=180)
         if not added.ok:
             raise TaskError("worktree の作成に失敗しました: %s" % tail(added.stderr, 600))
+
+    def _assert_tools_untouched(self, worktree: Path) -> None:
+        """検証スクリプト自体を書き換えて verify を通す抜け道を塞ぐ。"""
+        result = self.git("diff", "--name-only", "origin/%s..HEAD" % self.cfg.base,
+                          cwd=worktree, timeout=60)
+        if not result.ok:
+            raise TaskError("変更ファイルの確認に失敗しました: %s" % tail(result.stderr, 400))
+        changed = (result.stdout or "").split()
+        touched = sorted({path for path in changed
+                          if path in PROTECTED_PATHS or
+                          any(path.startswith(prefix) for prefix in PROTECTED_PATHS
+                              if prefix.endswith("/"))})
+        if touched:
+            raise TaskError("検証スクリプトや CI を変更しています(人間のレビューが必要): %s" %
+                            ", ".join(touched))
 
     def _cleanup_worktree(self, worktree: Path) -> None:
         if self.cfg.keep_worktree:
@@ -530,13 +578,23 @@ class Runner:
 
     def _commit_leftovers(self, worktree: Path, number: int) -> None:
         status = self.git("status", "--porcelain", cwd=worktree, timeout=60)
-        if not status.ok or not (status.stdout or "").strip():
+        if not status.ok:
+            raise TaskError("git status に失敗しました: %s" % tail(status.stderr, 400))
+        if not (status.stdout or "").strip():
             return
-        self.git("add", "-A", cwd=worktree, timeout=120)
-        self.git("-c", "user.name=takuto277",
-                 "-c", "user.email=takuto277@users.noreply.github.com",
-                 "commit", "-m", "repo: Issue #%d の残りの変更をコミット" % number,
-                 cwd=worktree, timeout=120)
+        added = self.git("add", "-A", cwd=worktree, timeout=120)
+        if not added.ok:
+            raise TaskError("git add に失敗しました: %s" % tail(added.stderr, 400))
+        commit = self.git("-c", "user.name=takuto277",
+                          "-c", "user.email=takuto277@users.noreply.github.com",
+                          "commit", "-m", "repo: Issue #%d の残りの変更をコミット" % number,
+                          cwd=worktree, timeout=120)
+        if not commit.ok:
+            raise TaskError("残りの変更をコミットできませんでした: %s" %
+                            tail(commit.stderr, 600))
+        after = self.git("status", "--porcelain", cwd=worktree, timeout=60)
+        if not after.ok or (after.stdout or "").strip():
+            raise TaskError("未コミットの変更が残っています")
 
     def create_pr(self, number: int, title: str, branch: str,
                   issue_log: Path) -> str:
@@ -572,7 +630,7 @@ class Runner:
             lines = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
             return lines[-1] if lines else "(URL 不明)"
         existing = self.find_pr(branch)
-        if existing and existing.get("url"):
+        if existing and (existing.get("state") or "").upper() == "OPEN" and existing.get("url"):
             return str(existing["url"])
         raise TaskError("PR の作成に失敗しました: %s" % tail(result.stderr, 800))
 
@@ -600,10 +658,11 @@ class Runner:
             return 0
         label = "agent:ready" if self.cfg.auto_ready_proposals else "agent:proposed"
         worktree = self.cfg.state_dir / "worktrees" / "planner"
-        self.ensure_labels()
         if dry_run:
             self.log("dry-run: planner を実行し、Issue を %s で作成します" % label)
             return 0
+        self.ensure_labels()
+        planner_log = self.cfg.state_dir / "logs" / ("planner-%d.log" % int(time.time()))
         try:
             if worktree.exists():
                 self.git("worktree", "remove", "--force", str(worktree))
@@ -635,18 +694,22 @@ class Runner:
                 "--title", "universe-planner-%d" % int(time.time()),
                 prompt,
             ], cwd=str(worktree), timeout=self.cfg.timeout)
+            self._append_log(planner_log, (result.stdout or "") + (result.stderr or ""))
             if result.timed_out:
                 raise TaskError("planner がタイムアウトしました")
             if not result.ok:
                 raise TaskError("planner が異常終了しました (exit=%s)" % result.code)
-            self.log("提案を作成しました (label=%s)" % label)
+            self.log("提案を作成しました (label=%s, log=%s)" % (label, planner_log))
             return 0
         except TaskError as exc:
             self.log("提案に失敗: %s" % exc)
             return 1
         finally:
-            self.git("worktree", "remove", "--force", str(worktree))
-            shutil.rmtree(worktree, ignore_errors=True)
+            if self.cfg.keep_worktree:
+                self.log("planner の worktree を残します: %s" % worktree)
+            else:
+                self.git("worktree", "remove", "--force", str(worktree))
+                shutil.rmtree(worktree, ignore_errors=True)
 
     # ---- キュー操作 ----
     def enqueue(self, title: str, body: str) -> int:
@@ -663,8 +726,10 @@ class Runner:
 
     def promote(self, number: int) -> int:
         self.ensure_labels()
-        self.edit_labels(number, add=["agent:ready"],
-                         remove=["agent:proposed", "agent:done", "agent:failed"])
+        if not self.edit_labels(number, add=["agent:ready"],
+                                remove=["agent:proposed", "agent:done", "agent:failed"]):
+            self.log("Issue #%s を実装キューに移せませんでした" % number)
+            return 1
         self.comment(number, "実装キューに追加しました。")
         return 0
 
@@ -689,10 +754,10 @@ class Runner:
         print("log:     %s" % self.cfg.log_file)
         pause = self.cfg.state_dir / "pause"
         print("paused:  %s" % ("yes" if pause.exists() else "no"))
-        lock = self.cfg.state_dir / "lock"
-        if lock.exists():
+        lock = Lock(self.cfg.state_dir)
+        if lock.held():
             try:
-                pid = (lock / "pid").read_text().strip()
+                pid = (self.cfg.state_dir / "lock").read_text().strip()
             except OSError:
                 pid = "?"
             print("lock:    held (pid %s)" % pid)
@@ -781,6 +846,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                                        verbose=args.verbose)
             except TaskError as exc:
                 runner.log("実行を中止しました: %s" % exc)
+                return 1
+            except Exception as exc:  # noqa: BLE001 - LaunchAgent を落とさないため
+                runner.log("予期しないエラーで中止しました: %s" % exc)
                 return 1
         finally:
             lock.release()

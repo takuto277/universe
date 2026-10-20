@@ -10,21 +10,20 @@ permission:
   question: deny
   external_directory: deny
   bash:
-    "*": allow
-    "gh issue create*": allow
+    "*": deny
+    "gh issue create *": allow
     "gh issue list*": allow
-    "gh issue view*": allow
-    "gh pr *": deny
-    "gh release*": deny
-    "git push*": deny
-    "git commit*": deny
-    "git checkout*": deny
-    "git switch*": deny
-    "sudo*": deny
-    "curl*": deny
-    "wget*": deny
-    "ssh*": deny
-    "rm *": deny
+    "gh issue view *": allow
+    "gh label list*": allow
+    "gh repo view*": allow
+    "pwd": allow
+    "ls*": allow
+    "cat *": allow
+    "grep *": allow
+    "find *": allow
+    "head *": allow
+    "tail *": allow
+    "wc *": allow
 ---
 
 あなたは universe リポジトリの改善提案エージェント(planner)です。実装はしません。

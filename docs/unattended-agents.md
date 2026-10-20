@@ -94,21 +94,26 @@ gh auth status
 2. `agent:running` に付け替え、着手コメントを残す
 3. `origin/main` から worktree と `agent/issue-<n>` ブランチを作る
 4. builder をタイムアウト付きで実行する
-5. 未コミットの変更があれば runner がコミットし、`./tools/verify.sh` を通す
+5. 未コミットの変更があれば runner がコミットし、検証スクリプトの改変がないことを確認してから `./tools/verify.sh` を通す
 6. push して PR を作成し、Issue を `agent:done` にする
 
 PR の本文には `Closes #<n>` が入ります。マージされると Issue も閉じます。
 
 ## 安全策
 
-- **1回1件・排他ロック**: 二重実行しない。死んだ pid や6時間を超えたロックは回収する
-- **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ
+- **1回1件・排他ロック**: `flock` で二重実行を防ぐ。プロセスが終了すると OS が自動で解放する
+- **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ。main への push は branch protection でも拒否される
 - **マージしない**: レビューとマージは五点ゲートに任せる(`--admin` や直接マージは使わない)
-- **builder の権限**: push、PR 作成・編集、マージ、Issue クローズ、ネットワークアクセス、外部ディレクトリを拒否する
+- **builder の権限は allowlist**: 既定 deny で、git の読み書き・commit、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する
+- **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/verify.sh` / `run-tests.sh` / `check_site.py` / `harness.js` / `.github/workflows/` が変更されていたら失敗させる。検証を緩めて通すことはできない
+- **状態不明なら中止**: PR 一覧の取得失敗など、既存 PR の有無を確認できない場合はブランチを消さずに止める
+- **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
 - **タイムアウト**: エージェント既定 2700 秒、verify 600 秒。超えたらプロセスグループごと終了する
 - **失敗時**: `agent:failed` とコメント(理由・ログパス)を残し、worktree を片付ける。自動リトライはしない
 - **提案の既定**: `agent:proposed` で止め、人間の `promote` を待つ
 - **入力の信頼**: Issue 本文はそのまま builder への指示になる。`agent:ready` を付けられるのは書き込み権限を持つ人だけなので、第三者が勝手にキューへ入れることはできない
+- **単一ホスト前提**: ロックはローカルの state dir 単位。複数ホストや state dir を分けた同時実行は想定しない
+- **限界**: 権限パターンはサンドボックスではない。OS ユーザの分離やコンテナ実行は今後の強化とする。最終的な安全網は branch protection、五点ゲート、AI レビュー
 
 ## 設定
 
@@ -125,6 +130,9 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 | `UNIVERSE_AGENT_LOG` | `~/Library/Logs/universe-agent-runner.log` | 実行ログ |
 | `UNIVERSE_AGENT_AUTO_READY_PROPOSALS` | `0` | 提案をそのまま実装キューへ入れる |
 | `UNIVERSE_AGENT_KEEP_WORKTREE` | `0` | 失敗調査用に worktree を残す |
+| `UNIVERSE_AGENT_DISABLE` | `0` | `1` で実行を止める(pause と同じ) |
+| `UNIVERSE_AGENT_BRANCH_PREFIX` | `agent/` | ブランチ接頭辞 |
+| `GH_BIN` / `GIT_BIN` / `OPENCODE_BIN` | `gh` / `git` / `opencode` | 実行ファイルの差し替え(上級者向け) |
 | `UNIVERSE_AGENT_INTERVAL` | `120` | LaunchAgent の実行間隔(インストール時) |
 
 ## 運用
@@ -137,6 +145,8 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 - LaunchAgent は 120 秒ごとに起動する。Mac がスリープ中は遅延する
 - 実行ログは `~/.local/state/universe-agent-runner/logs/issue-<n>-<ts>.log` に残し、14日より古いものを削除する
 - 失敗の切り分けは Issue コメント → 個別ログ → `git worktree list` の順で見る
+- `pause` は「次に push / PR を作る前」で止まる。すでに PR 作成済みのものは止まらない
+- 実行ログのない失敗や状態不明時は、ブランチを消さずに `agent:failed` で止まる。原因を直して `promote` で戻す
 - 強制終了などで `agent:running` のまま残った Issue は、原因を確認して `./tools/agent.sh promote <n>` で戻す。ロックは死んだ pid なら次回起動時に回収される
 - 並行して `auto-pr` watcher が動いていても、実装とレビューで役割が分かれているため競合しない
 
@@ -154,3 +164,4 @@ python3 tools/test_agent_runner.py
 - opencode の認証とモデルの利用枠に依存する
 - 1件ずつ・自動リトライなし。並列実行や失敗の無限ループはしない
 - 生成物の品質は最終的に五点ゲートと AI レビューで担保する
+- 検証スクリプトや CI の変更は無人では通さない(人間のレビューが必要)

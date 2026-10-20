@@ -15,7 +15,8 @@ ADR 0004 で PR のレビューとマージは自動化したが、実装の開�
 - builder はコミットまで。push・PR 作成・マージはしない。runner が verify と push、PR 作成を行う
 - レビューとマージは ADR 0003/0004 の五点ゲートと watcher に任せる
 - 改善提案は planner が `agent:proposed` で作り、人間の `promote` を経て実装キューに入れる(既定)
-- 安全策として、排他ロック、pause ファイル、タイムアウト、権限拒否(push / PR / merge / ネットワーク)、失敗時のラベルとコメントを設ける
+- 安全策として、flock による排他ロック、pause ファイル、タイムアウト、deny-by-default の権限 allowlist(push / gh / rm / ネットワークを拒否)、失敗時のラベルとコメントを設ける
+- verify は worktree 側で実行し、検証スクリプトと CI の変更を検出したら失敗させる
 
 ## Consequences
 
@@ -33,6 +34,7 @@ ADR 0004 で PR のレビューとマージは自動化したが、実装の開�
 - 1件ずつで自動リトライはしない。スループットは高くない
 - 提案をそのまま実装させるには `UNIVERSE_AGENT_AUTO_READY_PROPOSALS=1` を明示する必要がある
 - 生成物の品質は五点ゲートと AI レビューに依存する
+- 権限パターンはサンドボックスではない。OS ユーザ分離やコンテナ実行は今後の課題
 
 ## Alternatives
 

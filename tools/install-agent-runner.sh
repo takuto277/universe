@@ -11,6 +11,16 @@ REPO="${UNIVERSE_AGENT_REPO:-takuto277/universe}"
 BASE="${UNIVERSE_AGENT_BASE:-main}"
 MODEL="${UNIVERSE_AGENT_MODEL:-opencode/deepseek-v4.1-flash-free}"
 INTERVAL="${UNIVERSE_AGENT_INTERVAL:-120}"
+case "$INTERVAL" in
+  ''|*[!0-9]*)
+    printf 'UNIVERSE_AGENT_INTERVAL must be a positive integer: %s\n' "$INTERVAL" >&2
+    exit 2
+    ;;
+esac
+if [ "$INTERVAL" -le 0 ]; then
+  printf 'UNIVERSE_AGENT_INTERVAL must be a positive integer: %s\n' "$INTERVAL" >&2
+  exit 2
+fi
 
 usage() {
   cat <<'EOF'
@@ -69,6 +79,7 @@ PLIST_LOG_DIR="$(xml_escape "$LOG_DIR")"
 PLIST_MODEL="$(xml_escape "$MODEL")"
 PLIST_REPO="$(xml_escape "$REPO")"
 PLIST_BASE="$(xml_escape "$BASE")"
+PLIST_INTERVAL="$(xml_escape "$INTERVAL")"
 
 plist_body() {
 cat <<EOF
@@ -100,7 +111,7 @@ cat <<EOF
     <string>$PLIST_BASE</string>
   </dict>
   <key>StartInterval</key>
-  <integer>$INTERVAL</integer>
+  <integer>$PLIST_INTERVAL</integer>
   <key>RunAtLoad</key>
   <true/>
   <key>ThrottleInterval</key>
@@ -110,7 +121,7 @@ cat <<EOF
   <key>StandardOutPath</key>
   <string>$PLIST_LOG_DIR/universe-agent-runner.launchd.log</string>
   <key>StandardErrorPath</key>
-  <string>$PLIST_LOG_DIR/universe-agent-runner.launchd.log</string>
+  <string>$PLIST_LOG_DIR/universe-agent-runner.error.log</string>
 </dict>
 </plist>
 EOF

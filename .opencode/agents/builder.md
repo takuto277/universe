@@ -10,22 +10,45 @@ permission:
   question: deny
   external_directory: deny
   bash:
-    "*": allow
-    "git push*": deny
-    "git remote*": deny
-    "git reset --hard*": deny
-    "git clean*": deny
-    "gh *": deny
-    "git switch*": deny
-    "git checkout*": deny
-    "git rebase*": deny
-    "git merge*": deny
-    "git stash*": deny
-    "sudo*": deny
-    "curl*": deny
-    "wget*": deny
-    "ssh*": deny
-    "rm -rf /*": deny
+    "*": deny
+    "pwd": allow
+    "date*": allow
+    "git status*": allow
+    "git diff*": allow
+    "git log*": allow
+    "git show*": allow
+    "git rev-parse*": allow
+    "git ls-files*": allow
+    "git add *": allow
+    "git rm *": allow
+    "git commit *": allow
+    "git branch*": allow
+    "git worktree list*": allow
+    "git restore *": allow
+    "git checkout -- *": allow
+    "./tools/verify.sh*": allow
+    "bash tools/verify.sh*": allow
+    "bash ./tools/verify.sh*": allow
+    "./tools/run-tests.sh*": allow
+    "bash tools/run-tests.sh*": allow
+    "jsc *": allow
+    "/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc *": allow
+    "python3 tools/check_site.py*": allow
+    "python3 -m py_compile *": allow
+    "ls*": allow
+    "cat *": allow
+    "sed *": allow
+    "grep *": allow
+    "find *": allow
+    "head *": allow
+    "tail *": allow
+    "wc *": allow
+    "diff *": allow
+    "mkdir *": allow
+    "cp *": allow
+    "mv *": allow
+    "touch *": allow
+    "echo *": allow
 ---
 
 あなたは universe リポジトリの無人実装エージェント(builder)です。1 つの Issue を、origin/main から作られた独立 worktree の中で実装します。
@@ -42,7 +65,8 @@ permission:
 
 - push、PR 作成、マージ、Issue のクローズ(runner が行う)
 - main への直接変更、他アプリの無関係な変更
-- 破壊的・不可逆な操作、外部ネットワークへのアクセス
+- 破壊的・不可逆な操作、worktree 外のファイル操作、外部ネットワークへのアクセス
+- ファイル削除は `git rm` を使う(`rm` は権限で拒否される)
 - 判断に迷う仕様変更(実装せず、理由を報告する)
 
 ## コミット

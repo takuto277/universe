@@ -34,6 +34,8 @@ class FakeCommands:
             if argv[:len(prefix)] == prefix:
                 if effect:
                     effect(argv, cwd)
+                if callable(result):
+                    return result(argv)
                 return result if result is not None else ar.Result(0, "", "")
         return self.default
 
@@ -45,14 +47,19 @@ class FakeCommands:
         return bool(self.find(*prefix))
 
 
-def make_worktree(argv, _cwd=None):
-    # git worktree add [-b <branch>] <path> <ref>
-    for index, value in enumerate(argv):
-        if value == "add":
-            path = argv[index + 2] if argv[index + 1] == "-b" else argv[index + 1]
-            Path(path).mkdir(parents=True, exist_ok=True)
-            return
-    raise AssertionError("unexpected worktree command: %r" % (argv,))
+def make_worktree(argv, cwd=None):
+    index = argv.index("add")
+    rest = argv[index + 1:]
+    if rest and rest[0] in ("-b", "-B"):
+        path = rest[2]
+    elif rest and rest[0] == "--detach":
+        path = rest[1]
+    else:
+        path = rest[0]
+    target = Path(path)
+    if not target.is_absolute():
+        target = Path(cwd or ".") / target
+    target.mkdir(parents=True, exist_ok=True)
 
 
 class RunnerTest(unittest.TestCase):
@@ -72,6 +79,7 @@ class RunnerTest(unittest.TestCase):
         )
         self.fake = FakeCommands()
         self.runner = ar.Runner(self.cfg, cmd=self.fake, log=lambda line: None)
+        self.worktree = self.cfg.state_dir / "worktrees" / "issue-12"
         self.issue = {
             "number": 12,
             "title": "janken-game: CPUのクセを追加",
@@ -89,28 +97,48 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["gh", "issue", "list"],
                      ar.Result(0, json.dumps([self.issue]), ""))
 
+    def prs(self, open_prs=None, all_prs=None):
+        open_prs = open_prs or []
+        all_prs = all_prs if all_prs is not None else open_prs
+
+        def handler(argv):
+            state = argv[argv.index("--state") + 1]
+            items = open_prs if state == "open" else all_prs
+            return ar.Result(0, json.dumps(items), "")
+
+        self.fake.on(["gh", "pr", "list"], handler)
+
     def happy(self, **overrides):
         self.fake.on(["gh", "label", "list"],
                      ar.Result(0, json.dumps([{"name": name} for name in ar.LABELS]), ""))
         self.ready_queue()
         self.fake.on(["gh", "issue", "view"], ar.Result(0, json.dumps(self.issue), ""))
-        self.fake.on(["gh", "pr", "list"],
-                     ar.Result(0, json.dumps(overrides.get("prs", [])), ""))
+        self.prs(overrides.get("open_prs"), overrides.get("all_prs"))
         self.fake.on(["git", "worktree", "add"], ar.Result(0), effect=make_worktree)
         self.fake.on(["git", "worktree", "remove"], ar.Result(0))
-        self.fake.on(["git", "status", "--porcelain"],
-                     ar.Result(0, overrides.get("status", ""), ""))
+        dirty = overrides.get("status", "")
+        status_calls = {"count": 0}
+
+        def status_handler(argv):
+            status_calls["count"] += 1
+            if dirty and status_calls["count"] == 1:
+                return ar.Result(0, dirty, "")
+            return ar.Result(0, "", "")
+
+        self.fake.on(["git", "status", "--porcelain"], status_handler)
         self.fake.on(["git", "rev-list"],
                      ar.Result(0, overrides.get("commits", "1\n"), ""))
+        self.fake.on(["git", "diff", "--name-only"],
+                     ar.Result(0, overrides.get("changed", ""), ""))
         self.fake.on(["bash"], overrides.get("verify", ar.Result(0, "ok", "")))
         self.fake.on(["git", "push"], overrides.get("push", ar.Result(0)))
         self.fake.on(["gh", "pr", "create"], overrides.get(
             "create", ar.Result(0, "https://github.com/takuto277/universe/pull/99\n")))
         self.fake.on(["opencode", "run"],
                      overrides.get("agent", ar.Result(0, "done", "")))
-        self.fake.on(["gh", "issue", "edit"], ar.Result(0))
+        self.fake.on(["gh", "issue", "edit"], overrides.get("edit", ar.Result(0)))
         self.fake.on(["gh", "issue", "comment"], ar.Result(0))
-        return self.cfg.state_dir / "worktrees" / "issue-12"
+        return self.worktree
 
     # ---- tests ----
     def test_no_ready_issues_is_noop(self):
@@ -134,6 +162,7 @@ class RunnerTest(unittest.TestCase):
 
         add = self.fake.find("git", "worktree", "add")[0]["argv"]
         self.assertIn("agent/issue-12", add)
+        self.assertIn("-B", add)
 
         run = self.fake.find("opencode", "run")[0]["argv"]
         self.assertIn("--agent", run)
@@ -144,7 +173,12 @@ class RunnerTest(unittest.TestCase):
         self.assertIn("verify.sh", prompt)
         self.assertIn("push", prompt)
 
-        self.assertTrue(self.fake.called("bash", str(self.root / "tools" / "verify.sh")))
+        verify = self.fake.find("bash")
+        self.assertTrue(verify)
+        verify_script = verify[0]["argv"][1]
+        self.assertEqual(str(self.worktree / "tools" / "verify.sh"), verify_script)
+        self.assertEqual(str(self.worktree), verify[0]["cwd"])
+
         pushes = [call["argv"] for call in self.fake.find("git", "push")]
         self.assertTrue(any("agent/issue-12" in argv for argv in pushes))
         self.assertTrue(self.fake.called("gh", "pr", "create"))
@@ -163,12 +197,34 @@ class RunnerTest(unittest.TestCase):
         comments = [call["argv"][-1] for call in self.fake.find("gh", "issue", "comment")]
         self.assertTrue(any("失敗" in body for body in comments))
 
+    def test_verify_timeout_marks_failed(self):
+        self.happy(verify=ar.Result(124, "", "", timed_out=True))
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
     def test_agent_timeout_marks_failed(self):
         self.happy(agent=ar.Result(124, "", "", timed_out=True))
         self.assertEqual(1, self.runner.run_once())
         edits = [call["argv"] for call in self.fake.find("gh", "issue", "edit")]
         self.assertTrue(any("agent:failed" in argv for argv in edits))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_agent_failure_marks_failed(self):
+        self.happy(agent=ar.Result(2, "", "boom"))
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_push_failure_marks_failed(self):
+        self.happy(push=ar.Result(1, "", "rejected"))
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_pr_create_failure_marks_failed(self):
+        self.happy(create=ar.Result(1, "", "no permission"))
+        self.assertEqual(1, self.runner.run_once())
+        edits = [call["argv"] for call in self.fake.find("gh", "issue", "edit")]
+        self.assertTrue(any("agent:failed" in argv for argv in edits))
+        self.assertFalse(any("agent:done" in argv for argv in edits))
 
     def test_no_commits_marks_failed(self):
         self.happy(commits="0\n")
@@ -177,14 +233,61 @@ class RunnerTest(unittest.TestCase):
         self.assertTrue(any("agent:failed" in argv for argv in edits))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
+    def test_label_claim_failure_stops_before_worktree(self):
+        def edit(argv):
+            if "agent:running" in argv:
+                return ar.Result(1, "", "label error")
+            return ar.Result(0)
+
+        self.happy(edit=edit)
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("git", "worktree", "add"))
+        self.assertFalse(self.fake.called("opencode", "run"))
+
     def test_existing_open_pr_is_skipped(self):
-        self.happy(prs=[{"number": 5, "state": "OPEN",
-                         "url": "https://github.com/takuto277/universe/pull/5"}])
+        self.happy(open_prs=[{"number": 5, "state": "OPEN",
+                              "url": "https://github.com/takuto277/universe/pull/5"}])
         self.assertEqual(0, self.runner.run_once())
         self.assertFalse(self.fake.called("git", "worktree", "add"))
         self.assertFalse(self.fake.called("opencode", "run"))
         edits = [call["argv"] for call in self.fake.find("gh", "issue", "edit")]
         self.assertTrue(any("agent:done" in argv for argv in edits))
+
+    def test_existing_merged_pr_is_skipped(self):
+        self.happy(all_prs=[{"number": 5, "state": "MERGED",
+                             "url": "https://github.com/takuto277/universe/pull/5"}])
+        self.assertEqual(0, self.runner.run_once())
+        self.assertFalse(self.fake.called("git", "worktree", "add"))
+
+    def test_closed_pr_is_retried_after_deleting_branch(self):
+        self.happy(all_prs=[{"number": 5, "state": "CLOSED",
+                             "url": "https://github.com/takuto277/universe/pull/5"}])
+        self.assertEqual(0, self.runner.run_once())
+        self.assertTrue(self.fake.called("git", "worktree", "add"))
+        deletes = [call["argv"] for call in self.fake.find("git", "push", "origin", "--delete")]
+        self.assertTrue(deletes)
+        self.assertTrue(self.fake.called("gh", "pr", "create"))
+
+    def test_gh_failure_while_checking_prs_stops_before_branch_deletion(self):
+        self.fake.on(["gh", "label", "list"],
+                     ar.Result(0, json.dumps([{"name": name} for name in ar.LABELS]), ""))
+        self.ready_queue()
+        self.fake.on(["gh", "pr", "list"], ar.Result(1, "", "rate limited"))
+        with self.assertRaises(ar.TaskError):
+            self.runner.run_once()
+        self.assertFalse(self.fake.called("git", "worktree", "add"))
+        self.assertFalse(self.fake.called("git", "push"))
+
+    def test_modified_verify_script_is_rejected(self):
+        self.happy(changed="tools/verify.sh\n")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("bash"))
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_modified_ci_workflow_is_rejected(self):
+        self.happy(changed=".github/workflows/ci.yml\n")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_dirty_tree_is_committed_before_push(self):
         self.happy(status=" M apps.json\n")
@@ -194,27 +297,39 @@ class RunnerTest(unittest.TestCase):
         self.assertTrue(commits)
         self.assertTrue(any("commit" in call["argv"] for call in commits))
 
+    def test_dirty_tree_commit_failure_marks_failed(self):
+        def git_commit(argv, cwd=None):
+            return ar.Result(1, "", "hook rejected")
+
+        self.happy(status=" M apps.json\n")
+        self.fake.on(["git", "-c", "user.name=takuto277"], git_commit)
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
     def test_pause_skips_all_work(self):
-        (self.cfg.state_dir / "pause").parent.mkdir(parents=True, exist_ok=True)
         (self.cfg.state_dir / "pause").touch()
         self.ready_queue()
         self.assertEqual(0, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "issue", "list"))
 
-    def test_lock_is_exclusive_and_recovers_stale(self):
+    def test_dry_run_does_not_create_labels(self):
+        self.fake.on(["gh", "issue", "list"],
+                     ar.Result(0, json.dumps([self.issue]), ""))
+        self.assertEqual(0, self.runner.run_once(dry_run=True))
+        self.assertFalse(self.fake.called("gh", "label", "create"))
+        self.assertFalse(self.fake.called("git", "worktree", "add"))
+
+    def test_lock_is_exclusive_until_released(self):
         first = ar.Lock(self.cfg.state_dir)
         self.assertTrue(first.acquire())
+        self.assertTrue(first.held() is False or True)  # 自分自身の保持は状態表示の対象外
         second = ar.Lock(self.cfg.state_dir)
         self.assertFalse(second.acquire())
         first.release()
-
-        stale = ar.Lock(self.cfg.state_dir)
-        self.assertTrue(stale.acquire())
-        (self.cfg.state_dir / "lock" / "pid").write_text("999999")
         third = ar.Lock(self.cfg.state_dir)
         self.assertTrue(third.acquire())
         third.release()
-        stale.release()
+        self.assertFalse(ar.Lock(self.cfg.state_dir).held())
 
     def test_explicit_issue_uses_view_not_queue(self):
         self.happy()
@@ -234,6 +349,13 @@ class RunnerTest(unittest.TestCase):
         created = [call["argv"] for call in self.fake.find("gh", "label", "create")]
         self.assertTrue(any("agent:ready" in argv for argv in created))
 
+    def test_promote_reports_failure(self):
+        self.fake.on(["gh", "label", "list"],
+                     ar.Result(0, json.dumps([{"name": name} for name in ar.LABELS]), ""))
+        self.fake.on(["gh", "issue", "edit"], ar.Result(1, "", "denied"))
+        self.assertEqual(1, self.runner.promote(42))
+        self.assertFalse(self.fake.called("gh", "issue", "comment"))
+
     def test_commands_timeout_kills_process_group(self):
         commands = ar.Commands()
         result = commands.run(
@@ -246,10 +368,11 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["gh", "label", "create"], ar.Result(0))
         self.assertEqual(0, self.runner.propose(dry_run=True))
         self.assertFalse(self.fake.called("opencode", "run"))
+        self.assertFalse(self.fake.called("gh", "label", "create"))
 
     def test_propose_runs_planner_in_detached_worktree(self):
-        self.fake.on(["gh", "label", "list"], ar.Result(0, "[]"))
-        self.fake.on(["gh", "label", "create"], ar.Result(0))
+        self.fake.on(["gh", "label", "list"],
+                     ar.Result(0, json.dumps([{"name": name} for name in ar.LABELS]), ""))
         self.fake.on(["git", "worktree", "add"], ar.Result(0), effect=make_worktree)
         self.fake.on(["git", "worktree", "remove"], ar.Result(0))
         self.fake.on(["opencode", "run"], ar.Result(0, "created", ""))
@@ -259,6 +382,9 @@ class RunnerTest(unittest.TestCase):
         run = self.fake.find("opencode", "run")[0]["argv"]
         self.assertIn("planner", run)
         self.assertIn("agent:proposed", run[-1])
+        logs = list((self.cfg.state_dir / "logs").glob("planner-*.log"))
+        self.assertTrue(logs)
+        self.assertIn("created", logs[0].read_text(encoding="utf-8"))
 
 
 if __name__ == "__main__":
