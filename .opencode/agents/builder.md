@@ -26,27 +26,23 @@ permission:
     "git worktree list*": allow
     "git restore *": allow
     "git checkout -- *": allow
-    "./tools/verify.sh*": allow
-    "bash tools/verify.sh*": allow
-    "bash ./tools/verify.sh*": allow
-    "./tools/run-tests.sh*": allow
-    "bash tools/run-tests.sh*": allow
+    "./tools/verify.sh": allow
+    "bash tools/verify.sh": allow
+    "bash ./tools/verify.sh": allow
+    "./tools/run-tests.sh": allow
+    "bash tools/run-tests.sh": allow
     "jsc *": allow
     "/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc *": allow
     "python3 tools/check_site.py*": allow
     "python3 -m py_compile *": allow
     "ls*": allow
     "cat *": allow
-    "sed *": allow
     "grep *": allow
-    "find *": allow
     "head *": allow
     "tail *": allow
     "wc *": allow
     "diff *": allow
     "mkdir *": allow
-    "cp *": allow
-    "mv *": allow
     "touch *": allow
     "echo *": allow
 ---
@@ -71,7 +67,8 @@ permission:
 
 ## コミット
 
+`user.name` と `user.email` は runner が worktree に設定済みです。
+
 ```sh
-git -c user.name="takuto277" -c user.email="takuto277@users.noreply.github.com" \
-  commit -m "<アプリ名または repo>: 日本語の要約"
+git commit -m "<アプリ名または repo>: 日本語の要約"
 ```

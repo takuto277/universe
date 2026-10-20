@@ -32,7 +32,7 @@ gh auth status
 ./tools/agent.sh status
 ```
 
-レビューとマージまで無人にするには、`auto-pr` watcher も登録します(未導入の環境では PR を `/pr-deliver` で処理してください。インストーラが未登録を案内します)。
+レビューとマージまで無人にするには、`auto-pr` watcher も登録します。watcher は別 PR(`chore/auto-pr-watcher`)で追加中のため、未マージの間は PR を `/pr-deliver` で処理してください。
 
 ```sh
 ./tools/install-auto-pr.sh   # watcher の PR がマージされた後
@@ -105,7 +105,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ。main への push は branch protection でも拒否される
 - **マージしない**: レビューとマージは五点ゲートに任せる(`--admin` や直接マージは使わない)
 - **builder の権限は allowlist**: 既定 deny で、git の読み書き・commit、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する
-- **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/verify.sh` / `run-tests.sh` / `check_site.py` / `harness.js` / `.github/workflows/` が変更されていたら失敗させる。検証を緩めて通すことはできない
+- **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/verify.sh` / `run-tests.sh` / `check_site.py` / `harness.js` / `test_agent_runner.py` / `pr_*.py` / `.github/workflows/` が変更されていたら失敗させる。検証を緩めて通すことはできない
 - **状態不明なら中止**: PR 一覧の取得失敗など、既存 PR の有無を確認できない場合はブランチを消さずに止める
 - **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
 - **タイムアウト**: エージェント既定 2700 秒、verify 600 秒。超えたらプロセスグループごと終了する
@@ -147,7 +147,7 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 - 失敗の切り分けは Issue コメント → 個別ログ → `git worktree list` の順で見る
 - `pause` は「次に push / PR を作る前」で止まる。すでに PR 作成済みのものは止まらない
 - 実行ログのない失敗や状態不明時は、ブランチを消さずに `agent:failed` で止まる。原因を直して `promote` で戻す
-- 強制終了などで `agent:running` のまま残った Issue は、原因を確認して `./tools/agent.sh promote <n>` で戻す。ロックは死んだ pid なら次回起動時に回収される
+- 強制終了などで `agent:running` のまま残った Issue は、原因を確認して `./tools/agent.sh promote <n>` で戻す。ロックは flock なのでプロセス終了時に自動で解放される(`~/.local/state/universe-agent-runner/lock` は残っても、次回起動は妨げない)
 - 並行して `auto-pr` watcher が動いていても、実装とレビューで役割が分かれているため競合しない
 
 ## テスト
@@ -164,4 +164,4 @@ python3 tools/test_agent_runner.py
 - opencode の認証とモデルの利用枠に依存する
 - 1件ずつ・自動リトライなし。並列実行や失敗の無限ループはしない
 - 生成物の品質は最終的に五点ゲートと AI レビューで担保する
-- 検証スクリプトや CI の変更は無人では通さない(人間のレビューが必要)
+- 検証スクリプトや CI の変更は無人では通さない(人間のレビューが必要)。調査したいときは `UNIVERSE_AGENT_KEEP_WORKTREE=1` で再実行して worktree を残す

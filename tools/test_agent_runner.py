@@ -172,12 +172,19 @@ class RunnerTest(unittest.TestCase):
         self.assertIn("janken-game: CPUのクセを追加", prompt)
         self.assertIn("verify.sh", prompt)
         self.assertIn("push", prompt)
+        self.assertIn("git commit -m", prompt)
+        self.assertNotIn("-c user.name", prompt)
 
         verify = self.fake.find("bash")
         self.assertTrue(verify)
         verify_script = verify[0]["argv"][1]
         self.assertEqual(str(self.worktree / "tools" / "verify.sh"), verify_script)
         self.assertEqual(str(self.worktree), verify[0]["cwd"])
+
+        self.assertTrue(self.fake.called("git", "config", "user.name", "takuto277"))
+        diff = [call["argv"] for call in self.fake.find("git", "diff", "--name-only")]
+        self.assertTrue(diff)
+        self.assertIn("origin/main...HEAD", diff[0])
 
         pushes = [call["argv"] for call in self.fake.find("git", "push")]
         self.assertTrue(any("agent/issue-12" in argv for argv in pushes))
@@ -260,21 +267,33 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("git", "worktree", "add"))
 
     def test_closed_pr_is_retried_after_deleting_branch(self):
+        attempts = {"count": 0}
+
+        def push(argv):
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                return ar.Result(1, "", "! [rejected] agent/issue-12 (non-fast-forward)")
+            return ar.Result(0)
+
         self.happy(all_prs=[{"number": 5, "state": "CLOSED",
-                             "url": "https://github.com/takuto277/universe/pull/5"}])
+                             "url": "https://github.com/takuto277/universe/pull/5"}],
+                   push=push)
         self.assertEqual(0, self.runner.run_once())
         self.assertTrue(self.fake.called("git", "worktree", "add"))
         deletes = [call["argv"] for call in self.fake.find("git", "push", "origin", "--delete")]
         self.assertTrue(deletes)
         self.assertTrue(self.fake.called("gh", "pr", "create"))
 
-    def test_gh_failure_while_checking_prs_stops_before_branch_deletion(self):
+    def test_gh_failure_while_checking_prs_marks_failed_without_branch_deletion(self):
         self.fake.on(["gh", "label", "list"],
                      ar.Result(0, json.dumps([{"name": name} for name in ar.LABELS]), ""))
         self.ready_queue()
         self.fake.on(["gh", "pr", "list"], ar.Result(1, "", "rate limited"))
-        with self.assertRaises(ar.TaskError):
-            self.runner.run_once()
+        self.fake.on(["gh", "issue", "edit"], ar.Result(0))
+        self.fake.on(["gh", "issue", "comment"], ar.Result(0))
+        self.assertEqual(1, self.runner.run_once())
+        edits = [call["argv"] for call in self.fake.find("gh", "issue", "edit")]
+        self.assertTrue(any("agent:failed" in argv for argv in edits))
         self.assertFalse(self.fake.called("git", "worktree", "add"))
         self.assertFalse(self.fake.called("git", "push"))
 
@@ -293,16 +312,14 @@ class RunnerTest(unittest.TestCase):
         self.happy(status=" M apps.json\n")
         self.assertEqual(0, self.runner.run_once())
         self.assertTrue(self.fake.called("git", "add", "-A"))
-        commits = self.fake.find("git", "-c", "user.name=takuto277")
-        self.assertTrue(commits)
-        self.assertTrue(any("commit" in call["argv"] for call in commits))
+        self.assertTrue(self.fake.called("git", "commit", "-m"))
 
     def test_dirty_tree_commit_failure_marks_failed(self):
         def git_commit(argv, cwd=None):
             return ar.Result(1, "", "hook rejected")
 
         self.happy(status=" M apps.json\n")
-        self.fake.on(["git", "-c", "user.name=takuto277"], git_commit)
+        self.fake.on(["git", "commit", "-m"], git_commit)
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
@@ -322,7 +339,7 @@ class RunnerTest(unittest.TestCase):
     def test_lock_is_exclusive_until_released(self):
         first = ar.Lock(self.cfg.state_dir)
         self.assertTrue(first.acquire())
-        self.assertTrue(first.held() is False or True)  # 自分自身の保持は状態表示の対象外
+        self.assertTrue(first.held())
         second = ar.Lock(self.cfg.state_dir)
         self.assertFalse(second.acquire())
         first.release()
@@ -330,6 +347,39 @@ class RunnerTest(unittest.TestCase):
         self.assertTrue(third.acquire())
         third.release()
         self.assertFalse(ar.Lock(self.cfg.state_dir).held())
+
+    def test_lock_migrates_old_mkdir_lock(self):
+        old = self.cfg.state_dir / "lock"
+        old.mkdir(parents=True)
+        (old / "pid").write_text("999999")
+        lock = ar.Lock(self.cfg.state_dir)
+        self.assertTrue(lock.acquire())
+        self.assertTrue((self.cfg.state_dir / "lock").is_file())
+        lock.release()
+
+    def test_push_rejected_as_non_fast_forward_is_rebuilt(self):
+        attempts = {"count": 0}
+
+        def push(argv):
+            attempts["count"] += 1
+            if attempts["count"] == 1:
+                return ar.Result(1, "", "! [rejected] agent/issue-12 (non-fast-forward)")
+            return ar.Result(0)
+
+        self.happy(push=push)
+        self.assertEqual(0, self.runner.run_once())
+        self.assertTrue(self.fake.called("git", "push", "origin", "--delete", "agent/issue-12"))
+        self.assertTrue(self.fake.called("gh", "pr", "create"))
+
+    def test_pause_before_push_stops_publication(self):
+        def verify(argv, cwd=None):
+            (self.cfg.state_dir / "pause").touch()
+            return ar.Result(0, "ok", "")
+
+        self.happy(verify=verify)
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("git", "push"))
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_explicit_issue_uses_view_not_queue(self):
         self.happy()

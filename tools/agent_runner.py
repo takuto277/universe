@@ -48,6 +48,10 @@ PROTECTED_PATHS = (
     "tools/run-tests.sh",
     "tools/check_site.py",
     "tools/harness.js",
+    "tools/test_agent_runner.py",
+    "tools/pr_gate.py",
+    "tools/pr_review.py",
+    "tools/pr_merge.py",
     ".github/workflows/",
 )
 
@@ -189,7 +193,13 @@ class Lock:
 
     def acquire(self) -> bool:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        fh = self.path.open("a+")
+        if self.path.is_dir():
+            # 旧実装 (mkdir ロック) の残骸を移行する
+            shutil.rmtree(self.path, ignore_errors=True)
+        try:
+            fh = self.path.open("a+")
+        except OSError:
+            return False
         try:
             fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
@@ -303,7 +313,7 @@ class Runner:
             args += ["--add-label", name]
         for name in remove:
             args += ["--remove-label", name]
-        if len(args) == 4:
+        if len(args) == 5:
             return True
         result = self.gh(*args)
         if not result.ok:
@@ -396,17 +406,16 @@ class Runner:
 
         self.ensure_labels()
 
-        existing = self.find_pr(branch)
-        existing_state = (existing or {}).get("state", "").upper()
-        if existing_state in ("OPEN", "MERGED"):
-            self.log("Issue #%s: 既存 PR %s があるためスキップ" % (number, existing.get("url")))
-            self.edit_labels(number, add=["agent:done"],
-                             remove=["agent:running", "agent:ready"])
-            self.comment(number, "既存の PR があるためスキップしました: %s" % existing.get("url"))
-            return 0
-        retry = existing_state == "CLOSED"
-
         try:
+            existing = self.find_pr(branch)
+            existing_state = (existing or {}).get("state", "").upper()
+            if existing_state in ("OPEN", "MERGED"):
+                self.log("Issue #%s: 既存 PR %s があるためスキップ" % (number, existing.get("url")))
+                self.edit_labels(number, add=["agent:done"],
+                                 remove=["agent:running", "agent:ready"])
+                self.comment(number, "既存の PR があるためスキップしました: %s" % existing.get("url"))
+                return 0
+
             if not self.edit_labels(number, add=["agent:running"], remove=["agent:ready"]):
                 raise TaskError("agent:running ラベルを付けられませんでした")
             self.comment(number, "無人エージェントが着手しました。\n対象: `%s` (%s)" %
@@ -448,9 +457,15 @@ class Runner:
             latest_state = (latest or {}).get("state", "").upper()
             if latest_state in ("OPEN", "MERGED"):
                 raise TaskError("PR が既に存在します: %s" % latest.get("url"))
-            if retry:
-                self.git("push", "origin", "--delete", branch, cwd=worktree, timeout=120)
             push = self.git("push", "-u", "origin", branch, cwd=worktree, timeout=180)
+            if not push.ok and ("non-fast-forward" in (push.stderr or "") or
+                                "rejected" in (push.stderr or "")):
+                # 前回の実行が PR 作成前に落ちてブランチだけ残っている場合は作り直す
+                latest = self.find_pr(branch)
+                if latest and (latest.get("state") or "").upper() in ("OPEN", "MERGED"):
+                    raise TaskError("PR が既に存在します: %s" % latest.get("url"))
+                self.git("push", "origin", "--delete", branch, cwd=worktree, timeout=120)
+                push = self.git("push", "-u", "origin", branch, cwd=worktree, timeout=180)
             if not push.ok:
                 raise TaskError("push に失敗しました: %s" % tail(push.stderr, 600))
 
@@ -509,10 +524,13 @@ class Runner:
                          "origin/%s" % self.cfg.base, timeout=180)
         if not added.ok:
             raise TaskError("worktree の作成に失敗しました: %s" % tail(added.stderr, 600))
+        self.git("config", "user.name", "takuto277", cwd=worktree, timeout=60)
+        self.git("config", "user.email", "takuto277@users.noreply.github.com",
+                 cwd=worktree, timeout=60)
 
     def _assert_tools_untouched(self, worktree: Path) -> None:
         """検証スクリプト自体を書き換えて verify を通す抜け道を塞ぐ。"""
-        result = self.git("diff", "--name-only", "origin/%s..HEAD" % self.cfg.base,
+        result = self.git("diff", "--name-only", "origin/%s...HEAD" % self.cfg.base,
                           cwd=worktree, timeout=60)
         if not result.ok:
             raise TaskError("変更ファイルの確認に失敗しました: %s" % tail(result.stderr, 400))
@@ -522,7 +540,8 @@ class Runner:
                           any(path.startswith(prefix) for prefix in PROTECTED_PATHS
                               if prefix.endswith("/"))})
         if touched:
-            raise TaskError("検証スクリプトや CI を変更しています(人間のレビューが必要): %s" %
+            raise TaskError("検証スクリプトや CI を変更しています(人間のレビューが必要): %s\n"
+                            "調査するには UNIVERSE_AGENT_KEEP_WORKTREE=1 で再実行してください" %
                             ", ".join(touched))
 
     def _cleanup_worktree(self, worktree: Path) -> None:
@@ -549,8 +568,8 @@ class Runner:
             "- 変更は Issue の範囲に絞る。破壊的・不可逆な変更や判断に迷う変更はせず、最後に理由を報告する",
             "- アプリを変更したら apps.json / index.html / README / テストを同じ変更で更新する",
             "- ./tools/verify.sh を通す。失敗したら原因を直して再実行する",
-            "- 変更をコミットする: git -c user.name=\"takuto277\" "
-            "-c user.email=\"takuto277@users.noreply.github.com\" commit -m \"<アプリ名または repo>: 日本語の要約\"",
+            "- 変更をコミットする: git commit -m \"<アプリ名または repo>: 日本語の要約\""
+            " (user.name / user.email は runner が設定済み)",
             "- push、PR 作成、マージ、Issue のクローズはしない(runner が行う)",
             "- 最後に、変更点・テスト結果・残課題を短くまとめる",
         ])
@@ -585,9 +604,8 @@ class Runner:
         added = self.git("add", "-A", cwd=worktree, timeout=120)
         if not added.ok:
             raise TaskError("git add に失敗しました: %s" % tail(added.stderr, 400))
-        commit = self.git("-c", "user.name=takuto277",
-                          "-c", "user.email=takuto277@users.noreply.github.com",
-                          "commit", "-m", "repo: Issue #%d の残りの変更をコミット" % number,
+        commit = self.git("commit", "-m",
+                          "repo: Issue #%d の残りの変更をコミット" % number,
                           cwd=worktree, timeout=120)
         if not commit.ok:
             raise TaskError("残りの変更をコミットできませんでした: %s" %
@@ -867,7 +885,14 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             runner.log("別の実行が進行中のためスキップします")
             return 0
         try:
-            return runner.propose(dry_run=args.dry_run)
+            try:
+                return runner.propose(dry_run=args.dry_run)
+            except TaskError as exc:
+                runner.log("提案を中止しました: %s" % exc)
+                return 1
+            except Exception as exc:  # noqa: BLE001 - LaunchAgent を落とさないため
+                runner.log("提案で予期しないエラーが発生しました: %s" % exc)
+                return 1
         finally:
             lock.release()
     if args.command == "pause":

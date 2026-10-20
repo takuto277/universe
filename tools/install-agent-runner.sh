@@ -11,22 +11,13 @@ REPO="${UNIVERSE_AGENT_REPO:-takuto277/universe}"
 BASE="${UNIVERSE_AGENT_BASE:-main}"
 MODEL="${UNIVERSE_AGENT_MODEL:-opencode/deepseek-v4.1-flash-free}"
 INTERVAL="${UNIVERSE_AGENT_INTERVAL:-120}"
-case "$INTERVAL" in
-  ''|*[!0-9]*)
-    printf 'UNIVERSE_AGENT_INTERVAL must be a positive integer: %s\n' "$INTERVAL" >&2
-    exit 2
-    ;;
-esac
-if [ "$INTERVAL" -le 0 ]; then
-  printf 'UNIVERSE_AGENT_INTERVAL must be a positive integer: %s\n' "$INTERVAL" >&2
-  exit 2
-fi
 
 usage() {
   cat <<'EOF'
 Usage: tools/install-agent-runner.sh [--print|--uninstall|--status]
 
-Installs a macOS LaunchAgent that runs tools/agent.sh run every 120 seconds.
+Installs a macOS LaunchAgent that runs tools/agent.sh run every
+UNIVERSE_AGENT_INTERVAL seconds (default 120).
 The runner only implements issues labeled "agent:ready" and opens PRs;
 review and merge remain the job of the five-point gate / auto-pr watcher.
 
@@ -67,6 +58,17 @@ case "${1:-}" in
 esac
 
 PRINT_ONLY="${PRINT_ONLY:-0}"
+
+case "$INTERVAL" in
+  ''|*[!0-9]*)
+    printf 'UNIVERSE_AGENT_INTERVAL must be a positive integer: %s\n' "$INTERVAL" >&2
+    exit 2
+    ;;
+esac
+if [ "$INTERVAL" -le 0 ]; then
+  printf 'UNIVERSE_AGENT_INTERVAL must be a positive integer: %s\n' "$INTERVAL" >&2
+  exit 2
+fi
 
 xml_escape() {
   printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g'
