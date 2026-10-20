@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>グラフクロス - 曲線交差アクション</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+      <div class="stat"><span>BEST</span><b id="best">0</b></div>
+      <div class="stat"><span>COMBO</span><b id="combo">-</b></div>
+      <div class="stat life"><span>LIFE</span><b id="life">●●●</b></div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="960" height="560"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <h1>グラフクロス</h1>
+          <p class="subtitle">曲線を交差させろ! グラフ・アクション</p>
+          <ul class="rules">
+            <li>x が自動で進み、あなたの<b>曲線</b>が左から右へ描かれていく</li>
+            <li>下の<b>関数カードから3つ</b>を選んでデッキにしよう</li>
+            <li><b>1〜3</b> でデッキの関数を切り替え、曲線の形を変える</li>
+            <li>右から流れてくる<b>敵の曲線</b>と交差すると <b>大爆発 + 得点</b>!</li>
+            <li>交差角度が急なほど <b>ボーナス倍率アップ</b>。真横から斬り込め!</li>
+            <li>交差できずに逃すと <b>ライフ -1</b>。5コンボで1回復</li>
+          </ul>
+          <div id="deck-picker">
+            <div class="deck-head">デッキを選べ <span id="deck-count">3/3</span></div>
+            <div id="deck-cards">
+              <button id="card-hold" class="deck-card" type="button"><b>y = 0</b><span>キープ</span></button>
+              <button id="card-up" class="deck-card" type="button"><b>y = x/2</b><span>ゆるく上へ</span></button>
+              <button id="card-down" class="deck-card" type="button"><b>y = -x/2</b><span>ゆるく下へ</span></button>
+              <button id="card-steepUp" class="deck-card" type="button"><b>y = 2x</b><span>急上昇</span></button>
+              <button id="card-steepDown" class="deck-card" type="button"><b>y = -2x</b><span>急下降</span></button>
+              <button id="card-quad" class="deck-card" type="button"><b>y = x²</b><span>上カーブ</span></button>
+              <button id="card-quadDown" class="deck-card" type="button"><b>y = -x²</b><span>下カーブ</span></button>
+              <button id="card-wave" class="deck-card" type="button"><b>y = sin x</b><span>ウェーブ</span></button>
+            </div>
+          </div>
+          <button id="btn-start" class="primary" type="button">このデッキではじめる</button>
+          <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <h2 class="end-title">GAME OVER</h2>
+          <div class="end-score"><span>SCORE</span><b id="end-score">0</b></div>
+          <div class="end-stats">
+            <div><span>BEST</span><b id="end-best">0</b></div>
+            <div><span>MAX COMBO</span><b id="end-combo">x0</b></div>
+            <div><span>X</span><b id="end-x">0</b></div>
+          </div>
+          <div class="end-actions">
+            <button id="btn-again" class="primary" type="button">もう一度あそぶ</button>
+            <button id="btn-deck" class="secondary" type="button">デッキを変える</button>
+          </div>
+          <p class="tiny">Space / Enter でもう一度</p>
+        </section>
+      </div>
+    </main>
+
+    <footer id="controlbar">
+      <div id="mode-buttons">
+        <button id="slot-0" class="mode-btn" type="button"><b>y = 0</b><span>キープ</span><em>1</em></button>
+        <button id="slot-1" class="mode-btn" type="button"><b>y = x/2</b><span>上へ</span><em>2</em></button>
+        <button id="slot-2" class="mode-btn" type="button"><b>y = sin x</b><span>ウェーブ</span><em>3</em></button>
+      </div>
+      <div id="tip">画面タップ / 1〜3 で関数切替 &nbsp;·&nbsp; 曲線で敵を迎え撃て</div>
+    </footer>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

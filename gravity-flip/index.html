@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>重力フリップ - 1ボタン2Dアクション</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+      <div class="stat"><span>BEST</span><b id="best">0</b></div>
+      <div class="stat"><span>COIN</span><b id="coins">0</b></div>
+      <div class="stat"><span>SPEED</span><b id="speed">1.0x</b></div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="960" height="540"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <h1>重力フリップ</h1>
+          <p class="subtitle">タップで上下反転・1ボタン2Dアクション</p>
+          <ul class="rules">
+            <li><b>タップ / Space</b> で重力が上下反転。床と天井を行き来してトゲを避けろ!</li>
+            <li>トゲに当たったら即終了。進んだ距離とコインでスコアが伸びる</li>
+            <li>コインは <b>+10点</b>。取りたい場所にコインが並ぶので、欲張ると危険!</li>
+            <li>進むほど速くなる。トゲの間隔は反転できる時間を確保してある</li>
+            <li>自己ベストはブラウザに保存される。まずは30秒生存を目指せ!</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">はじめる</button>
+          <p class="tiny">Space / Enter / ↑ / W / タップ: 反転・開始</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <h2 class="end-title">GAME OVER</h2>
+          <div class="end-score"><span>SCORE</span><b id="end-score">0</b></div>
+          <div class="end-stats">
+            <div><span>BEST</span><b id="end-best">0</b></div>
+            <div><span>DISTANCE</span><b id="end-distance">0m</b></div>
+            <div><span>COIN</span><b id="end-coins">0</b></div>
+          </div>
+          <button id="btn-again" class="primary" type="button">もう一度あそぶ</button>
+          <p class="tiny">Space / タップでもう一度</p>
+        </section>
+      </div>
+    </main>
+
+    <footer id="tip">タップ / Space で上下反転 &nbsp;·&nbsp; トゲを避けて距離を伸ばせ</footer>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

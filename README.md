@@ -12,6 +12,8 @@ universe/
 ├── index.html         # ハブ画面
 ├── baseball-game/     # アプリ本体・テスト・README
 ├── janken-game/       # アプリ本体・テスト・README
+├── gravity-flip/      # アプリ本体・テスト・README
+├── graph-cross/       # アプリ本体・テスト・README
 ├── docs/              # 開発・学習ドキュメント
 └── tools/             # 共通テストハーネスと検査スクリプト
 ```

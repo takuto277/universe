@@ -18,6 +18,8 @@ universe は GitHub Pages で静的サイトとして公開します。
 https://takuto277.github.io/universe/
 https://takuto277.github.io/universe/baseball-game/
 https://takuto277.github.io/universe/janken-game/
+https://takuto277.github.io/universe/gravity-flip/
+https://takuto277.github.io/universe/graph-cross/
 ```
 
 アプリのディレクトリ名は公開 URL の一部です。名前を変えるとブックマークや外部リンクが壊れるため、変更する場合は旧パスからのリダイレクトを用意します。
