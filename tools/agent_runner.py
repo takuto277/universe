@@ -816,16 +816,37 @@ class Runner:
             pass
 
     # ---- レビュー指摘の自動修正 ----
+    def _viewer_login(self) -> str:
+        result = self.gh("api", "user", "--jq", ".login")
+        login = (result.stdout or "").strip()
+        if not result.ok or not login:
+            raise TaskError("GitHub のログインユーザーを取得できませんでした")
+        return login
+
     def latest_blocker_review(self, number: int, head: str) -> Optional[dict]:
-        result = self.gh("pr", "view", str(number), "--repo", self.cfg.repo,
-                         "--json", "reviews")
+        """自分が現在の head に投稿した最新の AI レビューだけを対象にする。
+
+        第三者が blocker 付き marker を投稿しても builder への指示に使わない。
+        """
+        viewer = self._viewer_login()
+        result = self.gh("api", "repos/%s/pulls/%d/reviews" % (self.cfg.repo, number),
+                         "--paginate", "--jq", ".[]")
         if not result.ok:
             raise TaskError("PR のレビュー取得に失敗しました: %s" % tail(result.stderr))
-        try:
-            data = json.loads(result.stdout or "{}")
-        except ValueError as exc:
-            raise TaskError("PR レビューの JSON を解釈できません: %s" % exc)
-        for review in reversed(data.get("reviews") or []):
+        for line in reversed((result.stdout or "").splitlines()):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                review = json.loads(line)
+            except ValueError:
+                continue
+            if ((review.get("user") or {}).get("login") or "") != viewer:
+                continue
+            if (review.get("state") or "").upper() != "COMMENTED":
+                continue
+            if (review.get("commit_id") or "") != head:
+                continue
             body = review.get("body") or ""
             match = REVIEW_MARKER_RE.search(body)
             if not match:
@@ -834,13 +855,19 @@ class Runner:
                 marker = json.loads(match.group(1))
             except ValueError:
                 continue
-            marker_head = str(marker.get("head") or "")
-            if not marker_head or not (head == marker_head or head.startswith(marker_head) or
-                                       marker_head.startswith(head)):
+            try:
+                if int(marker.get("version") or 0) != 1:
+                    continue
+            except (TypeError, ValueError):
                 continue
-            blockers = int(marker.get("blockers") or 0)
+            if str(marker.get("head") or "") != head:
+                continue
+            try:
+                blockers = int(marker.get("blockers") or 0)
+            except (TypeError, ValueError):
+                continue
             if blockers <= 0:
-                continue
+                return None
             findings = REVIEW_MARKER_RE.sub("", body).strip()
             return {"blockers": blockers, "body": findings}
         return None
@@ -892,7 +919,7 @@ class Runner:
         added = self.git("worktree", "add", "--detach", str(worktree), head_sha, timeout=180)
         if not added.ok:
             raise TaskError("修正用 worktree の作成に失敗しました: %s" % tail(added.stderr, 600))
-        return base_sha
+        return head_sha
 
     def build_fix_prompt(self, number: int, title: str, review: dict) -> str:
         return "\n".join([
@@ -920,7 +947,8 @@ class Runner:
             self.log("pause 中のため修正しません")
             return 2
         result = self.gh("pr", "view", str(number), "--repo", self.cfg.repo,
-                         "--json", "number,title,state,isDraft,headRefName,headRefOid,baseRefName,url")
+                         "--json", "number,title,state,isDraft,headRefName,headRefOid,"
+                         "baseRefName,url,labels,headRepositoryOwner,headRepository")
         if not result.ok:
             raise TaskError("PR #%d を取得できません: %s" % (number, tail(result.stderr)))
         try:
@@ -936,6 +964,17 @@ class Runner:
         if (data.get("baseRefName") or "") != self.cfg.base:
             self.log("PR #%d の base が %s ではありません" % (number, self.cfg.base))
             return 1
+        labels = {item.get("name") for item in (data.get("labels") or [])
+                  if isinstance(item, dict)}
+        if labels & {"ai-pause", "do-not-merge"}:
+            self.log("PR #%d は pause ラベルが付いています" % number)
+            return 2
+        owner, name = (self.cfg.repo.split("/", 1) + [""])[:2]
+        head_owner = (data.get("headRepositoryOwner") or {}).get("login")
+        head_name = (data.get("headRepository") or {}).get("name")
+        if head_owner and (head_owner != owner or head_name != name):
+            self.log("PR #%d は fork 由来のため自動修正しません" % number)
+            return 2
         head_ref = data.get("headRefName") or ""
         head = data.get("headRefOid") or ""
         if not head_ref or head_ref == self.cfg.base:
@@ -952,7 +991,7 @@ class Runner:
                 exhausted.write_text(str(attempts), encoding="utf-8")
                 self.notify("PR #%d の自動修正が上限に達しました" % number)
             self.log("PR #%d: 自動修正の上限(%d)に達しています" % (number, self.cfg.fix_max))
-            return 2
+            return 3
         if dry_run:
             self.log("dry-run: PR #%d の Blocker %d件を修正します" %
                      (number, review.get("blockers", 0)))
@@ -965,7 +1004,7 @@ class Runner:
                                                  (number, int(time.time())))
         started = time.time()
         try:
-            base_sha = self._prepare_fix_worktree(worktree, number, head)
+            head_sha = self._prepare_fix_worktree(worktree, number, head)
             prompt = self.build_fix_prompt(number, data.get("title") or "", review)
             agent = self._run_agent(prompt, worktree, fix_log, False,
                                     timeout=self.cfg.fix_timeout)
@@ -975,7 +1014,15 @@ class Runner:
                 raise TaskError("修正エージェントが異常終了しました (exit=%s)" % agent.code)
 
             self._commit_leftovers(worktree, "PR #%d" % number)
-            changed = self._assert_tools_untouched(worktree, base_sha)
+            count = self.git("rev-list", "--count", "%s..HEAD" % head_sha,
+                             cwd=worktree, timeout=60)
+            try:
+                commits = int((count.stdout or "0").strip() or "0")
+            except ValueError:
+                commits = 0
+            if not count.ok or commits == 0:
+                raise TaskError("レビュー指摘に対する変更がありませんでした(人の対応が必要です)")
+            changed = self._assert_tools_untouched(worktree, head_sha)
             verify = self.cmd.run(["bash", str(worktree / "tools" / "verify.sh")],
                                   cwd=str(worktree), timeout=self.cfg.verify_timeout)
             self._append_log(fix_log, "\n$ ./tools/verify.sh\n" +
@@ -985,7 +1032,7 @@ class Runner:
             if not verify.ok:
                 raise TaskError("./tools/verify.sh が失敗しました。詳細は実行ログを確認してください")
             self._assert_worktree_clean(worktree)
-            self._assert_tools_untouched(worktree, base_sha)
+            self._assert_tools_untouched(worktree, head_sha)
             if self.paused():
                 raise TaskError("pause されたため push 前に中断しました")
 
@@ -1041,6 +1088,12 @@ class Runner:
                     with path.open("wb") as fh:
                         fh.write(("[truncated to last %d bytes]\n" % LOG_TRIM_BYTES).encode())
                         fh.write(tail_bytes)
+            except OSError:
+                pass
+        for path in sorted((self.cfg.state_dir / "fix").glob("*")):
+            try:
+                if path.stat().st_mtime < cutoff:
+                    path.unlink()
             except OSError:
                 pass
         try:

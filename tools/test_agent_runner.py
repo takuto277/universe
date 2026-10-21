@@ -614,14 +614,25 @@ class RunnerTest(unittest.TestCase):
             "isDraft": False, "headRefName": "feat/fix-me",
             "headRefOid": "abc123def456", "baseRefName": "main",
             "url": "https://github.com/takuto277/universe/pull/12",
+            "labels": overrides.get("labels", []),
+            "headRepositoryOwner": {"login": "takuto277"},
+            "headRepository": {"name": "universe"},
         }
         marker = ('<!-- ai-pr-review {"version":1,"head":"abc123def456",'
                   '"blockers":1,"findings":1,"reviewer":"opencode"} -->')
-        body = marker + "\n\n**Blocker: 1件**\n\n- リンクを直す"
+        review_body = marker + "\n\n**Blocker: 1件**\n\n- リンクを直す"
+        login = overrides.get("review_login", "takuto277")
+        review = {"user": {"login": login}, "state": "COMMENTED",
+                  "commit_id": overrides.get("review_commit", "abc123def456"),
+                  "body": review_body}
         self.fake.on(["gh", "label", "list"],
                      ar.Result(0, json.dumps([{"name": n} for n in ar.LABELS]), ""))
-        self.fake.on(["gh", "pr", "view"],
-                     ar.Result(0, json.dumps(dict(pr, reviews=[{"body": body}])), ""))
+        self.fake.on(["gh", "pr", "view"], ar.Result(0, json.dumps(pr), ""))
+        self.fake.on(["gh", "api", "user"], ar.Result(0, "takuto277\n", ""))
+        reviews = overrides.get("reviews", [review])
+        self.fake.on(
+            ["gh", "api", "repos/takuto277/universe/pulls/12/reviews"],
+            ar.Result(0, "\n".join(json.dumps(r) for r in reviews) + "\n", ""))
         self.fake.on(["git", "worktree", "add"], ar.Result(0), effect=make_worktree)
         self.fake.on(["git", "worktree", "remove"], ar.Result(0))
         self.fake.on(["git", "fetch"], ar.Result(0))
@@ -629,8 +640,9 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["git", "merge-base"], ar.Result(0, "basesha\n"))
         self.fake.on(["git", "status", "--porcelain"], ar.Result(0, ""))
         self.fake.on(["git", "diff", "--name-status"],
-                     ar.Result(0, overrides.get("changed", "M\tdocs/README.md\0"), ""))
-        self.fake.on(["git", "rev-list"], ar.Result(0, "1\n"))
+                     ar.Result(0, overrides.get("changed", "M\0docs/README.md\0"), ""))
+        self.fake.on(["git", "rev-list"],
+                     ar.Result(0, overrides.get("commits", "1\n"), ""))
         self.fake.on(["bash"], overrides.get("verify", ar.Result(0, "ok", "")))
         self.fake.on(["git", "push"], overrides.get("push", ar.Result(0)))
         self.fake.on(["git", "rev-parse", "--short"], ar.Result(0, "newsha\n"))
@@ -664,19 +676,36 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(1, attempts["attempts"])
 
     def test_fix_without_blocker_review_is_rejected(self):
-        self.fake.on(["gh", "pr", "view"], ar.Result(0, json.dumps({
-            "number": 12, "state": "OPEN", "isDraft": False,
-            "headRefName": "feat/x", "headRefOid": "abc", "baseRefName": "main",
-            "reviews": []}), ""))
+        self.fix_happy(reviews=[])
         self.assertEqual(1, self.runner.fix(12))
         self.assertFalse(self.fake.called("git", "worktree", "add"))
+
+    def test_fix_ignores_reviews_from_other_users(self):
+        self.fix_happy(review_login="attacker")
+        self.assertEqual(1, self.runner.fix(12))
+        self.assertFalse(self.fake.called("git", "worktree", "add"))
+
+    def test_fix_ignores_reviews_for_other_commits(self):
+        self.fix_happy(review_commit="deadbeef")
+        self.assertEqual(1, self.runner.fix(12))
+        self.assertFalse(self.fake.called("git", "worktree", "add"))
+
+    def test_fix_skips_paused_labels_and_forks(self):
+        self.fix_happy(labels=[{"name": "ai-pause"}])
+        self.assertEqual(2, self.runner.fix(12))
+        self.assertFalse(self.fake.called("git", "worktree", "add"))
+
+    def test_fix_without_changes_fails(self):
+        self.fix_happy(commits="0\n")
+        self.assertEqual(1, self.runner.fix(12))
+        self.assertFalse(self.fake.called("git", "push"))
 
     def test_fix_respects_attempt_limit(self):
         path = self.cfg.state_dir / "fix" / "pr-12.json"
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_text(json.dumps({"attempts": 3}), encoding="utf-8")
         self.fix_happy()
-        self.assertEqual(2, self.runner.fix(12))
+        self.assertEqual(3, self.runner.fix(12))
         self.assertFalse(self.fake.called("opencode", "run"))
 
     def test_fix_rejects_protected_changes(self):

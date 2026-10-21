@@ -83,7 +83,7 @@ tail -f ~/Library/Logs/universe-auto-pr.log
 - `tests` / `site` の完了を最大90秒待ってからゲートを判定します
 - AI レビューは30分で打ち切ります（perl の alarm を使用）
 - ロックが120分以上残った場合は次回に回収します。回収時は稼働中のプロセスを強制終了することがあります
-- Blocker の自動修正はしません。修正して push するか、`/pr-deliver` を使ってください
+- Blocker は自動修正を試みます（上限・保護パス・失敗時は人へ）。詳しくは「Blocker の自動修正」を参照してください
 - 五点ゲートはローカル手順なので、マージ権限を持つ人が迂回できます
 
 ## 環境変数
@@ -93,10 +93,10 @@ LaunchAgent の plist に反映されるもの:
 - `UNIVERSE_AUTO_PR_MODEL`: AI レビューに使う opencode のモデル。既定は `opencode/deepseek-v4.1-flash-free`
 - `UNIVERSE_AUTO_PR_REPO`: 対象リポジトリ。既定は `takuto277/universe`
 - `UNIVERSE_AUTO_PR_BASE`: 対象 base branch。既定は `main`
+- `UNIVERSE_AUTO_PR_AUTOFIX`: Blocker の自動修正。既定は `1`（`0` で無効）
 
 手動実行時だけ有効なもの:
 
 - `UNIVERSE_AUTO_PR_GATE_WAIT`: ゲートが checks を待つ秒数。既定は `90`
 - `UNIVERSE_AUTO_PR_TIMEOUT`: AI レビューの上限秒数。既定は `1800`
 - `UNIVERSE_AUTO_PR_LOCK_STALE`: ロックを回収するまでの秒数。既定は `7200`
-- `UNIVERSE_AUTO_PR_AUTOFIX`: Blocker の自動修正。既定は `1`（`0` で無効）
