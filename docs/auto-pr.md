@@ -57,6 +57,7 @@ Blocker が出た PR は、`builder` がレビュー指摘を読んで修正し�
 - 失敗した head は60分クールダウンし、同じ失敗を繰り返しません
 - `tools/` と `.github/workflows/` を変更する必要がある指摘は自動修正できません（保護対象）。通知して人の対応に回します
 - `UNIVERSE_AUTO_PR_AUTOFIX=0` で無効化できます（LaunchAgent の plist に反映するには再インストール）
+- 自動修正の builder と verify も、agent runner の `UNIVERSE_AGENT_SANDBOX` 設定に従います
 - pause / Draft / `ai-pause` / `do-not-merge` は従来どおり尊重します
 - 実行履歴と通知は `tools/agent_runner.py` 側に残ります
 
@@ -94,6 +95,7 @@ LaunchAgent の plist に反映されるもの:
 - `UNIVERSE_AUTO_PR_REPO`: 対象リポジトリ。既定は `takuto277/universe`
 - `UNIVERSE_AUTO_PR_BASE`: 対象 base branch。既定は `main`
 - `UNIVERSE_AUTO_PR_AUTOFIX`: Blocker の自動修正。既定は `1`（`0` で無効）
+- `UNIVERSE_AGENT_SANDBOX`: 自動修正の builder/verify の隔離。既定は `none`（`seatbelt` で有効）
 
 手動実行時だけ有効なもの:
 

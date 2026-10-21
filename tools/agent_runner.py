@@ -31,6 +31,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -157,6 +158,7 @@ class Config:
     stall_minutes: int = 90
     fix_max: int = DEFAULT_FIX_MAX
     fix_timeout: int = DEFAULT_FIX_TIMEOUT
+    sandbox: str = "none"
     gh_bin: str = "gh"
     git_bin: str = "git"
     opencode_bin: str = "opencode"
@@ -189,6 +191,7 @@ class Config:
             fix_max=int(os.environ.get("UNIVERSE_AGENT_FIX_MAX", DEFAULT_FIX_MAX)),
             fix_timeout=int(os.environ.get(
                 "UNIVERSE_AGENT_FIX_TIMEOUT", DEFAULT_FIX_TIMEOUT)),
+            sandbox=os.environ.get("UNIVERSE_AGENT_SANDBOX", "none"),
             gh_bin=os.environ.get("GH_BIN", "gh"),
             git_bin=os.environ.get("GIT_BIN", "git"),
             opencode_bin=os.environ.get("OPENCODE_BIN", "opencode"),
@@ -298,6 +301,103 @@ class Runner:
         if os.environ.get("UNIVERSE_AGENT_DISABLE") == "1":
             return True
         return (self.cfg.state_dir / "pause").exists()
+
+    def _sandbox_profile(self, worktree: Path, tmpdir: Path) -> Path:
+        home = Path.home()
+        writable = [
+            worktree,
+            tmpdir,
+            Path("/dev"),
+            home / ".local/share/opencode",
+            home / ".cache/opencode",
+        ]
+        deny_read = [
+            home / ".ssh", home / ".aws", home / ".config/gh",
+            home / ".config/gcloud", home / ".kube", home / "Library/Keychains",
+            home / "Documents", home / "Desktop", home / "Downloads",
+            home / "Library/Messages", home / "Library/Mail",
+        ]
+        extra = [home / ".netrc", home / ".git-credentials"]
+
+        def real(path: Path) -> str:
+            return os.path.realpath(str(path))
+
+        for protected in (worktree, tmpdir, self.cfg.root, self.cfg.state_dir):
+            resolved = real(protected)
+            for denied in deny_read:
+                denied_real = real(denied)
+                if resolved == denied_real or resolved.startswith(denied_real + os.sep):
+                    raise TaskError(
+                        "サンドボックスの拒否対象と作業パスが重なっています: %s" % protected)
+
+        def q(path: Path) -> str:
+            return '(subpath "%s")' % str(path).replace("\\", "\\\\").replace('"', '\\"')
+
+        def expand(paths):
+            out = []
+            for path in paths:
+                out.append(path)
+                if real(path) != str(path):
+                    out.append(Path(real(path)))
+            return out
+
+        expanded = expand(writable)
+        denied = expand(deny_read + extra)
+
+        git_pointer_paths = [Path(worktree) / ".git"]
+        resolved_pointer = Path(real(worktree)) / ".git"
+        if resolved_pointer != git_pointer_paths[0]:
+            git_pointer_paths.append(resolved_pointer)
+
+        lines = [
+            "(version 1)",
+            "(deny default)",
+            "(allow process-exec)",
+            "(allow process-fork)",
+            "(allow signal)",
+            "(allow sysctl-read)",
+            "(allow mach-lookup)",
+            "(allow ipc-posix-shm)",
+            "(allow file-read*)",
+            "(deny file-read* %s)" % " ".join(q(path) for path in denied),
+            "(allow file-write* %s)" % " ".join(q(path) for path in expanded),
+            "(deny file-write* %s)" % " ".join(
+                q(path) for path in git_pointer_paths),
+            "(allow network*)",
+        ]
+        path = self.cfg.state_dir / "sandbox" / "profile.sb"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return path
+
+    def sandbox_argv(self, argv: List[str], worktree: Path,
+                     tmpdir: Optional[Path] = None) -> List[str]:
+        mode = (self.cfg.sandbox or "none").lower()
+        if mode in ("", "none", "off", "0"):
+            return argv
+        if mode != "seatbelt":
+            raise TaskError("未対応のサンドボックスです: %s" % self.cfg.sandbox)
+        binary = shutil.which("sandbox-exec") or "/usr/bin/sandbox-exec"
+        if not Path(binary).exists():
+            raise TaskError("sandbox-exec が見つかりません")
+        profile = self._sandbox_profile(worktree, tmpdir or worktree)
+        return [binary, "-f", str(profile)] + argv
+
+    def _run_sandboxed(self, argv: List[str], worktree: Path, cwd: Path,
+                       timeout: int, env: Optional[Dict[str, str]] = None) -> Result:
+        mode = (self.cfg.sandbox or "none").lower()
+        if mode in ("", "none", "off", "0"):
+            return self.cmd.run(argv, cwd=str(cwd), timeout=timeout, env=env)
+        tmpdir = Path(tempfile.mkdtemp(prefix="universe-agent-"))
+        try:
+            extra = {"TMPDIR": str(tmpdir), "TMP": str(tmpdir), "TEMP": str(tmpdir),
+                     "UNIVERSE_AGENT_IN_SANDBOX": "1"}
+            if env:
+                extra.update(env)
+            return self.cmd.run(self.sandbox_argv(argv, worktree, tmpdir),
+                                cwd=str(cwd), timeout=timeout, env=extra)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def notify(self, message: str) -> None:
         """macOS の通知。UNIVERSE_AGENT_NOTIFY=0 で無効。"""
@@ -534,6 +634,7 @@ class Runner:
                          (branch, cfg.base))
 
             base_sha = self._prepare_worktree(worktree, branch)
+            git_dir = self._git_dir(worktree)
             prepared = True
             prompt = self.build_prompt(number, title, body)
             result = self._run_agent(prompt, worktree, issue_log, verbose)
@@ -542,6 +643,7 @@ class Runner:
             if not result.ok:
                 raise TaskError("エージェントが異常終了しました (exit=%s)" % result.code)
 
+            self._assert_git_dir_unchanged(worktree, git_dir)
             self._commit_leftovers(worktree, "Issue #%d" % number)
             count = self.git("rev-list", "--count", "%s..HEAD" % base_sha,
                              cwd=worktree, timeout=60)
@@ -554,8 +656,8 @@ class Runner:
 
             changed = self._assert_tools_untouched(worktree, base_sha)
             verify_script = worktree / "tools" / "verify.sh"
-            verify = self.cmd.run(["bash", str(verify_script)],
-                                  cwd=str(worktree), timeout=cfg.verify_timeout)
+            verify = self._run_sandboxed(
+                ["bash", str(verify_script)], worktree, worktree, cfg.verify_timeout)
             self._append_log(issue_log, "\n$ ./tools/verify.sh\n" +
                              (verify.stdout or "") + (verify.stderr or ""))
             if verify.timed_out:
@@ -572,7 +674,8 @@ class Runner:
             latest_state = (latest or {}).get("state", "").upper()
             if latest_state in ("OPEN", "MERGED"):
                 raise TaskError("PR が既に存在します: %s" % latest.get("url"))
-            push = self.git("push", "-u", "origin", branch, cwd=worktree, timeout=180)
+            push = self.git("-c", "core.hooksPath=/dev/null",
+                            "push", "-u", "origin", branch, cwd=worktree, timeout=180)
             if not push.ok and ("non-fast-forward" in (push.stderr or "") or
                                 "rejected" in (push.stderr or "")):
                 # 前回の実行が PR 作成前に落ちてブランチだけ残っている場合は作り直す
@@ -580,7 +683,8 @@ class Runner:
                 if latest and (latest.get("state") or "").upper() in ("OPEN", "MERGED"):
                     raise TaskError("PR が既に存在します: %s" % latest.get("url"))
                 self.git("push", "origin", "--delete", branch, cwd=worktree, timeout=120)
-                push = self.git("push", "-u", "origin", branch, cwd=worktree, timeout=180)
+                push = self.git("-c", "core.hooksPath=/dev/null",
+                            "push", "-u", "origin", branch, cwd=worktree, timeout=180)
             if not push.ok:
                 raise TaskError("push に失敗しました: %s" % tail(push.stderr, 600))
 
@@ -642,6 +746,17 @@ class Runner:
             else:
                 names.append(str(label))
         return [name for name in names if name]
+
+    def _git_dir(self, worktree: Path) -> str:
+        result = self.git("rev-parse", "--absolute-git-dir", cwd=worktree, timeout=60)
+        if not result.ok:
+            return ""
+        return (result.stdout or "").strip()
+
+    def _assert_git_dir_unchanged(self, worktree: Path, expected: str) -> None:
+        current = self._git_dir(worktree)
+        if not expected or current != expected:
+            raise TaskError("worktree の git dir が変更されました")
 
     def _prepare_worktree(self, worktree: Path, branch: str) -> str:
         if worktree.exists():
@@ -714,8 +829,7 @@ class Runner:
             "- 変更は Issue の範囲に絞る。破壊的・不可逆な変更や判断に迷う変更はせず、最後に理由を報告する",
             "- アプリを変更したら apps.json / index.html / README / テストを同じ変更で更新する",
             "- ./tools/verify.sh を通す。失敗したら原因を直して再実行する",
-            "- 変更をコミットする: git commit -m \"<アプリ名または repo>: 日本語の要約\""
-            " (user.name / user.email は runner が環境変数で設定済み)",
+            "- 変更のコミットは runner が行う。git add / git commit はしない",
             "- push、PR 作成、マージ、Issue のクローズはしない(runner が行う)",
             "- 最後に、変更点・テスト結果・残課題を短くまとめる",
         ])
@@ -741,8 +855,7 @@ class Runner:
             "GIT_COMMITTER_NAME": "takuto277",
             "GIT_COMMITTER_EMAIL": "takuto277@users.noreply.github.com",
         }
-        result = self.cmd.run(argv, cwd=str(worktree), timeout=limit,
-                              env=identity)
+        result = self._run_sandboxed(argv, worktree, worktree, limit, env=identity)
         self._append_log(issue_log, (result.stdout or "") + (result.stderr or ""))
         self.log("agent が終了しました (exit=%s, timeout=%s)" % (result.code, result.timed_out))
         if verbose and result.stderr:
@@ -758,7 +871,9 @@ class Runner:
         added = self.git("add", "-A", cwd=worktree, timeout=120)
         if not added.ok:
             raise TaskError("git add に失敗しました: %s" % tail(added.stderr, 400))
-        commit = self.git("-c", "user.name=takuto277",
+        commit = self.git("-c", "core.hooksPath=/dev/null",
+                          "-c", "core.fsmonitor=false",
+                          "-c", "user.name=takuto277",
                           "-c", "user.email=takuto277@users.noreply.github.com",
                           "commit", "-m", "repo: %s の残りの変更をコミット" % ref,
                           cwd=worktree, timeout=120)
@@ -936,8 +1051,7 @@ class Runner:
             "- 指摘された Blocker の修正に集中し、無関係な変更をしない",
             "- tools/ と .github/workflows/ は変更しない(保護対象。必要なら修正せず理由を報告する)",
             "- ./tools/verify.sh を通す。失敗したら原因を直す",
-            "- 変更をコミットする: git commit -m \"repo: レビュー指摘を修正 ...\""
-            " (user.name / user.email は runner が環境変数で設定済み)",
+            "- 変更のコミットは runner が行う。git add / git commit はしない",
             "- push、PR 作成、マージはしない(runner が行う)",
             "- 最後に、直した点とテスト結果を短くまとめる",
         ])
@@ -1005,6 +1119,7 @@ class Runner:
         started = time.time()
         try:
             head_sha = self._prepare_fix_worktree(worktree, number, head)
+            git_dir = self._git_dir(worktree)
             prompt = self.build_fix_prompt(number, data.get("title") or "", review)
             agent = self._run_agent(prompt, worktree, fix_log, False,
                                     timeout=self.cfg.fix_timeout)
@@ -1013,6 +1128,7 @@ class Runner:
             if not agent.ok:
                 raise TaskError("修正エージェントが異常終了しました (exit=%s)" % agent.code)
 
+            self._assert_git_dir_unchanged(worktree, git_dir)
             self._commit_leftovers(worktree, "PR #%d" % number)
             count = self.git("rev-list", "--count", "%s..HEAD" % head_sha,
                              cwd=worktree, timeout=60)
@@ -1023,8 +1139,9 @@ class Runner:
             if not count.ok or commits == 0:
                 raise TaskError("レビュー指摘に対する変更がありませんでした(人の対応が必要です)")
             changed = self._assert_tools_untouched(worktree, head_sha)
-            verify = self.cmd.run(["bash", str(worktree / "tools" / "verify.sh")],
-                                  cwd=str(worktree), timeout=self.cfg.verify_timeout)
+            verify = self._run_sandboxed(
+                ["bash", str(worktree / "tools" / "verify.sh")],
+                worktree, worktree, self.cfg.verify_timeout)
             self._append_log(fix_log, "\n$ ./tools/verify.sh\n" +
                              (verify.stdout or "") + (verify.stderr or ""))
             if verify.timed_out:
@@ -1036,7 +1153,9 @@ class Runner:
             if self.paused():
                 raise TaskError("pause されたため push 前に中断しました")
 
-            push = self.git("push", "origin", "HEAD:%s" % head_ref, cwd=worktree, timeout=180)
+            push = self.git("-c", "core.hooksPath=/dev/null",
+                            "push", "origin", "HEAD:%s" % head_ref,
+                            cwd=worktree, timeout=180)
             if not push.ok:
                 raise TaskError("push に失敗しました: %s" % tail(push.stderr, 600))
             short = (self.git("rev-parse", "--short", "HEAD", cwd=worktree).stdout or "").strip()
@@ -1241,6 +1360,7 @@ class Runner:
             for line in (worktrees.stdout or "").splitlines():
                 print("  " + line)
         print("notify:  %s" % ("on" if self.cfg.notify else "off"))
+        print("sandbox: %s" % (self.cfg.sandbox or "none"))
         plist = Path.home() / "Library/LaunchAgents/com.takuto277.universe-agent-runner.plist"
         print("launchd: %s" % ("installed" if plist.exists() else "not installed"))
         recent = self.recent_history(5)

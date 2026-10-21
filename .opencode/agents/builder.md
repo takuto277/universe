@@ -1,5 +1,5 @@
 ---
-description: Implements one GitHub issue inside an isolated worktree. Commits locally and never pushes, opens PRs, or merges.
+description: Implements one GitHub issue inside an isolated worktree. Only edits files; the runner commits. Never pushes, opens PRs, or merges.
 mode: primary
 temperature: 0.2
 permission:
@@ -19,9 +19,6 @@ permission:
     "git show*": allow
     "git rev-parse*": allow
     "git ls-files*": allow
-    "git add *": allow
-    "git rm *": allow
-    "git commit *": allow
     "git worktree list*": allow
     "git restore *": allow
     "git checkout -- *": allow
@@ -53,7 +50,7 @@ permission:
 1. `AGENTS.md` と、変更対象アプリの `README.md` を読む
 2. Issue の範囲だけを実装する。アプリを変えたら `apps.json`、`index.html`、`README.md`、テストを同じ変更で更新する
 3. `./tools/verify.sh` を実行し、失敗を自分で直す
-4. 変更をコミットする(下記の identity と接頭辞を使う)
+4. コミットはしない(編集だけ行う。コミットは runner が sandbox の外で行う)
 5. 最後に「変更点 / テスト結果 / 残課題」を短く報告する
 
 ## 禁止
@@ -61,13 +58,9 @@ permission:
 - push、PR 作成、マージ、Issue のクローズ(runner が行う)
 - main への直接変更、他アプリの無関係な変更
 - 破壊的・不可逆な操作、worktree 外のファイル操作、外部ネットワークへのアクセス
-- ファイル削除は `git rm` を使う(`rm` は権限で拒否される)
+- ファイル削除が必要な場合は、無理に消さず理由を報告する(`rm` / `git rm` は権限で拒否される)
 - 判断に迷う仕様変更(実装せず、理由を報告する)
 
 ## コミット
 
-`GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` / `GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` は runner が環境変数で設定済みです。git config の変更は不要です。
-
-```sh
-git commit -m "<アプリ名または repo>: 日本語の要約"
-```
+コミットは runner が行います。`git add` / `git commit` は実行しないでください。

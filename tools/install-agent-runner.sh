@@ -10,6 +10,7 @@ LOG_DIR="$HOME/Library/Logs"
 REPO="${UNIVERSE_AGENT_REPO:-takuto277/universe}"
 BASE="${UNIVERSE_AGENT_BASE:-main}"
 MODEL="${UNIVERSE_AGENT_MODEL:-opencode/deepseek-v4.1-flash-free}"
+SANDBOX="${UNIVERSE_AGENT_SANDBOX:-none}"
 INTERVAL="${UNIVERSE_AGENT_INTERVAL:-120}"
 
 usage() {
@@ -26,7 +27,8 @@ Pause:
   tools/agent.sh resume
 
 Environment for the installed job:
-  UNIVERSE_AGENT_REPO, UNIVERSE_AGENT_BASE, UNIVERSE_AGENT_MODEL
+  UNIVERSE_AGENT_REPO, UNIVERSE_AGENT_BASE, UNIVERSE_AGENT_MODEL,
+  UNIVERSE_AGENT_SANDBOX (none|seatbelt)
 EOF
 }
 
@@ -79,6 +81,7 @@ PLIST_ROOT="$(xml_escape "$ROOT")"
 PLIST_HOME="$(xml_escape "$HOME")"
 PLIST_LOG_DIR="$(xml_escape "$LOG_DIR")"
 PLIST_MODEL="$(xml_escape "$MODEL")"
+PLIST_SANDBOX="$(xml_escape "$SANDBOX")"
 PLIST_REPO="$(xml_escape "$REPO")"
 PLIST_BASE="$(xml_escape "$BASE")"
 PLIST_INTERVAL="$(xml_escape "$INTERVAL")"
@@ -107,6 +110,8 @@ cat <<EOF
     <string>ja_JP.UTF-8</string>
     <key>UNIVERSE_AGENT_MODEL</key>
     <string>$PLIST_MODEL</string>
+    <key>UNIVERSE_AGENT_SANDBOX</key>
+    <string>$PLIST_SANDBOX</string>
     <key>UNIVERSE_AGENT_REPO</key>
     <string>$PLIST_REPO</string>
     <key>UNIVERSE_AGENT_BASE</key>

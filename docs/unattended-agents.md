@@ -115,17 +115,40 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **1回1件・排他ロック**: `flock` で二重実行を防ぐ。プロセスが終了すると OS が自動で解放する
 - **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ。main への push は branch protection でも拒否される
 - **マージしない**: レビューとマージは五点ゲートに任せる(`--admin` や直接マージは使わない)
-- **builder の権限は allowlist**: 既定 deny で、git の読み書き・commit、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する
+- **builder の権限は allowlist**: 既定 deny で、git の読み取り、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`git add`/`commit`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する。コミットは runner が行う
 - **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/` 配下と `.github/workflows/` が変更されていたら失敗させる。さらに信頼するチェック(site 検査・構文検査・runner テスト)をアプリのテストより先に実行し、テスト JS による差し替えを防ぐ
 - **状態不明なら中止**: PR 一覧の取得失敗など、既存 PR の有無を確認できない場合はブランチを消さずに止める
 - **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
 - **タイムアウト**: エージェント既定 2700 秒、verify 600 秒。超えたらプロセスグループごと終了する
+- **実行の隔離**: `seatbelt` では書き込み先と秘密ファイルの読み取りを制限する。ただしネットワークは許可しており、サンドボックスではない部分が残る
 - **失敗時**: `agent:failed` とコメント(理由・ログパス)を残し、worktree を片付ける。自動リトライはしない
 - **レビュー指摘の自動修正**: `fix --pr` は PR head の worktree で Blocker だけを直し、verify 後に同じ head ブランチへ push する。マージはせず、必ず再レビューを受ける。`tools/` と CI の変更が必要な指摘は対象外
 - **提案の既定**: `agent:proposed` で止め、人間の `promote` を待つ
 - **入力の信頼**: Issue 本文はそのまま builder への指示になる。`agent:ready` を付けられるのは書き込み権限を持つ人だけなので、第三者が勝手にキューへ入れることはできない
 - **単一ホスト前提**: ロックはローカルの state dir 単位。複数ホストや state dir を分けた同時実行は想定しない
-- **限界**: 権限パターンはサンドボックスではない。OS ユーザの分離やコンテナ実行は今後の強化とする。最終的な安全網は branch protection、五点ゲート、AI レビュー
+- **限界**: allowlist だけではサンドボックスではないため、`UNIVERSE_AGENT_SANDBOX=seatbelt` を推奨する。OS ユーザの分離やコンテナ実行は今後の強化とする。最終的な安全網は branch protection、五点ゲート、AI レビュー
+- opencode のデータ/キャッシュは書き込み可能なため、sandbox 外で動く planner/reviewer への影響を完全には排除できない
+
+## 実行の隔離（sandbox-exec）
+
+`UNIVERSE_AGENT_SANDBOX=seatbelt` を設定すると、builder と `verify.sh` を macOS の `sandbox-exec` で包みます。既定は `none` です。
+
+- 書き込みは「その実行の worktree（ただし `worktree/.git` を除く）」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけに許可します。リポジトリの `.git`、state dir（lock・pause・history）、`~/.config/opencode` は書き込み禁止です
+- builder の後、runner は `git rev-parse --absolute-git-dir` が変わっていないことを確認してからコミットします
+- builder は編集だけを行い、コミットは sandbox の外で runner が行います
+- 読み取りは既定で許可しつつ、`~/.ssh`、`~/.aws`、`~/.config/gh`、`~/Library/Keychains`、`~/Documents`、`~/Downloads` などを明示的に拒否します
+- ネットワークはモデル API のために許可します（完全なネットワーク遮断ではありません）。keychain や ssh-agent は `mach-lookup` 経由で利用できるため、秘密情報の完全な遮断ではありません
+- `sandbox-exec` は非推奨の仕組みです。より強い隔離が必要な場合は、専用 OS ユーザやコンテナの利用を検討してください。planner と watcher のレビュー用 opencode は sandbox の外で動きます
+
+```sh
+UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-runner.sh
+```
+
+インストール時の環境変数は plist に保存されます。`./tools/agent.sh status` は実行中のシェルの値を表示するため、LaunchAgent の設定は次で確認してください。
+
+```sh
+launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -A1 UNIVERSE_AGENT_SANDBOX
+```
 
 ## 設定
 
@@ -145,6 +168,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 | `UNIVERSE_AGENT_NOTIFY` | `1` | macOS 通知の on/off |
 | `UNIVERSE_AGENT_FIX_MAX` | `3` | 1 PR あたりの自動修正回数の上限 |
 | `UNIVERSE_AGENT_FIX_TIMEOUT` | `1500` | 自動修正エージェントの上限秒数 |
+| `UNIVERSE_AGENT_SANDBOX` | `none` | `seatbelt` で builder と verify を隔離する |
 | `UNIVERSE_AGENT_STALL_MINUTES` | `90` | `agent:running` のまま通知するまでの分数(0で無効) |
 | `UNIVERSE_AGENT_DISABLE` | `0` | `1` で実行を止める(pause と同じ) |
 | `UNIVERSE_AGENT_BRANCH_PREFIX` | `agent/` | ブランチ接頭辞 |
