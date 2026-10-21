@@ -103,6 +103,16 @@ var clampedParams = E.createGame({
 assert(clampedParams.deckParams.quad.a === 2, 'x²係数の上限');
 assert(clampedParams.deckParams.wave.a === 0.4, 'sin振幅の下限');
 assert(clampedParams.deckParams.wave.b === 2.5, 'sin周波数の上限');
+var customLimits = E.createGame({
+  width: 1000, height: 620, deck: ['quad', 'wave', 'hold'],
+  deckParams: { quad: { a: 1, b: 99 }, wave: { a: 1, b: 1, c: -99 } }
+});
+assert(customLimits.deckParams.quad.b === 1.5, '2次の初速上限');
+assert(customLimits.deckParams.wave.c === -3, '位相の下限');
+var quadB = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 1, b: 1 } }, rng: mulberry32(23) });
+assert(quadB.vy === 120, '2次のbが初速になる');
+var waveC = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 1, c: 1 } }, rng: mulberry32(24) });
+assert(waveC.vy > 200, 'sinの位相が初速に反映される');
 
 var slowQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 0.4 } }, rng: mulberry32(21) });
 var fastQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 2 } }, rng: mulberry32(21) });
@@ -130,6 +140,7 @@ g.trail = [{ x: g.headX, y: g.y }];
 g.rivals.push(lineRival(g.headX - 20, g.y, 100));
 E.update(g, 1 / 60);
 assert(g.score > 0 && g.combo === 1, '交差で得点とコンボ');
+assert(g.stageHits === 1, '通常敵の交差でステージ進行');
 assert(g.hits === 1 && g.rivals.length === 0, '敵カーブが消える');
 var events = E.consumeEvents(g);
 assert(events.some(function (e) { return e.type === 'hit'; }), 'hitイベント');
@@ -221,6 +232,64 @@ for (i = 0; i < 60 * 12; i++) {
 assert(spawned >= 3, '敵カーブが生成され続ける: max=' + spawned);
 assert(g.hits + g.misses > 0, '交差かミスが発生している');
 
+/* 9b) ステージ進行とボス */
+assert(E.stageTargetFor(1) === 8 && E.stageTargetFor(2) === 10, 'ステージ目標数');
+g = makeGame(900, ['hold', 'up', 'wave']);
+g.stageHits = g.stageTarget;
+g.bossCooldown = 0;
+g.rivals = [];
+E.update(g, 1 / 60);
+assert(g.boss && g.boss.hp === g.boss.maxHp && g.boss.maxHp >= 10, 'ボスが出現する');
+var bossFamily = g.boss.family;
+assert(E.FAMILY_LABELS[bossFamily], 'ボスに弱点系統がある');
+assert(g.rivals.length === 0, 'ボス出現時に通常敵を片付ける');
+var scoreBeforeBoss = g.score;
+
+g.boss.x = g.headX - 100;
+g.boss.len = 200;
+g.boss.shape = 'line';
+g.boss.amp = 0;
+g.boss.slope = 0;
+g.boss.waves = 1;
+g.boss.baseY = g.y;
+g.boss.centerY = g.y;
+g.boss.family = 'linear';
+g.boss.hp = 1;
+g.boss.maxHp = 1;
+g.boss.invuln = 0;
+g.boss.flash = 0;
+g.trail = [
+  { x: g.headX - 5, y: g.y, mode: 'up' },
+  { x: g.headX, y: g.y, mode: 'up' }
+];
+E.setMode(g, 'up');
+E.update(g, 1 / 60);
+assert(g.stageCleared && g.boss === null, 'ボスHP0でステージクリア');
+assert(g.score > scoreBeforeBoss, 'ステージクリアでスコア獲得');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'stageClear'; }), 'stageClearイベント');
+var scoreAfterClear = g.score;
+var stageBefore = g.stage;
+assert(E.nextStage(g) === true, '次のステージへ進める');
+assert(g.stage === stageBefore + 1 && g.stageHits === 0 && !g.stageCleared, '次ステージの初期化');
+assert(g.stageTarget === E.stageTargetFor(g.stage), '次ステージの目標数');
+assert(g.trail.length === 0 && g.boss === null, '次ステージで曲線とボスをリセット');
+assert(g.score === scoreAfterClear, 'スコアは持ち越す');
+assert(E.nextStage(g) === false, 'クリア前は次ステージへ進めない');
+
+/* 9c) ボスを逃がすとライフが減り、再出現待ちになる */
+g = makeGame(901, ['hold', 'up', 'wave']);
+g.stageHits = g.stageTarget;
+g.bossCooldown = 0;
+E.update(g, 1 / 60);
+assert(g.boss, 'ボス再出現テストの準備');
+var hpBeforeEscape = g.hp;
+g.boss.x = -5000;
+g.boss.len = 100;
+E.update(g, 1 / 60);
+assert(g.hp === hpBeforeEscape - 1, 'ボスを逃がすとライフ-1');
+assert(g.boss === null && g.bossCooldown > 0, 'ボスは再出現待ち');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'bossEscape'; }), 'bossEscapeイベント');
+
 /* 10) 何もしないより、敵の高さに合わせて動く方が長く/多く当たる */
 function play(seed, smart, seconds) {
   var game = makeGame(seed);
@@ -255,6 +324,7 @@ function play(seed, smart, seconds) {
       }
     }
     E.update(game, 1 / 60);
+    if (game.stageCleared) E.nextStage(game);
   }
   return game;
 }

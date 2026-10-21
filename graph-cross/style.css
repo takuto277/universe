@@ -94,6 +94,94 @@ body {
   user-select: none;
 }
 
+#stage-info {
+  position: absolute;
+  top: 12px;
+  left: 14px;
+  min-width: 160px;
+  max-width: 260px;
+  padding: 6px 10px 7px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(11, 18, 32, 0.82);
+  pointer-events: none;
+}
+#stage-label {
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.2px;
+  color: var(--gold);
+  white-space: nowrap;
+}
+#stage-note {
+  display: block;
+  margin-top: 2px;
+  font-size: 9.5px;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.stage-bar {
+  height: 5px;
+  margin-top: 4px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
+  overflow: hidden;
+}
+#stage-fill {
+  display: block;
+  height: 100%;
+  width: 0%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, var(--cyan), var(--gold));
+  transition: width 0.18s ease;
+}
+#stage-info.boss { border-color: rgba(255, 77, 141, 0.55); }
+#stage-info.boss #stage-label { color: var(--red); }
+#stage-info.boss #stage-fill { background: linear-gradient(90deg, var(--red), #ffd166); }
+#stage-info.cleared { border-color: rgba(87, 224, 138, 0.6); }
+#stage-info.cleared #stage-label { color: var(--green); }
+
+#stage-banner {
+  position: absolute;
+  left: 50%;
+  top: 46%;
+  transform: translate(-50%, -50%) scale(0.9);
+  font-size: clamp(28px, 6vw, 56px);
+  font-weight: 900;
+  letter-spacing: 6px;
+  color: var(--gold);
+  text-shadow: 0 0 34px rgba(255, 209, 102, 0.5);
+  opacity: 0;
+  pointer-events: none;
+  white-space: nowrap;
+}
+#stage-banner.show { animation: stageBanner 1.25s ease; }
+@keyframes stageBanner {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.8); }
+  18% { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  70% { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  100% { opacity: 0; transform: translate(-50%, -52%) scale(1.02); }
+}
+
+.clear-screen { background: rgba(5, 8, 16, 0.84); }
+.clear-title {
+  margin: 0;
+  font-size: clamp(30px, 6vw, 54px);
+  letter-spacing: 4px;
+  color: var(--gold);
+  text-shadow: 0 0 38px rgba(255, 209, 102, 0.5);
+}
+.clear-stage {
+  font-size: 13px;
+  letter-spacing: 3px;
+  color: var(--cyan);
+  font-weight: 800;
+}
+.end-stats { flex-wrap: wrap; }
+
 #overlay {
   position: absolute;
   inset: 0;
@@ -309,10 +397,53 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 3px 8px;
+  padding: 4px 8px;
   border: 1px solid var(--line);
   border-radius: 8px;
   background: rgba(23, 34, 56, 0.75);
+  flex-wrap: wrap;
+}
+.tune-tag {
+  flex: 0 0 auto;
+  font-size: 9px;
+  font-weight: 800;
+  color: var(--gold);
+  border: 1px solid rgba(255, 209, 102, 0.35);
+  border-radius: 999px;
+  padding: 1px 7px;
+}
+.tune-input {
+  width: 3.6em;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(8, 14, 26, 0.95);
+  color: var(--cyan);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 12px;
+  text-align: center;
+}
+.tune-input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(95, 240, 255, 0.15); }
+#tune-preview-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 2px;
+}
+#tune-preview-wrap.hidden { display: none; }
+#tune-preview {
+  display: block;
+  width: 100%;
+  height: 92px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(7, 13, 24, 0.95);
+}
+#tune-desc {
+  color: var(--muted);
+  font-size: 10.5px;
+  line-height: 1.5;
+  min-height: 15px;
 }
 .tune-row.hidden { display: none; }
 .tune-name {
@@ -448,11 +579,17 @@ body {
   #deck-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .deck-card b { font-size: 11px; }
   .deck-card span { font-size: 9px; }
-  .tune-name { font-size: 10.5px; }
-  .tune-controls button { width: 26px; height: 26px; font-size: 13px; }
+  .tune-name { font-size: 10px; }
+  .tune-input { width: 3.2em; font-size: 11px; }
   #tune-panel { padding: 6px 8px 7px; }
+  #tune-preview { height: 74px; }
+  #tune-desc { font-size: 9.5px; }
   #tip { font-size: 9.5px; }
   #btn-sound { font-size: 9.5px; padding: 2px 8px; }
+  #stage-info { top: 8px; left: 8px; min-width: 132px; max-width: 190px; padding: 5px 8px 6px; }
+  #stage-label { font-size: 10px; }
+  #stage-note { font-size: 8.5px; }
+  #stage-banner { letter-spacing: 4px; }
   .end-stats div { min-width: 92px; padding: 6px 10px; }
 }
 

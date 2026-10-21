@@ -153,6 +153,15 @@
       tone(base, now, 0.075, 'square', 0.14, sfxGain);
       tone(base * 1.5, now + 0.045, 0.12, 'triangle', 0.12, sfxGain);
       if (b) tone(base * 2, now + 0.09, 0.16, 'sine', 0.10, sfxGain);
+    } else if (name === 'boss') {
+      tone(110, now, 0.22, 'sawtooth', 0.13, sfxGain);
+      tone(146, now + 0.14, 0.24, 'sawtooth', 0.12, sfxGain);
+      tone(98, now + 0.3, 0.4, 'sawtooth', 0.11, sfxGain);
+    } else if (name === 'clear') {
+      tone(523, now, 0.12, 'square', 0.10, sfxGain);
+      tone(659, now + 0.1, 0.13, 'square', 0.10, sfxGain);
+      tone(784, now + 0.2, 0.16, 'triangle', 0.11, sfxGain);
+      tone(1046, now + 0.34, 0.4, 'sine', 0.10, sfxGain);
     } else if (name === 'weak') {
       tone(1046, now, 0.09, 'sine', 0.11, sfxGain);
       tone(1318, now + 0.055, 0.12, 'sine', 0.10, sfxGain);
