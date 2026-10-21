@@ -7,6 +7,8 @@
   var audio = AU ? AU.create() : null;
   var muted = loadMuted();
   var selectedParams = loadParams();
+  var previewCtx = null;
+  var previewKey = null;
   var FAMILY_COLORS = { linear: '#5ff0ff', quad: '#ffd166', wave: '#ff7ad9', none: '#a8bad8' };
   var lastCombo = 0;
 
@@ -17,7 +19,7 @@
   var deckCards = {};
   var selectedDeck = loadDeck();
   var state = null;
-  var view = { phase: 'idle', deathAt: 0 };
+  var view = { phase: 'idle', deathAt: 0, clearAt: 0 };
   var viewW = 960;
   var viewH = 560;
   var dpr = 1;
@@ -80,15 +82,23 @@
 
   function formatModeLabel(key, params) {
     if (key === 'quad' || key === 'quadDown') {
-      var qa = params && params[key] ? params[key].a : 1;
+      var qp = params && params[key] ? params[key] : { a: 1, b: 0 };
+      var qa = qp.a || 1;
+      var qb = qp.b || 0;
       var qcoef = qa === 1 ? '' : fmtNum(qa);
-      return 'y = ' + (key === 'quadDown' ? '-' : '') + qcoef + 'x²';
+      var qlabel = 'y = ' + (key === 'quadDown' ? '-' : '') + qcoef + 'x²';
+      if (qb !== 0) qlabel += (qb > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(qb)) + 'x';
+      return qlabel;
     }
     if (key === 'wave') {
-      var wp = params && params.wave ? params.wave : { a: 1, b: 1 };
-      var acoef = wp.a === 1 ? '' : fmtNum(wp.a) + ' ';
-      var bcoef = wp.b === 1 ? 'x' : fmtNum(wp.b) + 'x';
-      return 'y = ' + acoef + 'sin ' + bcoef;
+      var wp = params && params.wave ? params.wave : { a: 1, b: 1, c: 0 };
+      var wa = wp.a || 1;
+      var wb = wp.b || 1;
+      var wc = wp.c || 0;
+      var acoef = wa === 1 ? '' : fmtNum(wa) + ' ';
+      var inner = wb === 1 ? 'x' : fmtNum(wb) + 'x';
+      if (wc !== 0) inner += (wc > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(wc));
+      return 'y = ' + acoef + 'sin(' + inner + ')';
     }
     return E.MODES[key] ? E.MODES[key].label : '';
   }
@@ -134,6 +144,29 @@
     if (els.combo) els.combo.textContent = snap && snap.combo > 0 ? 'x' + snap.combo : '-';
     if (els.life) els.life.textContent = snap ? lifeText(snap.hp) : lifeText(E.MAX_HP);
     if (els.life) els.life.classList.toggle('danger', !!(snap && snap.hp <= 1));
+
+    if (els.stageLabel) {
+      var stage = snap ? snap.stage : 1;
+      if (snap && snap.stageCleared) {
+        els.stageLabel.textContent = 'STAGE ' + stage + ' CLEAR';
+        if (els.stageFill) els.stageFill.style.width = '100%';
+        if (els.stageNote) els.stageNote.textContent = 'クリア!';
+      } else if (snap && snap.boss) {
+        els.stageLabel.textContent = 'STAGE ' + stage + ' · BOSS';
+        if (els.stageFill) els.stageFill.style.width = Math.round(snap.boss.hp / snap.boss.maxHp * 100) + '%';
+        if (els.stageNote) els.stageNote.textContent = '弱点: ' + snap.boss.familyLabel + ' / HP ' + snap.boss.hp + '/' + snap.boss.maxHp;
+      } else {
+        els.stageLabel.textContent = 'STAGE ' + stage;
+        var hits = snap ? snap.stageHits : 0;
+        var target = snap ? snap.stageTarget : E.stageTargetFor(1);
+        if (els.stageFill) els.stageFill.style.width = Math.round(hits / target * 100) + '%';
+        if (els.stageNote) els.stageNote.textContent = '敵 ' + hits + '/' + target;
+      }
+      if (els.stageInfo) {
+        els.stageInfo.classList.toggle('boss', !!(snap && snap.boss && !snap.stageCleared));
+        els.stageInfo.classList.toggle('cleared', !!(snap && snap.stageCleared));
+      }
+    }
   }
 
   function deckIsValid(deck) {
@@ -204,8 +237,16 @@
     updateTunePanel();
   }
 
+  function setInputValue(id, value) {
+    var el = $(id);
+    if (!el) return;
+    if (typeof document !== 'undefined' && document.activeElement === el) return;
+    el.value = fmtNum(value);
+  }
+
   function updateTunePanel() {
     var any = false;
+    var first = null;
     var keys = ['quad', 'quadDown', 'wave'];
     for (var i = 0; i < keys.length; i++) {
       var key = keys[i];
@@ -215,28 +256,153 @@
       row.classList.toggle('hidden', !visible);
       if (!visible) continue;
       any = true;
+      if (!first) first = key;
       var params = selectedParams[key];
       if (!params) continue;
-      var a = $('tune-' + key + '-a');
-      if (a) a.textContent = fmtNum(params.a);
+      setInputValue('tune-' + key + '-a', params.a);
       if (key === 'wave') {
-        var b = $('tune-wave-b');
-        if (b) b.textContent = fmtNum(params.b);
+        setInputValue('tune-wave-b', params.b);
+        setInputValue('tune-wave-c', params.c);
+      } else {
+        setInputValue('tune-' + key + '-b', params.b);
       }
     }
     if (els.tuneEmpty) els.tuneEmpty.classList.toggle('hidden', any);
+    if (els.tunePreviewWrap) els.tunePreviewWrap.classList.toggle('hidden', !any);
+    if (!any) {
+      previewKey = null;
+    } else if (!previewKey || selectedDeck.indexOf(previewKey) < 0 || !E.PARAM_SPECS[previewKey]) {
+      previewKey = first;
+    }
+    updateTunePreview();
   }
 
-  function adjustParam(key, name, dir) {
-    var specs = E.PARAM_SPECS[key];
-    if (!specs || !specs[name] || !selectedParams[key]) return;
-    var spec = specs[name];
-    var next = selectedParams[key][name] + spec.step * dir;
-    next = Math.max(spec.min, Math.min(spec.max, next));
-    selectedParams[key][name] = next;
+  function setPreviewKey(key) {
+    previewKey = key;
+    updateTunePreview();
+  }
+
+  function onParamInput(key, name, value) {
+    var spec = E.PARAM_SPECS[key] && E.PARAM_SPECS[key][name];
+    if (!spec) return;
+    var v = parseFloat(value);
+    if (!isFinite(v)) return;
+    selectedParams[key][name] = Math.max(spec.min, Math.min(spec.max, v));
+    previewKey = key;
+    saveParams();
+    updateSlots();
+    updateTunePreview();
+  }
+
+  function onParamCommit(key, name, value) {
+    var spec = E.PARAM_SPECS[key] && E.PARAM_SPECS[key][name];
+    if (!spec) return;
+    var v = parseFloat(value);
+    if (!isFinite(v)) v = selectedParams[key][name];
+    selectedParams[key][name] = Math.max(spec.min, Math.min(spec.max, v));
     selectedParams = E.normalizeParams(selectedParams);
     saveParams();
     updateDeckUi();
+  }
+
+  function updateTunePreview() {
+    if (!previewCtx) return;
+    var W = 560;
+    var H = 92;
+    var top = 8;
+    var bottom = 84;
+    previewCtx.clearRect(0, 0, W, H);
+    previewCtx.fillStyle = 'rgba(7, 13, 24, 0.95)';
+    previewCtx.fillRect(0, 0, W, H);
+    previewCtx.strokeStyle = 'rgba(80, 170, 220, 0.12)';
+    previewCtx.lineWidth = 1;
+    for (var gx = 0; gx <= W; gx += 40) {
+      previewCtx.beginPath();
+      previewCtx.moveTo(gx, top);
+      previewCtx.lineTo(gx, bottom);
+      previewCtx.stroke();
+    }
+    for (var gy = top; gy <= bottom; gy += 19) {
+      previewCtx.beginPath();
+      previewCtx.moveTo(0, gy);
+      previewCtx.lineTo(W, gy);
+      previewCtx.stroke();
+    }
+    previewCtx.strokeStyle = 'rgba(95, 240, 255, 0.25)';
+    previewCtx.beginPath();
+    previewCtx.moveTo(0, top);
+    previewCtx.lineTo(W, top);
+    previewCtx.moveTo(0, bottom);
+    previewCtx.lineTo(W, bottom);
+    previewCtx.stroke();
+
+    if (!previewKey || selectedDeck.indexOf(previewKey) < 0) {
+      if (els.tuneDesc) els.tuneDesc.textContent = '係数を動かすと、この先の軌道がプレビューされます。';
+      return;
+    }
+    var params = selectedParams[previewKey];
+    if (!params) return;
+    var mode = E.MODES[previewKey];
+    var color = FAMILY_COLORS[mode.family] || FAMILY_COLORS.quad;
+    var dt = 1 / 60;
+    var tmax = 1.6;
+    var fieldH = 520;
+    var y = fieldH / 2;
+    var vy = previewKey === 'wave' ? 0 : (params.b || 0) * 120;
+    var accel = previewKey === 'quad' ? -560 * (params.a || 1) : 560 * (params.a || 1);
+    var points = [{ x: 0, y: top + (y / fieldH) * (bottom - top) }];
+    var off = false;
+    for (var t = dt; t <= tmax + 1e-9; t += dt) {
+      if (previewKey === 'wave') {
+        vy = 285 * (params.a || 1) * Math.sin(4.2 * (params.b || 1) * t + (params.c || 0));
+      } else {
+        vy = clamp(vy + accel * dt, -420, 420);
+      }
+      y += vy * dt;
+      if (y < 0 || y > fieldH) {
+        off = true;
+        y = clamp(y, 0, fieldH);
+      }
+      points.push({ x: W * t / tmax, y: top + (y / fieldH) * (bottom - top) });
+    }
+
+    previewCtx.save();
+    previewCtx.lineCap = 'round';
+    previewCtx.lineJoin = 'round';
+    previewCtx.shadowColor = color;
+    previewCtx.shadowBlur = 9;
+    previewCtx.strokeStyle = color;
+    previewCtx.lineWidth = 2.6;
+    previewCtx.beginPath();
+    for (var i = 0; i < points.length; i++) {
+      if (i === 0) previewCtx.moveTo(points[i].x, points[i].y);
+      else previewCtx.lineTo(points[i].x, points[i].y);
+    }
+    previewCtx.stroke();
+    previewCtx.shadowBlur = 0;
+    previewCtx.fillStyle = '#eaffff';
+    previewCtx.beginPath();
+    previewCtx.arc(points[0].x + 3, points[0].y, 3, 0, Math.PI * 2);
+    previewCtx.fill();
+    var last = points[points.length - 1];
+    previewCtx.fillStyle = color;
+    previewCtx.beginPath();
+    previewCtx.arc(last.x - 3, last.y, 3.5, 0, Math.PI * 2);
+    previewCtx.fill();
+    previewCtx.restore();
+
+    var desc;
+    if (previewKey === 'wave') {
+      desc = '振幅 a=' + fmtNum(params.a) + ' / 周波数 b=' + fmtNum(params.b) + ' / 位相 c=' + fmtNum(params.c) +
+        '。' + (params.b >= 1.5 ? '小刻みな' : 'ゆったりした') + '上下の波。';
+    } else {
+      var dir = previewKey === 'quad' ? '上' : '下';
+      desc = '曲率 a=' + fmtNum(params.a) + ' / 初速 b=' + fmtNum(params.b) +
+        '。' + dir + 'に加速するカーブ。最初は' +
+        (params.b > 0 ? '下向き' : params.b < 0 ? '上向き' : '水平') + '。';
+    }
+    if (off) desc += ' このままだと画面端に到達。';
+    if (els.tuneDesc) els.tuneDesc.textContent = desc;
   }
 
   function toggleDeck(key) {
@@ -253,6 +419,7 @@
   function showStart() {
     if (els.screenStart) els.screenStart.classList.add('visible');
     if (els.screenEnd) els.screenEnd.classList.remove('visible');
+    if (els.screenClear) els.screenClear.classList.remove('visible');
     view.phase = 'idle';
     updateDeckUi();
   }
@@ -272,6 +439,7 @@
     lastTs = 0;
     if (els.screenStart) els.screenStart.classList.remove('visible');
     if (els.screenEnd) els.screenEnd.classList.remove('visible');
+    if (els.screenClear) els.screenClear.classList.remove('visible');
     if (els.btnStart && els.btnStart.blur) els.btnStart.blur();
     if (els.btnAgain && els.btnAgain.blur) els.btnAgain.blur();
     if (audio) {
@@ -284,6 +452,7 @@
     }
     updateSlots();
     updateHud();
+    showStageBanner(1);
   }
 
   function showEnd() {
@@ -296,6 +465,7 @@
     if (els.endScore) els.endScore.textContent = String(snap.score);
     if (els.endBest) els.endBest.textContent = String(best);
     if (els.endCombo) els.endCombo.textContent = 'x' + snap.maxCombo;
+    if (els.endStage) els.endStage.textContent = String(snap.stage);
     if (els.endX) els.endX.textContent = String(snap.x);
     if (els.screenEnd) els.screenEnd.classList.add('visible');
     if (audio) {
@@ -307,6 +477,61 @@
     updateHud();
   }
 
+  function showStageBanner(stage) {
+    if (!els.stageBanner) return;
+    els.stageBanner.textContent = 'STAGE ' + stage;
+    els.stageBanner.classList.remove('show');
+    void els.stageBanner.offsetWidth;
+    els.stageBanner.classList.add('show');
+  }
+
+  function showClear() {
+    view.phase = 'clear';
+    var snap = E.snapshot(state);
+    if (snap.score > best) {
+      best = snap.score;
+      saveBest(best);
+    }
+    if (els.clearStage) els.clearStage.textContent = 'STAGE ' + snap.stage;
+    if (els.clearScore) els.clearScore.textContent = String(snap.score);
+    if (els.clearBonus) els.clearBonus.textContent = '+' + snap.stageClearBonus;
+    if (els.clearLife) els.clearLife.textContent = lifeText(snap.hp);
+    if (els.screenClear) els.screenClear.classList.add('visible');
+    if (audio) {
+      audio.setIntensity(0);
+      audio.stopBgm();
+    }
+    updateSlots();
+    updateHud();
+  }
+
+  function goNextStage() {
+    if (!state || !state.stageCleared) return;
+    if (!E.nextStage(state)) return;
+    view.phase = 'run';
+    view.deathAt = 0;
+    view.clearAt = 0;
+    lastCombo = 0;
+    particles = [];
+    rings = [];
+    labels = [];
+    shake = 0;
+    flash = 0;
+    lastTs = 0;
+    if (els.screenClear) els.screenClear.classList.remove('visible');
+    if (audio) {
+      audio.setIntensity(0);
+      if (!muted) {
+        audio.unlock();
+        audio.startBgm();
+        audio.play('start');
+      }
+    }
+    updateSlots();
+    updateHud();
+    showStageBanner(state.stage);
+  }
+
   /* ===== 入力 ===== */
   function selectSlot(index) {
     if (!state || view.phase !== 'run' || state.over) return;
@@ -315,11 +540,16 @@
   }
 
   function startOrRestart() {
+    if (view.phase === 'clear') {
+      goNextStage();
+      return;
+    }
     if ((view.phase === 'idle' || view.phase === 'over') && selectedDeck.length === 3) beginRun();
   }
 
   function backToDeck() {
     if (audio) audio.stopBgm();
+    if (els.screenClear) els.screenClear.classList.remove('visible');
     state = null;
     view.phase = 'idle';
     particles = [];
@@ -391,7 +621,7 @@
     var events = E.consumeEvents(state);
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
-      if (ev.type === 'hit') {
+      if (ev.type === 'hit' || ev.type === 'bossHit') {
         var colors = ['#5ff0ff', '#ff7ad9', '#ffd166', '#ffffff'];
         var mult = ev.mult || 1;
         spawnParticles(ev.x, ev.y, ev.perfect ? 50 : 34, colors, 300, 0.9);
@@ -414,10 +644,46 @@
           addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.95)', 118, 0.55);
           if (audio) audio.play('weak');
         }
+        if (ev.type === 'bossHit') {
+          addLabel(ev.x, ev.y - 100, 'BOSS -' + ev.damage, '#ff9f6b', 18);
+        }
         if (ev.heal) {
           addLabel(ev.x, ev.y + 52, 'LIFE +1', '#57e08a', 14);
           addRing(ev.x, ev.y, 'rgba(87, 224, 138, 0.8)', 60, 0.5);
           if (audio) audio.play('heal');
+        }
+      } else if (ev.type === 'bossSpawn') {
+        spawnParticles(ev.x, ev.y, 32, ['#ff4d8d', '#ffd166', '#ffffff'], 280, 0.9);
+        addRing(ev.x, ev.y, 'rgba(255, 77, 141, 0.95)', 90, 0.6);
+        addLabel(ev.x - 60, ev.y - 20, 'BOSS', '#ff4d8d', 30);
+        shake = 1;
+        flash = 0.45;
+        flashColor = '255, 77, 141';
+        if (audio) audio.play('boss');
+      } else if (ev.type === 'bossShift') {
+        addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.9)', 80, 0.5);
+        addLabel(ev.x - 20, ev.y - 62, 'WEAK SHIFT: ' + ev.familyLabel, '#ffd166', 15);
+        if (audio) audio.play('weak');
+      } else if (ev.type === 'bossEscape') {
+        addLabel(viewW * 0.5 - 80, viewH * 0.4, 'BOSS ESCAPED', '#ff6b5e', 24);
+        spawnParticles(40, ev.y || viewH * 0.5, 24, ['#ff4d8d', '#ff8f6b'], 240, 0.8);
+        shake = 0.9;
+        flash = 0.4;
+        flashColor = '255, 77, 141';
+        if (audio) audio.play('miss');
+      } else if (ev.type === 'stageClear') {
+        spawnParticles(ev.x, ev.y, 60, ['#ffd166', '#5ff0ff', '#ffffff', '#ff7ad9'], 380, 1.2);
+        addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.95)', 150, 0.8);
+        addRing(ev.x, ev.y, 'rgba(95, 240, 255, 0.9)', 90, 0.6);
+        addLabel(ev.x - 80, ev.y - 40, 'STAGE CLEAR!', '#ffd166', 30);
+        addLabel(ev.x - 40, ev.y + 12, '+' + ev.bonus, '#9ffaff', 18);
+        shake = 1;
+        flash = 0.65;
+        flashColor = '255, 240, 190';
+        if (audio) {
+          audio.setIntensity(0);
+          audio.stopBgm();
+          audio.play('clear');
         }
       } else if (ev.type === 'miss') {
         spawnParticles(ev.x, ev.y, 14, ['#ff4d8d', '#ff8f6b'], 190, 0.6);
@@ -570,6 +836,60 @@
     }
   }
 
+  function drawBoss(time) {
+    if (!state || !state.boss) return;
+    var boss = state.boss;
+    if (boss.x > viewW + 80 || boss.x + boss.len < -80) return;
+    var color = FAMILY_COLORS[boss.family] || FAMILY_COLORS.wave;
+    var points = 44;
+    ctx.beginPath();
+    for (var j = 0; j <= points; j++) {
+      var local = boss.len * j / points;
+      var px = boss.x + local;
+      var py = E.rivalY(boss, local);
+      if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
+    }
+    ctx.save();
+    ctx.lineCap = 'round';
+    ctx.lineJoin = 'round';
+    ctx.shadowColor = color;
+    ctx.shadowBlur = 24;
+    ctx.globalAlpha = 0.95;
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 5;
+    ctx.stroke();
+    ctx.shadowBlur = 0;
+    ctx.globalAlpha = 1;
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+    if (boss.flash > 0) {
+      ctx.strokeStyle = 'rgba(255, 255, 255, ' + Math.min(0.9, boss.flash * 3) + ')';
+      ctx.lineWidth = 8;
+      ctx.stroke();
+    }
+    ctx.restore();
+
+    for (var k = 1; k <= 3; k++) {
+      var lp = boss.len * k / 4;
+      var wx = boss.x + lp;
+      var wy = E.rivalY(boss, lp);
+      var pulse = 0.7 + 0.3 * Math.sin(time * 5 + k * 1.7);
+      ctx.fillStyle = color;
+      ctx.globalAlpha = pulse;
+      ctx.beginPath();
+      ctx.arc(wx, wy, 5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1;
+
+    ctx.fillStyle = color;
+    ctx.font = '900 13px ui-monospace, Menlo, monospace';
+    var labelY = E.rivalY(boss, 0) - 18;
+    if (labelY < state.top + 12) labelY = E.rivalY(boss, 0) + 24;
+    ctx.fillText('BOSS / 弱点:' + (E.FAMILY_LABELS[boss.family] || '—'), boss.x + 8, labelY);
+  }
+
   function drawPlayer(time) {
     if (!state) return;
     var trail = state.trail;
@@ -679,6 +999,7 @@
     }
     drawGrid(time);
     drawRivals(time);
+    drawBoss(time);
     drawPlayer(time);
     drawEffects();
     if (flash > 0) {
@@ -717,14 +1038,19 @@
     lastTs = ts;
     dt = clamp(dt, 0, 0.05);
 
-    if (view.phase === 'run' && state && !state.over) {
+    if (view.phase === 'run' && state && !state.over && !state.stageCleared) {
       E.update(state, dt);
       processEvents();
       if (state.combo !== lastCombo) {
         lastCombo = state.combo;
         if (audio) audio.setIntensity(Math.min(3, Math.floor(state.combo / 2)));
       }
-      if (state.over) {
+      if (state.stageCleared) {
+        view.phase = 'clearing';
+        view.clearAt = ts;
+        updateSlots();
+        updateHud();
+      } else if (state.over) {
         view.phase = 'dying';
         view.deathAt = ts;
         updateSlots();
@@ -733,6 +1059,8 @@
       }
     } else if (view.phase === 'dying' && state && state.over) {
       if (ts - view.deathAt > 700) showEnd();
+    } else if (view.phase === 'clearing' && state && state.stageCleared) {
+      if (ts - view.clearAt > 900) showClear();
     }
 
     updateEffects(dt);
@@ -756,11 +1084,29 @@
     els.deckCount = $('deck-count');
     els.tuneRows = $('tune-rows');
     els.tuneEmpty = $('tune-empty');
+    els.tunePreviewWrap = $('tune-preview-wrap');
+    els.tunePreview = $('tune-preview');
+    els.tuneDesc = $('tune-desc');
+    if (els.tunePreview && typeof els.tunePreview.getContext === 'function') {
+      try { previewCtx = els.tunePreview.getContext('2d'); } catch (e) { previewCtx = null; }
+    }
     els.endScore = $('end-score');
     els.endBest = $('end-best');
     els.endCombo = $('end-combo');
+    els.endStage = $('end-stage');
     els.endX = $('end-x');
     els.btnSound = $('btn-sound');
+    els.stageInfo = $('stage-info');
+    els.stageLabel = $('stage-label');
+    els.stageFill = $('stage-fill');
+    els.stageNote = $('stage-note');
+    els.stageBanner = $('stage-banner');
+    els.screenClear = $('screen-clear');
+    els.clearStage = $('clear-stage');
+    els.clearScore = $('clear-score');
+    els.clearBonus = $('clear-bonus');
+    els.clearLife = $('clear-life');
+    els.btnNext = $('btn-next');
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
@@ -793,21 +1139,35 @@
       })(i, slot);
     }
 
-    if (els.tuneRows) {
-      els.tuneRows.addEventListener('click', function (e) {
-        var t = e && e.target;
-        if (!t || !t.getAttribute) return;
-        var key = t.getAttribute('data-key');
-        var name = t.getAttribute('data-param');
-        var dir = parseInt(t.getAttribute('data-dir'), 10);
-        if (!key || !name || !dir) return;
-        adjustParam(key, name, dir);
-        if (t.blur) t.blur();
-      });
+    var paramDefs = [
+      ['tune-quad-a', 'quad', 'a'],
+      ['tune-quad-b', 'quad', 'b'],
+      ['tune-quadDown-a', 'quadDown', 'a'],
+      ['tune-quadDown-b', 'quadDown', 'b'],
+      ['tune-wave-a', 'wave', 'a'],
+      ['tune-wave-b', 'wave', 'b'],
+      ['tune-wave-c', 'wave', 'c']
+    ];
+    for (i = 0; i < paramDefs.length; i++) {
+      (function (def) {
+        var el = $(def[0]);
+        if (!el) return;
+        el.addEventListener('input', function () { onParamInput(def[1], def[2], el.value); });
+        el.addEventListener('change', function () { onParamCommit(def[1], def[2], el.value); });
+        el.addEventListener('focus', function () { setPreviewKey(def[1]); });
+      })(paramDefs[i]);
+    }
+    var tuneKeys = ['quad', 'quadDown', 'wave'];
+    for (i = 0; i < tuneKeys.length; i++) {
+      (function (key) {
+        var row = $('tune-row-' + key);
+        if (row) row.addEventListener('click', function () { setPreviewKey(key); });
+      })(tuneKeys[i]);
     }
     if (els.btnStart) els.btnStart.addEventListener('click', beginRun);
     if (els.btnAgain) els.btnAgain.addEventListener('click', beginRun);
     if (els.btnDeck) els.btnDeck.addEventListener('click', backToDeck);
+    if (els.btnNext) els.btnNext.addEventListener('click', goNextStage);
     if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
     if (audio) audio.setMuted(muted);
     if (canvas) {
@@ -842,7 +1202,9 @@
         title: 'グラフクロス',
         start: function () { beginRun(); },
         autoPlayStep: function () {},
-        isDone: function () { return !!(state && state.over && view.phase === 'over'); },
+        isDone: function () {
+          return !!(state && ((state.over && view.phase === 'over') || (state.stageCleared && view.phase === 'clear')));
+        },
         getState: function () {
           if (!state) return { phase: view.phase, over: false, score: 0, best: best };
           var snap = E.snapshot(state);
