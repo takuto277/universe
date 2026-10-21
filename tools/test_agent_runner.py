@@ -117,12 +117,15 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["git", "worktree", "add"], ar.Result(0), effect=make_worktree)
         self.fake.on(["git", "worktree", "remove"], ar.Result(0))
         dirty = overrides.get("status", "")
+        post_dirty = overrides.get("status_after_verify", "")
         status_calls = {"count": 0}
 
         def status_handler(argv):
             status_calls["count"] += 1
             if dirty and status_calls["count"] == 1:
                 return ar.Result(0, dirty, "")
+            if post_dirty and status_calls["count"] >= 2:
+                return ar.Result(0, post_dirty, "")
             return ar.Result(0, "", "")
 
         self.fake.on(["git", "status", "--porcelain"], status_handler)
@@ -208,6 +211,22 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("gh", "pr", "create"))
         comments = [call["argv"][-1] for call in self.fake.find("gh", "issue", "comment")]
         self.assertTrue(any("失敗" in body for body in comments))
+
+    def test_file_changed_during_verify_marks_failed(self):
+        self.happy(verify=ar.Result(0, "ok", ""),
+                   status_after_verify=" M tools/check_site.py\n")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_verify_failure_comment_has_no_raw_output(self):
+        self.happy(verify=ar.Result(1, "NG: link leaked=/secret", ""))
+        self.assertEqual(1, self.runner.run_once())
+        comments = [call["argv"][-1] for call in self.fake.find("gh", "issue", "comment")]
+        self.assertTrue(comments)
+        self.assertFalse(any("leaked=/secret" in body for body in comments))
+        logs = "".join(path.read_text(encoding="utf-8")
+                       for path in (self.cfg.state_dir / "logs").glob("issue-12-*.log"))
+        self.assertIn("leaked=/secret", logs)
 
     def test_verify_timeout_marks_failed(self):
         self.happy(verify=ar.Result(124, "", "", timed_out=True))

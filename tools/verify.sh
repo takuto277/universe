@@ -10,7 +10,7 @@ for script in \
   "$ROOT/tools/install-agent-runner.sh"; do
   bash -n "$script"
 done
-python3 - "$ROOT" <<'PY'
+python3 -I - "$ROOT" <<'PY'
 import pathlib
 import sys
 

@@ -466,6 +466,9 @@ class Runner:
                 raise TaskError("verify.sh がタイムアウトしました (%ss)" % cfg.verify_timeout)
             if not verify.ok:
                 raise TaskError("./tools/verify.sh が失敗しました。詳細は実行ログを確認してください")
+            # app のテストが tools/ を書き換えて以降のチェックを無効化していないか確認する
+            self._assert_worktree_clean(worktree)
+            self._assert_tools_untouched(worktree, base_sha)
 
             if self.paused():
                 raise TaskError("pause されたため push 前に中断しました")
@@ -546,6 +549,13 @@ class Runner:
         if not added.ok:
             raise TaskError("worktree の作成に失敗しました: %s" % tail(added.stderr, 600))
         return base_sha
+
+    def _assert_worktree_clean(self, worktree: Path) -> None:
+        status = self.git("status", "--porcelain", cwd=worktree, timeout=60)
+        if not status.ok:
+            raise TaskError("verify 後の git status に失敗しました")
+        if (status.stdout or "").strip():
+            raise TaskError("verify 中にファイルが変更されました(テストの副作用を確認してください)")
 
     def _assert_tools_untouched(self, worktree: Path, base_sha: str) -> None:
         """検証スクリプト自体を書き換えて verify を通す抜け道を塞ぐ。"""
