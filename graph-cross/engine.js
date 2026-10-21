@@ -46,6 +46,8 @@
   var DECK_SIZE = 3;
   var FAMILY_LABELS = { linear: '直線', quad: '累乗', wave: '波', none: '—' };
   var BOSS_FAMILIES = ['linear', 'quad', 'wave'];
+  var WAVE_SHAPES = ['sin', 'cos', 'tri', 'soft', 'damp'];
+  var WAVE_AMPLITUDE = 68;
   var PARAM_SPECS = {
     quad: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
@@ -60,7 +62,8 @@
     wave: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
       b: { min: 0.5, max: 2.5, step: 0.25, default: 1 },
-      c: { min: -3, max: 3, step: 0.2, default: 0 }
+      c: { min: -3, max: 3, step: 0.2, default: 0 },
+      shape: { min: 0, max: 4, step: 1, default: 0 }
     }
   };
 
@@ -111,11 +114,26 @@
       var q = state.deckParams[key] || {};
       return (q.b || 0) * 120;
     }
-    if (key === 'wave') {
-      var w = state.deckParams.wave || {};
-      return 285 * (w.a || 1) * Math.sin(w.c || 0);
-    }
     return 0;
+  }
+
+  function waveShapeValue(shape, theta, t) {
+    if (shape === 1) return Math.cos(theta);
+    if (shape === 2) return (2 / Math.PI) * Math.asin(Math.sin(theta));
+    if (shape === 3) return Math.tanh(2.6 * Math.sin(theta));
+    if (shape === 4) return Math.exp(-1.1 * Math.max(0, t)) * Math.sin(theta);
+    return Math.sin(theta);
+  }
+
+  function waveOffset(state, t) {
+    var wp = state.deckParams.wave || { a: 1, b: 1, c: 0, shape: 0 };
+    var shape = Math.max(0, Math.min(4, Math.round(wp.shape || 0)));
+    var theta = t * 4.2 * (wp.b || 1) + (wp.c || 0);
+    return WAVE_AMPLITUDE * (wp.a || 1) * waveShapeValue(shape, theta, t);
+  }
+
+  function setWaveBase(state) {
+    state.waveBaseY = state.y - waveOffset(state, 0);
   }
 
   function normalizeDeck(deck) {
@@ -178,6 +196,8 @@
     state.modeTime = 0;
     state.vy = baseVy(state, state.mode);
     state.y = (state.top + state.bottom) / 2;
+    state.waveBaseY = state.y;
+    if (state.mode === 'wave') setWaveBase(state);
     state.trail = [];
     state.rivals = [];
     state.events = [];
@@ -219,6 +239,7 @@
       headX: 0,
       y: 0,
       vy: 0,
+      waveBaseY: 0,
       mode: 'wave',
       modeTime: 0,
       time: 0,
@@ -263,6 +284,8 @@
     state.mode = key;
     state.modeTime = 0;
     state.vy = baseVy(state, key);
+    state.waveBaseY = state.y;
+    if (key === 'wave') setWaveBase(state);
     return true;
   }
 
@@ -525,6 +548,8 @@
     state.mode = state.deck[0];
     state.modeTime = 0;
     state.vy = baseVy(state, state.mode);
+    state.waveBaseY = state.y;
+    if (state.mode === 'wave') setWaveBase(state);
     state.combo = 0;
     state.comboTimer = 0;
     state.spawnTimer = 1.0;
@@ -652,8 +677,8 @@
       var dir = state.mode === 'quadDown' ? 1 : -1;
       state.vy = clamp(dir * powerTerm + (qp.b || 0) * 120, -MAX_PLAYER_VY, MAX_PLAYER_VY);
     } else if (state.mode === 'wave') {
-      var wp = state.deckParams.wave || { a: 1, b: 1, c: 0 };
-      state.vy = 285 * (wp.a || 1) * Math.sin(state.modeTime * 4.2 * (wp.b || 1) + (wp.c || 0));
+      state.y = state.waveBaseY + waveOffset(state, state.modeTime);
+      state.vy = 0;
     } else state.vy = 0;
 
     state.y += state.vy * dt;
@@ -772,6 +797,8 @@
     MODE_KEYS: MODE_KEYS,
     DEFAULT_DECK: DEFAULT_DECK,
     FAMILY_LABELS: FAMILY_LABELS,
+    WAVE_SHAPES: WAVE_SHAPES,
+    waveShapeValue: waveShapeValue,
     PARAM_SPECS: PARAM_SPECS,
     normalizeParams: normalizeParams,
     normalizeDeckParams: normalizeDeckParams,

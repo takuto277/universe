@@ -121,7 +121,20 @@ var power3 = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up
 for (i = 0; i < 30; i++) { power2.rivals = []; power3.rivals = []; E.update(power2, 1 / 60); E.update(power3, 1 / 60); }
 assert(power3.y > power2.y, 'pが大きいほど序盤はゆるく曲がる');
 var waveC = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 1, c: 1 } }, rng: mulberry32(24) });
-assert(waveC.vy > 200, 'sinの位相が初速に反映される');
+var wave0 = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 1, c: 0 } }, rng: mulberry32(24) });
+for (i = 0; i < 20; i++) {
+  waveC.rivals = []; wave0.rivals = [];
+  E.update(waveC, 1 / 60); E.update(wave0, 1 / 60);
+}
+assert(Math.abs(waveC.y - wave0.y) > 1, 'sinの位相が軌道に反映される');
+var triWave = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 1, c: 0, shape: 2 } }, rng: mulberry32(27) });
+var sinWave = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 1, c: 0, shape: 0 } }, rng: mulberry32(27) });
+for (i = 0; i < 25; i++) {
+  triWave.rivals = []; sinWave.rivals = [];
+  E.update(triWave, 1 / 60); E.update(sinWave, 1 / 60);
+}
+assert(Math.abs(triWave.y - sinWave.y) > 1, '波の形の違いが軌道に反映される');
+assert(E.WAVE_SHAPES.length === 5, '波の形が5種類ある');
 
 var slowQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 0.4 } }, rng: mulberry32(21) });
 var fastQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 2 } }, rng: mulberry32(21) });

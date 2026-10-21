@@ -413,6 +413,17 @@ body {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1 1 auto;
+}
+.tune-select {
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: rgba(8, 14, 26, 0.95);
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: 10px;
 }
 .tune-sliders {
   display: grid;
