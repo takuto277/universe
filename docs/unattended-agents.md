@@ -132,16 +132,21 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 
 `UNIVERSE_AGENT_SANDBOX=seatbelt` を設定すると、builder と `verify.sh` を macOS の `sandbox-exec` で包みます。既定は `none` です。
 
-- 書き込みは worktree・state dir・リポジトリの `.git`・一時ディレクトリ・opencode の設定/データだけに許可します
-- 読み取りは既定で許可しつつ、`~/.ssh`、`~/.aws`、`~/.config/gh`、`~/Library/Keychains`、`~/Documents` などを明示的に拒否します
-- ネットワークはモデル API のために許可します（完全なネットワーク遮断ではありません）
-- `sandbox-exec` は非推奨の仕組みです。より強い隔離が必要な場合は、専用 OS ユーザやコンテナの利用を検討してください
+- 書き込みは「その実行の worktree」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけに許可します。リポジトリの `.git`、state dir（lock・pause・history）、`~/.config/opencode` は書き込み禁止です
+- builder は編集だけを行い、コミットは sandbox の外で runner が行います
+- 読み取りは既定で許可しつつ、`~/.ssh`、`~/.aws`、`~/.config/gh`、`~/Library/Keychains`、`~/Documents`、`~/Downloads` などを明示的に拒否します
+- ネットワークはモデル API のために許可します（完全なネットワーク遮断ではありません）。keychain や ssh-agent は `mach-lookup` 経由で利用できるため、秘密情報の完全な遮断ではありません
+- `sandbox-exec` は非推奨の仕組みです。より強い隔離が必要な場合は、専用 OS ユーザやコンテナの利用を検討してください。planner と watcher のレビュー用 opencode は sandbox の外で動きます
 
 ```sh
 UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-runner.sh
 ```
 
-`./tools/agent.sh status` で `sandbox: seatbelt` と表示されます。Launcher の環境変数は plist に保存されるため、変更時は再インストールしてください。
+インストール時の環境変数は plist に保存されます。`./tools/agent.sh status` は実行中のシェルの値を表示するため、LaunchAgent の設定は次で確認してください。
+
+```sh
+launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -A1 UNIVERSE_AGENT_SANDBOX
+```
 
 ## 設定
 

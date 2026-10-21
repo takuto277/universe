@@ -10,7 +10,8 @@ ADR 0005 の builder は、権限 allowlist と保護パス検査で危険な操
 ## Decision
 
 - `UNIVERSE_AGENT_SANDBOX=seatbelt` のとき、builder と `verify.sh` を macOS の `sandbox-exec` で包む
-- deny-by-default とし、書き込みは worktree・state dir・リポジトリの `.git`・一時ディレクトリ・opencode の設定/データだけを許可する
+- deny-by-default とし、書き込みは「その実行の worktree」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけを許可する。リポジトリの `.git`、state dir、`~/.config/opencode` は書き込み禁止とする
+- builder は編集だけを行い、コミットは sandbox の外で runner が行う（`.git/hooks` や `config` を書かせない）
 - 読み取りは既定で許可しつつ、`~/.ssh`、`~/.aws`、`~/.config/gh`、`~/Library/Keychains`、`~/Documents` など一般的な秘密・個人領域を拒否する
 - ネットワークはモデル API のために許可する
 - 既定は `none`。インストーラで `UNIVERSE_AGENT_SANDBOX=seatbelt` を指定したときだけ有効にする
@@ -27,6 +28,7 @@ ADR 0005 の builder は、権限 allowlist と保護パス検査で危険な操
 
 - `sandbox-exec` は非推奨であり、将来の macOS で使えなくなる可能性がある
 - ネットワークは許可しているため、読み取れた情報の外部送信は防げない
+- keychain や ssh-agent は `mach-lookup` 経由で利用でき、秘密情報の完全な遮断ではない
 - 許可していないパスの読み取りは防げない（既知の秘密ディレクトリのみ拒否）
 - 専用ユーザやコンテナほどの強さはない。必要になったら段階的に強化する
 

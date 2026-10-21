@@ -13,6 +13,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from contextlib import redirect_stdout
 from dataclasses import replace
 from pathlib import Path
@@ -307,8 +308,9 @@ class RunnerTest(unittest.TestCase):
         self.assertIn("janken-game: CPUのクセを追加", prompt)
         self.assertIn("verify.sh", prompt)
         self.assertIn("push", prompt)
-        self.assertIn("git commit -m", prompt)
-        self.assertNotIn("-c user.name", prompt)
+        self.assertIn("runner が行う", prompt)
+        self.assertIn("git commit", prompt)
+        self.assertNotIn("git commit -m", prompt)
 
         verify = self.fake.find("bash")
         self.assertTrue(verify)
@@ -742,27 +744,69 @@ class RunnerTest(unittest.TestCase):
         self.assertIn(str(self.worktree), profile)
         self.assertIn(".ssh", profile)
         self.assertIn("(deny default)", profile)
+        self.assertNotIn('(subpath "%s")' % self.cfg.state_dir, profile)
+        self.assertNotIn('(subpath "%s/.git")' % self.cfg.root, profile)
 
+    @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
+                     "already inside sandbox-exec")
     @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
     def test_sandbox_denies_writes_outside_worktree(self):
         cfg = replace(self.cfg, sandbox="seatbelt")
         runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
         self.worktree.mkdir(parents=True, exist_ok=True)
-        allowed = self.worktree / "ok.txt"
-        result = ar.Commands().run(
-            runner.sandbox_argv(["/bin/sh", "-c", "echo ok > %s" % allowed], self.worktree),
-            cwd=str(self.worktree), timeout=30)
-        self.assertTrue(result.ok)
-        denied = Path.home() / ("universe-sandbox-test-%d" % os.getpid())
+        tmpdir = Path(tempfile.mkdtemp(prefix="sb-test-"))
         try:
-            denied.unlink()
-        except OSError:
-            pass
-        result = ar.Commands().run(
-            runner.sandbox_argv(["/bin/sh", "-c", "echo no > %s" % denied], self.worktree),
-            cwd=str(self.worktree), timeout=30)
-        self.assertFalse(result.ok)
-        self.assertFalse(denied.exists())
+            allowed = self.worktree / "ok.txt"
+            result = ar.Commands().run(
+                runner.sandbox_argv(["/bin/sh", "-c", "echo ok > %s" % allowed],
+                                    self.worktree, tmpdir),
+                cwd=str(self.worktree), timeout=30)
+            self.assertTrue(result.ok)
+            denied = Path.home() / ("universe-sandbox-test-%d" % os.getpid())
+            try:
+                result = ar.Commands().run(
+                    runner.sandbox_argv(["/bin/sh", "-c", "echo no > %s" % denied],
+                                        self.worktree, tmpdir),
+                    cwd=str(self.worktree), timeout=30)
+                self.assertFalse(result.ok)
+                self.assertFalse(denied.exists())
+            finally:
+                try:
+                    denied.unlink()
+                except OSError:
+                    pass
+            state_file = self.cfg.state_dir / "pause"
+            result = ar.Commands().run(
+                runner.sandbox_argv(["/bin/sh", "-c", "touch %s" % state_file],
+                                    self.worktree, tmpdir),
+                cwd=str(self.worktree), timeout=30)
+            self.assertFalse(result.ok)
+            self.assertFalse(state_file.exists())
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
+                     "already inside sandbox-exec")
+    @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
+    def test_sandbox_denies_reading_ssh(self):
+        fake_home = Path(tempfile.mkdtemp(prefix="sb-home-"))
+        (fake_home / ".ssh").mkdir()
+        secret = fake_home / ".ssh" / "id_rsa"
+        secret.write_text("secret", encoding="utf-8")
+        tmpdir = Path(tempfile.mkdtemp(prefix="sb-test-"))
+        try:
+            with mock.patch("pathlib.Path.home", return_value=fake_home):
+                cfg = replace(self.cfg, sandbox="seatbelt")
+                runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+                self.worktree.mkdir(parents=True, exist_ok=True)
+                result = ar.Commands().run(
+                    runner.sandbox_argv(["/bin/cat", str(secret)],
+                                        self.worktree, tmpdir),
+                    cwd=str(self.worktree), timeout=30)
+                self.assertFalse(result.ok)
+        finally:
+            shutil.rmtree(fake_home, ignore_errors=True)
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
     def test_run_wraps_agent_and_verify(self):

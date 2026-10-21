@@ -31,6 +31,7 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -301,14 +302,14 @@ class Runner:
             return True
         return (self.cfg.state_dir / "pause").exists()
 
-    def _sandbox_profile(self, worktree: Path) -> Path:
+    def _sandbox_profile(self, worktree: Path, tmpdir: Path) -> Path:
         home = Path.home()
         writable = [
-            worktree, self.cfg.state_dir, self.cfg.root / ".git",
-            Path("/tmp"), Path("/private/tmp"), Path("/dev"),
-            Path("/var/folders"),
-            home / ".local/share/opencode", home / ".config/opencode",
-            home / ".cache/opencode", home / ".local/state/opencode",
+            worktree,
+            tmpdir,
+            Path("/dev"),
+            home / ".local/share/opencode",
+            home / ".cache/opencode",
         ]
         deny_read = [
             home / ".ssh", home / ".aws", home / ".config/gh",
@@ -318,17 +319,30 @@ class Runner:
         ]
         extra = [home / ".netrc", home / ".git-credentials"]
 
-        # /var と /private/var のように symlink でパスが変わるため、実体も許可する
-        expanded = []
-        for path in writable:
-            expanded.append(path)
-            try:
-                expanded.append(Path(os.path.realpath(str(path))))
-            except OSError:
-                pass
+        def real(path: Path) -> str:
+            return os.path.realpath(str(path))
+
+        for protected in (worktree, tmpdir, self.cfg.root, self.cfg.state_dir):
+            resolved = real(protected)
+            for denied in deny_read:
+                denied_real = real(denied)
+                if resolved == denied_real or resolved.startswith(denied_real + os.sep):
+                    raise TaskError(
+                        "サンドボックスの拒否対象と作業パスが重なっています: %s" % protected)
 
         def q(path: Path) -> str:
             return '(subpath "%s")' % str(path).replace("\\", "\\\\").replace('"', '\\"')
+
+        def expand(paths):
+            out = []
+            for path in paths:
+                out.append(path)
+                if real(path) != str(path):
+                    out.append(Path(real(path)))
+            return out
+
+        expanded = expand(writable)
+        denied = expand(deny_read + extra)
 
         lines = [
             "(version 1)",
@@ -340,7 +354,7 @@ class Runner:
             "(allow mach-lookup)",
             "(allow ipc-posix-shm)",
             "(allow file-read*)",
-            "(deny file-read* %s)" % " ".join(q(path) for path in deny_read + extra),
+            "(deny file-read* %s)" % " ".join(q(path) for path in denied),
             "(allow file-write* %s)" % " ".join(q(path) for path in expanded),
             "(allow network*)",
         ]
@@ -349,7 +363,8 @@ class Runner:
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         return path
 
-    def sandbox_argv(self, argv: List[str], worktree: Path) -> List[str]:
+    def sandbox_argv(self, argv: List[str], worktree: Path,
+                     tmpdir: Optional[Path] = None) -> List[str]:
         mode = (self.cfg.sandbox or "none").lower()
         if mode in ("", "none", "off", "0"):
             return argv
@@ -358,8 +373,24 @@ class Runner:
         binary = shutil.which("sandbox-exec") or "/usr/bin/sandbox-exec"
         if not Path(binary).exists():
             raise TaskError("sandbox-exec が見つかりません")
-        profile = self._sandbox_profile(worktree)
+        profile = self._sandbox_profile(worktree, tmpdir or worktree)
         return [binary, "-f", str(profile)] + argv
+
+    def _run_sandboxed(self, argv: List[str], worktree: Path, cwd: Path,
+                       timeout: int, env: Optional[Dict[str, str]] = None) -> Result:
+        mode = (self.cfg.sandbox or "none").lower()
+        if mode in ("", "none", "off", "0"):
+            return self.cmd.run(argv, cwd=str(cwd), timeout=timeout, env=env)
+        tmpdir = Path(tempfile.mkdtemp(prefix="universe-agent-"))
+        try:
+            extra = {"TMPDIR": str(tmpdir), "TMP": str(tmpdir), "TEMP": str(tmpdir),
+                     "UNIVERSE_AGENT_IN_SANDBOX": "1"}
+            if env:
+                extra.update(env)
+            return self.cmd.run(self.sandbox_argv(argv, worktree, tmpdir),
+                                cwd=str(cwd), timeout=timeout, env=extra)
+        finally:
+            shutil.rmtree(tmpdir, ignore_errors=True)
 
     def notify(self, message: str) -> None:
         """macOS の通知。UNIVERSE_AGENT_NOTIFY=0 で無効。"""
@@ -616,9 +647,8 @@ class Runner:
 
             changed = self._assert_tools_untouched(worktree, base_sha)
             verify_script = worktree / "tools" / "verify.sh"
-            verify = self.cmd.run(
-                self.sandbox_argv(["bash", str(verify_script)], worktree),
-                cwd=str(worktree), timeout=cfg.verify_timeout)
+            verify = self._run_sandboxed(
+                ["bash", str(verify_script)], worktree, worktree, cfg.verify_timeout)
             self._append_log(issue_log, "\n$ ./tools/verify.sh\n" +
                              (verify.stdout or "") + (verify.stderr or ""))
             if verify.timed_out:
@@ -777,8 +807,7 @@ class Runner:
             "- 変更は Issue の範囲に絞る。破壊的・不可逆な変更や判断に迷う変更はせず、最後に理由を報告する",
             "- アプリを変更したら apps.json / index.html / README / テストを同じ変更で更新する",
             "- ./tools/verify.sh を通す。失敗したら原因を直して再実行する",
-            "- 変更をコミットする: git commit -m \"<アプリ名または repo>: 日本語の要約\""
-            " (user.name / user.email は runner が環境変数で設定済み)",
+            "- 変更のコミットは runner が行う。git add / git commit はしない",
             "- push、PR 作成、マージ、Issue のクローズはしない(runner が行う)",
             "- 最後に、変更点・テスト結果・残課題を短くまとめる",
         ])
@@ -794,7 +823,6 @@ class Runner:
             "--title", "universe-agent-%d" % int(time.time()),
             prompt,
         ]
-        argv = self.sandbox_argv(argv, worktree)
         limit = timeout or self.cfg.timeout
         self.log("agent を開始します (model=%s, timeout=%ss)" % (self.cfg.model, limit))
         self._append_log(issue_log, "$ opencode run --agent %s --model %s\n" %
@@ -805,8 +833,7 @@ class Runner:
             "GIT_COMMITTER_NAME": "takuto277",
             "GIT_COMMITTER_EMAIL": "takuto277@users.noreply.github.com",
         }
-        result = self.cmd.run(argv, cwd=str(worktree), timeout=limit,
-                              env=identity)
+        result = self._run_sandboxed(argv, worktree, worktree, limit, env=identity)
         self._append_log(issue_log, (result.stdout or "") + (result.stderr or ""))
         self.log("agent が終了しました (exit=%s, timeout=%s)" % (result.code, result.timed_out))
         if verbose and result.stderr:
@@ -1000,8 +1027,7 @@ class Runner:
             "- 指摘された Blocker の修正に集中し、無関係な変更をしない",
             "- tools/ と .github/workflows/ は変更しない(保護対象。必要なら修正せず理由を報告する)",
             "- ./tools/verify.sh を通す。失敗したら原因を直す",
-            "- 変更をコミットする: git commit -m \"repo: レビュー指摘を修正 ...\""
-            " (user.name / user.email は runner が環境変数で設定済み)",
+            "- 変更のコミットは runner が行う。git add / git commit はしない",
             "- push、PR 作成、マージはしない(runner が行う)",
             "- 最後に、直した点とテスト結果を短くまとめる",
         ])
@@ -1087,10 +1113,9 @@ class Runner:
             if not count.ok or commits == 0:
                 raise TaskError("レビュー指摘に対する変更がありませんでした(人の対応が必要です)")
             changed = self._assert_tools_untouched(worktree, head_sha)
-            verify = self.cmd.run(
-                self.sandbox_argv(
-                    ["bash", str(worktree / "tools" / "verify.sh")], worktree),
-                cwd=str(worktree), timeout=self.cfg.verify_timeout)
+            verify = self._run_sandboxed(
+                ["bash", str(worktree / "tools" / "verify.sh")],
+                worktree, worktree, self.cfg.verify_timeout)
             self._append_log(fix_log, "\n$ ./tools/verify.sh\n" +
                              (verify.stdout or "") + (verify.stderr or ""))
             if verify.timed_out:
