@@ -89,6 +89,30 @@ assert(E.setMode(deckGame, 'hold') === false && E.setMode(deckGame, 'steepUp') =
 var brokenDeck = E.createGame({ width: 1000, height: 620, deck: ['up'] });
 assert(brokenDeck.deck.join(',') === E.DEFAULT_DECK.join(','), '不正なデッキは既定値');
 
+/* 2b) 係数パラメータの正規化と反映 */
+var tuned = E.createGame({
+  width: 1000, height: 620, deck: ['quad', 'wave', 'hold'],
+  deckParams: { quad: { a: 2 }, wave: { a: 1.6, b: 2 } }
+});
+assert(tuned.deckParams.quad.a === 2, 'x²の係数を保持');
+assert(tuned.deckParams.wave.a === 1.6 && tuned.deckParams.wave.b === 2, 'sinの係数を保持');
+var clampedParams = E.createGame({
+  width: 1000, height: 620, deck: ['quad', 'wave', 'hold'],
+  deckParams: { quad: { a: 99 }, wave: { a: -1, b: 99 } }
+});
+assert(clampedParams.deckParams.quad.a === 2, 'x²係数の上限');
+assert(clampedParams.deckParams.wave.a === 0.4, 'sin振幅の下限');
+assert(clampedParams.deckParams.wave.b === 2.5, 'sin周波数の上限');
+
+var slowQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 0.4 } }, rng: mulberry32(21) });
+var fastQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 2 } }, rng: mulberry32(21) });
+for (i = 0; i < 30; i++) { slowQuad.rivals = []; fastQuad.rivals = []; E.update(slowQuad, 1 / 60); E.update(fastQuad, 1 / 60); }
+assert(fastQuad.y < slowQuad.y, 'x²の係数が大きいほど上に加速する');
+var slowWave = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 0.5 } }, rng: mulberry32(22) });
+var fastWave = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 2.5 } }, rng: mulberry32(22) });
+for (i = 0; i < 30; i++) { slowWave.rivals = []; fastWave.rivals = []; E.update(slowWave, 1 / 60); E.update(fastWave, 1 / 60); }
+assert(Math.abs(fastWave.y - slowWave.y) > 1, 'sinの周波数が動きに反映される');
+
 /* 3) x が進み、曲線が伸びる */
 g = makeGame(2);
 var x0 = g.worldX;
@@ -96,6 +120,8 @@ for (i = 0; i < 60; i++) E.update(g, 1 / 60);
 assert(g.worldX > x0 + 150, 'xが進む: ' + g.worldX.toFixed(1));
 assert(g.trail.length > 40, '曲線が伸びる: ' + g.trail.length);
 assert(g.trail[g.trail.length - 1].x === g.headX, '最新点はヘッド位置');
+assert(g.trail[g.trail.length - 1].mode === g.mode, '曲線の点にモードが残る');
+assert(E.snapshot(g).modeFamily === 'none', 'ホールドの系統はnone');
 
 /* 4) 曲線と敵カーブが交差すると得点・コンボ・エフェクトイベント */
 g = makeGame(3);
@@ -111,17 +137,22 @@ var hitEvent = events.filter(function (e) { return e.type === 'hit'; })[0];
 assert(hitEvent.gain >= 100 && hitEvent.combo === 1, '得点とコンボがイベントに入る');
 
 /* 4b) 交差角度が急なほどボーナスが大きい */
-function forceHit(slope) {
-  var game = makeGame(99);
+function forceHit(slope, family, playerMode) {
+  var game = makeGame(99, ['hold', 'up', 'wave']);
   game.rivals = [];
   var x = game.headX - 100;
   var len = 200;
   var localAtHead = game.headX - x;
   var rival = lineRival(x, 0, len);
   rival.slope = slope;
+  rival.family = family || null;
   rival.baseY = game.y - slope * (localAtHead - len / 2);
-  game.trail = [{ x: game.headX - 5, y: game.y }, { x: game.headX, y: game.y }];
+  game.trail = [
+    { x: game.headX - 5, y: game.y, mode: playerMode || 'hold' },
+    { x: game.headX, y: game.y, mode: playerMode || 'hold' }
+  ];
   game.rivals.push(rival);
+  if (playerMode) E.setMode(game, playerMode);
   E.update(game, 1 / 60);
   var hits = E.consumeEvents(game).filter(function (e) { return e.type === 'hit'; });
   assert(hits.length === 1, '角度テスト用の交差が起きる (slope=' + slope + ')');
@@ -132,6 +163,12 @@ var steepHit = forceHit(3);
 assert(steepHit.angle > flatHit.angle, '急な交差ほど角度が大きい');
 assert(steepHit.mult > flatHit.mult, '急な交差ほど倍率が高い');
 assert(steepHit.gain > flatHit.gain, '急な交差ほど得点が高い');
+var weakHit = forceHit(0, 'linear', 'up');
+var plainHit = forceHit(0, 'linear', 'hold');
+assert(weakHit.weak === true && weakHit.weakMult === 1.5, '同じ系統の関数で弱点ボーナス');
+assert(plainHit.weak === false && plainHit.weakMult === 1, '系統が違うと弱点ボーナスなし');
+assert(weakHit.gain > plainHit.gain, '弱点ボーナスで得点が増える');
+assert(weakHit.playerFamily === 'linear' && weakHit.weakness === 'linear', '弱点イベントの系統');
 
 /* 5) 交差しなければ画面外でミスになりHPが減る */
 g = makeGame(4);

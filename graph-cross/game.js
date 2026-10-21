@@ -6,6 +6,9 @@
   var AU = (typeof window !== 'undefined' && window.GraphCrossAudio) ? window.GraphCrossAudio : null;
   var audio = AU ? AU.create() : null;
   var muted = loadMuted();
+  var selectedParams = loadParams();
+  var FAMILY_COLORS = { linear: '#5ff0ff', quad: '#ffd166', wave: '#ff7ad9', none: '#a8bad8' };
+  var lastCombo = 0;
 
   var canvas = null;
   var ctx = null;
@@ -50,6 +53,49 @@
     try {
       if (typeof localStorage !== 'undefined') localStorage.setItem('graph-cross-muted', value ? '1' : '0');
     } catch (e) { }
+  }
+
+  function loadParams() {
+    try {
+      if (typeof localStorage === 'undefined') return E.normalizeParams(null);
+      var raw = localStorage.getItem('graph-cross-params');
+      return E.normalizeParams(raw ? JSON.parse(raw) : null);
+    } catch (e) {
+      return E.normalizeParams(null);
+    }
+  }
+
+  function saveParams() {
+    try {
+      if (typeof localStorage !== 'undefined') {
+        localStorage.setItem('graph-cross-params', JSON.stringify(selectedParams));
+      }
+    } catch (e) { }
+  }
+
+  function fmtNum(value) {
+    var rounded = Math.round(value * 100) / 100;
+    return String(rounded).replace(/\.0+$/, '');
+  }
+
+  function formatModeLabel(key, params) {
+    if (key === 'quad' || key === 'quadDown') {
+      var qa = params && params[key] ? params[key].a : 1;
+      var qcoef = qa === 1 ? '' : fmtNum(qa);
+      return 'y = ' + (key === 'quadDown' ? '-' : '') + qcoef + 'x²';
+    }
+    if (key === 'wave') {
+      var wp = params && params.wave ? params.wave : { a: 1, b: 1 };
+      var acoef = wp.a === 1 ? '' : fmtNum(wp.a) + ' ';
+      var bcoef = wp.b === 1 ? 'x' : fmtNum(wp.b) + 'x';
+      return 'y = ' + acoef + 'sin ' + bcoef;
+    }
+    return E.MODES[key] ? E.MODES[key].label : '';
+  }
+
+  function modeColor(key) {
+    var mode = E.MODES[key];
+    return mode ? (FAMILY_COLORS[mode.family] || mode.color) : FAMILY_COLORS.none;
   }
 
   function loadBest() {
@@ -134,8 +180,10 @@
         continue;
       }
       var mode = E.MODES[key];
-      btn.innerHTML = '<b>' + mode.label + '</b><span>' + mode.note + '</span><em>' + (i + 1) + '</em>';
-      btn.style.setProperty('--mode-color', mode.color);
+      var params = state ? state.deckParams : selectedParams;
+      var familyNote = mode.family !== 'none' ? ' · ' + E.FAMILY_LABELS[mode.family] : '';
+      btn.innerHTML = '<b>' + formatModeLabel(key, params) + '</b><span>' + mode.note + familyNote + '</span><em>' + (i + 1) + '</em>';
+      btn.style.setProperty('--mode-color', modeColor(key));
       btn.disabled = !(state && view.phase === 'run' && !state.over);
       btn.classList.toggle('active', !!(state && state.mode === key));
     }
@@ -153,6 +201,42 @@
       els.btnStart.classList.toggle('disabled', !ready);
     }
     updateSlots();
+    updateTunePanel();
+  }
+
+  function updateTunePanel() {
+    var any = false;
+    var keys = ['quad', 'quadDown', 'wave'];
+    for (var i = 0; i < keys.length; i++) {
+      var key = keys[i];
+      var row = $('tune-row-' + key);
+      if (!row) continue;
+      var visible = selectedDeck.indexOf(key) >= 0;
+      row.classList.toggle('hidden', !visible);
+      if (!visible) continue;
+      any = true;
+      var params = selectedParams[key];
+      if (!params) continue;
+      var a = $('tune-' + key + '-a');
+      if (a) a.textContent = fmtNum(params.a);
+      if (key === 'wave') {
+        var b = $('tune-wave-b');
+        if (b) b.textContent = fmtNum(params.b);
+      }
+    }
+    if (els.tuneEmpty) els.tuneEmpty.classList.toggle('hidden', any);
+  }
+
+  function adjustParam(key, name, dir) {
+    var specs = E.PARAM_SPECS[key];
+    if (!specs || !specs[name] || !selectedParams[key]) return;
+    var spec = specs[name];
+    var next = selectedParams[key][name] + spec.step * dir;
+    next = Math.max(spec.min, Math.min(spec.max, next));
+    selectedParams[key][name] = next;
+    selectedParams = E.normalizeParams(selectedParams);
+    saveParams();
+    updateDeckUi();
   }
 
   function toggleDeck(key) {
@@ -175,9 +259,11 @@
 
   function beginRun() {
     if (selectedDeck.length !== 3) return;
-    state = E.createGame({ width: viewW, height: viewH, deck: selectedDeck.slice() });
+    state = E.createGame({ width: viewW, height: viewH, deck: selectedDeck.slice(), deckParams: selectedParams });
     view.phase = 'run';
     view.deathAt = 0;
+    lastCombo = 0;
+    if (audio) audio.setIntensity(0);
     particles = [];
     rings = [];
     labels = [];
@@ -213,6 +299,7 @@
     if (els.endX) els.endX.textContent = String(snap.x);
     if (els.screenEnd) els.screenEnd.classList.add('visible');
     if (audio) {
+      audio.setIntensity(0);
       audio.stopBgm();
       audio.play('over');
     }
@@ -322,6 +409,11 @@
         flash = Math.max(flash, 0.28);
         flashColor = '180, 245, 255';
         if (audio) audio.play('hit', ev.combo, ev.perfect);
+        if (ev.weak) {
+          addLabel(ev.x, ev.y - 78, 'WEAK x1.5', '#ffd166', 16);
+          addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.95)', 118, 0.55);
+          if (audio) audio.play('weak');
+        }
         if (ev.heal) {
           addLabel(ev.x, ev.y + 52, 'LIFE +1', '#57e08a', 14);
           addRing(ev.x, ev.y, 'rgba(87, 224, 138, 0.8)', 60, 0.5);
@@ -452,23 +544,29 @@
         var py = E.rivalY(r, local);
         if (j === 0) ctx.moveTo(px, py); else ctx.lineTo(px, py);
       }
+      var family = r.family || 'wave';
+      var color = FAMILY_COLORS[family] || FAMILY_COLORS.wave;
       ctx.save();
-      ctx.shadowColor = 'rgba(255, 80, 170, 0.65)';
+      ctx.shadowColor = color;
       ctx.shadowBlur = 12;
-      ctx.strokeStyle = 'rgba(255, 105, 185, 0.92)';
+      ctx.globalAlpha = 0.92;
+      ctx.strokeStyle = color;
       ctx.lineWidth = 2.6;
       ctx.stroke();
+      ctx.globalAlpha = 1;
       ctx.shadowBlur = 0;
-      ctx.strokeStyle = 'rgba(255, 220, 245, 0.55)';
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.restore();
 
-      ctx.fillStyle = 'rgba(255, 150, 205, 0.75)';
-      ctx.font = '10px ui-monospace, Menlo, monospace';
+      ctx.fillStyle = color;
+      ctx.globalAlpha = 0.8;
+      ctx.font = '9.5px ui-monospace, Menlo, monospace';
       var labelY = E.rivalY(r, 0) - 8;
       if (labelY < state.top + 10) labelY = E.rivalY(r, 0) + 16;
-      ctx.fillText(r.label, r.x + 4, labelY);
+      ctx.fillText(r.label + ' / 弱点:' + (E.FAMILY_LABELS[family] || '—'), r.x + 4, labelY);
+      ctx.globalAlpha = 1;
     }
   }
 
@@ -497,32 +595,34 @@
     ctx.shadowBlur = 0;
     ctx.restore();
 
-    var mode = E.MODES[state.mode] || E.MODES.hold;
-    var start = Math.max(0, trail.length - 14);
+    /* 描いた時点の関数の系統で色分けする。敵の色と一致すると弱点ボーナス */
     if (trail.length > 1) {
       ctx.save();
-      ctx.strokeStyle = mode.color;
-      ctx.lineWidth = 3.4;
+      ctx.lineWidth = 3.2;
       ctx.lineCap = 'round';
-      ctx.beginPath();
-      for (i = start; i < trail.length; i++) {
-        if (i === start) ctx.moveTo(trail[i].x, trail[i].y);
-        else ctx.lineTo(trail[i].x, trail[i].y);
+      for (i = 1; i < trail.length; i++) {
+        var pointMode = trail[i].mode || state.mode;
+        var pointFamily = E.MODES[pointMode] ? E.MODES[pointMode].family : 'none';
+        ctx.strokeStyle = FAMILY_COLORS[pointFamily] || FAMILY_COLORS.none;
+        ctx.beginPath();
+        ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
+        ctx.lineTo(trail[i].x, trail[i].y);
+        ctx.stroke();
       }
-      ctx.stroke();
       ctx.restore();
     }
 
+    var headColor = modeColor(state.mode);
     var hx = state.headX;
     var hy = state.y;
     ctx.save();
-    ctx.shadowColor = mode.color;
+    ctx.shadowColor = headColor;
     ctx.shadowBlur = 22;
     ctx.fillStyle = '#eaffff';
     ctx.beginPath();
     ctx.arc(hx, hy, 6.5, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = mode.color;
+    ctx.fillStyle = headColor;
     ctx.beginPath();
     ctx.arc(hx, hy, 10 + Math.sin(time * 5) * 1.5, 0, Math.PI * 2);
     ctx.globalAlpha = 0.28;
@@ -530,9 +630,9 @@
     ctx.globalAlpha = 1;
     ctx.restore();
 
-    ctx.fillStyle = mode.color;
+    ctx.fillStyle = headColor;
     ctx.font = '11px ui-monospace, Menlo, monospace';
-    ctx.fillText(mode.label, hx + 15, hy - 12);
+    ctx.fillText(formatModeLabel(state.mode, state.deckParams), hx + 15, hy - 12);
   }
 
   function drawEffects() {
@@ -620,6 +720,10 @@
     if (view.phase === 'run' && state && !state.over) {
       E.update(state, dt);
       processEvents();
+      if (state.combo !== lastCombo) {
+        lastCombo = state.combo;
+        if (audio) audio.setIntensity(Math.min(3, Math.floor(state.combo / 2)));
+      }
       if (state.over) {
         view.phase = 'dying';
         view.deathAt = ts;
@@ -650,6 +754,8 @@
     els.btnAgain = $('btn-again');
     els.btnDeck = $('btn-deck');
     els.deckCount = $('deck-count');
+    els.tuneRows = $('tune-rows');
+    els.tuneEmpty = $('tune-empty');
     els.endScore = $('end-score');
     els.endBest = $('end-best');
     els.endCombo = $('end-combo');
@@ -666,7 +772,7 @@
       var card = $('card-' + key);
       if (!card) continue;
       deckCards[key] = card;
-      card.style.setProperty('--mode-color', E.MODES[key].color);
+      card.style.setProperty('--mode-color', modeColor(key));
       (function (modeKey, el) {
         el.addEventListener('click', function () {
           toggleDeck(modeKey);
@@ -687,6 +793,18 @@
       })(i, slot);
     }
 
+    if (els.tuneRows) {
+      els.tuneRows.addEventListener('click', function (e) {
+        var t = e && e.target;
+        if (!t || !t.getAttribute) return;
+        var key = t.getAttribute('data-key');
+        var name = t.getAttribute('data-param');
+        var dir = parseInt(t.getAttribute('data-dir'), 10);
+        if (!key || !name || !dir) return;
+        adjustParam(key, name, dir);
+        if (t.blur) t.blur();
+      });
+    }
     if (els.btnStart) els.btnStart.addEventListener('click', beginRun);
     if (els.btnAgain) els.btnAgain.addEventListener('click', beginRun);
     if (els.btnDeck) els.btnDeck.addEventListener('click', backToDeck);

@@ -31,18 +31,65 @@
   var MAX_EVENTS = 120;
 
   var MODES = {
-    hold: { key: 'hold', label: 'y = 0', note: 'キープ', color: '#a8bad8' },
-    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', color: '#5ff0ff' },
-    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', color: '#7ea9ff' },
-    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', color: '#57e08a' },
-    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', color: '#ff9f6b' },
-    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', color: '#ffd166' },
-    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', color: '#ff6b8a' },
-    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', color: '#ff7ad9' }
+    hold: { key: 'hold', label: 'y = 0', note: 'キープ', color: '#a8bad8', family: 'none' },
+    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', color: '#5ff0ff', family: 'linear' },
+    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', color: '#7ea9ff', family: 'linear' },
+    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', color: '#57e08a', family: 'linear' },
+    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', color: '#ff9f6b', family: 'linear' },
+    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', color: '#ffd166', family: 'quad' },
+    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', color: '#ff6b8a', family: 'quad' },
+    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', color: '#ff7ad9', family: 'wave' }
   };
   var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave'];
   var DEFAULT_DECK = ['hold', 'up', 'down'];
   var DECK_SIZE = 3;
+  var FAMILY_LABELS = { linear: '直線', quad: '2次', wave: '波', none: '—' };
+  var PARAM_SPECS = {
+    quad: { a: { min: 0.4, max: 2.0, step: 0.2, default: 1 } },
+    quadDown: { a: { min: 0.4, max: 2.0, step: 0.2, default: 1 } },
+    wave: {
+      a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
+      b: { min: 0.5, max: 2.5, step: 0.25, default: 1 }
+    }
+  };
+
+  function snapToSpec(value, spec) {
+    var v = clamp(value, spec.min, spec.max);
+    var steps = Math.round((v - spec.min) / spec.step);
+    var snapped = spec.min + steps * spec.step;
+    return Math.round(snapped * 100) / 100;
+  }
+
+  function normalizeParams(params) {
+    var out = {};
+    for (var key in PARAM_SPECS) {
+      if (!Object.prototype.hasOwnProperty.call(PARAM_SPECS, key)) continue;
+      out[key] = {};
+      var specs = PARAM_SPECS[key];
+      for (var name in specs) {
+        if (!Object.prototype.hasOwnProperty.call(specs, name)) continue;
+        var spec = specs[name];
+        var raw = params && params[key] && typeof params[key][name] === 'number'
+          ? params[key][name]
+          : spec.default;
+        out[key][name] = snapToSpec(raw, spec);
+      }
+    }
+    return out;
+  }
+
+  function normalizeDeckParams(params, deck) {
+    var all = normalizeParams(params);
+    var out = {};
+    for (var i = 0; i < deck.length; i++) {
+      if (PARAM_SPECS[deck[i]]) out[deck[i]] = all[deck[i]];
+    }
+    return out;
+  }
+
+  function modeFamily(key) {
+    return MODES[key] ? MODES[key].family : 'none';
+  }
 
   function normalizeDeck(deck) {
     if (!Array.isArray(deck) || deck.length !== DECK_SIZE) return DEFAULT_DECK.slice();
@@ -126,9 +173,11 @@
 
   function createGame(options) {
     options = options || {};
+    var deck = normalizeDeck(options.deck);
     var state = {
       rng: options.rng || Math.random,
-      deck: normalizeDeck(options.deck),
+      deck: deck,
+      deckParams: normalizeDeckParams(options.deckParams, deck),
       width: 0,
       height: 0,
       top: 0,
@@ -211,6 +260,7 @@
       x: typeof atX === 'number' ? atX : state.width + 60,
       len: len,
       shape: 'sin',
+      family: 'wave',
       baseY: 0,
       amp: 0,
       waves: 1,
@@ -223,17 +273,20 @@
 
     if (kind === 0) {
       r.shape = 'sin';
+      r.family = 'wave';
       r.amp = 38 + rng() * 34 + d * 12;
       r.waves = 1.1 + rng() * 1.1;
       r.phase = rng() * Math.PI * 2;
       r.label = 'y = sin x';
     } else if (kind === 1) {
       r.shape = 'parabola';
+      r.family = 'quad';
       r.amp = 34 + rng() * 44 + d * 12;
       r.dir = rng() < 0.5 ? -1 : 1;
       r.label = 'y = x²';
     } else {
       r.shape = 'line';
+      r.family = 'linear';
       r.slope = (rng() < 0.5 ? -1 : 1) * (0.10 + rng() * 0.24);
       r.label = r.slope < 0 ? 'y = -x/2' : 'y = x/2';
     }
@@ -285,8 +338,12 @@
           var angle = Math.atan(Math.abs((playerSlope - rivalSlope) / (1 + playerSlope * rivalSlope)));
           var angleDeg = angle * 180 / Math.PI;
           var mult = 1 + 0.8 * (angle / (Math.PI / 2));
+          var playerMode = p.mode || state.mode;
+          var playerFamily = modeFamily(playerMode);
+          var weak = !!(r.family && r.family !== 'none' && playerFamily === r.family);
+          var weakMult = weak ? 1.5 : 1;
           var baseGain = 100 + (state.combo - 1) * 50;
-          var gain = Math.round(baseGain * mult);
+          var gain = Math.round(baseGain * mult * weakMult);
           state.score += gain;
           var event = {
             type: 'hit',
@@ -297,6 +354,10 @@
             angle: Math.round(angleDeg),
             mult: Math.round(mult * 10) / 10,
             perfect: angleDeg >= 70,
+            weak: weak,
+            weakMult: weakMult,
+            playerFamily: playerFamily,
+            weakness: r.family,
             label: r.label
           };
           if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < MAX_HP) {
@@ -355,10 +416,16 @@
     else if (state.mode === 'down') state.vy = 170;
     else if (state.mode === 'steepUp') state.vy = -320;
     else if (state.mode === 'steepDown') state.vy = 320;
-    else if (state.mode === 'quad') state.vy = clamp(state.vy - 560 * dt, -420, 420);
-    else if (state.mode === 'quadDown') state.vy = clamp(state.vy + 560 * dt, -420, 420);
-    else if (state.mode === 'wave') state.vy = 285 * Math.sin(state.modeTime * 4.2);
-    else state.vy = 0;
+    else if (state.mode === 'quad') {
+      var qa = (state.deckParams.quad && state.deckParams.quad.a) || 1;
+      state.vy = clamp(state.vy - 560 * qa * dt, -420, 420);
+    } else if (state.mode === 'quadDown') {
+      var qda = (state.deckParams.quadDown && state.deckParams.quadDown.a) || 1;
+      state.vy = clamp(state.vy + 560 * qda * dt, -420, 420);
+    } else if (state.mode === 'wave') {
+      var wp = state.deckParams.wave || { a: 1, b: 1 };
+      state.vy = 285 * wp.a * Math.sin(state.modeTime * 4.2 * wp.b);
+    } else state.vy = 0;
 
     state.y += state.vy * dt;
     var minY = state.top + PLAYER_HALF;
@@ -369,7 +436,7 @@
     var i;
     for (i = 0; i < state.trail.length; i++) state.trail[i].x -= dx;
     while (state.trail.length && state.trail[0].x < -40) state.trail.shift();
-    state.trail.push({ x: state.headX, y: state.y });
+    state.trail.push({ x: state.headX, y: state.y, mode: state.mode });
 
     for (i = 0; i < state.rivals.length; i++) state.rivals[i].x -= dx;
 
@@ -411,7 +478,10 @@
       maxHp: MAX_HP,
       mode: state.mode,
       modeLabel: MODES[state.mode].label,
+      modeFamily: modeFamily(state.mode),
+      modeFamilyLabel: FAMILY_LABELS[modeFamily(state.mode)],
       deck: state.deck.slice(),
+      deckParams: JSON.parse(JSON.stringify(state.deckParams)),
       x: Math.floor(state.worldX),
       time: state.time,
       over: state.over,
@@ -428,6 +498,11 @@
     MODES: MODES,
     MODE_KEYS: MODE_KEYS,
     DEFAULT_DECK: DEFAULT_DECK,
+    FAMILY_LABELS: FAMILY_LABELS,
+    PARAM_SPECS: PARAM_SPECS,
+    normalizeParams: normalizeParams,
+    normalizeDeckParams: normalizeDeckParams,
+    modeFamily: modeFamily,
     COMBO_WINDOW: COMBO_WINDOW,
     HEAL_COMBO: HEAL_COMBO,
     createGame: createGame,

@@ -32,6 +32,7 @@
   var bgmGain = null;
   var sfxGain = null;
   var muted = false;
+  var intensity = 0;
   var timer = null;
   var stepIndex = 0;
   var nextStep = 0;
@@ -82,7 +83,18 @@
 
   function scheduleStep(index, when) {
     var lead = LEAD[index % LEAD.length];
-    if (lead) tone(midiToFreq(lead), when, STEP * 1.55, 'square', 0.085, bgmGain);
+    var leadVol = 0.065 + intensity * 0.012;
+    if (lead) tone(midiToFreq(lead), when, STEP * 1.55, 'square', leadVol, bgmGain);
+    if (lead && intensity >= 1) {
+      tone(midiToFreq(lead + 12), when, STEP * 1.2, 'sine', 0.035, bgmGain);
+    }
+    if (intensity >= 2 && index % 4 === 2) {
+      var high = [84, 86, 88][Math.floor(index / 4) % 3];
+      tone(midiToFreq(high), when, STEP * 0.8, 'triangle', 0.03, bgmGain);
+    }
+    if (intensity >= 3 && index % 8 === 4) {
+      tone(midiToFreq(57), when, STEP * 0.5, 'square', 0.035, bgmGain);
+    }
     if (index % 4 === 0) {
       var bass = BASS[Math.floor(index / 4) % BASS.length];
       tone(midiToFreq(bass), when, STEP * 3.4, 'triangle', 0.12, bgmGain);
@@ -94,9 +106,10 @@
     if (!ctx) return;
     if (nextStep < ctx.currentTime) nextStep = ctx.currentTime + 0.02;
     var horizon = ctx.currentTime + LOOKAHEAD;
+    var stepDur = STEP * (1 - intensity * 0.035);
     while (nextStep < horizon) {
       scheduleStep(stepIndex, nextStep);
-      nextStep += STEP;
+      nextStep += stepDur;
       stepIndex = (stepIndex + 1) % LEAD.length;
     }
   }
@@ -113,6 +126,10 @@
   function stopBgm() {
     if (timer && typeof clearInterval === 'function') clearInterval(timer);
     timer = null;
+  }
+
+  function setIntensity(value) {
+    intensity = Math.max(0, Math.min(3, Number(value) || 0));
   }
 
   function setMuted(value) {
@@ -136,6 +153,10 @@
       tone(base, now, 0.075, 'square', 0.14, sfxGain);
       tone(base * 1.5, now + 0.045, 0.12, 'triangle', 0.12, sfxGain);
       if (b) tone(base * 2, now + 0.09, 0.16, 'sine', 0.10, sfxGain);
+    } else if (name === 'weak') {
+      tone(1046, now, 0.09, 'sine', 0.11, sfxGain);
+      tone(1318, now + 0.055, 0.12, 'sine', 0.10, sfxGain);
+      tone(1568, now + 0.11, 0.18, 'triangle', 0.09, sfxGain);
     } else if (name === 'heal') {
       tone(660, now, 0.10, 'triangle', 0.12, sfxGain);
       tone(880, now + 0.06, 0.14, 'triangle', 0.12, sfxGain);
@@ -185,6 +206,8 @@
     stopBgm: stopBgm,
     setMuted: setMuted,
     isMuted: function () { return muted; },
+    setIntensity: setIntensity,
+    getIntensity: function () { return intensity; },
     play: play
   };
 
