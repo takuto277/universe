@@ -554,26 +554,24 @@ class Runner:
         status = self.git("status", "--porcelain", cwd=worktree, timeout=60)
         if not status.ok:
             raise TaskError("verify 後の git status に失敗しました")
-        if (status.stdout or "").strip():
-            raise TaskError("verify 中にファイルが変更されました(テストの副作用を確認してください)")
+        dirty = [line for line in (status.stdout or "").splitlines() if line.strip()]
+        if dirty:
+            raise TaskError("verify 中にファイルが変更されました: %s\n"
+                            "調査するには UNIVERSE_AGENT_KEEP_WORKTREE=1 で再実行してください" %
+                            ", ".join(dirty[:10]))
 
     def _assert_tools_untouched(self, worktree: Path, base_sha: str) -> None:
         """検証スクリプト自体を書き換えて verify を通す抜け道を塞ぐ。"""
-        result = self.git("diff", "--name-status", "--no-renames",
+        result = self.git("diff", "--name-status", "--no-renames", "-z",
                           "%s..HEAD" % base_sha, cwd=worktree, timeout=60)
         if not result.ok:
             raise TaskError("変更ファイルの確認に失敗しました: %s" % tail(result.stderr, 400))
-        touched = set()
-        for line in (result.stdout or "").splitlines():
-            parts = line.split("\t")
-            if len(parts) < 2:
-                continue
-            path = parts[-1]
-            if path in PROTECTED_PATHS or any(
-                    path.startswith(prefix) for prefix in PROTECTED_PATHS
-                    if prefix.endswith("/")):
-                touched.add(path)
-        touched = sorted(touched)
+        parts = (result.stdout or "").split("\0")
+        changed = [parts[i + 1] for i in range(0, len(parts) - 1, 2)]
+        touched = sorted({path for path in changed
+                          if path in PROTECTED_PATHS or
+                          path.startswith("tools/") or
+                          path.startswith(".github/workflows/")})
         if touched:
             raise TaskError("検証スクリプトや CI を変更しています(人間のレビューが必要): %s\n"
                             "調査するには UNIVERSE_AGENT_KEEP_WORKTREE=1 で再実行してください" %

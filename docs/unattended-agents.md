@@ -105,7 +105,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ。main への push は branch protection でも拒否される
 - **マージしない**: レビューとマージは五点ゲートに任せる(`--admin` や直接マージは使わない)
 - **builder の権限は allowlist**: 既定 deny で、git の読み書き・commit、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する
-- **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/` 配下と `.github/workflows/` が変更されていたら失敗させる。検証スクリプトの改変や、verify が import する追加モジュールによる任意コード実行を防ぐ
+- **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/` 配下と `.github/workflows/` が変更されていたら失敗させる。さらに信頼するチェック(site 検査・構文検査・runner テスト)をアプリのテストより先に実行し、テスト JS による差し替えを防ぐ
 - **状態不明なら中止**: PR 一覧の取得失敗など、既存 PR の有無を確認できない場合はブランチを消さずに止める
 - **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
 - **タイムアウト**: エージェント既定 2700 秒、verify 600 秒。超えたらプロセスグループごと終了する

@@ -189,6 +189,7 @@ class RunnerTest(unittest.TestCase):
         diff = [call["argv"] for call in self.fake.find("git", "diff", "--name-status")]
         self.assertTrue(diff)
         self.assertIn("--no-renames", diff[0])
+        self.assertIn("-z", diff[0])
         self.assertIn("basesha..HEAD", diff[0])
         env = self.fake.find("opencode", "run")[0]["env"]
         self.assertEqual("takuto277", env["GIT_AUTHOR_NAME"])
@@ -323,35 +324,40 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("git", "push"))
 
     def test_modified_verify_script_is_rejected(self):
-        self.happy(changed="M\ttools/verify.sh\n")
+        self.happy(changed="M\0tools/verify.sh\0")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("bash"))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_modified_ci_workflow_is_rejected(self):
-        self.happy(changed="M\t.github/workflows/ci.yml\n")
+        self.happy(changed="M\0.github/workflows/ci.yml\0")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_modified_agent_runner_is_rejected(self):
-        self.happy(changed="M\ttools/agent_runner.py\n")
+        self.happy(changed="M\0tools/agent_runner.py\0")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("bash"))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_new_module_under_tools_is_rejected(self):
-        self.happy(changed="A\ttools/json.py\n")
+        self.happy(changed="A\0tools/json.py\0")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("bash"))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
+    def test_non_ascii_workflow_path_is_rejected(self):
+        self.happy(changed="A\0.github/workflows/\u60aa\u610f.yml\0")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
     def test_renamed_protected_file_is_rejected(self):
-        self.happy(changed="D\ttools/harness.js\nA\ttools/harness.js.bak\n")
+        self.happy(changed="D\0tools/harness.js\0A\0tools/harness.js.bak\0")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_modified_pr_gate_is_rejected(self):
-        self.happy(changed="D\ttools/pr_gate.py\n")
+        self.happy(changed="D\0tools/pr_gate.py\0")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
