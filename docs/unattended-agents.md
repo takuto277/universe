@@ -141,6 +141,8 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 | `UNIVERSE_AGENT_LOG` | `~/Library/Logs/universe-agent-runner.log` | 実行ログ |
 | `UNIVERSE_AGENT_AUTO_READY_PROPOSALS` | `0` | 提案をそのまま実装キューへ入れる |
 | `UNIVERSE_AGENT_KEEP_WORKTREE` | `0` | 失敗調査用に worktree を残す |
+| `UNIVERSE_AGENT_NOTIFY` | `1` | macOS 通知の on/off |
+| `UNIVERSE_AGENT_STALL_MINUTES` | `90` | `agent:running` のまま通知するまでの分数(0で無効) |
 | `UNIVERSE_AGENT_DISABLE` | `0` | `1` で実行を止める(pause と同じ) |
 | `UNIVERSE_AGENT_BRANCH_PREFIX` | `agent/` | ブランチ接頭辞 |
 | `GH_BIN` / `GIT_BIN` / `OPENCODE_BIN` | `gh` / `git` / `opencode` | 実行ファイルの差し替え(上級者向け) |
@@ -149,9 +151,13 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 ## 運用
 
 ```sh
-./tools/agent.sh status
+./tools/agent.sh status      # キュー・ロック・直近の実行履歴
 tail -n 50 ~/Library/Logs/universe-agent-runner.log
 ```
+
+- 成功・失敗・滞留は macOS の通知で知らせます(`UNIVERSE_AGENT_NOTIFY=0` で停止)
+- 実行履歴は `~/.local/state/universe-agent-runner/history.jsonl` に残り、`status` で直近5件を表示します
+- `agent:running` のまま `UNIVERSE_AGENT_STALL_MINUTES` を超えた Issue は一度だけ通知します
 
 - LaunchAgent は 120 秒ごとに起動する。Mac がスリープ中は遅延する
 - 実行ログは `~/.local/state/universe-agent-runner/logs/issue-<n>-<ts>.log` に残し、14日より古いものを削除する
