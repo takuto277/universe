@@ -15,10 +15,37 @@ FAIL_MERGE_STATES = {"DIRTY", "CONFLICTING", "UNKNOWN", "BLOCKED"}
 FAIL_CHECK_BUCKETS = {"fail", "cancel"}
 PENDING_CHECK_BUCKETS = {"pending"}
 PASS_CHECK_BUCKETS = {"pass", "skipping"}
+WAIT_ERROR_PATTERNS = (
+    " is pending",
+    " is still pending",
+    "mergeable is UNKNOWN",
+    "merge state is UNKNOWN",
+    "merge state is BLOCKED",
+    "merge state is not allowed: UNKNOWN",
+    "no required checks found",
+    "no visible checks found",
+    "no checks reported",
+    "no checks returned",
+)
 
 
 class GateError(Exception):
     pass
+
+
+def is_wait_error(message):
+    return any(pattern in message for pattern in WAIT_ERROR_PATTERNS)
+
+
+def wait_state(errors):
+    if not errors:
+        return False
+    blocked = any("merge state is BLOCKED" in error for error in errors)
+    pending = any(
+        is_wait_error(error) and "merge state is BLOCKED" not in error
+        for error in errors
+    )
+    return all(is_wait_error(error) for error in errors) and (not blocked or pending)
 
 
 def run_gh(args, input_text=None):
@@ -302,6 +329,9 @@ def evaluate(args):
     errors = []
     if pull.get("state") != "OPEN":
         errors.append("pull request is not open")
+    for label in ("ai-pause", "do-not-merge"):
+        if label in labels:
+            errors.append("%s label is present" % label)
     if pull.get("baseRefName") != args.base:
         errors.append("base branch is %s, expected %s" % (pull.get("baseRefName"), args.base))
     if pull.get("reviewDecision") == "CHANGES_REQUESTED":
@@ -354,6 +384,7 @@ def evaluate(args):
         "review": review,
         "unresolved_threads": unresolved,
         "ui_evidence": ui_evidence,
+        "waiting": wait_state(errors),
         "errors": errors,
     }
     return result
@@ -390,6 +421,7 @@ def main():
             "ok": False,
             "repo": args.repo,
             "pr": args.pr,
+            "waiting": False,
             "errors": [str(error)],
         }
     print(json.dumps(result, ensure_ascii=False))

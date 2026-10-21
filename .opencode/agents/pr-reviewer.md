@@ -15,10 +15,10 @@ permission:
     "git diff*": allow
     "git log*": allow
     "git show*": allow
+    "git fetch*": allow
     "gh pr view *": allow
     "gh pr diff *": allow
     "gh pr checks *": allow
-    "gh pr list *": allow
     "gh repo view *": allow
     "python3 tools/pr_review.py *": allow
     "python3 tools/pr_gate.py *": allow

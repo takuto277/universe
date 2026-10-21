@@ -82,6 +82,11 @@ def parse_args():
         help="Seconds to wait for pending checks",
     )
     parser.add_argument(
+        "--no-ready",
+        action="store_true",
+        help="Do not convert a draft pull request to ready",
+    )
+    parser.add_argument(
         "--ignore-check",
         action="append",
         default=["merge-gate", "CodeRabbit"],
@@ -115,6 +120,8 @@ def main():
         ]
     )
     if pull.get("isDraft"):
+        if args.no_ready:
+            raise MergeError("pull request is a draft")
         ready = run_gh(["pr", "ready", str(args.pr), "--repo", repo])
         if ready.returncode != 0:
             raise MergeError(ready.stderr.strip() or "failed to mark the pull request ready")
@@ -123,6 +130,25 @@ def main():
     second = gate(args)
     if second.get("head") != first.get("head"):
         raise MergeError("pull request head changed after the first gate")
+
+    fresh = gh_json(
+        [
+            "pr",
+            "view",
+            str(args.pr),
+            "--repo",
+            repo,
+            "--json",
+            "isDraft,headRefOid,labels",
+        ]
+    )
+    if fresh.get("isDraft"):
+        raise MergeError("pull request is a draft")
+    for label in ("ai-pause", "do-not-merge"):
+        if label in {item.get("name") for item in fresh.get("labels", [])}:
+            raise MergeError("%s label is present" % label)
+    if fresh.get("headRefOid") != second.get("head"):
+        raise MergeError("pull request head changed after the second gate")
 
     merge = run_gh(
         [

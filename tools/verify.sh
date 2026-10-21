@@ -8,7 +8,11 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 "$ROOT/tools/check_site.py"
 for script in \
   "$ROOT/tools/agent.sh" \
-  "$ROOT/tools/install-agent-runner.sh"; do
+  "$ROOT/tools/install-agent-runner.sh" \
+  "$ROOT/tools/auto-pr.sh" \
+  "$ROOT/tools/auto-pr-lib.sh" \
+  "$ROOT/tools/install-auto-pr.sh" \
+  "$ROOT/tools/test-auto-pr.sh"; do
   bash -n "$script"
 done
 python3 -I - "$ROOT" <<'PY'
@@ -21,6 +25,8 @@ paths += [root / "tools/agent_runner.py", root / "tools/test_agent_runner.py"]
 for path in paths:
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 print("pr scripts compile OK")
+print("auto pr scripts syntax OK")
 PY
 python3 "$ROOT/tools/test_agent_runner.py"
+bash "$ROOT/tools/test-auto-pr.sh"
 "$ROOT/tools/run-tests.sh"

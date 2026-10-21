@@ -14,10 +14,8 @@ jobs:
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
-      - name: Run game tests
-        run: ./tools/run-tests.sh
-      - name: Run agent runner tests
-        run: python3 tools/test_agent_runner.py
+      - name: Run verify
+        run: ./tools/verify.sh
 
   site:
     runs-on: ubuntu-latest

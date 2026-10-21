@@ -34,9 +34,11 @@ main は branch protection で保護し、変更は必ず pull request 経由に
 
    本文は `.github/pull_request_template.md` に沿って埋めます。
 
-6. AI にレビューとマージを任せる
+6. PR を Ready にする
 
-   opencode で次のどちらかを実行します。
+   初回だけ `./tools/install-auto-pr.sh` を実行しておけば、PR を Ready にした後はローカルの watcher がレビューとマージを進めます。Blocker やゲート失敗がある場合は通知して止まります。設定と止め方は [PR の自動レビューと自動マージ](auto-pr.md) を参照してください。
+
+   すぐに実行したい場合や、Blocker の修正まで AI に任せたい場合は、opencode で次を実行します。
 
    ```text
    /pr-deliver 123
@@ -62,13 +64,13 @@ main は branch protection で保護し、変更は必ず pull request 経由に
 
 マージ担当は `python3 tools/pr_merge.py --pr <n>` を実行します。ゲートは次の5点を確認します。
 
-1. PR が open で、base が `main`、コンフリクトがなく merge 可能
+1. PR が open で、base が `main`、`ai-pause` / `do-not-merge` ラベルがなく、コンフリクトがなく merge 可能
 2. 最新 head に対する AI レビューがあり、Blocker が 0
 3. その head の required checks（`tests`、`site`）がすべて pass または skipped で、visible checks に failed / pending / cancelled がない
 4. 未解決の review thread が 0
 5. `ui-evidence` ラベルがある場合、最新 head を指す証跡コメントがある
 
-すべて通ると Draft を Ready にし、head SHA を固定して squash merge します。
+すべて通ると Draft を Ready にし、head SHA を固定して squash merge します。ただし `--no-ready` を付けた場合は Draft を Ready にせず、Draft のままならマージしません。watcher は `--no-ready` を使います。
 
 ```sh
 python3 tools/pr_merge.py --pr 123
