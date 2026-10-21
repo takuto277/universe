@@ -200,6 +200,7 @@
     state.scoreMult = 1;
     state.bossHpReduction = 0;
     state.upgrades = {};
+    state.lastDeckSwap = null;
     state.mode = state.deck[0];
     state.modeTime = 0;
     state.vy = baseVy(state, state.mode);
@@ -264,6 +265,7 @@
       scoreMult: 1,
       bossHpReduction: 0,
       upgrades: {},
+      lastDeckSwap: null,
       trail: [],
       rivals: [],
       events: [],
@@ -458,6 +460,7 @@
     state.combo = 0;
     state.comboTimer = 0;
     if (state.hp < state.maxHp) state.hp++;
+    rotateDeck(state);
     pushEvent(state, {
       type: 'stageClear',
       x: hitX,
@@ -554,6 +557,7 @@
     state.stageTarget = stageTargetFor(state.stage);
     state.stageCleared = false;
     state.stageClearBonus = 0;
+    state.lastDeckSwap = null;
     state.boss = null;
     state.bossCooldown = 0;
     state.rivals = [];
@@ -762,6 +766,27 @@
     return state;
   }
 
+  function rotateDeck(state) {
+    if (!state || !state.deck.length) return null;
+    var candidates = [];
+    for (var i = 0; i < MODE_KEYS.length; i++) {
+      if (state.deck.indexOf(MODE_KEYS[i]) < 0) candidates.push(MODE_KEYS[i]);
+    }
+    if (!candidates.length) return null;
+    var slot = Math.floor(rand(state.rng) * state.deck.length) % state.deck.length;
+    var oldKey = state.deck[slot];
+    var newKey = candidates[Math.floor(rand(state.rng) * candidates.length) % candidates.length];
+    state.deck[slot] = newKey;
+    if (PARAM_SPECS[newKey]) {
+      var all = normalizeParams(state.deckParams);
+      state.deckParams[newKey] = all[newKey];
+    }
+    var swap = { oldKey: oldKey, newKey: newKey, slot: slot };
+    state.lastDeckSwap = swap;
+    pushEvent(state, { type: 'deckSwap', oldKey: oldKey, newKey: newKey, slot: slot });
+    return swap;
+  }
+
   function applyUpgrade(state, id) {
     if (!state || !state.stageCleared) return false;
     if (id === 'life') {
@@ -857,6 +882,11 @@
       scoreMult: state.scoreMult,
       bossHpReduction: state.bossHpReduction,
       upgrades: JSON.parse(JSON.stringify(state.upgrades)),
+      lastDeckSwap: state.lastDeckSwap ? {
+        oldKey: state.lastDeckSwap.oldKey,
+        newKey: state.lastDeckSwap.newKey,
+        slot: state.lastDeckSwap.slot
+      } : null,
       boss: state.boss ? {
         hp: state.boss.hp,
         maxHp: state.boss.maxHp,
@@ -889,6 +919,7 @@
     nextStage: nextStage,
     applyUpgrade: applyUpgrade,
     upgradeChoices: upgradeChoices,
+    rotateDeck: rotateDeck,
     stageTargetFor: stageTargetFor,
     consumeEvents: consumeEvents,
     snapshot: snapshot,

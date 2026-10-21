@@ -30,7 +30,7 @@
           <ul class="rules">
             <li>x が自動で進む。<b>1〜3 / 画面タップ</b>で関数切替。カード3つでデッキ、<b>x^p / sin</b> はスライダー調整</li>
             <li>敵の曲線と交差で <b>大爆発 + 得点</b>。角度が急なほど高得点、同系統なら <b>弱点 x1.5</b></li>
-            <li>敵を一定数交差すると <b>ボス出現</b>。倒すと <b>ステージクリア</b> → 強化を1つ選択! ライフ-1、5コンボで1回復</li>
+            <li>敵を一定数交差すると <b>ボス出現</b>。倒すと <b>ステージクリア</b> → <b>関数1つが入れ替わり</b>、強化を1つ選択! ライフ-1、5コンボで1回復</li>
           </ul>
           <div id="deck-picker">
             <div class="deck-head">デッキを選べ <span id="deck-count">3/3</span></div>
@@ -96,6 +96,7 @@
             <button id="upgrade-1" class="upgrade-card" type="button"><em>2</em><b id="upgrade-1-title">強化</b><span id="upgrade-1-desc"></span></button>
             <button id="upgrade-2" class="upgrade-card" type="button"><em>3</em><b id="upgrade-2-title">強化</b><span id="upgrade-2-desc"></span></button>
           </div>
+          <div id="deck-swap" class="hidden"></div>
           <div id="run-upgrades">このランの強化: なし</div>
           <p class="tiny">1〜3 / クリックで強化を選んで次のステージへ</p>
         </section>
