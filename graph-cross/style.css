@@ -349,14 +349,35 @@ body {
 }
 .mode-btn.active b { text-shadow: 0 0 12px currentColor; }
 
+#tipbar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 0 4px;
+}
 #tip {
-  text-align: center;
   color: var(--muted);
   font-size: 11px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  min-width: 0;
 }
+#btn-sound {
+  flex: 0 0 auto;
+  padding: 3px 10px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(16, 24, 42, 0.9);
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: 10.5px;
+  font-weight: 800;
+  cursor: pointer;
+}
+#btn-sound.muted { color: var(--muted); border-color: var(--line); }
+#btn-sound:disabled { opacity: 0.45; cursor: default; }
 
 @media (max-width: 640px) {
   #app { padding: 8px 8px 8px; gap: 7px; }
@@ -377,6 +398,7 @@ body {
   .deck-card b { font-size: 11px; }
   .deck-card span { font-size: 9px; }
   #tip { font-size: 9.5px; }
+  #btn-sound { font-size: 9.5px; padding: 2px 8px; }
   .end-stats div { min-width: 92px; padding: 6px 10px; }
 }
 
