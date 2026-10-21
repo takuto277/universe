@@ -461,18 +461,6 @@ body {
   border-radius: 999px;
   padding: 1px 7px;
 }
-.tune-input {
-  width: 3.6em;
-  padding: 2px 4px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: rgba(8, 14, 26, 0.95);
-  color: var(--cyan);
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 12px;
-  text-align: center;
-}
-.tune-input:focus { outline: none; border-color: var(--cyan); box-shadow: 0 0 0 2px rgba(95, 240, 255, 0.15); }
 #tune-preview-wrap {
   display: flex;
   flex-direction: column;
@@ -495,29 +483,6 @@ body {
   min-height: 15px;
 }
 .tune-row.hidden { display: none; }
-.tune-name {
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 11.5px;
-  color: var(--text);
-  white-space: nowrap;
-}
-.tune-name b { color: var(--gold); font-size: 12.5px; }
-.tune-controls { display: flex; align-items: center; gap: 4px; }
-.tune-controls button {
-  width: 28px;
-  height: 28px;
-  border-radius: 7px;
-  border: 1px solid var(--line);
-  background: var(--panel-2);
-  color: var(--cyan);
-  font-family: inherit;
-  font-size: 14px;
-  font-weight: 800;
-  cursor: pointer;
-  line-height: 1;
-}
-.tune-controls button:hover { border-color: var(--cyan); }
-.tune-label { color: var(--muted); font-size: 10px; margin-left: 3px; }
 #tune-empty { color: var(--muted); font-size: 10.5px; text-align: center; padding: 2px 0; }
 #tune-empty.hidden { display: none; }
 
@@ -654,7 +619,7 @@ body {
   text-overflow: ellipsis;
 }
 
-#tipbar {#tipbar {
+#tipbar {
   display: flex;
   align-items: center;
   justify-content: center;

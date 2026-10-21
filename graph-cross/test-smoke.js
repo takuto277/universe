@@ -11,7 +11,11 @@ function tryLoad(paths) {
 }
 
 tryLoad(['../tools/harness.js', 'tools/harness.js']);
+tryLoad(['content.js', 'graph-cross/content.js']);
+tryLoad(['balance.js', 'graph-cross/balance.js']);
 tryLoad(['engine.js', 'graph-cross/engine.js']);
+tryLoad(['renderer.js', 'graph-cross/renderer.js']);
+tryLoad(['ui.js', 'graph-cross/ui.js']);
 tryLoad(['game.js', 'graph-cross/game.js']);
 
 Harness.run({
