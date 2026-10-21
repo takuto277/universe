@@ -629,6 +629,21 @@ body {
   line-height: 1.55;
   color: var(--muted);
 }
+#deck-swap {
+  width: min(760px, 100%);
+  padding: 5px 12px;
+  border: 1px solid rgba(255, 122, 217, 0.45);
+  border-radius: 999px;
+  background: rgba(255, 122, 217, 0.08);
+  color: var(--pink);
+  font-size: 11px;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#deck-swap.hidden { display: none; }
+#deck-swap span { color: var(--gold); margin: 0 4px; }
 #run-upgrades {
   width: min(760px, 100%);
   text-align: center;

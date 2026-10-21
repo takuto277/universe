@@ -543,6 +543,16 @@
     if (els.clearScore) els.clearScore.textContent = String(snap.score);
     if (els.clearBonus) els.clearBonus.textContent = '+' + snap.stageClearBonus;
     if (els.clearLife) els.clearLife.textContent = lifeText(snap.hp, snap.maxHp);
+    if (els.deckSwap) {
+      var swap = snap.lastDeckSwap;
+      if (swap) {
+        els.deckSwap.innerHTML = 'デッキ変動: ' + formatModeLabel(swap.oldKey, state.deckParams) +
+          ' <span>→</span> ' + formatModeLabel(swap.newKey, state.deckParams);
+        els.deckSwap.classList.remove('hidden');
+      } else {
+        els.deckSwap.classList.add('hidden');
+      }
+    }
     view.upgradeIds = E.upgradeChoices(state);
     updateUpgradeCards(snap);
     if (els.screenClear) els.screenClear.classList.add('visible');
@@ -1203,6 +1213,7 @@
     els.clearBonus = $('clear-bonus');
     els.clearLife = $('clear-life');
     els.runUpgrades = $('run-upgrades');
+    els.deckSwap = $('deck-swap');
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }

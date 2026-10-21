@@ -287,6 +287,9 @@ g.trail = [
 E.setMode(g, 'up');
 E.update(g, 1 / 60);
 assert(g.stageCleared && g.boss === null, 'ボスHP0でステージクリア');
+assert(g.lastDeckSwap && g.lastDeckSwap.oldKey !== g.lastDeckSwap.newKey, 'ステージクリアで関数が入れ替わる');
+var swappedDeck = g.deck.slice();
+assert(swappedDeck.indexOf(g.lastDeckSwap.newKey) >= 0 && swappedDeck.indexOf(g.lastDeckSwap.oldKey) < 0, '入れ替え後のデッキ');
 assert(g.score > scoreBeforeBoss, 'ステージクリアでスコア獲得');
 assert(E.consumeEvents(g).some(function (e) { return e.type === 'stageClear'; }), 'stageClearイベント');
 var scoreAfterClear = g.score;
@@ -333,6 +336,18 @@ assert(g.upgrades.life === 1 && g.upgrades.slot === 1, '取得強化の記録');
 assert(E.snapshot(g).maxHp === 4 && E.snapshot(g).hitBonus === 2, '強化がスナップショットに反映');
 assert(E.applyUpgrade(g, 'unknown') === false, '不明な強化は無効');
 
+/* 9e) デッキの強制ローテーション */
+g = makeGame(903, ['hold', 'up', 'wave']);
+var deckBefore = g.deck.slice();
+var swap1 = E.rotateDeck(g);
+assert(swap1 && g.deck.length === 3, 'デッキを1枠だけ入れ替える');
+assert(g.deck[swap1.slot] === swap1.newKey && g.deck.indexOf(swap1.oldKey) < 0, '新しい関数が入る');
+assert(g.deck[0] !== g.deck[1] && g.deck[1] !== g.deck[2] && g.deck[0] !== g.deck[2], '入れ替え後も重複しない');
+assert(g.lastDeckSwap.newKey === swap1.newKey, '最後の入れ替えを記録');
+var swap2 = E.rotateDeck(g);
+assert(swap2 && g.deck.length === 3 && g.lastDeckSwap.newKey === swap2.newKey, '2回目も入れ替えられる');
+assert(E.snapshot(g).lastDeckSwap.newKey === swap2.newKey, '入れ替えがスナップショットに入る');
+
 /* 10) 何もしないより、敵の高さに合わせて動く方が長く/多く当たる */
 function play(seed, smart, seconds) {
   var game = makeGame(seed);
@@ -358,12 +373,23 @@ function play(seed, smart, seconds) {
           target = E.rivalY(r, local);
         }
       }
+      function chooseMode(up) {
+        var prefs = up ? ['up', 'steepUp', 'quad', 'wave'] : ['down', 'steepDown', 'quadDown', 'wave'];
+        for (var p = 0; p < prefs.length; p++) {
+          if (game.deck.indexOf(prefs[p]) >= 0) { E.setMode(game, prefs[p]); return; }
+        }
+        if (game.deck.indexOf('hold') >= 0) E.setMode(game, 'hold');
+        else E.setMode(game, game.deck[0]);
+      }
       if (target != null) {
-        if (game.y > target + 10) E.setMode(game, 'up');
-        else if (game.y < target - 10) E.setMode(game, 'down');
-        else E.setMode(game, 'hold');
-      } else {
+        if (game.y > target + 10) chooseMode(true);
+        else if (game.y < target - 10) chooseMode(false);
+        else if (game.deck.indexOf('hold') >= 0) E.setMode(game, 'hold');
+        else chooseMode(true);
+      } else if (game.deck.indexOf('hold') >= 0) {
         E.setMode(game, 'hold');
+      } else {
+        chooseMode(true);
       }
     }
     E.update(game, 1 / 60);
