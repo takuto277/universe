@@ -10,6 +10,15 @@
   var previewCtx = null;
   var previewKey = null;
   var FAMILY_COLORS = { linear: '#5ff0ff', quad: '#ffd166', wave: '#ff7ad9', none: '#a8bad8' };
+  var UPGRADE_INFO = {
+    life: { title: 'ライフ +1', desc: '最大ライフ+1 / 1回復' },
+    hit: { title: '判定 +2', desc: '交差判定が広がる' },
+    combo: { title: 'コンボ +0.8秒', desc: 'コンボが切れにくい' },
+    score: { title: 'スコア +20%', desc: '獲得スコアアップ' },
+    boss: { title: 'ボス HP -3', desc: '次のボスが弱体化' },
+    slot: { title: '関数スロット +1', desc: '新しい関数を追加' },
+    bonus: { title: 'スコア +3000', desc: '即時ボーナス' }
+  };
   var lastCombo = 0;
 
   var canvas = null;
@@ -19,7 +28,7 @@
   var deckCards = {};
   var selectedDeck = loadDeck();
   var state = null;
-  var view = { phase: 'idle', deathAt: 0, clearAt: 0 };
+  var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [] };
   var viewW = 960;
   var viewH = 560;
   var dpr = 1;
@@ -132,9 +141,10 @@
   }
 
   /* ===== HUD ===== */
-  function lifeText(hp) {
+  function lifeText(hp, maxHp) {
+    var total = maxHp || E.MAX_HP;
     var out = '';
-    for (var i = 0; i < E.MAX_HP; i++) out += i < hp ? '●' : '○';
+    for (var i = 0; i < total; i++) out += i < hp ? '●' : '○';
     return out;
   }
 
@@ -150,7 +160,7 @@
     if (els.score) els.score.textContent = snap ? String(snap.score) : '0';
     if (els.best) els.best.textContent = String(best);
     if (els.combo) els.combo.textContent = snap && snap.combo > 0 ? 'x' + snap.combo : '-';
-    if (els.life) els.life.textContent = snap ? lifeText(snap.hp) : lifeText(E.MAX_HP);
+    if (els.life) els.life.textContent = snap ? lifeText(snap.hp, snap.maxHp) : lifeText(E.MAX_HP, E.MAX_HP);
     if (els.life) els.life.classList.toggle('danger', !!(snap && snap.hp <= 1));
 
     if (els.stageLabel) {
@@ -210,7 +220,7 @@
 
   function updateSlots() {
     var deck = state ? state.deck : selectedDeck;
-    for (var i = 0; i < 3; i++) {
+    for (var i = 0; i < 4; i++) {
       var btn = slotButtons[i];
       if (!btn) continue;
       var key = deck[i];
@@ -218,8 +228,10 @@
         btn.innerHTML = '<b>-</b><span>空き</span><em>' + (i + 1) + '</em>';
         btn.disabled = true;
         btn.classList.remove('active');
+        btn.classList.add('hidden');
         continue;
       }
+      btn.classList.remove('hidden');
       var mode = E.MODES[key];
       var params = state ? state.deckParams : selectedParams;
       var familyNote = mode.family !== 'none' ? ' · ' + E.FAMILY_LABELS[mode.family] : '';
@@ -228,6 +240,8 @@
       btn.disabled = !(state && view.phase === 'run' && !state.over);
       btn.classList.toggle('active', !!(state && state.mode === key));
     }
+    if (els.modeButtons) els.modeButtons.classList.toggle('four', deck.length > 3);
+    if (els.tip) els.tip.textContent = '画面タップ / 1〜' + deck.length + ' で関数切替 · 曲線で敵を迎え撃て';
   }
 
   function updateDeckUi() {
@@ -528,7 +542,9 @@
     if (els.clearStage) els.clearStage.textContent = 'STAGE ' + snap.stage;
     if (els.clearScore) els.clearScore.textContent = String(snap.score);
     if (els.clearBonus) els.clearBonus.textContent = '+' + snap.stageClearBonus;
-    if (els.clearLife) els.clearLife.textContent = lifeText(snap.hp);
+    if (els.clearLife) els.clearLife.textContent = lifeText(snap.hp, snap.maxHp);
+    view.upgradeIds = E.upgradeChoices(state);
+    updateUpgradeCards(snap);
     if (els.screenClear) els.screenClear.classList.add('visible');
     if (audio) {
       audio.setIntensity(0);
@@ -536,6 +552,43 @@
     }
     updateSlots();
     updateHud();
+  }
+
+  function updateUpgradeCards(snap) {
+    for (var i = 0; i < 3; i++) {
+      var btn = $('upgrade-' + i);
+      if (!btn) continue;
+      var id = view.upgradeIds[i];
+      if (!id) {
+        btn.classList.add('hidden');
+        continue;
+      }
+      btn.classList.remove('hidden');
+      var info = UPGRADE_INFO[id] || { title: id, desc: '' };
+      btn.innerHTML = '<em>' + (i + 1) + '</em><b>' + info.title + '</b><span>' + info.desc + '</span>';
+    }
+    if (els.runUpgrades) {
+      var parts = [];
+      var upgrades = snap && snap.upgrades ? snap.upgrades : {};
+      for (var key in UPGRADE_INFO) {
+        if (!Object.prototype.hasOwnProperty.call(UPGRADE_INFO, key)) continue;
+        var count = upgrades[key] || 0;
+        if (count > 0) parts.push(UPGRADE_INFO[key].title + (count > 1 ? ' x' + count : ''));
+      }
+      els.runUpgrades.textContent = parts.length ? 'このランの強化: ' + parts.join(' / ') : 'このランの強化: なし';
+    }
+  }
+
+  function chooseUpgrade(index) {
+    if (view.phase !== 'clear' || !state) return;
+    var id = view.upgradeIds[index];
+    if (!id) return;
+    if (!E.applyUpgrade(state, id)) {
+      view.upgradeIds = E.upgradeChoices(state);
+      updateUpgradeCards(E.snapshot(state));
+      return;
+    }
+    goNextStage();
   }
 
   function goNextStage() {
@@ -574,7 +627,7 @@
 
   function startOrRestart() {
     if (view.phase === 'clear') {
-      goNextStage();
+      chooseUpgrade(0);
       return;
     }
     if ((view.phase === 'idle' || view.phase === 'over') && selectedDeck.length === 3) beginRun();
@@ -612,6 +665,13 @@
   function onKey(e) {
     if (!e) return;
     var k = e.key || '';
+    if (view.phase === 'clear') {
+      if (k === '1') chooseUpgrade(0);
+      else if (k === '2') chooseUpgrade(1);
+      else if (k === '3') chooseUpgrade(2);
+      else if (k === ' ' || k === 'Enter') chooseUpgrade(0);
+      return;
+    }
     if (k === ' ' || k === 'Enter') {
       if (e.preventDefault) e.preventDefault();
       startOrRestart();
@@ -620,6 +680,7 @@
     if (k === '1') selectSlot(0);
     else if (k === '2') selectSlot(1);
     else if (k === '3') selectSlot(2);
+    else if (k === '4') selectSlot(3);
   }
 
   /* ===== エフェクト ===== */
@@ -1115,6 +1176,8 @@
     els.btnAgain = $('btn-again');
     els.btnDeck = $('btn-deck');
     els.deckCount = $('deck-count');
+    els.modeButtons = $('mode-buttons');
+    els.tip = $('tip');
     els.tuneRows = $('tune-rows');
     els.tuneEmpty = $('tune-empty');
     els.tunePreviewWrap = $('tune-preview-wrap');
@@ -1139,7 +1202,7 @@
     els.clearScore = $('clear-score');
     els.clearBonus = $('clear-bonus');
     els.clearLife = $('clear-life');
-    els.btnNext = $('btn-next');
+    els.runUpgrades = $('run-upgrades');
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
@@ -1160,7 +1223,7 @@
       })(key, card);
     }
 
-    for (i = 0; i < 3; i++) {
+    for (i = 0; i < 4; i++) {
       var slot = $('slot-' + i);
       if (!slot) continue;
       slotButtons.push(slot);
@@ -1172,6 +1235,12 @@
       })(i, slot);
     }
 
+    for (i = 0; i < 3; i++) {
+      (function (index) {
+        var btn = $('upgrade-' + index);
+        if (btn) btn.addEventListener('click', function () { chooseUpgrade(index); });
+      })(i);
+    }
     var paramDefs = [
       ['tune-quad-a', 'quad', 'a'],
       ['tune-quad-b', 'quad', 'b'],
@@ -1208,7 +1277,6 @@
     if (els.btnStart) els.btnStart.addEventListener('click', beginRun);
     if (els.btnAgain) els.btnAgain.addEventListener('click', beginRun);
     if (els.btnDeck) els.btnDeck.addEventListener('click', backToDeck);
-    if (els.btnNext) els.btnNext.addEventListener('click', goNextStage);
     if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
     if (audio) audio.setMuted(muted);
     if (canvas) {
