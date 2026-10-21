@@ -153,7 +153,7 @@ if [ ! -f "$WATCHER_PLIST" ]; then
     printf 'note:      auto-pr watcher が未登録です。PR のレビューとマージまで無人にするには\n'
     printf '           ./tools/install-auto-pr.sh も実行してください。\n'
   else
-    printf 'note:      auto-pr watcher は未導入です(別 PR で追加予定)。\n'
-    printf '           導入までは PR を /pr-deliver で処理してください。\n'
+    printf 'note:      auto-pr watcher は未導入です。\n'
+    printf '           レビューとマージまで無人にするには watcher をセットアップしてください。\n'
   fi
 fi

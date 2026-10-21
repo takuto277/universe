@@ -150,10 +150,18 @@ release_lock() {
 trap release_lock EXIT
 
 if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
-  log "stale lock older than ${LOCK_STALE}s; killing pid $old_pid"
-  kill "$old_pid" 2>/dev/null || true
-  sleep 2
-  kill -9 "$old_pid" 2>/dev/null || true
+  old_cmd="$(ps -p "$old_pid" -o command= 2>/dev/null || true)"
+  case "$old_cmd" in
+    *auto-pr.sh*)
+      log "stale lock older than ${LOCK_STALE}s; killing pid $old_pid"
+      kill "$old_pid" 2>/dev/null || true
+      sleep 2
+      kill -9 "$old_pid" 2>/dev/null || true
+      ;;
+    *)
+      log "stale lock older than ${LOCK_STALE}s; pid $old_pid is not auto-pr; leaving it"
+      ;;
+  esac
 fi
 
 find "$STATE_DIR" -type f -mtime +14 -delete 2>/dev/null || true
@@ -259,6 +267,11 @@ merge_pr() {
   local head="$2"
   local failed="$STATE_DIR/${number}-${head}.merge-failed"
 
+  if [ "${UNIVERSE_AUTO_PR_DISABLE:-0}" = "1" ] || [ -f "$STATE_DIR/pause" ]; then
+    log "PR #$number: paused; skip merge"
+    return 0
+  fi
+
   if recent "$failed" 10; then
     log "PR #$number: merge failed recently; skip"
     return 0
@@ -273,6 +286,11 @@ merge_pr() {
   paused="$("$GH" pr view "$number" --repo "$REPO" --json isDraft,labels --jq 'if .isDraft then "draft" elif ([.labels[].name] | index("ai-pause")) then "ai-pause" elif ([.labels[].name] | index("do-not-merge")) then "do-not-merge" else "" end' 2>/dev/null || true)"
   if [ -n "$paused" ]; then
     log "PR #$number: paused ($paused); skip merge"
+    return 0
+  fi
+
+  if [ -f "$STATE_DIR/pause" ]; then
+    log "PR #$number: paused; skip merge"
     return 0
   fi
 

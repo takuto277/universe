@@ -41,11 +41,13 @@ gh auth status
 ./tools/agent.sh status
 ```
 
-レビューとマージまで無人にするには、`auto-pr` watcher も登録します。watcher は別 PR(`chore/auto-pr-watcher`)で追加中のため、未マージの間は PR を `/pr-deliver` で処理してください。
+レビューとマージまで無人にするには、`auto-pr` watcher も登録します。
 
 ```sh
-./tools/install-auto-pr.sh   # watcher の PR がマージされた後
+./tools/install-auto-pr.sh
 ```
+
+未登録の間は、PR を `/pr-deliver` で処理してください。
 
 ## 使い方
 
