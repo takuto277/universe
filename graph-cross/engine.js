@@ -26,6 +26,7 @@
   var PLAYER_HALF = 12;
   var HIT_DIST = 15;
   var COMBO_WINDOW = 2.6;
+  var MAX_PLAYER_VY = 1600;
   var HEAL_COMBO = 5;
   var MAX_DT = 0.05;
   var MAX_EVENTS = 120;
@@ -43,16 +44,18 @@
   var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave'];
   var DEFAULT_DECK = ['hold', 'up', 'down'];
   var DECK_SIZE = 3;
-  var FAMILY_LABELS = { linear: '直線', quad: '2次', wave: '波', none: '—' };
+  var FAMILY_LABELS = { linear: '直線', quad: '累乗', wave: '波', none: '—' };
   var BOSS_FAMILIES = ['linear', 'quad', 'wave'];
   var PARAM_SPECS = {
     quad: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
-      b: { min: -1.5, max: 1.5, step: 0.1, default: 0 }
+      b: { min: -1.5, max: 1.5, step: 0.1, default: 0 },
+      p: { min: 2, max: 4, step: 1, default: 2 }
     },
     quadDown: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
-      b: { min: -1.5, max: 1.5, step: 0.1, default: 0 }
+      b: { min: -1.5, max: 1.5, step: 0.1, default: 0 },
+      p: { min: 2, max: 4, step: 1, default: 2 }
     },
     wave: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
@@ -642,12 +645,12 @@
     else if (state.mode === 'down') state.vy = 170;
     else if (state.mode === 'steepUp') state.vy = -320;
     else if (state.mode === 'steepDown') state.vy = 320;
-    else if (state.mode === 'quad') {
-      var qp = state.deckParams.quad || { a: 1, b: 0 };
-      state.vy = clamp(state.vy - 560 * (qp.a || 1) * dt, -420, 420);
-    } else if (state.mode === 'quadDown') {
-      var qdp = state.deckParams.quadDown || { a: 1, b: 0 };
-      state.vy = clamp(state.vy + 560 * (qdp.a || 1) * dt, -420, 420);
+    else if (state.mode === 'quad' || state.mode === 'quadDown') {
+      var qp = state.deckParams[state.mode] || { a: 1, b: 0, p: 2 };
+      var power = Math.max(2, Math.round(qp.p || 2));
+      var powerTerm = 280 * (qp.a || 1) * power * Math.pow(state.modeTime, power - 1);
+      var dir = state.mode === 'quadDown' ? 1 : -1;
+      state.vy = clamp(dir * powerTerm + (qp.b || 0) * 120, -MAX_PLAYER_VY, MAX_PLAYER_VY);
     } else if (state.mode === 'wave') {
       var wp = state.deckParams.wave || { a: 1, b: 1, c: 0 };
       state.vy = 285 * (wp.a || 1) * Math.sin(state.modeTime * 4.2 * (wp.b || 1) + (wp.c || 0));

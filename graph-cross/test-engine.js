@@ -109,8 +109,17 @@ var customLimits = E.createGame({
 });
 assert(customLimits.deckParams.quad.b === 1.5, '2次の初速上限');
 assert(customLimits.deckParams.wave.c === -3, '位相の下限');
+var pClamp = E.createGame({
+  width: 1000, height: 620, deck: ['quad', 'wave', 'hold'],
+  deckParams: { quad: { a: 1, b: 0, p: 99 } }
+});
+assert(pClamp.deckParams.quad.p === 4, '累乗pの上限');
 var quadB = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 1, b: 1 } }, rng: mulberry32(23) });
-assert(quadB.vy === 120, '2次のbが初速になる');
+assert(quadB.vy === 120, '累乗のbが初速になる');
+var power2 = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 1, b: 0, p: 2 } }, rng: mulberry32(25) });
+var power3 = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 1, b: 0, p: 3 } }, rng: mulberry32(26) });
+for (i = 0; i < 30; i++) { power2.rivals = []; power3.rivals = []; E.update(power2, 1 / 60); E.update(power3, 1 / 60); }
+assert(power3.y > power2.y, 'pが大きいほど序盤はゆるく曲がる');
 var waveC = E.createGame({ width: 1000, height: 620, deck: ['wave', 'hold', 'up'], deckParams: { wave: { a: 1, b: 1, c: 1 } }, rng: mulberry32(24) });
 assert(waveC.vy > 200, 'sinの位相が初速に反映される');
 
