@@ -28,6 +28,14 @@ universe のテストは、外部依存を増やさず JavaScriptCore の `jsc` 
 JSC=/path/to/jsc ./tools/run-tests.sh
 ```
 
+## 個別のテスト実行
+
+特定のアプリだけを実行する場合:
+
+```sh
+./tools/run-tests.sh --only janken-game
+```
+
 ## テストの種類
 
 ### engine テスト
