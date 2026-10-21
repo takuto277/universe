@@ -50,6 +50,12 @@
   var WAVE_SHAPE_LABELS = ['サイン', 'コサイン', '三角波', '角丸スクエア', '減衰サイン'];
   var WAVE_SHAPE_DESCS = ['滑らかな上下', 'sinを位相ずらし', '折れ線で上下', '角を丸くした方形波', '時間とともに小さくなる'];
 
+  var ITEM_INFO = {
+    graph: { label: '非対称グラフ +1', short: 'G', color: '#b48cff' },
+    life: { label: 'ライフ +1', short: '+', color: '#57e08a' },
+    score: { label: 'スコア +500', short: 'S', color: '#ffd166' }
+  };
+
   var UPGRADE_INFO = {
     life: { title: 'ライフ +1', desc: '最大ライフ+1 / 1回復' },
     hit: { title: '判定 +2', desc: '交差判定が広がる' },
@@ -113,6 +119,7 @@
     WAVE_SHAPE_LABELS: WAVE_SHAPE_LABELS,
     WAVE_SHAPE_DESCS: WAVE_SHAPE_DESCS,
     UPGRADE_INFO: UPGRADE_INFO,
+    ITEM_INFO: ITEM_INFO,
     fmtNum: fmtNum,
     powLabel: powLabel,
     formatModeLabel: formatModeLabel,

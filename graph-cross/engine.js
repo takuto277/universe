@@ -191,6 +191,11 @@
     if (state.mode === 'wave') setWaveBase(state);
     state.trail = [];
     state.rivals = [];
+    state.items = [];
+    state.allies = [];
+    state.itemTimer = B.ITEM_FIRST_DELAY;
+    state.multi = 0;
+    state.multiTimer = 0;
     state.events = [];
     state.over = false;
     state.deathCause = null;
@@ -250,6 +255,11 @@
       lastDeckSwap: null,
       trail: [],
       rivals: [],
+      items: [],
+      allies: [],
+      itemTimer: B.ITEM_FIRST_DELAY,
+      multi: 0,
+      multiTimer: 0,
       events: [],
       over: false,
       deathCause: null,
@@ -441,6 +451,8 @@
     state.rivals = [];
     state.combo = 0;
     state.comboTimer = 0;
+    state.multi = 0;
+    state.multiTimer = 0;
     if (state.hp < state.maxHp) state.hp++;
     rotateDeck(state);
     pushEvent(state, {
@@ -466,6 +478,7 @@
       if (Math.abs(p.y - by) > HIT_DIST + 2 + (state.hitBonus || 0)) continue;
 
       var m = crossMetrics(state, trail, ti, boss, local);
+      var multi = registerMulti(state);
       var damage = 1 + (m.angle >= 50 ? 1 : 0) + (m.weak ? 1 : 0);
       boss.hp = Math.max(0, boss.hp - damage);
       boss.invuln = 0.32;
@@ -477,7 +490,7 @@
       state.comboTimer = state.comboWindow;
       if (state.combo > state.maxCombo) state.maxCombo = state.combo;
       var baseGain = 200 + (state.combo - 1) * 60;
-      var gain = Math.round(baseGain * m.mult * m.weakMult * (state.scoreMult || 1));
+      var gain = Math.round(baseGain * m.mult * m.weakMult * multi.mult * (state.scoreMult || 1));
       state.score += gain;
       var event = {
         type: 'bossHit',
@@ -493,6 +506,8 @@
         weakMult: m.weakMult,
         playerFamily: m.playerFamily,
         weakness: boss.family,
+        multi: multi.count,
+        multiMult: Math.round(multi.mult * 100) / 100,
         bossHp: boss.hp,
         bossMaxHp: boss.maxHp
       };
@@ -531,6 +546,11 @@
     state.bossCooldown = 0;
     state.rivals = [];
     state.trail = [];
+    state.items = [];
+    state.allies = [];
+    state.itemTimer = B.ITEM_FIRST_DELAY;
+    state.multi = 0;
+    state.multiTimer = 0;
     state.y = (state.top + state.bottom) / 2;
     state.mode = state.deck[0];
     state.modeTime = 0;
@@ -570,6 +590,171 @@
     };
   }
 
+  function registerStageProgress(state) {
+    if (!state.boss && !state.stageCleared && state.stageHits < state.stageTarget) {
+      state.stageHits++;
+      if (state.stageHits >= state.stageTarget) {
+        state.bossCooldown = 1.2;
+        pushEvent(state, { type: 'bossIncoming', stage: state.stage });
+      }
+    }
+  }
+
+  function registerMulti(state) {
+    state.multi = state.multiTimer > 0 ? Math.min(B.MULTI_MAX, state.multi + 1) : 1;
+    state.multiTimer = B.MULTI_WINDOW;
+    return {
+      count: state.multi,
+      mult: 1 + B.MULTI_STEP * (state.multi - 1)
+    };
+  }
+
+  function spawnItem(state) {
+    var r = rand(state.rng);
+    var type = r < 0.5 ? 'graph' : (r < 0.75 ? 'life' : 'score');
+    var margin = 64;
+    var y = state.top + margin + rand(state.rng) * Math.max(1, (state.bottom - margin) - (state.top + margin));
+    state.items.push({
+      x: state.width + 60,
+      y: y,
+      type: type,
+      r: B.ITEM_RADIUS,
+      phase: rand(state.rng) * Math.PI * 2
+    });
+  }
+
+  function spawnAlly(state) {
+    var x0 = Math.max(0, state.headX - 120);
+    var x1 = state.width;
+    var centerY = (state.top + state.bottom) / 2;
+    var ally = {
+      x0: x0,
+      x1: x1,
+      baseY: centerY + (rand(state.rng) * 2 - 1) * 40,
+      amp: 35 + rand(state.rng) * 45,
+      freq: 0.8 + rand(state.rng) * 1.3,
+      phase: rand(state.rng) * Math.PI * 2,
+      slope: (rand(state.rng) < 0.5 ? -1 : 1) * (0.05 + rand(state.rng) * 0.08),
+      life: B.ALLY_LIFESPAN,
+      maxLife: B.ALLY_LIFESPAN,
+      cooldown: 0
+    };
+    if (state.allies.length >= B.ALLY_MAX) state.allies.shift();
+    state.allies.push(ally);
+    pushEvent(state, {
+      type: 'allySpawn',
+      x: (ally.x0 + ally.x1) / 2,
+      y: ally.baseY,
+      life: B.ALLY_LIFESPAN
+    });
+    return ally;
+  }
+
+  function allyY(ally, x) {
+    var mid = (ally.x0 + ally.x1) / 2;
+    return ally.baseY + ally.amp * Math.sin(ally.freq * (x - ally.x0) + ally.phase) +
+      ally.slope * (x - mid);
+  }
+
+  function allyCrossRival(ally, rival) {
+    var xStart = Math.max(ally.x0, rival.x);
+    var xEnd = Math.min(ally.x1, rival.x + rival.len);
+    if (xEnd <= xStart) return null;
+    for (var i = 0; i <= 24; i++) {
+      var x = xStart + (xEnd - xStart) * i / 24;
+      var ry = rivalY(rival, x - rival.x);
+      var ay = allyY(ally, x);
+      if (Math.abs(ry - ay) <= B.ALLY_HIT_DIST) return { x: x, y: (ry + ay) / 2 };
+    }
+    return null;
+  }
+
+  function allyCrossBoss(ally, boss) {
+    var xStart = Math.max(ally.x0, boss.x);
+    var xEnd = Math.min(ally.x1, boss.x + boss.len);
+    if (xEnd <= xStart) return null;
+    for (var i = 0; i <= 32; i++) {
+      var x = xStart + (xEnd - xStart) * i / 32;
+      var by = rivalY(boss, x - boss.x);
+      var ay = allyY(ally, x);
+      if (Math.abs(by - ay) <= B.ALLY_HIT_DIST) return { x: x, y: (by + ay) / 2 };
+    }
+    return null;
+  }
+
+  function pickupItems(state) {
+    for (var i = state.items.length - 1; i >= 0; i--) {
+      var item = state.items[i];
+      var hit = null;
+      for (var ti = 0; ti < state.trail.length; ti++) {
+        var p = state.trail[ti];
+        if (Math.abs(p.x - item.x) <= item.r + 10 && Math.abs(p.y - item.y) <= item.r + 10) {
+          hit = p;
+          break;
+        }
+      }
+      if (!hit) continue;
+      var event = { type: 'itemPickup', itemType: item.type, x: item.x, y: item.y };
+      if (item.type === 'graph') {
+        spawnAlly(state);
+      } else if (item.type === 'life') {
+        state.hp = Math.min(state.maxHp, state.hp + 1);
+      } else {
+        state.score += Math.round(B.ITEM_SCORE * (state.scoreMult || 1));
+      }
+      pushEvent(state, event);
+      state.items.splice(i, 1);
+    }
+  }
+
+  function checkAllies(state, dt) {
+    for (var ai = state.allies.length - 1; ai >= 0; ai--) {
+      var ally = state.allies[ai];
+      ally.life -= dt;
+      ally.cooldown = Math.max(0, ally.cooldown - dt);
+      if (ally.life <= 0) {
+        state.allies.splice(ai, 1);
+        continue;
+      }
+      for (var ri = state.rivals.length - 1; ri >= 0; ri--) {
+        var r = state.rivals[ri];
+        var hit = allyCrossRival(ally, r);
+        if (hit) {
+          state.rivals.splice(ri, 1);
+          state.hits++;
+          registerStageProgress(state);
+          var gain = Math.round(B.ALLY_SCORE * (state.scoreMult || 1));
+          state.score += gain;
+          pushEvent(state, { type: 'allyHit', x: hit.x, y: hit.y, gain: gain });
+        }
+      }
+      if (state.boss && ally.cooldown <= 0) {
+        var bhit = allyCrossBoss(ally, state.boss);
+        if (bhit) {
+          var boss = state.boss;
+          boss.hp = Math.max(0, boss.hp - 1);
+          state.hits++;
+          boss.flash = 0.32;
+          ally.cooldown = B.ALLY_BOSS_COOLDOWN;
+          var bgain = Math.round(B.ALLY_SCORE * 1.5 * (state.scoreMult || 1));
+          state.score += bgain;
+          pushEvent(state, {
+            type: 'allyBossHit',
+            x: bhit.x,
+            y: bhit.y,
+            gain: bgain,
+            bossHp: boss.hp,
+            bossMaxHp: boss.maxHp
+          });
+          if (boss.hp <= 0) {
+            clearStage(state, boss, bhit.x, bhit.y);
+            return;
+          }
+        }
+      }
+    }
+  }
+
   function checkHits(state) {
     var trail = state.trail;
     for (var ri = state.rivals.length - 1; ri >= 0; ri--) {
@@ -583,19 +768,14 @@
         if (Math.abs(p.y - ry) <= HIT_DIST + (state.hitBonus || 0)) {
           r.hit = true;
           state.hits++;
-          if (!state.boss && !state.stageCleared && state.stageHits < state.stageTarget) {
-            state.stageHits++;
-            if (state.stageHits >= state.stageTarget) {
-              state.bossCooldown = 1.2;
-              pushEvent(state, { type: 'bossIncoming', stage: state.stage });
-            }
-          }
+          registerStageProgress(state);
           state.combo = state.comboTimer > 0 ? state.combo + 1 : 1;
           state.comboTimer = state.comboWindow;
           if (state.combo > state.maxCombo) state.maxCombo = state.combo;
           var m = crossMetrics(state, trail, ti, r, local);
+          var multi = registerMulti(state);
           var baseGain = 100 + (state.combo - 1) * 50;
-          var gain = Math.round(baseGain * m.mult * m.weakMult * (state.scoreMult || 1));
+          var gain = Math.round(baseGain * m.mult * m.weakMult * multi.mult * (state.scoreMult || 1));
           state.score += gain;
           var event = {
             type: 'hit',
@@ -610,6 +790,8 @@
             weakMult: m.weakMult,
             playerFamily: m.playerFamily,
             weakness: r.family,
+            multi: multi.count,
+            multiMult: Math.round(multi.mult * 100) / 100,
             label: r.label
           };
           if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < state.maxHp) {
@@ -636,6 +818,8 @@
         state.misses++;
         state.combo = 0;
         state.comboTimer = 0;
+        state.multi = 0;
+        state.multiTimer = 0;
         state.hp--;
         pushEvent(state, {
           type: 'miss',
@@ -691,6 +875,16 @@
     state.trail.push({ x: state.headX, y: state.y, mode: state.mode });
 
     for (i = 0; i < state.rivals.length; i++) state.rivals[i].x -= dx;
+    for (i = state.items.length - 1; i >= 0; i--) {
+      state.items[i].x -= dx;
+      if (state.items[i].x < -30) state.items.splice(i, 1);
+    }
+
+    state.itemTimer -= dt;
+    if (state.itemTimer <= 0) {
+      spawnItem(state);
+      state.itemTimer = B.ITEM_INTERVAL_MIN + rand(state.rng) * (B.ITEM_INTERVAL_MAX - B.ITEM_INTERVAL_MIN);
+    }
 
     if (!state.boss && state.stageHits < state.stageTarget) {
       state.spawnTimer -= dt;
@@ -718,6 +912,8 @@
         state.hp--;
         state.combo = 0;
         state.comboTimer = 0;
+        state.multi = 0;
+        state.multiTimer = 0;
         pushEvent(state, { type: 'bossEscape', hp: state.hp, stage: state.stage });
         if (state.hp <= 0) {
           state.hp = 0;
@@ -729,10 +925,13 @@
       }
     }
 
+    pickupItems(state);
     checkHits(state);
     checkMisses(state);
     if (state.over) return state;
     checkBossHits(state);
+    if (state.over || state.stageCleared) return state;
+    checkAllies(state, dt);
     if (state.over || state.stageCleared) return state;
 
     if (state.comboTimer > 0) {
@@ -740,6 +939,13 @@
       if (state.comboTimer <= 0) {
         state.comboTimer = 0;
         state.combo = 0;
+      }
+    }
+    if (state.multiTimer > 0) {
+      state.multiTimer -= dt;
+      if (state.multiTimer <= 0) {
+        state.multiTimer = 0;
+        state.multi = 0;
       }
     }
 
@@ -857,6 +1063,10 @@
       stageTarget: state.stageTarget,
       stageCleared: state.stageCleared,
       stageClearBonus: state.stageClearBonus,
+      multi: state.multi,
+      multiTimer: state.multiTimer,
+      allies: state.allies.length,
+      items: state.items.length,
       hitBonus: state.hitBonus,
       comboWindow: state.comboWindow,
       scoreMult: state.scoreMult,
@@ -885,6 +1095,7 @@
     FAMILY_LABELS: FAMILY_LABELS,
     WAVE_SHAPES: WAVE_SHAPES,
     waveShapeValue: waveShapeValue,
+    allyY: allyY,
     PARAM_SPECS: PARAM_SPECS,
     normalizeParams: normalizeParams,
     normalizeDeckParams: normalizeDeckParams,
