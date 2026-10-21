@@ -4,7 +4,9 @@
 
 ## 遊ぶ
 
-universe のルートで次を実行し、http://localhost:8000/baseball-game/ を開きます。
+公開 URL: https://takuto277.github.io/universe/baseball-game/
+
+ローカルで動かす場合は、universe のルートで次を実行し、http://localhost:8000/baseball-game/ を開きます。
 
 ```sh
 python3 -m http.server 8000
