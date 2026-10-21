@@ -156,7 +156,7 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 python3 tools/test_agent_runner.py
 ```
 
-`gh` / `git` / `opencode` を fake に差し替え、キュー取得、ラベル遷移、worktree 作成、verify 失敗、タイムアウト、既存 PR のスキップ、pause、ロック回収、提案モードを検証します。
+`gh` / `git` / `opencode` を fake に差し替え、キュー取得、ラベル遷移、worktree 作成、verify 失敗、タイムアウト、既存 PR のスキップ、pause、排他ロックと旧ロック移行、提案モードを検証します。
 
 ## 制約
 

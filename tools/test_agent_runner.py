@@ -27,9 +27,9 @@ class FakeCommands:
         self.handlers.append((list(prefix), result, effect))
         return self
 
-    def run(self, argv, cwd=None, timeout=None):
+    def run(self, argv, cwd=None, timeout=None, env=None):
         argv = list(argv)
-        self.calls.append({"argv": argv, "cwd": cwd, "timeout": timeout})
+        self.calls.append({"argv": argv, "cwd": cwd, "timeout": timeout, "env": env})
         for prefix, result, effect in self.handlers:
             if argv[:len(prefix)] == prefix:
                 if effect:
@@ -128,7 +128,8 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["git", "status", "--porcelain"], status_handler)
         self.fake.on(["git", "rev-list"],
                      ar.Result(0, overrides.get("commits", "1\n"), ""))
-        self.fake.on(["git", "diff", "--name-only"],
+        self.fake.on(["git", "rev-parse", "origin/main"], ar.Result(0, "basesha\n", ""))
+        self.fake.on(["git", "diff", "--name-status"],
                      ar.Result(0, overrides.get("changed", ""), ""))
         self.fake.on(["bash"], overrides.get("verify", ar.Result(0, "ok", "")))
         self.fake.on(["git", "push"], overrides.get("push", ar.Result(0)))
@@ -181,10 +182,14 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(str(self.worktree / "tools" / "verify.sh"), verify_script)
         self.assertEqual(str(self.worktree), verify[0]["cwd"])
 
-        self.assertTrue(self.fake.called("git", "config", "user.name", "takuto277"))
-        diff = [call["argv"] for call in self.fake.find("git", "diff", "--name-only")]
+        self.assertFalse(self.fake.called("git", "config"))
+        diff = [call["argv"] for call in self.fake.find("git", "diff", "--name-status")]
         self.assertTrue(diff)
-        self.assertIn("origin/main...HEAD", diff[0])
+        self.assertIn("--no-renames", diff[0])
+        self.assertIn("basesha..HEAD", diff[0])
+        env = self.fake.find("opencode", "run")[0]["env"]
+        self.assertEqual("takuto277", env["GIT_AUTHOR_NAME"])
+        self.assertEqual("takuto277@users.noreply.github.com", env["GIT_COMMITTER_EMAIL"])
 
         pushes = [call["argv"] for call in self.fake.find("git", "push")]
         self.assertTrue(any("agent/issue-12" in argv for argv in pushes))
@@ -298,13 +303,18 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("git", "push"))
 
     def test_modified_verify_script_is_rejected(self):
-        self.happy(changed="tools/verify.sh\n")
+        self.happy(changed="M\ttools/verify.sh\n")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("bash"))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_modified_ci_workflow_is_rejected(self):
-        self.happy(changed=".github/workflows/ci.yml\n")
+        self.happy(changed="M\t.github/workflows/ci.yml\n")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_modified_pr_gate_is_rejected(self):
+        self.happy(changed="D\ttools/pr_gate.py\n")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
@@ -312,14 +322,14 @@ class RunnerTest(unittest.TestCase):
         self.happy(status=" M apps.json\n")
         self.assertEqual(0, self.runner.run_once())
         self.assertTrue(self.fake.called("git", "add", "-A"))
-        self.assertTrue(self.fake.called("git", "commit", "-m"))
+        self.assertTrue(self.fake.called("git", "-c", "user.name=takuto277"))
 
     def test_dirty_tree_commit_failure_marks_failed(self):
         def git_commit(argv, cwd=None):
             return ar.Result(1, "", "hook rejected")
 
         self.happy(status=" M apps.json\n")
-        self.fake.on(["git", "commit", "-m"], git_commit)
+        self.fake.on(["git", "-c", "user.name=takuto277"], git_commit)
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
@@ -347,6 +357,23 @@ class RunnerTest(unittest.TestCase):
         self.assertTrue(third.acquire())
         third.release()
         self.assertFalse(ar.Lock(self.cfg.state_dir).held())
+
+    def test_lock_directory_without_markers_is_not_touched(self):
+        other = self.cfg.state_dir / "lock"
+        other.mkdir(parents=True)
+        (other / "notes.txt").write_text("do not delete")
+        lock = ar.Lock(self.cfg.state_dir)
+        self.assertFalse(lock.acquire())
+        self.assertTrue(lock.error)
+        self.assertTrue((other / "notes.txt").exists())
+
+    def test_skip_does_not_remove_existing_worktree(self):
+        self.happy(open_prs=[{"number": 5, "state": "OPEN",
+                              "url": "https://github.com/takuto277/universe/pull/5"}])
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        self.assertEqual(0, self.runner.run_once())
+        self.assertTrue(self.worktree.exists())
+        self.assertFalse(self.fake.called("git", "worktree", "remove"))
 
     def test_lock_migrates_old_mkdir_lock(self):
         old = self.cfg.state_dir / "lock"

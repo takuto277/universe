@@ -149,6 +149,11 @@ printf 'queue:     label issues with "agent:ready" (or tools/agent.sh enqueue)\n
 
 WATCHER_PLIST="$HOME/Library/LaunchAgents/com.takuto277.universe-auto-pr.plist"
 if [ ! -f "$WATCHER_PLIST" ]; then
-  printf 'note:      auto-pr watcher が未登録です。PR のレビューとマージまで無人にするには\n'
-  printf '           watcher のセットアップ(./tools/install-auto-pr.sh)も完了してください。\n'
+  if [ -x "$ROOT/tools/install-auto-pr.sh" ]; then
+    printf 'note:      auto-pr watcher が未登録です。PR のレビューとマージまで無人にするには\n'
+    printf '           ./tools/install-auto-pr.sh も実行してください。\n'
+  else
+    printf 'note:      auto-pr watcher は未導入です(別 PR で追加予定)。\n'
+    printf '           導入までは PR を /pr-deliver で処理してください。\n'
+  fi
 fi

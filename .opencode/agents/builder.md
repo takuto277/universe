@@ -22,7 +22,6 @@ permission:
     "git add *": allow
     "git rm *": allow
     "git commit *": allow
-    "git branch*": allow
     "git worktree list*": allow
     "git restore *": allow
     "git checkout -- *": allow
