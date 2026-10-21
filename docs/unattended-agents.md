@@ -137,7 +137,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 | `UNIVERSE_AGENT_PLANNER_AGENT` | `planner` | 提案エージェント |
 | `UNIVERSE_AGENT_TIMEOUT` | `2700` | エージェントのタイムアウト秒 |
 | `UNIVERSE_AGENT_VERIFY_TIMEOUT` | `600` | verify のタイムアウト秒 |
-| `UNIVERSE_AGENT_STATE_DIR` | `~/.local/state/universe-agent-runner` | ロック・worktree・ログ |
+| `UNIVERSE_AGENT_STATE_DIR` | `~/.local/state/universe-agent-runner` | ロック・worktree・ログ・`history.jsonl`・`running/`（実行中マーカー） |
 | `UNIVERSE_AGENT_LOG` | `~/Library/Logs/universe-agent-runner.log` | 実行ログ |
 | `UNIVERSE_AGENT_AUTO_READY_PROPOSALS` | `0` | 提案をそのまま実装キューへ入れる |
 | `UNIVERSE_AGENT_KEEP_WORKTREE` | `0` | 失敗調査用に worktree を残す |
@@ -158,6 +158,7 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 - 成功・失敗・滞留は macOS の通知で知らせます(`UNIVERSE_AGENT_NOTIFY=0` で停止)
 - 実行履歴は `~/.local/state/universe-agent-runner/history.jsonl` に残り、`status` で直近5件を表示します
 - `agent:running` のまま `UNIVERSE_AGENT_STALL_MINUTES` を超えた Issue は一度だけ通知します
+- 滞留通知は runner 実行時に確認するため、`UNIVERSE_AGENT_TIMEOUT` を滞留時間より長くすると、固まった実行は検出できません（timeout を短くするか、別プロセスの監視が必要）
 
 - LaunchAgent は 120 秒ごとに起動する。Mac がスリープ中は遅延する
 - 実行ログは `~/.local/state/universe-agent-runner/logs/issue-<n>-<ts>.log` に残し、14日より古いものを削除する
@@ -173,7 +174,7 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 python3 tools/test_agent_runner.py
 ```
 
-`gh` / `git` / `opencode` を fake に差し替え、キュー取得、ラベル遷移、worktree 作成、verify 失敗、タイムアウト、既存 PR のスキップ、pause、排他ロックと旧ロック移行、提案モードを検証します。
+`gh` / `git` / `opencode` を fake に差し替え、キュー取得、ラベル遷移、worktree 作成、verify 失敗、タイムアウト、既存 PR のスキップ、pause、排他ロックと旧ロック移行、提案モード、通知の有効/無効、実行履歴、滞留通知の重複防止、ログのサイズ上限を検証します。
 
 ## 制約
 

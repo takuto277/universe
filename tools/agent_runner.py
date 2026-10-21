@@ -43,6 +43,8 @@ DEFAULT_PLANNER = "planner"
 DEFAULT_TIMEOUT = 2700
 DEFAULT_VERIFY_TIMEOUT = 600
 LOG_RETENTION_DAYS = 14
+LOG_MAX_BYTES = 2 * 1024 * 1024
+LOG_TRIM_BYTES = 512 * 1024
 PROTECTED_PATHS = (
     "tools/",
     ".github/workflows/",
@@ -312,9 +314,11 @@ class Runner:
         items = []
         for line in lines[-limit:]:
             try:
-                items.append(json.loads(line))
+                item = json.loads(line)
             except ValueError:
                 continue
+            if isinstance(item, dict):
+                items.append(item)
         return items
 
     def _running_marker(self, number: int) -> Path:
@@ -355,11 +359,12 @@ class Runner:
                 continue
             self.notify("Issue #%d が %d 分以上 running のままです" %
                         (number, self.cfg.stall_minutes))
-            data["notified"] = True
-            try:
-                path.write_text(json.dumps(data), encoding="utf-8")
-            except OSError:
-                pass
+            if self.cfg.notify:
+                data["notified"] = True
+                try:
+                    path.write_text(json.dumps(data), encoding="utf-8")
+                except OSError:
+                    pass
 
     # ---- GitHub ----
     def ensure_labels(self) -> None:
@@ -803,8 +808,17 @@ class Runner:
         cutoff = time.time() - LOG_RETENTION_DAYS * 86400
         for path in sorted((self.cfg.state_dir / "logs").glob("*")):
             try:
-                if path.stat().st_mtime < cutoff:
+                info = path.stat()
+                if info.st_mtime < cutoff:
                     path.unlink()
+                    continue
+                if info.st_size > LOG_MAX_BYTES:
+                    with path.open("rb") as fh:
+                        fh.seek(max(0, info.st_size - LOG_TRIM_BYTES))
+                        tail_bytes = fh.read()
+                    with path.open("wb") as fh:
+                        fh.write(("[truncated to last %d bytes]\n" % LOG_TRIM_BYTES).encode())
+                        fh.write(tail_bytes)
             except OSError:
                 pass
         try:
@@ -960,10 +974,15 @@ class Runner:
             for item in recent:
                 clock = (item.get("ts") or "")[11:16]
                 target = "#%s" % item["issue"] if item.get("issue") else item.get("kind", "-")
+                duration = item.get("duration")
+                duration_text = ("%ss" % duration) if duration is not None else "-"
+                model = str(item.get("model") or "-").split("/")[-1]
+                changed = item.get("changed")
+                changed_text = ("%s files" % changed) if changed is not None else "-"
                 detail = item.get("pr") or item.get("reason") or ""
-                print("  %s %-7s %-6s %ss %s" %
-                      (clock, item.get("result", "?"), target,
-                       item.get("duration", "-"), tail(str(detail), 60)))
+                print("  %s %-7s %-6s %-6s %-8s %-18s %s" %
+                      (clock, item.get("result", "?"), target, duration_text,
+                       changed_text, model, tail(str(detail), 50)))
         try:
             lines = self.cfg.log_file.read_text(encoding="utf-8").splitlines()[-5:]
         except OSError:

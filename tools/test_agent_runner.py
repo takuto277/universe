@@ -185,6 +185,26 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("osascript", "-e"))
         self.assertTrue(self.history())
 
+    def test_stalled_is_not_marked_when_notifications_disabled(self):
+        cfg = replace(self.cfg, notify=False)
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        marker = self.cfg.state_dir / "running" / "issue-12.json"
+        marker.parent.mkdir(parents=True, exist_ok=True)
+        marker.write_text(json.dumps({"started": __import__("time").time() - 7200,
+                                      "notified": False}), encoding="utf-8")
+        self.fake.on(["gh", "label", "list"], ar.Result(0, "[]"))
+        self.fake.on(["gh", "label", "create"], ar.Result(0))
+
+        def issue_list(argv):
+            label = argv[argv.index("--label") + 1]
+            items = [self.issue] if label == "agent:running" else []
+            return ar.Result(0, json.dumps(items), "")
+
+        self.fake.on(["gh", "issue", "list"], issue_list)
+        self.assertEqual(0, runner.run_once())
+        self.assertFalse(self.fake.called("osascript", "-e"))
+        self.assertFalse(json.loads(marker.read_text(encoding="utf-8"))["notified"])
+
     def test_stalled_issue_is_notified_once(self):
         marker = self.cfg.state_dir / "running" / "issue-12.json"
         marker.parent.mkdir(parents=True, exist_ok=True)
@@ -210,12 +230,35 @@ class RunnerTest(unittest.TestCase):
     def test_status_shows_recent_runs(self):
         self.runner.record_history({"kind": "implement", "issue": 42,
                                     "result": "success", "duration": 12.3,
+                                    "model": "opencode/deepseek-v4.1-flash-free",
+                                    "changed": 3,
                                     "pr": "https://example.com/pull/42"})
         out = io.StringIO()
         with redirect_stdout(out):
             self.runner.status()
-        self.assertIn("recent runs", out.getvalue())
-        self.assertIn("#42", out.getvalue())
+        text = out.getvalue()
+        self.assertIn("recent runs", text)
+        self.assertIn("#42", text)
+        self.assertIn("12.3s", text)
+        self.assertIn("3 files", text)
+        self.assertIn("deepseek-v4.1-flash-free", text)
+
+    def test_recent_history_skips_non_objects(self):
+        path = self.runner.history_path()
+        path.write_text('null\n[1]\n{"issue": 7, "result": "success"}\n',
+                        encoding="utf-8")
+        items = self.runner.recent_history()
+        self.assertEqual(1, len(items))
+        self.assertEqual(7, items[0]["issue"])
+
+    def test_oversized_log_is_trimmed(self):
+        logs = self.cfg.state_dir / "logs"
+        logs.mkdir(parents=True, exist_ok=True)
+        big = logs / "issue-1-big.log"
+        big.write_bytes(b"x" * (ar.LOG_MAX_BYTES + 1024))
+        self.runner.cleanup_old_files()
+        self.assertLess(big.stat().st_size, ar.LOG_MAX_BYTES)
+        self.assertIn(b"[truncated", big.read_bytes()[:64])
 
     def test_no_args_prints_quick_guide(self):
         env = dict(os.environ)
