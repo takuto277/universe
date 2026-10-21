@@ -30,10 +30,24 @@ JSC=/path/to/jsc ./tools/run-tests.sh
 
 ## 個別のテスト実行
 
-特定のアプリだけを実行する場合:
+`./tools/run-tests.sh` は引数を受け取らず、全アプリのテストをまとめて実行します。特定のアプリだけを実行する場合は、そのアプリのディレクトリへ移動してテストファイルを直接 `jsc` に渡します。
 
 ```sh
-./tools/run-tests.sh --only janken-game
+cd janken-game && jsc test-engine.js
+```
+
+スモークテストも同じように実行できます。
+
+```sh
+cd janken-game && jsc test-smoke.js
+```
+
+テストはカレントディレクトリからの相対パスで対象ファイルを読み込むため、リポジトリ直下から `jsc janken-game/test-engine.js` のように実行すると失敗します。必ずアプリのディレクトリへ移動してください。
+
+`jsc` が PATH にない場合は、前述の macOS 標準パスか `JSC` 環境変数で指定したバイナリを使ってください。
+
+```sh
+cd janken-game && /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc test-engine.js
 ```
 
 ## テストの種類
