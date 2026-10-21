@@ -1,5 +1,5 @@
 ---
-description: Implements one GitHub issue inside an isolated worktree. Commits locally and never pushes, opens PRs, or merges.
+description: Implements one GitHub issue inside an isolated worktree. Only edits files; the runner commits. Never pushes, opens PRs, or merges.
 mode: primary
 temperature: 0.2
 permission:
@@ -19,9 +19,7 @@ permission:
     "git show*": allow
     "git rev-parse*": allow
     "git ls-files*": allow
-    "git add *": allow
     "git rm *": allow
-    "git commit *": allow
     "git worktree list*": allow
     "git restore *": allow
     "git checkout -- *": allow
@@ -53,7 +51,7 @@ permission:
 1. `AGENTS.md` と、変更対象アプリの `README.md` を読む
 2. Issue の範囲だけを実装する。アプリを変えたら `apps.json`、`index.html`、`README.md`、テストを同じ変更で更新する
 3. `./tools/verify.sh` を実行し、失敗を自分で直す
-4. 変更をコミットする(下記の identity と接頭辞を使う)
+4. 変更内容を確認して報告する。コミットは runner が行うので `git add` / `git commit` はしない
 5. 最後に「変更点 / テスト結果 / 残課題」を短く報告する
 
 ## 禁止
@@ -66,8 +64,4 @@ permission:
 
 ## コミット
 
-`GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` / `GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` は runner が環境変数で設定済みです。git config の変更は不要です。
-
-```sh
-git commit -m "<アプリ名または repo>: 日本語の要約"
-```
+`GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` / `GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` は runner が設定します。builder は `git add` / `git commit` をせず、変更を worktree に残してください。`UNIVERSE_AGENT_SANDBOX=seatbelt` では `.git` への書き込みが拒否されるため、コミットは sandbox の外で runner が行います。

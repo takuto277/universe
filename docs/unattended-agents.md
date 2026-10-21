@@ -18,7 +18,7 @@ Issue (agent:ready)
    │  tools/agent.sh run  (LaunchAgent が120秒ごと)
    ▼
 builder エージェント (opencode, 専用 worktree)
-   │  実装 → コミット → ./tools/verify.sh
+   │  実装 → ./tools/verify.sh (コミットは runner)
    ▼
 push agent/issue-<n> → PR 作成 (agent-generated)
    │  auto-pr watcher / 五点ゲート
@@ -115,7 +115,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **1回1件・排他ロック**: `flock` で二重実行を防ぐ。プロセスが終了すると OS が自動で解放する
 - **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ。main への push は branch protection でも拒否される
 - **マージしない**: レビューとマージは五点ゲートに任せる(`--admin` や直接マージは使わない)
-- **builder の権限は allowlist**: 既定 deny で、git の読み書き・commit、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する
+- **builder の権限は allowlist**: 既定 deny で、git の読み取り、verify、jsc、読み取り系ユーティリティだけを許可する。`git add` / `git commit` / `git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する。コミットは sandbox の外で runner が行う
 - **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/` 配下と `.github/workflows/` が変更されていたら失敗させる。さらに信頼するチェック(site 検査・構文検査・runner テスト)をアプリのテストより先に実行し、テスト JS による差し替えを防ぐ
 - **状態不明なら中止**: PR 一覧の取得失敗など、既存 PR の有無を確認できない場合はブランチを消さずに止める
 - **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
@@ -126,7 +126,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **提案の既定**: `agent:proposed` で止め、人間の `promote` を待つ
 - **入力の信頼**: Issue 本文はそのまま builder への指示になる。`agent:ready` を付けられるのは書き込み権限を持つ人だけなので、第三者が勝手にキューへ入れることはできない
 - **単一ホスト前提**: ロックはローカルの state dir 単位。複数ホストや state dir を分けた同時実行は想定しない
-- **限界**: 権限パターンはサンドボックスではない。OS ユーザの分離やコンテナ実行は今後の強化とする。最終的な安全網は branch protection、五点ゲート、AI レビュー
+- **限界**: 権限パターンだけでは OS レベルの境界にならない。`UNIVERSE_AGENT_SANDBOX=seatbelt` で書き込みと読み取りを制限できるが、ネットワークは許可しており完全なサンドボックスではない。OS ユーザの分離やコンテナ実行は今後の強化とする。最終的な安全網は branch protection、五点ゲート、AI レビュー
 
 ## 実行の隔離（sandbox-exec）
 
