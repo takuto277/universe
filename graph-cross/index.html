@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <title>グラフクロス - 曲線交差アクション</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -28,8 +28,7 @@
           <h1>グラフクロス</h1>
           <p class="subtitle">曲線を交差させろ! グラフ・アクション</p>
           <ul class="rules">
-            <li>x が自動で進む。<b>1〜3 / 画面タップ</b>で関数を切り替え、曲線の形を変える</li>
-            <li><b>関数カードから3つ</b>選んでデッキに。x² / -x² / sin x は係数を調整できる</li>
+            <li>x が自動で進む。<b>1〜3 / 画面タップ</b>で関数切替。カード3つでデッキ、<b>x^p / sin</b> はスライダー調整</li>
             <li>敵の曲線と交差で <b>大爆発 + 得点</b>。角度が急なほど高得点、同系統なら <b>弱点 x1.5</b></li>
             <li>敵を一定数交差すると <b>ボス出現</b>。倒すと <b>ステージクリア</b>! ライフ-1、5コンボで1回復</li>
           </ul>
@@ -41,31 +40,43 @@
               <button id="card-down" class="deck-card" type="button"><b>y = -x/2</b><span>ゆるく下へ / 直線</span></button>
               <button id="card-steepUp" class="deck-card" type="button"><b>y = 2x</b><span>急上昇 / 直線</span></button>
               <button id="card-steepDown" class="deck-card" type="button"><b>y = -2x</b><span>急下降 / 直線</span></button>
-              <button id="card-quad" class="deck-card" type="button"><b>y = x²</b><span>上カーブ / 2次</span></button>
-              <button id="card-quadDown" class="deck-card" type="button"><b>y = -x²</b><span>下カーブ / 2次</span></button>
+              <button id="card-quad" class="deck-card" type="button"><b>y = x²</b><span>上カーブ / 累乗</span></button>
+              <button id="card-quadDown" class="deck-card" type="button"><b>y = -x²</b><span>下カーブ / 累乗</span></button>
               <button id="card-wave" class="deck-card" type="button"><b>y = sin x</b><span>ウェーブ / 波</span></button>
             </div>
           </div>
           <div id="tune-panel">
-            <div class="deck-head">関数をつくる <span class="tune-hint">数値を入れると軌道が変わります</span></div>
+            <div class="deck-head">関数をつくる <span class="tune-hint">スライダーで軌道が変わります</span></div>
             <div id="tune-rows">
               <div class="tune-row" id="tune-row-quad">
-                <span class="tune-tag">2次</span>
-                <span class="tune-name">y = <input id="tune-quad-a" class="tune-input" type="number" min="0.4" max="2" step="0.2" value="1" inputmode="decimal" title="曲率 a" /> x² + <input id="tune-quad-b" class="tune-input" type="number" min="-1.5" max="1.5" step="0.1" value="0" inputmode="decimal" title="初速 b" /> x</span>
+                <div class="tune-head"><span class="tune-tag">累乗</span><span class="tune-formula" id="tune-quad-formula">y = x²</span></div>
+                <div class="tune-sliders">
+                  <label class="tune-slider"><span>a</span><input id="tune-quad-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-quad-a-val">1</b></label>
+                  <label class="tune-slider"><span>b</span><input id="tune-quad-b" type="range" min="-1.5" max="1.5" step="0.1" value="0" /><b id="tune-quad-b-val">0</b></label>
+                  <label class="tune-slider"><span>p</span><input id="tune-quad-p" type="range" min="2" max="4" step="1" value="2" /><b id="tune-quad-p-val">2</b></label>
+                </div>
               </div>
               <div class="tune-row" id="tune-row-quadDown">
-                <span class="tune-tag">2次</span>
-                <span class="tune-name">y = -<input id="tune-quadDown-a" class="tune-input" type="number" min="0.4" max="2" step="0.2" value="1" inputmode="decimal" title="曲率 a" /> x² + <input id="tune-quadDown-b" class="tune-input" type="number" min="-1.5" max="1.5" step="0.1" value="0" inputmode="decimal" title="初速 b" /> x</span>
+                <div class="tune-head"><span class="tune-tag">累乗</span><span class="tune-formula" id="tune-quadDown-formula">y = -x²</span></div>
+                <div class="tune-sliders">
+                  <label class="tune-slider"><span>a</span><input id="tune-quadDown-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-quadDown-a-val">1</b></label>
+                  <label class="tune-slider"><span>b</span><input id="tune-quadDown-b" type="range" min="-1.5" max="1.5" step="0.1" value="0" /><b id="tune-quadDown-b-val">0</b></label>
+                  <label class="tune-slider"><span>p</span><input id="tune-quadDown-p" type="range" min="2" max="4" step="1" value="2" /><b id="tune-quadDown-p-val">2</b></label>
+                </div>
               </div>
               <div class="tune-row" id="tune-row-wave">
-                <span class="tune-tag">波</span>
-                <span class="tune-name">y = <input id="tune-wave-a" class="tune-input" type="number" min="0.4" max="2" step="0.2" value="1" inputmode="decimal" title="振幅 a" /> sin(<input id="tune-wave-b" class="tune-input" type="number" min="0.5" max="2.5" step="0.25" value="1" inputmode="decimal" title="周波数 b" />x + <input id="tune-wave-c" class="tune-input" type="number" min="-3" max="3" step="0.2" value="0" inputmode="decimal" title="位相 c" />)</span>
+                <div class="tune-head"><span class="tune-tag">波</span><span class="tune-formula" id="tune-wave-formula">y = sin(x)</span></div>
+                <div class="tune-sliders">
+                  <label class="tune-slider"><span>a</span><input id="tune-wave-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-wave-a-val">1</b></label>
+                  <label class="tune-slider"><span>b</span><input id="tune-wave-b" type="range" min="0.5" max="2.5" step="0.25" value="1" /><b id="tune-wave-b-val">1</b></label>
+                  <label class="tune-slider"><span>c</span><input id="tune-wave-c" type="range" min="-3" max="3" step="0.2" value="0" /><b id="tune-wave-c-val">0</b></label>
+                </div>
               </div>
             </div>
             <div id="tune-empty">x² / -x² / sin x を選ぶと関数をつくれます</div>
             <div id="tune-preview-wrap">
               <canvas id="tune-preview" width="560" height="92"></canvas>
-              <div id="tune-desc">係数を動かすと、この先の軌道がプレビューされます。</div>
+              <div id="tune-desc">スライダーを動かすと、この先の軌道がプレビューされます。</div>
             </div>
           </div>
           <button id="btn-start" class="primary" type="button">このデッキではじめる</button>

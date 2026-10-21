@@ -80,13 +80,19 @@
     return String(rounded).replace(/\.0+$/, '');
   }
 
+  function powLabel(power) {
+    var marks = { 2: '²', 3: '³', 4: '⁴', 5: '⁵' };
+    return marks[power] || ('^' + power);
+  }
+
   function formatModeLabel(key, params) {
     if (key === 'quad' || key === 'quadDown') {
-      var qp = params && params[key] ? params[key] : { a: 1, b: 0 };
+      var qp = params && params[key] ? params[key] : { a: 1, b: 0, p: 2 };
       var qa = qp.a || 1;
       var qb = qp.b || 0;
+      var qpPower = Math.max(2, Math.round(qp.p || 2));
       var qcoef = qa === 1 ? '' : fmtNum(qa);
-      var qlabel = 'y = ' + (key === 'quadDown' ? '-' : '') + qcoef + 'x²';
+      var qlabel = 'y = ' + (key === 'quadDown' ? '-' : '') + qcoef + 'x' + powLabel(qpPower);
       if (qb !== 0) qlabel += (qb > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(qb)) + 'x';
       return qlabel;
     }
@@ -237,11 +243,17 @@
     updateTunePanel();
   }
 
-  function setInputValue(id, value) {
-    var el = $(id);
-    if (!el) return;
-    if (typeof document !== 'undefined' && document.activeElement === el) return;
-    el.value = fmtNum(value);
+  function updateTuneRow(key) {
+    var params = selectedParams[key];
+    if (!params) return;
+    var formula = $('tune-' + key + '-formula');
+    if (formula) formula.textContent = formatModeLabel(key, selectedParams);
+    var specs = E.PARAM_SPECS[key];
+    for (var name in specs) {
+      if (!Object.prototype.hasOwnProperty.call(specs, name)) continue;
+      var val = $('tune-' + key + '-' + name + '-val');
+      if (val) val.textContent = fmtNum(params[name]);
+    }
   }
 
   function updateTunePanel() {
@@ -259,13 +271,15 @@
       if (!first) first = key;
       var params = selectedParams[key];
       if (!params) continue;
-      setInputValue('tune-' + key + '-a', params.a);
-      if (key === 'wave') {
-        setInputValue('tune-wave-b', params.b);
-        setInputValue('tune-wave-c', params.c);
-      } else {
-        setInputValue('tune-' + key + '-b', params.b);
+      var specs = E.PARAM_SPECS[key];
+      for (var name in specs) {
+        if (!Object.prototype.hasOwnProperty.call(specs, name)) continue;
+        var el = $('tune-' + key + '-' + name);
+        if (el && (!(typeof document !== 'undefined' && document.activeElement === el))) {
+          el.value = params[name];
+        }
       }
+      updateTuneRow(key);
     }
     if (els.tuneEmpty) els.tuneEmpty.classList.toggle('hidden', any);
     if (els.tunePreviewWrap) els.tunePreviewWrap.classList.toggle('hidden', !any);
@@ -290,8 +304,8 @@
     selectedParams[key][name] = Math.max(spec.min, Math.min(spec.max, v));
     previewKey = key;
     saveParams();
+    updateTunePanel();
     updateSlots();
-    updateTunePreview();
   }
 
   function onParamCommit(key, name, value) {
@@ -348,15 +362,16 @@
     var tmax = 1.6;
     var fieldH = 520;
     var y = fieldH / 2;
+    var power = Math.max(2, Math.round(params.p || 2));
     var vy = previewKey === 'wave' ? 0 : (params.b || 0) * 120;
-    var accel = previewKey === 'quad' ? -560 * (params.a || 1) : 560 * (params.a || 1);
+    var powerSign = previewKey === 'quad' ? -1 : 1;
     var points = [{ x: 0, y: top + (y / fieldH) * (bottom - top) }];
     var off = false;
     for (var t = dt; t <= tmax + 1e-9; t += dt) {
       if (previewKey === 'wave') {
         vy = 285 * (params.a || 1) * Math.sin(4.2 * (params.b || 1) * t + (params.c || 0));
       } else {
-        vy = clamp(vy + accel * dt, -420, 420);
+        vy = powerSign * 280 * (params.a || 1) * power * Math.pow(t, power - 1) + (params.b || 0) * 120;
       }
       y += vy * dt;
       if (y < 0 || y > fieldH) {
@@ -397,9 +412,10 @@
         '。' + (params.b >= 1.5 ? '小刻みな' : 'ゆったりした') + '上下の波。';
     } else {
       var dir = previewKey === 'quad' ? '上' : '下';
-      desc = '曲率 a=' + fmtNum(params.a) + ' / 初速 b=' + fmtNum(params.b) +
+      var bend = power >= 4 ? '終盤で一気に曲がる' : power === 3 ? '後半で強く曲がる' : 'じわじわ曲がる';
+      desc = '累乗 p=' + power + ' / 曲率 a=' + fmtNum(params.a) + ' / 初速 b=' + fmtNum(params.b) +
         '。' + dir + 'に加速するカーブ。最初は' +
-        (params.b > 0 ? '下向き' : params.b < 0 ? '上向き' : '水平') + '。';
+        (params.b > 0 ? '下向き' : params.b < 0 ? '上向き' : '水平') + '、' + bend + '。';
     }
     if (off) desc += ' このままだと画面端に到達。';
     if (els.tuneDesc) els.tuneDesc.textContent = desc;
@@ -1142,8 +1158,10 @@
     var paramDefs = [
       ['tune-quad-a', 'quad', 'a'],
       ['tune-quad-b', 'quad', 'b'],
+      ['tune-quad-p', 'quad', 'p'],
       ['tune-quadDown-a', 'quadDown', 'a'],
       ['tune-quadDown-b', 'quadDown', 'b'],
+      ['tune-quadDown-p', 'quadDown', 'p'],
       ['tune-wave-a', 'wave', 'a'],
       ['tune-wave-b', 'wave', 'b'],
       ['tune-wave-c', 'wave', 'c']
