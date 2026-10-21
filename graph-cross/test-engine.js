@@ -312,6 +312,27 @@ assert(g.hp === hpBeforeEscape - 1, 'ボスを逃がすとライフ-1');
 assert(g.boss === null && g.bossCooldown > 0, 'ボスは再出現待ち');
 assert(E.consumeEvents(g).some(function (e) { return e.type === 'bossEscape'; }), 'bossEscapeイベント');
 
+/* 9d) ステージ間の強化 */
+g = makeGame(902, ['hold', 'up', 'wave']);
+g.stageCleared = true;
+var choices = E.upgradeChoices(g);
+assert(choices.length === 3, '強化の3択が出る');
+assert(choices[0] !== choices[1] && choices[1] !== choices[2] && choices[0] !== choices[2], '3択が重複しない');
+var hpBeforeUpgrade = g.hp;
+assert(E.applyUpgrade(g, 'life') === true, 'ライフ強化');
+assert(g.maxHp === 4 && g.hp === Math.min(4, hpBeforeUpgrade + 1), '最大ライフと回復');
+assert(E.applyUpgrade(g, 'hit') === true && g.hitBonus === 2, '判定強化');
+assert(E.applyUpgrade(g, 'combo') === true && g.comboWindow > E.COMBO_WINDOW, 'コンボ猶予強化');
+assert(E.applyUpgrade(g, 'score') === true && g.scoreMult === 1.2, 'スコア強化');
+assert(E.applyUpgrade(g, 'boss') === true && g.bossHpReduction === 3, 'ボス弱体化');
+var deckSize = g.deck.length;
+assert(E.applyUpgrade(g, 'slot') === true && g.deck.length === deckSize + 1, '関数スロット+1');
+assert(E.snapshot(g).deck.length === deckSize + 1, '4枠デッキがスナップショットに入る');
+assert(E.applyUpgrade(g, 'slot') === false, '4枠を超えて増やせない');
+assert(g.upgrades.life === 1 && g.upgrades.slot === 1, '取得強化の記録');
+assert(E.snapshot(g).maxHp === 4 && E.snapshot(g).hitBonus === 2, '強化がスナップショットに反映');
+assert(E.applyUpgrade(g, 'unknown') === false, '不明な強化は無効');
+
 /* 10) 何もしないより、敵の高さに合わせて動く方が長く/多く当たる */
 function play(seed, smart, seconds) {
   var game = makeGame(seed);

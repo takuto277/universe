@@ -153,6 +153,8 @@
     return v < min ? min : (v > max ? max : v);
   }
 
+  function rand(rng) { return (rng || Math.random)(); }
+
   function difficulty(state) {
     return clamp(state.time / RAMP_TIME, 0, 1);
   }
@@ -191,7 +193,13 @@
     state.combo = 0;
     state.comboTimer = 0;
     state.maxCombo = 0;
-    state.hp = MAX_HP;
+    state.maxHp = MAX_HP;
+    state.hp = state.maxHp;
+    state.hitBonus = 0;
+    state.comboWindow = COMBO_WINDOW;
+    state.scoreMult = 1;
+    state.bossHpReduction = 0;
+    state.upgrades = {};
     state.mode = state.deck[0];
     state.modeTime = 0;
     state.vy = baseVy(state, state.mode);
@@ -250,6 +258,12 @@
       comboTimer: 0,
       maxCombo: 0,
       hp: MAX_HP,
+      maxHp: MAX_HP,
+      hitBonus: 0,
+      comboWindow: COMBO_WINDOW,
+      scoreMult: 1,
+      bossHpReduction: 0,
+      upgrades: {},
       trail: [],
       rivals: [],
       events: [],
@@ -399,7 +413,7 @@
     var familyIndex = (state.stage - 1) % BOSS_FAMILIES.length;
     var family = BOSS_FAMILIES[familyIndex];
     var centerY = (state.top + state.bottom) / 2;
-    var hp = 7 + state.stage * 3;
+    var hp = Math.max(4, 7 + state.stage * 3 - (state.bossHpReduction || 0));
     var boss = {
       x: state.width + 80,
       len: 500 + state.stage * 30,
@@ -435,7 +449,7 @@
   }
 
   function clearStage(state, boss, hitX, hitY) {
-    var bonus = 1000 * state.stage;
+    var bonus = Math.round(1000 * state.stage * (state.scoreMult || 1));
     state.stageCleared = true;
     state.stageClearBonus = bonus;
     state.score += bonus;
@@ -443,7 +457,7 @@
     state.rivals = [];
     state.combo = 0;
     state.comboTimer = 0;
-    if (state.hp < MAX_HP) state.hp++;
+    if (state.hp < state.maxHp) state.hp++;
     pushEvent(state, {
       type: 'stageClear',
       x: hitX,
@@ -464,7 +478,7 @@
       var local = p.x - boss.x;
       if (local < 0 || local > boss.len) continue;
       var by = rivalY(boss, local);
-      if (Math.abs(p.y - by) > HIT_DIST + 2) continue;
+      if (Math.abs(p.y - by) > HIT_DIST + 2 + (state.hitBonus || 0)) continue;
 
       var prev = trail[ti - 1] || trail[ti + 1];
       var playerSlope = 0;
@@ -487,11 +501,11 @@
       state.hits++;
 
       state.combo = state.comboTimer > 0 ? state.combo + 1 : 1;
-      state.comboTimer = COMBO_WINDOW;
+      state.comboTimer = state.comboWindow;
       if (state.combo > state.maxCombo) state.maxCombo = state.combo;
       var mult = 1 + 0.8 * (angle / (Math.PI / 2));
       var baseGain = 200 + (state.combo - 1) * 60;
-      var gain = Math.round(baseGain * mult * (weak ? 1.5 : 1));
+      var gain = Math.round(baseGain * mult * (weak ? 1.5 : 1) * (state.scoreMult || 1));
       state.score += gain;
       var event = {
         type: 'bossHit',
@@ -510,7 +524,7 @@
         bossHp: boss.hp,
         bossMaxHp: boss.maxHp
       };
-      if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < MAX_HP) {
+      if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < state.maxHp) {
         state.hp++;
         event.heal = true;
       }
@@ -553,7 +567,7 @@
     state.combo = 0;
     state.comboTimer = 0;
     state.spawnTimer = 1.0;
-    state.hp = Math.min(MAX_HP, state.hp + 1);
+    state.hp = Math.min(state.maxHp, state.hp + 1);
     pushEvent(state, { type: 'stageStart', stage: state.stage });
     return true;
   }
@@ -568,7 +582,7 @@
         var local = p.x - r.x;
         if (local < 0 || local > r.len) continue;
         var ry = rivalY(r, local);
-        if (Math.abs(p.y - ry) <= HIT_DIST) {
+        if (Math.abs(p.y - ry) <= HIT_DIST + (state.hitBonus || 0)) {
           r.hit = true;
           state.hits++;
           if (!state.boss && !state.stageCleared && state.stageHits < state.stageTarget) {
@@ -579,7 +593,7 @@
             }
           }
           state.combo = state.comboTimer > 0 ? state.combo + 1 : 1;
-          state.comboTimer = COMBO_WINDOW;
+          state.comboTimer = state.comboWindow;
           if (state.combo > state.maxCombo) state.maxCombo = state.combo;
           var prev = trail[ti - 1] || trail[ti + 1];
           var playerSlope = 0;
@@ -597,7 +611,7 @@
           var weak = !!(r.family && r.family !== 'none' && playerFamily === r.family);
           var weakMult = weak ? 1.5 : 1;
           var baseGain = 100 + (state.combo - 1) * 50;
-          var gain = Math.round(baseGain * mult * weakMult);
+          var gain = Math.round(baseGain * mult * weakMult * (state.scoreMult || 1));
           state.score += gain;
           var event = {
             type: 'hit',
@@ -614,7 +628,7 @@
             weakness: r.family,
             label: r.label
           };
-          if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < MAX_HP) {
+          if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < state.maxHp) {
             state.hp++;
             event.heal = true;
           }
@@ -748,6 +762,63 @@
     return state;
   }
 
+  function applyUpgrade(state, id) {
+    if (!state || !state.stageCleared) return false;
+    if (id === 'life') {
+      if (state.maxHp >= 5 && state.hp >= state.maxHp) return false;
+      state.maxHp = Math.min(5, state.maxHp + 1);
+      state.hp = Math.min(state.maxHp, state.hp + 1);
+    } else if (id === 'hit') {
+      if (state.hitBonus >= 6) return false;
+      state.hitBonus = Math.min(6, state.hitBonus + 2);
+    } else if (id === 'combo') {
+      if (state.comboWindow >= 4.6) return false;
+      state.comboWindow = Math.min(4.6, Math.round((state.comboWindow + 0.8) * 10) / 10);
+    } else if (id === 'score') {
+      if (state.scoreMult >= 2) return false;
+      state.scoreMult = Math.min(2, Math.round((state.scoreMult + 0.2) * 10) / 10);
+    } else if (id === 'boss') {
+      if (state.bossHpReduction >= 12) return false;
+      state.bossHpReduction = Math.min(12, state.bossHpReduction + 3);
+    } else if (id === 'bonus') {
+      state.score += Math.round(3000 * (state.scoreMult || 1));
+    } else if (id === 'slot') {
+      if (state.deck.length >= 4 || state.deck.length >= MODE_KEYS.length) return false;
+      var candidates = [];
+      for (var i = 0; i < MODE_KEYS.length; i++) {
+        if (state.deck.indexOf(MODE_KEYS[i]) < 0) candidates.push(MODE_KEYS[i]);
+      }
+      if (!candidates.length) return false;
+      var key = candidates[Math.floor(rand(state.rng) * candidates.length) % candidates.length];
+      state.deck.push(key);
+      if (PARAM_SPECS[key]) {
+        var all = normalizeParams(state.deckParams);
+        state.deckParams[key] = all[key];
+      }
+    } else {
+      return false;
+    }
+    state.upgrades[id] = (state.upgrades[id] || 0) + 1;
+    return true;
+  }
+
+  function upgradeChoices(state) {
+    var pool = [];
+    if (state.maxHp < 5 || state.hp < state.maxHp) pool.push('life');
+    if (state.hitBonus < 6) pool.push('hit');
+    if (state.comboWindow < 4.6) pool.push('combo');
+    if (state.scoreMult < 2) pool.push('score');
+    if (state.bossHpReduction < 12) pool.push('boss');
+    if (state.deck.length < 4 && state.deck.length < MODE_KEYS.length) pool.push('slot');
+    var picks = [];
+    while (picks.length < 3 && pool.length) {
+      var index = Math.floor(rand(state.rng) * pool.length) % pool.length;
+      picks.push(pool.splice(index, 1)[0]);
+    }
+    if (!picks.length) picks.push('bonus');
+    return picks;
+  }
+
   function consumeEvents(state) {
     if (!state) return [];
     var events = state.events;
@@ -761,7 +832,7 @@
       combo: state.combo,
       maxCombo: state.maxCombo,
       hp: state.hp,
-      maxHp: MAX_HP,
+      maxHp: state.maxHp,
       mode: state.mode,
       modeLabel: MODES[state.mode].label,
       modeFamily: modeFamily(state.mode),
@@ -781,6 +852,11 @@
       stageTarget: state.stageTarget,
       stageCleared: state.stageCleared,
       stageClearBonus: state.stageClearBonus,
+      hitBonus: state.hitBonus,
+      comboWindow: state.comboWindow,
+      scoreMult: state.scoreMult,
+      bossHpReduction: state.bossHpReduction,
+      upgrades: JSON.parse(JSON.stringify(state.upgrades)),
       boss: state.boss ? {
         hp: state.boss.hp,
         maxHp: state.boss.maxHp,
@@ -811,6 +887,8 @@
     setMode: setMode,
     update: update,
     nextStage: nextStage,
+    applyUpgrade: applyUpgrade,
+    upgradeChoices: upgradeChoices,
     stageTargetFor: stageTargetFor,
     consumeEvents: consumeEvents,
     snapshot: snapshot,

@@ -535,6 +535,11 @@ body {
   width: 100%;
   margin: 0 auto;
 }
+#mode-buttons.four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  max-width: 940px;
+}
+.mode-btn.hidden { display: none; }
 .mode-btn {
   position: relative;
   padding: 7px 6px 6px;
@@ -580,7 +585,61 @@ body {
 }
 .mode-btn.active b { text-shadow: 0 0 12px currentColor; }
 
-#tipbar {
+#upgrade-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  width: min(760px, 100%);
+}
+.upgrade-card {
+  position: relative;
+  min-height: 104px;
+  padding: 12px 12px 11px;
+  text-align: left;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(23, 34, 56, 0.95), rgba(16, 24, 42, 0.95));
+  color: var(--text);
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.12s, border-color 0.12s, box-shadow 0.12s;
+}
+.upgrade-card:hover {
+  transform: translateY(-2px);
+  border-color: var(--gold);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35), 0 0 22px rgba(255, 209, 102, 0.12);
+}
+.upgrade-card em {
+  position: absolute;
+  top: 7px;
+  right: 9px;
+  font-style: normal;
+  font-size: 9px;
+  color: var(--muted);
+}
+.upgrade-card b {
+  display: block;
+  font-size: 15px;
+  color: var(--gold);
+  margin-bottom: 5px;
+}
+.upgrade-card span {
+  display: block;
+  font-size: 11px;
+  line-height: 1.55;
+  color: var(--muted);
+}
+#run-upgrades {
+  width: min(760px, 100%);
+  text-align: center;
+  color: var(--muted);
+  font-size: 10.5px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+#tipbar {#tipbar {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -626,6 +685,11 @@ body {
   .mode-btn span { font-size: 9px; }
   .mode-btn em { font-size: 8px; right: 4px; }
   #deck-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  #upgrade-choices { grid-template-columns: 1fr; gap: 6px; }
+  .upgrade-card { min-height: 0; padding: 9px 10px; }
+  .upgrade-card b { font-size: 13px; margin-bottom: 2px; }
+  .upgrade-card span { font-size: 10px; }
+  #mode-buttons.four { grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 4px; }
   .deck-card b { font-size: 11px; }
   .deck-card span { font-size: 9px; }
   .tune-sliders { grid-template-columns: 1fr; gap: 2px; }
