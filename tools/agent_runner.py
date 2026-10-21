@@ -43,6 +43,8 @@ DEFAULT_PLANNER = "planner"
 DEFAULT_TIMEOUT = 2700
 DEFAULT_VERIFY_TIMEOUT = 600
 LOG_RETENTION_DAYS = 14
+LOG_MAX_BYTES = 2 * 1024 * 1024
+LOG_TRIM_BYTES = 512 * 1024
 PROTECTED_PATHS = (
     "tools/",
     ".github/workflows/",
@@ -146,6 +148,8 @@ class Config:
     branch_prefix: str = "agent/"
     auto_ready_proposals: bool = False
     keep_worktree: bool = False
+    notify: bool = True
+    stall_minutes: int = 90
     gh_bin: str = "gh"
     git_bin: str = "git"
     opencode_bin: str = "opencode"
@@ -173,6 +177,8 @@ class Config:
             auto_ready_proposals=os.environ.get(
                 "UNIVERSE_AGENT_AUTO_READY_PROPOSALS", "0") == "1",
             keep_worktree=os.environ.get("UNIVERSE_AGENT_KEEP_WORKTREE", "0") == "1",
+            notify=os.environ.get("UNIVERSE_AGENT_NOTIFY", "1") != "0",
+            stall_minutes=int(os.environ.get("UNIVERSE_AGENT_STALL_MINUTES", "90")),
             gh_bin=os.environ.get("GH_BIN", "gh"),
             git_bin=os.environ.get("GIT_BIN", "git"),
             opencode_bin=os.environ.get("OPENCODE_BIN", "opencode"),
@@ -282,6 +288,83 @@ class Runner:
         if os.environ.get("UNIVERSE_AGENT_DISABLE") == "1":
             return True
         return (self.cfg.state_dir / "pause").exists()
+
+    def notify(self, message: str) -> None:
+        """macOS の通知。UNIVERSE_AGENT_NOTIFY=0 で無効。"""
+        if not self.cfg.notify:
+            return
+        safe = message.replace("\\", "\\\\").replace('"', "'")
+        self.cmd.run(["osascript", "-e",
+                      'display notification "%s" with title "universe agent"' % safe],
+                     timeout=15)
+
+    def history_path(self) -> Path:
+        return self.cfg.state_dir / "history.jsonl"
+
+    def record_history(self, record: dict) -> None:
+        entry = dict(record)
+        entry.setdefault("ts", time.strftime("%Y-%m-%dT%H:%M:%S%z"))
+        self._append_log(self.history_path(), json.dumps(entry, ensure_ascii=False))
+
+    def recent_history(self, limit: int = 5) -> List[dict]:
+        try:
+            lines = self.history_path().read_text(encoding="utf-8").splitlines()
+        except OSError:
+            return []
+        items = []
+        for line in lines[-limit:]:
+            try:
+                item = json.loads(line)
+            except ValueError:
+                continue
+            if isinstance(item, dict):
+                items.append(item)
+        return items
+
+    def _running_marker(self, number: int) -> Path:
+        return self.cfg.state_dir / "running" / ("issue-%d.json" % number)
+
+    def _mark_started(self, number: int, branch: str) -> None:
+        path = self._running_marker(number)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        start = time.time()
+        path.write_text(json.dumps({"started": start, "notified": False,
+                                    "branch": branch}), encoding="utf-8")
+
+    def _clear_started(self, number: int) -> None:
+        try:
+            self._running_marker(number).unlink()
+        except OSError:
+            pass
+
+    def check_stalled(self) -> None:
+        if self.cfg.stall_minutes <= 0:
+            return
+        try:
+            running = self.list_issues("agent:running")
+        except TaskError as exc:
+            self.log("滞留確認をスキップ: %s" % exc)
+            return
+        for issue in running:
+            number = int(issue.get("number", 0))
+            path = self._running_marker(number)
+            try:
+                data = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                continue
+            if data.get("notified"):
+                continue
+            started = float(data.get("started") or 0)
+            if not started or time.time() - started < self.cfg.stall_minutes * 60:
+                continue
+            self.notify("Issue #%d が %d 分以上 running のままです" %
+                        (number, self.cfg.stall_minutes))
+            if self.cfg.notify:
+                data["notified"] = True
+                try:
+                    path.write_text(json.dumps(data), encoding="utf-8")
+                except OSError:
+                    pass
 
     # ---- GitHub ----
     def ensure_labels(self) -> None:
@@ -393,6 +476,7 @@ class Runner:
             return 0
 
         self.ensure_labels()
+        self.check_stalled()
 
         if issue_number is not None:
             issue = self.view_issue(issue_number)
@@ -418,6 +502,7 @@ class Runner:
         branch = "%sissue-%d" % (cfg.branch_prefix, number)
         worktree = cfg.state_dir / "worktrees" / ("issue-%d" % number)
         issue_log = cfg.state_dir / "logs" / ("issue-%d-%d.log" % (number, int(time.time())))
+        started = time.time()
 
         self.ensure_labels()
 
@@ -434,6 +519,7 @@ class Runner:
 
             if not self.edit_labels(number, add=["agent:running"], remove=["agent:ready"]):
                 raise TaskError("agent:running ラベルを付けられませんでした")
+            self._mark_started(number, branch)
             self.comment(number, "無人エージェントが着手しました。\n対象: `%s` (%s)" %
                          (branch, cfg.base))
 
@@ -456,7 +542,7 @@ class Runner:
             if not count.ok or commits == 0:
                 raise TaskError("origin/%s からの変更がありません" % cfg.base)
 
-            self._assert_tools_untouched(worktree, base_sha)
+            changed = self._assert_tools_untouched(worktree, base_sha)
             verify_script = worktree / "tools" / "verify.sh"
             verify = self.cmd.run(["bash", str(verify_script)],
                                   cwd=str(worktree), timeout=cfg.verify_timeout)
@@ -500,20 +586,30 @@ class Runner:
                 "レビューとマージは五点ゲートに任せます。ログ: `%s`" % (url, issue_log),
             )
             self.log("Issue #%s: PR を作成しました %s" % (number, url))
+            self._clear_started(number)
+            self.record_history({
+                "kind": "implement", "issue": number, "result": "success",
+                "duration": round(time.time() - started, 1),
+                "model": cfg.model, "pr": url, "changed": len(changed),
+                "commits": commits,
+            })
+            self.notify("Issue #%s のPRを作成しました" % number)
             return 0
         except TaskError as exc:
-            self._fail(number, issue_log, str(exc))
+            self._fail(number, issue_log, str(exc), started)
             return 1
         except Exception as exc:  # noqa: BLE001 - 無人実行を止めないため
-            self._fail(number, issue_log, "予期しないエラー: %s" % exc)
+            self._fail(number, issue_log, "予期しないエラー: %s" % exc, started)
             return 1
         finally:
             if prepared:
                 self._cleanup_worktree(worktree)
 
-    def _fail(self, number: int, issue_log: Path, reason: str) -> None:
+    def _fail(self, number: int, issue_log: Path, reason: str,
+              started: Optional[float] = None) -> None:
         self.log("Issue #%s: 失敗 - %s" % (number, reason))
         self._append_log(issue_log, "\nFAILED: " + reason + "\n")
+        self._clear_started(number)
         self.edit_labels(number, add=["agent:failed"],
                          remove=["agent:running", "agent:ready"])
         self.comment(
@@ -521,6 +617,12 @@ class Runner:
             "実行に失敗しました。\n\n```\n%s\n```\n\nログ: `%s`" %
             (tail(reason, 1200), issue_log),
         )
+        self.record_history({
+            "kind": "implement", "issue": number, "result": "failed",
+            "duration": round(time.time() - started, 1) if started else None,
+            "model": self.cfg.model, "reason": tail(reason, 300),
+        })
+        self.notify("Issue #%s の実行に失敗しました" % number)
 
     def _issue_label_names(self, issue: dict) -> List[str]:
         names = []
@@ -576,6 +678,7 @@ class Runner:
             raise TaskError("検証スクリプトや CI を変更しています(人間のレビューが必要): %s\n"
                             "調査するには UNIVERSE_AGENT_KEEP_WORKTREE=1 で再実行してください" %
                             ", ".join(touched))
+        return sorted(changed)
 
     def _cleanup_worktree(self, worktree: Path) -> None:
         if self.cfg.keep_worktree:
@@ -705,10 +808,26 @@ class Runner:
         cutoff = time.time() - LOG_RETENTION_DAYS * 86400
         for path in sorted((self.cfg.state_dir / "logs").glob("*")):
             try:
-                if path.stat().st_mtime < cutoff:
+                info = path.stat()
+                if info.st_mtime < cutoff:
                     path.unlink()
+                    continue
+                if info.st_size > LOG_MAX_BYTES:
+                    with path.open("rb") as fh:
+                        fh.seek(max(0, info.st_size - LOG_TRIM_BYTES))
+                        tail_bytes = fh.read()
+                    with path.open("wb") as fh:
+                        fh.write(("[truncated to last %d bytes]\n" % LOG_TRIM_BYTES).encode())
+                        fh.write(tail_bytes)
             except OSError:
                 pass
+        try:
+            lines = self.history_path().read_text(encoding="utf-8").splitlines()
+            if len(lines) > 200:
+                self.history_path().write_text(
+                    "\n".join(lines[-200:]) + "\n", encoding="utf-8")
+        except OSError:
+            pass
 
     # ---- 提案 ----
     def propose(self, dry_run: bool = False) -> int:
@@ -759,9 +878,15 @@ class Runner:
             if not result.ok:
                 raise TaskError("planner が異常終了しました (exit=%s)" % result.code)
             self.log("提案を作成しました (label=%s, log=%s)" % (label, planner_log))
+            self.record_history({"kind": "propose", "result": "success",
+                                 "model": self.cfg.model, "label": label})
+            self.notify("改善提案を作成しました")
             return 0
         except TaskError as exc:
             self.log("提案に失敗: %s" % exc)
+            self.record_history({"kind": "propose", "result": "failed",
+                                 "model": self.cfg.model, "reason": tail(str(exc), 300)})
+            self.notify("改善提案の作成に失敗しました")
             return 1
         finally:
             if self.cfg.keep_worktree:
@@ -840,8 +965,24 @@ class Runner:
             print("worktrees:")
             for line in (worktrees.stdout or "").splitlines():
                 print("  " + line)
+        print("notify:  %s" % ("on" if self.cfg.notify else "off"))
         plist = Path.home() / "Library/LaunchAgents/com.takuto277.universe-agent-runner.plist"
         print("launchd: %s" % ("installed" if plist.exists() else "not installed"))
+        recent = self.recent_history(5)
+        if recent:
+            print("recent runs:")
+            for item in recent:
+                clock = (item.get("ts") or "")[11:16]
+                target = "#%s" % item["issue"] if item.get("issue") else item.get("kind", "-")
+                duration = item.get("duration")
+                duration_text = ("%ss" % duration) if duration is not None else "-"
+                model = str(item.get("model") or "-").split("/")[-1]
+                changed = item.get("changed")
+                changed_text = ("%s files" % changed) if changed is not None else "-"
+                detail = item.get("pr") or item.get("reason") or ""
+                print("  %s %-7s %-6s %-6s %-8s %-18s %s" %
+                      (clock, item.get("result", "?"), target, duration_text,
+                       changed_text, model, tail(str(detail), 50)))
         try:
             lines = self.cfg.log_file.read_text(encoding="utf-8").splitlines()[-5:]
         except OSError:
