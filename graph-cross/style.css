@@ -148,6 +148,27 @@ body {
 #stage-info.boss #stage-fill { background: linear-gradient(90deg, var(--red), #ffd166); }
 #stage-info.cleared { border-color: rgba(87, 224, 138, 0.6); }
 #stage-info.cleared #stage-label { color: var(--green); }
+#stage-info.stress { border-color: rgba(255, 159, 107, 0.7); }
+#stage-info.stress #stage-label { color: #ff9f6b; }
+#stage-info.stress #stage-fill { background: linear-gradient(90deg, #ff9f6b, var(--pink)); }
+
+.exit-btn {
+  position: absolute;
+  top: 12px;
+  right: 14px;
+  z-index: 2;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 159, 107, 0.6);
+  background: rgba(32, 19, 16, 0.88);
+  color: #ff9f6b;
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.exit-btn:hover { background: rgba(255, 159, 107, 0.16); }
+.exit-btn.hidden { display: none; }
 
 #stage-banner {
   position: absolute;
@@ -329,6 +350,7 @@ body {
   gap: 6px;
 }
 .deck-card {
+  position: relative;
   padding: 6px 4px 7px;
   border: 1px solid var(--line);
   border-radius: 9px;
@@ -354,12 +376,47 @@ body {
   box-shadow: 0 0 18px rgba(95, 240, 255, 0.16);
 }
 .deck-card.selected b { text-shadow: 0 0 10px currentColor; }
+.deck-card::after {
+  content: attr(data-genre);
+  position: absolute;
+  top: 3px;
+  right: 5px;
+  font-size: 7.5px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.deck-card[data-genre="上昇"]::after { color: #57e08a; }
+.deck-card[data-genre="下降"]::after { color: #ff9f6b; }
+.deck-card[data-genre="その他"]::after { color: #8fa1bd; }
 
 .primary:disabled, .primary.disabled {
   opacity: 0.4;
   pointer-events: none;
   filter: grayscale(0.4);
 }
+.start-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+.stress-cta {
+  margin-top: 6px;
+  padding: 12px 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 159, 107, 0.65);
+  background: linear-gradient(180deg, rgba(255, 159, 107, 0.18), rgba(255, 77, 141, 0.12));
+  color: #ffb38a;
+  font-family: inherit;
+  font-size: 15px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(255, 120, 80, 0.16);
+}
+.stress-cta:hover { filter: brightness(1.1); transform: translateY(-1px); }
+.stress-cta:active { transform: translateY(1px); }
+.stress-cta:disabled { opacity: 0.4; pointer-events: none; filter: grayscale(0.4); }
 .secondary {
   margin-top: 6px;
   padding: 10px 24px;
@@ -532,6 +589,18 @@ body {
   color: var(--muted);
   margin-top: 1px;
 }
+.mode-btn::after {
+  content: attr(data-genre);
+  position: absolute;
+  top: 4px;
+  left: 7px;
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--muted);
+}
+.mode-btn[data-genre="上昇"]::after { color: #57e08a; }
+.mode-btn[data-genre="下降"]::after { color: #ff9f6b; }
+.mode-btn[data-genre="その他"]::after { color: #8fa1bd; }
 .mode-btn em {
   position: absolute;
   top: 3px;
@@ -682,6 +751,9 @@ body {
   #tip { font-size: 9.5px; }
   #btn-sound { font-size: 9.5px; padding: 2px 8px; }
   #stage-info { top: 8px; left: 8px; min-width: 132px; max-width: 190px; padding: 5px 8px 6px; }
+  .exit-btn { top: 8px; right: 8px; padding: 5px 9px; font-size: 10px; }
+  .start-actions { flex-direction: column; gap: 6px; }
+  .stress-cta { font-size: 13px; padding: 10px 22px; }
   #stage-label { font-size: 10px; }
   #stage-note { font-size: 8.5px; }
   #stage-banner { letter-spacing: 4px; }

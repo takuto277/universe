@@ -338,6 +338,22 @@ assert(g.upgrades.life === 1 && g.upgrades.slot === 1, '取得強化の記録');
 assert(E.snapshot(g).maxHp === 4 && E.snapshot(g).hitBonus === 2, '強化がスナップショットに反映');
 assert(E.applyUpgrade(g, 'unknown') === false, '不明な強化は無効');
 
+/* 9d1) ストレス解消モード */
+g = E.createGame({ width: 1000, height: 620, deck: ['hold', 'up', 'wave'], mode: 'stress', rng: mulberry32(908) });
+assert(g.gameMode === 'stress' && E.snapshot(g).infiniteLives === true, 'ストレスモードの無限ライフ');
+g.hp = 1;
+g.rivals = [lineRival(-200, g.y, 100)];
+E.update(g, 1 / 60);
+assert(g.hp === 1 && !g.over, 'ストレスモードではミスでHPが減らない');
+g.stageHits = g.stageTarget;
+g.bossCooldown = 0;
+g.rivals = [];
+E.update(g, 1 / 60);
+assert(!g.boss, 'ストレスモードではボスが出ない');
+for (i = 0; i < 180; i++) E.update(g, 1 / 60);
+assert(!g.over && g.rivals.length > 0, 'ストレスモードは敵が多く出て終わらない');
+assert(E.snapshot(g).items >= 0 && E.snapshot(g).multi >= 0, 'ストレスモードのスナップショット');
+
 /* 9d2) マルチクロス */
 g = makeGame(905, ['hold', 'up', 'wave']);
 g.rivals = [];
@@ -408,10 +424,26 @@ var swap1 = E.rotateDeck(g);
 assert(swap1 && g.deck.length === 3, 'デッキを1枠だけ入れ替える');
 assert(g.deck[swap1.slot] === swap1.newKey && g.deck.indexOf(swap1.oldKey) < 0, '新しい関数が入る');
 assert(g.deck[0] !== g.deck[1] && g.deck[1] !== g.deck[2] && g.deck[0] !== g.deck[2], '入れ替え後も重複しない');
+assert(E.MODES[swap1.oldKey].genre === E.MODES[swap1.newKey].genre, '同じジャンル内で入れ替わる');
 assert(g.lastDeckSwap.newKey === swap1.newKey, '最後の入れ替えを記録');
 var swap2 = E.rotateDeck(g);
 assert(swap2 && g.deck.length === 3 && g.lastDeckSwap.newKey === swap2.newKey, '2回目も入れ替えられる');
 assert(E.snapshot(g).lastDeckSwap.newKey === swap2.newKey, '入れ替えがスナップショットに入る');
+
+function genresOf(deck) {
+  var out = {};
+  for (var qi = 0; qi < deck.length; qi++) out[E.MODES[deck[qi]].genre] = true;
+  return out;
+}
+g = makeGame(910, ['up', 'down', 'hold']);
+for (i = 0; i < 20; i++) {
+  var swapN = E.rotateDeck(g);
+  assert(swapN, 'ジャンルを保った入れ替えが続く');
+  assert(E.MODES[swapN.oldKey].genre === E.MODES[swapN.newKey].genre, '毎回同じジャンル');
+  var gs = genresOf(g.deck);
+  assert(gs.up && gs.down && gs.other, '上昇/下降/その他のジャンルが消えない');
+}
+
 
 /* 10) 何もしないより、敵の高さに合わせて動く方が長く/多く当たる */
 function play(seed, smart, seconds) {

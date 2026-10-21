@@ -17,6 +17,7 @@
 
     <main id="stage">
       <canvas id="arena" width="960" height="560"></canvas>
+      <button id="btn-exit" class="exit-btn hidden" type="button">やめる (Esc)</button>
       <div id="stage-info">
         <span id="stage-label">STAGE 1</span>
         <div class="stage-bar"><i id="stage-fill"></i></div>
@@ -30,7 +31,7 @@
           <ul class="rules">
             <li>x が自動で進む。<b>1〜3 / 画面タップ</b>で関数切替。カード3つでデッキ、<b>x^p / sin</b> はスライダー調整</li>
             <li>敵の曲線と交差で <b>大爆発 + 得点</b>。角度/弱点/連続交差 <b>MULTI</b> で倍率アップ、アイテム <b>G</b>=非対称グラフ追加 / <b>+</b>=回復 / <b>S</b>=スコア</li>
-            <li>敵を一定数交差すると <b>ボス出現</b>。倒すと <b>ステージクリア</b> → <b>関数1つが入れ替わり</b>、強化を1つ選択! ライフ-1、5コンボで1回復</li>
+            <li>敵を一定数交差すると <b>ボス出現</b>。倒すと <b>ステージクリア</b> → <b>同じジャンル(上昇/下降/その他)の関数に入れ替わり</b>、強化を1つ選択! ライフ-1、5コンボで1回復</li>
           </ul>
           <div id="deck-picker">
             <div class="deck-head">デッキを選べ <span id="deck-count">3/3</span></div>
@@ -79,8 +80,11 @@
               <div id="tune-desc">スライダーを動かすと、この先の軌道がプレビューされます。</div>
             </div>
           </div>
-          <button id="btn-start" class="primary" type="button">このデッキではじめる</button>
-          <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦</p>
+          <div class="start-actions">
+            <button id="btn-start" class="primary" type="button">このデッキではじめる</button>
+            <button id="btn-stress" class="stress-cta" type="button">ストレス解消モード</button>
+          </div>
+          <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦 / ストレス解消: ライフ∞・敵大量</p>
         </section>
 
         <section id="screen-clear" class="screen clear-screen">
