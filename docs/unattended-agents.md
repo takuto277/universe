@@ -18,7 +18,7 @@ Issue (agent:ready)
    │  tools/agent.sh run  (LaunchAgent が120秒ごと)
    ▼
 builder エージェント (opencode, 専用 worktree)
-   │  実装 → ./tools/verify.sh (コミットは runner)
+   │  実装 → コミット → ./tools/verify.sh
    ▼
 push agent/issue-<n> → PR 作成 (agent-generated)
    │  auto-pr watcher / 五点ゲート
@@ -115,7 +115,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **1回1件・排他ロック**: `flock` で二重実行を防ぐ。プロセスが終了すると OS が自動で解放する
 - **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ。main への push は branch protection でも拒否される
 - **マージしない**: レビューとマージは五点ゲートに任せる(`--admin` や直接マージは使わない)
-- **builder の権限は allowlist**: 既定 deny で、git の読み取り、verify、jsc、読み取り系ユーティリティだけを許可する。`git add` / `git commit` / `git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する。コミットは sandbox の外で runner が行う
+- **builder の権限は allowlist**: 既定 deny で、git の読み取り、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`git add`/`commit`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する。コミットは runner が行う
 - **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/` 配下と `.github/workflows/` が変更されていたら失敗させる。さらに信頼するチェック(site 検査・構文検査・runner テスト)をアプリのテストより先に実行し、テスト JS による差し替えを防ぐ
 - **状態不明なら中止**: PR 一覧の取得失敗など、既存 PR の有無を確認できない場合はブランチを消さずに止める
 - **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
@@ -126,13 +126,15 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **提案の既定**: `agent:proposed` で止め、人間の `promote` を待つ
 - **入力の信頼**: Issue 本文はそのまま builder への指示になる。`agent:ready` を付けられるのは書き込み権限を持つ人だけなので、第三者が勝手にキューへ入れることはできない
 - **単一ホスト前提**: ロックはローカルの state dir 単位。複数ホストや state dir を分けた同時実行は想定しない
-- **限界**: 権限パターンだけでは OS レベルの境界にならない。`UNIVERSE_AGENT_SANDBOX=seatbelt` で書き込みと読み取りを制限できるが、ネットワークは許可しており完全なサンドボックスではない。OS ユーザの分離やコンテナ実行は今後の強化とする。最終的な安全網は branch protection、五点ゲート、AI レビュー
+- **限界**: allowlist だけではサンドボックスではないため、`UNIVERSE_AGENT_SANDBOX=seatbelt` を推奨する。OS ユーザの分離やコンテナ実行は今後の強化とする。最終的な安全網は branch protection、五点ゲート、AI レビュー
+- opencode のデータ/キャッシュは書き込み可能なため、sandbox 外で動く planner/reviewer への影響を完全には排除できない
 
 ## 実行の隔離（sandbox-exec）
 
 `UNIVERSE_AGENT_SANDBOX=seatbelt` を設定すると、builder と `verify.sh` を macOS の `sandbox-exec` で包みます。既定は `none` です。
 
-- 書き込みは「その実行の worktree」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけに許可します。リポジトリの `.git`、state dir（lock・pause・history）、`~/.config/opencode` は書き込み禁止です
+- 書き込みは「その実行の worktree（ただし `worktree/.git` を除く）」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけに許可します。リポジトリの `.git`、state dir（lock・pause・history）、`~/.config/opencode` は書き込み禁止です
+- builder の後、runner は `git rev-parse --absolute-git-dir` が変わっていないことを確認してからコミットします
 - builder は編集だけを行い、コミットは sandbox の外で runner が行います
 - 読み取りは既定で許可しつつ、`~/.ssh`、`~/.aws`、`~/.config/gh`、`~/Library/Keychains`、`~/Documents`、`~/Downloads` などを明示的に拒否します
 - ネットワークはモデル API のために許可します（完全なネットワーク遮断ではありません）。keychain や ssh-agent は `mach-lookup` 経由で利用できるため、秘密情報の完全な遮断ではありません

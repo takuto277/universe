@@ -27,7 +27,8 @@ Pause:
   tools/agent.sh resume
 
 Environment for the installed job:
-  UNIVERSE_AGENT_REPO, UNIVERSE_AGENT_BASE, UNIVERSE_AGENT_MODEL
+  UNIVERSE_AGENT_REPO, UNIVERSE_AGENT_BASE, UNIVERSE_AGENT_MODEL,
+  UNIVERSE_AGENT_SANDBOX (none|seatbelt)
 EOF
 }
 

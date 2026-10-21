@@ -137,10 +137,20 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["git", "rev-list"],
                      ar.Result(0, overrides.get("commits", "1\n"), ""))
         self.fake.on(["git", "rev-parse", "origin/main"], ar.Result(0, "basesha\n", ""))
+        git_dir_calls = {"count": 0}
+
+        def git_dir_handler(argv):
+            git_dir_calls["count"] += 1
+            if overrides.get("git_dir_change") and git_dir_calls["count"] > 1:
+                return ar.Result(0, "/other/git/dir\n", "")
+            return ar.Result(0, "/tmp/fake-git-dir\n", "")
+
+        self.fake.on(["git", "rev-parse", "--absolute-git-dir"], git_dir_handler)
         self.fake.on(["git", "diff", "--name-status"],
                      ar.Result(0, overrides.get("changed", ""), ""))
         self.fake.on(["bash"], overrides.get("verify", ar.Result(0, "ok", "")))
-        self.fake.on(["git", "push"], overrides.get("push", ar.Result(0)))
+        self.fake.on(["git", "-c", "core.hooksPath=/dev/null", "push"],
+                     overrides.get("push", ar.Result(0)))
         self.fake.on(["gh", "pr", "create"], overrides.get(
             "create", ar.Result(0, "https://github.com/takuto277/universe/pull/99\n")))
         self.fake.on(["opencode", "run"],
@@ -148,6 +158,9 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["gh", "issue", "edit"], overrides.get("edit", ar.Result(0)))
         self.fake.on(["gh", "issue", "comment"], ar.Result(0))
         return self.worktree
+
+    def pushes(self):
+        return [call for call in self.fake.calls if "push" in call["argv"]]
 
     # ---- tests ----
     def history(self):
@@ -328,8 +341,7 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual("takuto277", env["GIT_AUTHOR_NAME"])
         self.assertEqual("takuto277@users.noreply.github.com", env["GIT_COMMITTER_EMAIL"])
 
-        pushes = [call["argv"] for call in self.fake.find("git", "push")]
-        self.assertTrue(any("agent/issue-12" in argv for argv in pushes))
+        self.assertTrue(any("agent/issue-12" in call["argv"] for call in self.pushes()))
         self.assertTrue(self.fake.called("gh", "pr", "create"))
 
         comments = [call["argv"][-1] for call in self.fake.find("gh", "issue", "comment")]
@@ -341,7 +353,7 @@ class RunnerTest(unittest.TestCase):
 
         edits = [call["argv"] for call in self.fake.find("gh", "issue", "edit")]
         self.assertTrue(any("agent:failed" in argv for argv in edits))
-        self.assertFalse(self.fake.called("git", "push", "-u", "origin", "agent/issue-12"))
+        self.assertFalse(any("agent/issue-12" in call["argv"] for call in self.pushes()))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
         comments = [call["argv"][-1] for call in self.fake.find("gh", "issue", "comment")]
         self.assertTrue(any("失敗" in body for body in comments))
@@ -439,8 +451,7 @@ class RunnerTest(unittest.TestCase):
                    push=push)
         self.assertEqual(0, self.runner.run_once())
         self.assertTrue(self.fake.called("git", "worktree", "add"))
-        deletes = [call["argv"] for call in self.fake.find("git", "push", "origin", "--delete")]
-        self.assertTrue(deletes)
+        self.assertTrue(any("--delete" in call["argv"] for call in self.pushes()))
         self.assertTrue(self.fake.called("gh", "pr", "create"))
 
     def test_gh_failure_while_checking_prs_marks_failed_without_branch_deletion(self):
@@ -454,7 +465,7 @@ class RunnerTest(unittest.TestCase):
         edits = [call["argv"] for call in self.fake.find("gh", "issue", "edit")]
         self.assertTrue(any("agent:failed" in argv for argv in edits))
         self.assertFalse(self.fake.called("git", "worktree", "add"))
-        self.assertFalse(self.fake.called("git", "push"))
+        self.assertFalse(self.pushes())
 
     def test_modified_verify_script_is_rejected(self):
         self.happy(changed="M\0tools/verify.sh\0")
@@ -494,18 +505,28 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
+    def test_changed_git_dir_is_rejected(self):
+        self.happy(git_dir_change=True)
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("git", "add", "-A"))
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
     def test_dirty_tree_is_committed_before_push(self):
         self.happy(status=" M apps.json\n")
         self.assertEqual(0, self.runner.run_once())
         self.assertTrue(self.fake.called("git", "add", "-A"))
-        self.assertTrue(self.fake.called("git", "-c", "user.name=takuto277"))
+        commits = [call for call in self.fake.calls if "commit" in call["argv"]]
+        self.assertTrue(commits)
+        self.assertTrue(any("user.name=takuto277" in call["argv"] for call in commits))
 
     def test_dirty_tree_commit_failure_marks_failed(self):
         def git_commit(argv, cwd=None):
             return ar.Result(1, "", "hook rejected")
 
         self.happy(status=" M apps.json\n")
-        self.fake.on(["git", "-c", "user.name=takuto277"], git_commit)
+        self.fake.on(["git", "-c", "core.hooksPath=/dev/null",
+                      "-c", "core.fsmonitor=false",
+                      "-c", "user.name=takuto277"], git_commit)
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
@@ -571,7 +592,8 @@ class RunnerTest(unittest.TestCase):
 
         self.happy(push=push)
         self.assertEqual(0, self.runner.run_once())
-        self.assertTrue(self.fake.called("git", "push", "origin", "--delete", "agent/issue-12"))
+        self.assertTrue(any("--delete" in call["argv"] and "agent/issue-12" in call["argv"]
+                            for call in self.pushes()))
         self.assertTrue(self.fake.called("gh", "pr", "create"))
 
     def test_pause_before_push_stops_publication(self):
@@ -581,7 +603,7 @@ class RunnerTest(unittest.TestCase):
 
         self.happy(verify=verify)
         self.assertEqual(1, self.runner.run_once())
-        self.assertFalse(self.fake.called("git", "push"))
+        self.assertFalse(self.pushes())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
     def test_explicit_issue_uses_view_not_queue(self):
@@ -641,13 +663,25 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["git", "fetch"], ar.Result(0))
         self.fake.on(["git", "rev-parse", "FETCH_HEAD"], ar.Result(0, "abc123def456\n"))
         self.fake.on(["git", "merge-base"], ar.Result(0, "basesha\n"))
+        self.fake.on(["git", "rev-parse", "--absolute-git-dir"],
+                     ar.Result(0, "/tmp/fake-git-dir\n"))
         self.fake.on(["git", "status", "--porcelain"], ar.Result(0, ""))
+        git_dir_calls = {"count": 0}
+
+        def git_dir_handler(argv):
+            git_dir_calls["count"] += 1
+            if overrides.get("git_dir_change") and git_dir_calls["count"] > 1:
+                return ar.Result(0, "/other/git/dir\n", "")
+            return ar.Result(0, "/tmp/fake-git-dir\n", "")
+
+        self.fake.on(["git", "rev-parse", "--absolute-git-dir"], git_dir_handler)
         self.fake.on(["git", "diff", "--name-status"],
                      ar.Result(0, overrides.get("changed", "M\0docs/README.md\0"), ""))
         self.fake.on(["git", "rev-list"],
                      ar.Result(0, overrides.get("commits", "1\n"), ""))
         self.fake.on(["bash"], overrides.get("verify", ar.Result(0, "ok", "")))
-        self.fake.on(["git", "push"], overrides.get("push", ar.Result(0)))
+        self.fake.on(["git", "-c", "core.hooksPath=/dev/null", "push"],
+                     overrides.get("push", ar.Result(0)))
         self.fake.on(["git", "rev-parse", "--short"], ar.Result(0, "newsha\n"))
         self.fake.on(["opencode", "run"], overrides.get("agent", ar.Result(0, "fixed", "")))
         self.fake.on(["gh", "pr", "comment"], ar.Result(0))
@@ -664,8 +698,7 @@ class RunnerTest(unittest.TestCase):
     def test_fix_pushes_to_pr_head_and_records_history(self):
         self.fix_happy()
         self.assertEqual(0, self.runner.fix(12))
-        pushes = [call["argv"] for call in self.fake.find("git", "push")]
-        self.assertTrue(any("HEAD:feat/fix-me" in argv for argv in pushes))
+        self.assertTrue(any("HEAD:feat/fix-me" in call["argv"] for call in self.pushes()))
         comments = [call["argv"][-1] for call in self.fake.find("gh", "pr", "comment")]
         self.assertTrue(any("自動修正" in body for body in comments))
         label_calls = [call["argv"] for call in self.fake.find("gh", "pr", "edit")]
@@ -701,7 +734,7 @@ class RunnerTest(unittest.TestCase):
     def test_fix_without_changes_fails(self):
         self.fix_happy(commits="0\n")
         self.assertEqual(1, self.runner.fix(12))
-        self.assertFalse(self.fake.called("git", "push"))
+        self.assertFalse(self.pushes())
 
     def test_fix_respects_attempt_limit(self):
         path = self.cfg.state_dir / "fix" / "pr-12.json"
@@ -714,14 +747,14 @@ class RunnerTest(unittest.TestCase):
     def test_fix_rejects_protected_changes(self):
         self.fix_happy(changed="M\0tools/agent_runner.py\0")
         self.assertEqual(1, self.runner.fix(12))
-        self.assertFalse(self.fake.called("git", "push"))
+        self.assertFalse(self.pushes())
         comments = [call["argv"][-1] for call in self.fake.find("gh", "pr", "comment")]
         self.assertTrue(any("失敗" in body for body in comments))
 
     def test_fix_verify_failure_does_not_push(self):
         self.fix_happy(verify=ar.Result(1, "NG", ""))
         self.assertEqual(1, self.runner.fix(12))
-        self.assertFalse(self.fake.called("git", "push"))
+        self.assertFalse(self.pushes())
 
     def test_fix_skips_when_paused(self):
         (self.cfg.state_dir / "pause").touch()
@@ -746,6 +779,7 @@ class RunnerTest(unittest.TestCase):
         self.assertIn("(deny default)", profile)
         self.assertNotIn('(subpath "%s")' % self.cfg.state_dir, profile)
         self.assertNotIn('(subpath "%s/.git")' % self.cfg.root, profile)
+        self.assertIn('(subpath \"%s/.git\")' % self.worktree, profile)
 
     @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
                      "already inside sandbox-exec")
@@ -782,6 +816,15 @@ class RunnerTest(unittest.TestCase):
                 cwd=str(self.worktree), timeout=30)
             self.assertFalse(result.ok)
             self.assertFalse(state_file.exists())
+            pointer = self.worktree / ".git"
+            pointer.write_text("gitdir: /tmp/hijacked\n", encoding="utf-8")
+            result = ar.Commands().run(
+                runner.sandbox_argv(["/bin/sh", "-c", "echo bad > .git"],
+                                    self.worktree, tmpdir),
+                cwd=str(self.worktree), timeout=30)
+            self.assertFalse(result.ok)
+            self.assertEqual("gitdir: /tmp/hijacked\n",
+                             pointer.read_text(encoding="utf-8"))
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
 

@@ -344,6 +344,11 @@ class Runner:
         expanded = expand(writable)
         denied = expand(deny_read + extra)
 
+        git_pointer_paths = [Path(worktree) / ".git"]
+        resolved_pointer = Path(real(worktree)) / ".git"
+        if resolved_pointer != git_pointer_paths[0]:
+            git_pointer_paths.append(resolved_pointer)
+
         lines = [
             "(version 1)",
             "(deny default)",
@@ -356,6 +361,8 @@ class Runner:
             "(allow file-read*)",
             "(deny file-read* %s)" % " ".join(q(path) for path in denied),
             "(allow file-write* %s)" % " ".join(q(path) for path in expanded),
+            "(deny file-write* %s)" % " ".join(
+                q(path) for path in git_pointer_paths),
             "(allow network*)",
         ]
         path = self.cfg.state_dir / "sandbox" / "profile.sb"
@@ -627,6 +634,7 @@ class Runner:
                          (branch, cfg.base))
 
             base_sha = self._prepare_worktree(worktree, branch)
+            git_dir = self._git_dir(worktree)
             prepared = True
             prompt = self.build_prompt(number, title, body)
             result = self._run_agent(prompt, worktree, issue_log, verbose)
@@ -635,6 +643,7 @@ class Runner:
             if not result.ok:
                 raise TaskError("エージェントが異常終了しました (exit=%s)" % result.code)
 
+            self._assert_git_dir_unchanged(worktree, git_dir)
             self._commit_leftovers(worktree, "Issue #%d" % number)
             count = self.git("rev-list", "--count", "%s..HEAD" % base_sha,
                              cwd=worktree, timeout=60)
@@ -665,7 +674,8 @@ class Runner:
             latest_state = (latest or {}).get("state", "").upper()
             if latest_state in ("OPEN", "MERGED"):
                 raise TaskError("PR が既に存在します: %s" % latest.get("url"))
-            push = self.git("push", "-u", "origin", branch, cwd=worktree, timeout=180)
+            push = self.git("-c", "core.hooksPath=/dev/null",
+                            "push", "-u", "origin", branch, cwd=worktree, timeout=180)
             if not push.ok and ("non-fast-forward" in (push.stderr or "") or
                                 "rejected" in (push.stderr or "")):
                 # 前回の実行が PR 作成前に落ちてブランチだけ残っている場合は作り直す
@@ -673,7 +683,8 @@ class Runner:
                 if latest and (latest.get("state") or "").upper() in ("OPEN", "MERGED"):
                     raise TaskError("PR が既に存在します: %s" % latest.get("url"))
                 self.git("push", "origin", "--delete", branch, cwd=worktree, timeout=120)
-                push = self.git("push", "-u", "origin", branch, cwd=worktree, timeout=180)
+                push = self.git("-c", "core.hooksPath=/dev/null",
+                            "push", "-u", "origin", branch, cwd=worktree, timeout=180)
             if not push.ok:
                 raise TaskError("push に失敗しました: %s" % tail(push.stderr, 600))
 
@@ -735,6 +746,17 @@ class Runner:
             else:
                 names.append(str(label))
         return [name for name in names if name]
+
+    def _git_dir(self, worktree: Path) -> str:
+        result = self.git("rev-parse", "--absolute-git-dir", cwd=worktree, timeout=60)
+        if not result.ok:
+            return ""
+        return (result.stdout or "").strip()
+
+    def _assert_git_dir_unchanged(self, worktree: Path, expected: str) -> None:
+        current = self._git_dir(worktree)
+        if not expected or current != expected:
+            raise TaskError("worktree の git dir が変更されました")
 
     def _prepare_worktree(self, worktree: Path, branch: str) -> str:
         if worktree.exists():
@@ -849,7 +871,9 @@ class Runner:
         added = self.git("add", "-A", cwd=worktree, timeout=120)
         if not added.ok:
             raise TaskError("git add に失敗しました: %s" % tail(added.stderr, 400))
-        commit = self.git("-c", "user.name=takuto277",
+        commit = self.git("-c", "core.hooksPath=/dev/null",
+                          "-c", "core.fsmonitor=false",
+                          "-c", "user.name=takuto277",
                           "-c", "user.email=takuto277@users.noreply.github.com",
                           "commit", "-m", "repo: %s の残りの変更をコミット" % ref,
                           cwd=worktree, timeout=120)
@@ -1095,6 +1119,7 @@ class Runner:
         started = time.time()
         try:
             head_sha = self._prepare_fix_worktree(worktree, number, head)
+            git_dir = self._git_dir(worktree)
             prompt = self.build_fix_prompt(number, data.get("title") or "", review)
             agent = self._run_agent(prompt, worktree, fix_log, False,
                                     timeout=self.cfg.fix_timeout)
@@ -1103,6 +1128,7 @@ class Runner:
             if not agent.ok:
                 raise TaskError("修正エージェントが異常終了しました (exit=%s)" % agent.code)
 
+            self._assert_git_dir_unchanged(worktree, git_dir)
             self._commit_leftovers(worktree, "PR #%d" % number)
             count = self.git("rev-list", "--count", "%s..HEAD" % head_sha,
                              cwd=worktree, timeout=60)
@@ -1127,7 +1153,9 @@ class Runner:
             if self.paused():
                 raise TaskError("pause されたため push 前に中断しました")
 
-            push = self.git("push", "origin", "HEAD:%s" % head_ref, cwd=worktree, timeout=180)
+            push = self.git("-c", "core.hooksPath=/dev/null",
+                            "push", "origin", "HEAD:%s" % head_ref,
+                            cwd=worktree, timeout=180)
             if not push.ok:
                 raise TaskError("push に失敗しました: %s" % tail(push.stderr, 600))
             short = (self.git("rev-parse", "--short", "HEAD", cwd=worktree).stdout or "").strip()

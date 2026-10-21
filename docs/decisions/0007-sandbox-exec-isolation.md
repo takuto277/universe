@@ -12,6 +12,8 @@ ADR 0005 の builder は、権限 allowlist と保護パス検査で危険な操
 - `UNIVERSE_AGENT_SANDBOX=seatbelt` のとき、builder と `verify.sh` を macOS の `sandbox-exec` で包む
 - deny-by-default とし、書き込みは「その実行の worktree」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけを許可する。リポジトリの `.git`、state dir、`~/.config/opencode` は書き込み禁止とする
 - builder は編集だけを行い、コミットは sandbox の外で runner が行う（`.git/hooks` や `config` を書かせない）
+- builder の前後で `git rev-parse --absolute-git-dir` を比較し、worktree の `.git` ポインタ差し替えを検出する
+- runner の commit / push は `core.hooksPath=/dev/null` と `core.fsmonitor=false` を付けて実行する
 - 読み取りは既定で許可しつつ、`~/.ssh`、`~/.aws`、`~/.config/gh`、`~/Library/Keychains`、`~/Documents` など一般的な秘密・個人領域を拒否する
 - ネットワークはモデル API のために許可する
 - 既定は `none`。インストーラで `UNIVERSE_AGENT_SANDBOX=seatbelt` を指定したときだけ有効にする
