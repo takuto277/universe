@@ -25,6 +25,7 @@
 import argparse
 import fcntl
 import json
+import re
 import os
 import shutil
 import signal
@@ -42,6 +43,8 @@ DEFAULT_AGENT = "builder"
 DEFAULT_PLANNER = "planner"
 DEFAULT_TIMEOUT = 2700
 DEFAULT_VERIFY_TIMEOUT = 600
+DEFAULT_FIX_TIMEOUT = 1500
+DEFAULT_FIX_MAX = 3
 LOG_RETENTION_DAYS = 14
 LOG_MAX_BYTES = 2 * 1024 * 1024
 LOG_TRIM_BYTES = 512 * 1024
@@ -49,6 +52,7 @@ PROTECTED_PATHS = (
     "tools/",
     ".github/workflows/",
 )
+REVIEW_MARKER_RE = re.compile(r"<!--\s*ai-pr-review\s*(\{.*?\})\s*-->", re.S)
 
 LABELS = {
     "agent:ready": ("0E8A16", "無人エージェントの実装キュー"),
@@ -57,6 +61,7 @@ LABELS = {
     "agent:failed": ("B60205", "実行失敗(Issue コメント参照)"),
     "agent:proposed": ("5319E7", "改善提案(promote で実装キューへ)"),
     "agent-generated": ("BFD4F2", "無人エージェントが作成した PR"),
+    "agent-autofix": ("F9D0C4", "無人エージェントがレビュー指摘を自動修正"),
 }
 
 
@@ -150,6 +155,8 @@ class Config:
     keep_worktree: bool = False
     notify: bool = True
     stall_minutes: int = 90
+    fix_max: int = DEFAULT_FIX_MAX
+    fix_timeout: int = DEFAULT_FIX_TIMEOUT
     gh_bin: str = "gh"
     git_bin: str = "git"
     opencode_bin: str = "opencode"
@@ -179,6 +186,9 @@ class Config:
             keep_worktree=os.environ.get("UNIVERSE_AGENT_KEEP_WORKTREE", "0") == "1",
             notify=os.environ.get("UNIVERSE_AGENT_NOTIFY", "1") != "0",
             stall_minutes=int(os.environ.get("UNIVERSE_AGENT_STALL_MINUTES", "90")),
+            fix_max=int(os.environ.get("UNIVERSE_AGENT_FIX_MAX", DEFAULT_FIX_MAX)),
+            fix_timeout=int(os.environ.get(
+                "UNIVERSE_AGENT_FIX_TIMEOUT", DEFAULT_FIX_TIMEOUT)),
             gh_bin=os.environ.get("GH_BIN", "gh"),
             git_bin=os.environ.get("GIT_BIN", "git"),
             opencode_bin=os.environ.get("OPENCODE_BIN", "opencode"),
@@ -532,7 +542,7 @@ class Runner:
             if not result.ok:
                 raise TaskError("エージェントが異常終了しました (exit=%s)" % result.code)
 
-            self._commit_leftovers(worktree, number)
+            self._commit_leftovers(worktree, "Issue #%d" % number)
             count = self.git("rev-list", "--count", "%s..HEAD" % base_sha,
                              cwd=worktree, timeout=60)
             try:
@@ -711,7 +721,7 @@ class Runner:
         ])
 
     def _run_agent(self, prompt: str, worktree: Path, issue_log: Path,
-                   verbose: bool) -> Result:
+                   verbose: bool, timeout: Optional[int] = None) -> Result:
         argv = [
             self.cfg.opencode_bin, "run",
             "--agent", self.cfg.agent,
@@ -721,7 +731,8 @@ class Runner:
             "--title", "universe-agent-%d" % int(time.time()),
             prompt,
         ]
-        self.log("agent を開始します (model=%s, timeout=%ss)" % (self.cfg.model, self.cfg.timeout))
+        limit = timeout or self.cfg.timeout
+        self.log("agent を開始します (model=%s, timeout=%ss)" % (self.cfg.model, limit))
         self._append_log(issue_log, "$ opencode run --agent %s --model %s\n" %
                          (self.cfg.agent, self.cfg.model))
         identity = {
@@ -730,7 +741,7 @@ class Runner:
             "GIT_COMMITTER_NAME": "takuto277",
             "GIT_COMMITTER_EMAIL": "takuto277@users.noreply.github.com",
         }
-        result = self.cmd.run(argv, cwd=str(worktree), timeout=self.cfg.timeout,
+        result = self.cmd.run(argv, cwd=str(worktree), timeout=limit,
                               env=identity)
         self._append_log(issue_log, (result.stdout or "") + (result.stderr or ""))
         self.log("agent が終了しました (exit=%s, timeout=%s)" % (result.code, result.timed_out))
@@ -738,7 +749,7 @@ class Runner:
             self.log(tail(result.stderr, 400))
         return result
 
-    def _commit_leftovers(self, worktree: Path, number: int) -> None:
+    def _commit_leftovers(self, worktree: Path, ref: str) -> None:
         status = self.git("status", "--porcelain", cwd=worktree, timeout=60)
         if not status.ok:
             raise TaskError("git status に失敗しました: %s" % tail(status.stderr, 400))
@@ -749,7 +760,7 @@ class Runner:
             raise TaskError("git add に失敗しました: %s" % tail(added.stderr, 400))
         commit = self.git("-c", "user.name=takuto277",
                           "-c", "user.email=takuto277@users.noreply.github.com",
-                          "commit", "-m", "repo: Issue #%d の残りの変更をコミット" % number,
+                          "commit", "-m", "repo: %s の残りの変更をコミット" % ref,
                           cwd=worktree, timeout=120)
         if not commit.ok:
             raise TaskError("残りの変更をコミットできませんでした: %s" %
@@ -803,6 +814,217 @@ class Runner:
                 fh.write(text if text.endswith("\n") else text + "\n")
         except OSError:
             pass
+
+    # ---- レビュー指摘の自動修正 ----
+    def latest_blocker_review(self, number: int, head: str) -> Optional[dict]:
+        result = self.gh("pr", "view", str(number), "--repo", self.cfg.repo,
+                         "--json", "reviews")
+        if not result.ok:
+            raise TaskError("PR のレビュー取得に失敗しました: %s" % tail(result.stderr))
+        try:
+            data = json.loads(result.stdout or "{}")
+        except ValueError as exc:
+            raise TaskError("PR レビューの JSON を解釈できません: %s" % exc)
+        for review in reversed(data.get("reviews") or []):
+            body = review.get("body") or ""
+            match = REVIEW_MARKER_RE.search(body)
+            if not match:
+                continue
+            try:
+                marker = json.loads(match.group(1))
+            except ValueError:
+                continue
+            marker_head = str(marker.get("head") or "")
+            if not marker_head or not (head == marker_head or head.startswith(marker_head) or
+                                       marker_head.startswith(head)):
+                continue
+            blockers = int(marker.get("blockers") or 0)
+            if blockers <= 0:
+                continue
+            findings = REVIEW_MARKER_RE.sub("", body).strip()
+            return {"blockers": blockers, "body": findings}
+        return None
+
+    def comment_pr(self, number: int, body: str) -> None:
+        result = self.gh("pr", "comment", str(number), "--repo", self.cfg.repo,
+                         "--body", body)
+        if not result.ok:
+            self.log("PR #%s のコメントに失敗: %s" % (number, tail(result.stderr, 400)))
+
+    def _fix_attempts_path(self, number: int) -> Path:
+        return self.cfg.state_dir / "fix" / ("pr-%d.json" % number)
+
+    def _read_fix_attempts(self, number: int) -> int:
+        try:
+            data = json.loads(self._fix_attempts_path(number).read_text(encoding="utf-8"))
+            return int(data.get("attempts") or 0)
+        except (OSError, ValueError, TypeError):
+            return 0
+
+    def _bump_fix_attempts(self, number: int) -> None:
+        path = self._fix_attempts_path(number)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        attempts = self._read_fix_attempts(number) + 1
+        path.write_text(json.dumps({"attempts": attempts, "updated": int(time.time())}),
+                        encoding="utf-8")
+
+    def _prepare_fix_worktree(self, worktree: Path, number: int, head: str) -> str:
+        if worktree.exists():
+            self.git("worktree", "remove", "--force", str(worktree))
+        self.git("worktree", "prune")
+        shutil.rmtree(worktree, ignore_errors=True)
+        fetched = self.git("fetch", "origin", self.cfg.base, timeout=180)
+        if not fetched.ok:
+            raise TaskError("origin/%s の取得に失敗しました" % self.cfg.base)
+        pr_fetch = self.git("fetch", "origin", "pull/%d/head" % number, timeout=180)
+        if not pr_fetch.ok:
+            raise TaskError("PR #%d の head を取得できませんでした" % number)
+        head_sha = (self.git("rev-parse", "FETCH_HEAD", timeout=60).stdout or "").strip()
+        if not head_sha:
+            raise TaskError("PR #%d の head SHA を取得できませんでした" % number)
+        if head and head_sha != head:
+            raise TaskError("PR #%d の head が確認中に変わりました" % number)
+        base = self.git("merge-base", "origin/%s" % self.cfg.base, head_sha, timeout=60)
+        base_sha = (base.stdout or "").strip()
+        if not base.ok or not base_sha:
+            raise TaskError("PR #%d の merge-base を取得できませんでした" % number)
+        worktree.parent.mkdir(parents=True, exist_ok=True)
+        added = self.git("worktree", "add", "--detach", str(worktree), head_sha, timeout=180)
+        if not added.ok:
+            raise TaskError("修正用 worktree の作成に失敗しました: %s" % tail(added.stderr, 600))
+        return base_sha
+
+    def build_fix_prompt(self, number: int, title: str, review: dict) -> str:
+        return "\n".join([
+            "あなたは universe リポジトリの無人修正エージェント(builder)です。",
+            "PR #%d「%s」の最新レビューで Blocker が %d 件指摘されました。修正してください。" %
+            (number, title, review.get("blockers", 0)),
+            "",
+            "--- レビュー指摘 ---",
+            tail(review.get("body") or "", 8000),
+            "---",
+            "",
+            "作業ルール:",
+            "- カレントディレクトリは PR head の専用 worktree。ここだけを編集する",
+            "- 指摘された Blocker の修正に集中し、無関係な変更をしない",
+            "- tools/ と .github/workflows/ は変更しない(保護対象。必要なら修正せず理由を報告する)",
+            "- ./tools/verify.sh を通す。失敗したら原因を直す",
+            "- 変更をコミットする: git commit -m \"repo: レビュー指摘を修正 ...\""
+            " (user.name / user.email は runner が環境変数で設定済み)",
+            "- push、PR 作成、マージはしない(runner が行う)",
+            "- 最後に、直した点とテスト結果を短くまとめる",
+        ])
+
+    def fix(self, number: int, dry_run: bool = False) -> int:
+        if self.paused():
+            self.log("pause 中のため修正しません")
+            return 2
+        result = self.gh("pr", "view", str(number), "--repo", self.cfg.repo,
+                         "--json", "number,title,state,isDraft,headRefName,headRefOid,baseRefName,url")
+        if not result.ok:
+            raise TaskError("PR #%d を取得できません: %s" % (number, tail(result.stderr)))
+        try:
+            data = json.loads(result.stdout or "{}")
+        except ValueError as exc:
+            raise TaskError("PR の JSON を解釈できません: %s" % exc)
+        if (data.get("state") or "").upper() != "OPEN":
+            self.log("PR #%d は open ではありません" % number)
+            return 1
+        if data.get("isDraft"):
+            self.log("PR #%d は Draft です" % number)
+            return 1
+        if (data.get("baseRefName") or "") != self.cfg.base:
+            self.log("PR #%d の base が %s ではありません" % (number, self.cfg.base))
+            return 1
+        head_ref = data.get("headRefName") or ""
+        head = data.get("headRefOid") or ""
+        if not head_ref or head_ref == self.cfg.base:
+            raise TaskError("修正対象の head ブランチが不正です")
+        review = self.latest_blocker_review(number, head)
+        if not review:
+            self.log("PR #%d: 現在の head に Blocker レビューがありません" % number)
+            return 1
+        attempts = self._read_fix_attempts(number)
+        if attempts >= self.cfg.fix_max:
+            exhausted = self.cfg.state_dir / "fix" / ("pr-%d.exhausted" % number)
+            if not exhausted.exists():
+                exhausted.parent.mkdir(parents=True, exist_ok=True)
+                exhausted.write_text(str(attempts), encoding="utf-8")
+                self.notify("PR #%d の自動修正が上限に達しました" % number)
+            self.log("PR #%d: 自動修正の上限(%d)に達しています" % (number, self.cfg.fix_max))
+            return 2
+        if dry_run:
+            self.log("dry-run: PR #%d の Blocker %d件を修正します" %
+                     (number, review.get("blockers", 0)))
+            return 0
+
+        self.ensure_labels()
+        self._bump_fix_attempts(number)
+        worktree = self.cfg.state_dir / "worktrees" / ("pr-%d-fix" % number)
+        fix_log = self.cfg.state_dir / "logs" / ("fix-pr-%d-%d.log" %
+                                                 (number, int(time.time())))
+        started = time.time()
+        try:
+            base_sha = self._prepare_fix_worktree(worktree, number, head)
+            prompt = self.build_fix_prompt(number, data.get("title") or "", review)
+            agent = self._run_agent(prompt, worktree, fix_log, False,
+                                    timeout=self.cfg.fix_timeout)
+            if agent.timed_out:
+                raise TaskError("修正エージェントがタイムアウトしました (%ss)" % self.cfg.fix_timeout)
+            if not agent.ok:
+                raise TaskError("修正エージェントが異常終了しました (exit=%s)" % agent.code)
+
+            self._commit_leftovers(worktree, "PR #%d" % number)
+            changed = self._assert_tools_untouched(worktree, base_sha)
+            verify = self.cmd.run(["bash", str(worktree / "tools" / "verify.sh")],
+                                  cwd=str(worktree), timeout=self.cfg.verify_timeout)
+            self._append_log(fix_log, "\n$ ./tools/verify.sh\n" +
+                             (verify.stdout or "") + (verify.stderr or ""))
+            if verify.timed_out:
+                raise TaskError("verify.sh がタイムアウトしました (%ss)" % self.cfg.verify_timeout)
+            if not verify.ok:
+                raise TaskError("./tools/verify.sh が失敗しました。詳細は実行ログを確認してください")
+            self._assert_worktree_clean(worktree)
+            self._assert_tools_untouched(worktree, base_sha)
+            if self.paused():
+                raise TaskError("pause されたため push 前に中断しました")
+
+            push = self.git("push", "origin", "HEAD:%s" % head_ref, cwd=worktree, timeout=180)
+            if not push.ok:
+                raise TaskError("push に失敗しました: %s" % tail(push.stderr, 600))
+            short = (self.git("rev-parse", "--short", "HEAD", cwd=worktree).stdout or "").strip()
+            self.comment_pr(
+                number,
+                "レビューの Blocker を自動修正しました (head `%s`, %d files)。最新 head で再レビューします。" %
+                (short, len(changed)),
+            )
+            self.gh("pr", "edit", str(number), "--repo", self.cfg.repo,
+                    "--add-label", "agent-autofix")
+            self.record_history({"kind": "fix", "pr_number": number, "result": "success",
+                                 "duration": round(time.time() - started, 1),
+                                 "model": self.cfg.model, "changed": len(changed),
+                                 "pr": data.get("url")})
+            self.notify("PR #%d のBlockerを自動修正しました" % number)
+            self.log("PR #%d: Blockerを自動修正しました (head %s)" % (number, short))
+            return 0
+        except TaskError as exc:
+            self._fail_fix(number, fix_log, str(exc), started)
+            return 1
+        except Exception as exc:  # noqa: BLE001 - watcher を落とさないため
+            self._fail_fix(number, fix_log, "予期しないエラー: %s" % exc, started)
+            return 1
+        finally:
+            self._cleanup_worktree(worktree)
+
+    def _fail_fix(self, number: int, fix_log: Path, reason: str, started: float) -> None:
+        self.log("PR #%d: 自動修正に失敗 - %s" % (number, reason))
+        self._append_log(fix_log, "\nFAILED: " + reason + "\n")
+        self.record_history({"kind": "fix", "pr_number": number, "result": "failed",
+                             "duration": round(time.time() - started, 1),
+                             "model": self.cfg.model, "reason": tail(reason, 300)})
+        self.notify("PR #%d の自動修正に失敗しました" % number)
+        self.comment_pr(number, "自動修正に失敗しました。\n\n```\n%s\n```\n\nログ: `%s`" %
+                       (tail(reason, 800), fix_log))
 
     def cleanup_old_files(self) -> None:
         cutoff = time.time() - LOG_RETENTION_DAYS * 86400
@@ -973,7 +1195,12 @@ class Runner:
             print("recent runs:")
             for item in recent:
                 clock = (item.get("ts") or "")[11:16]
-                target = "#%s" % item["issue"] if item.get("issue") else item.get("kind", "-")
+                if item.get("issue"):
+                    target = "#%s" % item["issue"]
+                elif item.get("pr_number"):
+                    target = "PR#%s" % item["pr_number"]
+                else:
+                    target = item.get("kind", "-")
                 duration = item.get("duration")
                 duration_text = ("%ss" % duration) if duration is not None else "-"
                 model = str(item.get("model") or "-").split("/")[-1]
@@ -1024,6 +1251,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     promote = sub.add_parser("promote", help="提案 Issue を実装キューへ移す")
     promote.add_argument("number", type=int)
 
+    fixp = sub.add_parser("fix", help="PR の Blocker を自動修正する")
+    fixp.add_argument("--pr", type=int, required=True)
+    fixp.add_argument("--dry-run", action="store_true")
+
     propose = sub.add_parser("propose", help="改善提案 Issue を作る")
     propose.add_argument("--dry-run", action="store_true")
 
@@ -1040,6 +1271,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
   ./tools/agent.sh status                                状態確認
   ./tools/agent.sh pause / resume                        停止 / 再開
   ./tools/agent.sh run --dry-run                         次の対象を確認
+  ./tools/agent.sh fix --pr <番号>                       PRのBlockerを自動修正
 
 詳しい説明: docs/unattended-agents.md
 すべてのオプション: ./tools/agent.sh --help""")
@@ -1065,6 +1297,25 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 return 1
             except Exception as exc:  # noqa: BLE001 - LaunchAgent を落とさないため
                 runner.log("予期しないエラーで中止しました: %s" % exc)
+                return 1
+        finally:
+            lock.release()
+    if args.command == "fix":
+        lock = Lock(cfg.state_dir)
+        if not lock.acquire():
+            if lock.error:
+                runner.log("ロックを取得できません: %s" % lock.error)
+                return 1
+            runner.log("別の実行が進行中のためスキップします")
+            return 2
+        try:
+            try:
+                return runner.fix(args.pr, dry_run=args.dry_run)
+            except TaskError as exc:
+                runner.log("自動修正を中止しました: %s" % exc)
+                return 1
+            except Exception as exc:  # noqa: BLE001 - watcher を落とさないため
+                runner.log("自動修正で予期しないエラー: %s" % exc)
                 return 1
         finally:
             lock.release()

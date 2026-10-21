@@ -9,7 +9,7 @@ PR を Ready にするだけで、レビューとマージまで自動で進め�
 1. 自分が作成した open かつ非 Draft の PR を `main` 向けに探す
 2. 最新 head のレビューがなければ `opencode run --command pr-review` で AI レビューを投稿する
 3. Blocker が 0 で五点ゲートが通れば、`tools/pr_merge.py` で squash merge する
-4. Blocker があれば通知して止める。自動修正はしない
+4. Blocker があれば `tools/agent_runner.py fix` で自動修正を試み、同じ PR に push して再レビューする。上限に達したら通知して止める
 5. CI 待ちや一時的な失敗は次回以降に再試行する
 
 対象外:
@@ -48,6 +48,17 @@ PR 単位で止める:
 
 - PR を Draft に戻す（マージ直前の再確認で止まります。再確認を通過した後の Draft 化は、現在のマージを止められません）
 - `ai-pause` ラベルまたは `do-not-merge` ラベルを付ける
+
+## Blocker の自動修正
+
+Blocker が出た PR は、`builder` がレビュー指摘を読んで修正し、同じ head ブランチへ push します。以後は通常どおり再レビューされ、Blocker 0 になれば五点ゲートでマージされます（自動修正がマージすることはありません）。
+
+- 1 PR あたり最大 `UNIVERSE_AGENT_FIX_MAX`（既定3）回。上限後は通知して停止します
+- 失敗した head は60分クールダウンし、同じ失敗を繰り返しません
+- `tools/` と `.github/workflows/` を変更する必要がある指摘は自動修正できません（保護対象）。通知して人の対応に回します
+- `UNIVERSE_AUTO_PR_AUTOFIX=0` で無効化できます（LaunchAgent の plist に反映するには再インストール）
+- pause / Draft / `ai-pause` / `do-not-merge` は従来どおり尊重します
+- 実行履歴と通知は `tools/agent_runner.py` 側に残ります
 
 ## ログ
 
@@ -88,3 +99,4 @@ LaunchAgent の plist に反映されるもの:
 - `UNIVERSE_AUTO_PR_GATE_WAIT`: ゲートが checks を待つ秒数。既定は `90`
 - `UNIVERSE_AUTO_PR_TIMEOUT`: AI レビューの上限秒数。既定は `1800`
 - `UNIVERSE_AUTO_PR_LOCK_STALE`: ロックを回収するまでの秒数。既定は `7200`
+- `UNIVERSE_AUTO_PR_AUTOFIX`: Blocker の自動修正。既定は `1`（`0` で無効）

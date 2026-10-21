@@ -317,6 +317,39 @@ merge_pr() {
   return 0
 }
 
+autofix() {
+  local number="$1"
+  local head="$2"
+  if [ "${UNIVERSE_AUTO_PR_AUTOFIX:-1}" != "1" ]; then
+    return 1
+  fi
+  local failed="$STATE_DIR/${number}-${head}.autofix-failed"
+  if recent "$failed" 60; then
+    log "PR #$number: autofix failed recently; skip"
+    return 1
+  fi
+  log "PR #$number: attempting automatic fix for blockers"
+  if [ "$DRY_RUN" = "1" ]; then
+    log "PR #$number: would run automatic fix"
+    return 0
+  fi
+  local rc=0
+  "$PYTHON" "$ROOT/tools/agent_runner.py" fix --pr "$number" >>"$LOG_FILE" 2>&1 || rc=$?
+  if [ "$rc" = "0" ]; then
+    log "PR #$number: autofix completed; re-review next cycle"
+    notify "PR #$number のBlockerを自動修正しました"
+    return 0
+  fi
+  if [ "$rc" = "2" ]; then
+    log "PR #$number: autofix skipped (paused, busy, or attempt limit)"
+    return 0
+  fi
+  mark "$failed"
+  log "PR #$number: autofix failed"
+  notify "PR #$number の自動修正に失敗しました"
+  return 1
+}
+
 prs="$("$GH" pr list \
   --repo "$REPO" \
   --state open \
@@ -367,6 +400,9 @@ while IFS=$'\t' read -r number head; do
   fi
 
   if is_positive_integer "$GATE_BLOCKERS"; then
+    if autofix "$number" "$head"; then
+      continue
+    fi
     blocked="$STATE_DIR/${number}-${head}.blocked"
     if [ ! -f "$blocked" ] || [ "$FORCE" = "1" ]; then
       mark "$blocked"
@@ -403,6 +439,9 @@ while IFS=$'\t' read -r number head; do
       continue
     fi
     if is_positive_integer "$GATE_BLOCKERS"; then
+      if autofix "$number" "$head"; then
+        continue
+      fi
       blocked="$STATE_DIR/${number}-${head}.blocked"
       mark "$blocked"
       log "PR #$number: $GATE_BLOCKERS blocker(s); waiting for a fix"

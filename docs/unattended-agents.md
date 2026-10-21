@@ -121,6 +121,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
 - **タイムアウト**: エージェント既定 2700 秒、verify 600 秒。超えたらプロセスグループごと終了する
 - **失敗時**: `agent:failed` とコメント(理由・ログパス)を残し、worktree を片付ける。自動リトライはしない
+- **レビュー指摘の自動修正**: `fix --pr` は PR head の worktree で Blocker だけを直し、verify 後に同じ head ブランチへ push する。マージはせず、必ず再レビューを受ける。`tools/` と CI の変更が必要な指摘は対象外
 - **提案の既定**: `agent:proposed` で止め、人間の `promote` を待つ
 - **入力の信頼**: Issue 本文はそのまま builder への指示になる。`agent:ready` を付けられるのは書き込み権限を持つ人だけなので、第三者が勝手にキューへ入れることはできない
 - **単一ホスト前提**: ロックはローカルの state dir 単位。複数ホストや state dir を分けた同時実行は想定しない
@@ -142,6 +143,8 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 | `UNIVERSE_AGENT_AUTO_READY_PROPOSALS` | `0` | 提案をそのまま実装キューへ入れる |
 | `UNIVERSE_AGENT_KEEP_WORKTREE` | `0` | 失敗調査用に worktree を残す |
 | `UNIVERSE_AGENT_NOTIFY` | `1` | macOS 通知の on/off |
+| `UNIVERSE_AGENT_FIX_MAX` | `3` | 1 PR あたりの自動修正回数の上限 |
+| `UNIVERSE_AGENT_FIX_TIMEOUT` | `1500` | 自動修正エージェントの上限秒数 |
 | `UNIVERSE_AGENT_STALL_MINUTES` | `90` | `agent:running` のまま通知するまでの分数(0で無効) |
 | `UNIVERSE_AGENT_DISABLE` | `0` | `1` で実行を止める(pause と同じ) |
 | `UNIVERSE_AGENT_BRANCH_PREFIX` | `agent/` | ブランチ接頭辞 |
