@@ -136,6 +136,71 @@
       }
     }
 
+    function drawAllies(state, time) {
+      if (!state || !state.allies) return;
+      for (var i = 0; i < state.allies.length; i++) {
+        var ally = state.allies[i];
+        var color = C.ITEM_INFO.graph.color;
+        var alpha = Math.min(1, ally.life / 1.2);
+        ctx.save();
+        ctx.globalAlpha = 0.35 + alpha * 0.5;
+        ctx.beginPath();
+        for (var x = ally.x0; x <= ally.x1; x += 18) {
+          var y = E.allyY(ally, x);
+          if (x === ally.x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
+        }
+        ctx.shadowColor = color;
+        ctx.shadowBlur = 16;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 3.2;
+        ctx.stroke();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+        ctx.lineWidth = 1;
+        ctx.stroke();
+        ctx.restore();
+
+        ctx.save();
+        ctx.globalAlpha = 0.85;
+        ctx.fillStyle = color;
+        ctx.font = '900 10px ui-monospace, Menlo, monospace';
+        ctx.fillText('ALLY GRAPH', ally.x0 + 10, E.allyY(ally, ally.x0) - 10);
+        ctx.restore();
+      }
+    }
+
+    function drawItems(state, time) {
+      if (!state || !state.items) return;
+      for (var i = 0; i < state.items.length; i++) {
+        var item = state.items[i];
+        var info = C.ITEM_INFO[item.type] || C.ITEM_INFO.score;
+        ctx.save();
+        ctx.translate(item.x, item.y);
+        ctx.globalAlpha = 0.9;
+        ctx.shadowColor = info.color;
+        ctx.shadowBlur = 16;
+        ctx.fillStyle = info.color;
+        ctx.beginPath();
+        ctx.moveTo(0, -item.r);
+        ctx.lineTo(item.r, 0);
+        ctx.lineTo(0, item.r);
+        ctx.lineTo(-item.r, 0);
+        ctx.closePath();
+        ctx.fill();
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.rotate(-(time * 1.4 + item.phase));
+        ctx.fillStyle = '#0b1220';
+        ctx.font = '900 10px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText(info.short, 0, 1);
+        ctx.restore();
+      }
+    }
+
     function drawBoss(state, time) {
       if (!state || !state.boss) return;
       var boss = state.boss;
@@ -304,8 +369,10 @@
       }
       drawGrid(state, time);
       drawRivals(state, time);
+      drawAllies(state, time);
       drawBoss(state, time);
       drawPlayer(state, time);
+      drawItems(state, time);
       drawEffects(effects);
       var flash = effects.flash || 0;
       if (flash > 0) {

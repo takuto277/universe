@@ -109,11 +109,35 @@
         if (ev.type === 'bossHit') {
           addLabel(ev.x, ev.y - 100, 'BOSS -' + ev.damage, '#ff9f6b', 18);
         }
+        if (ev.multi > 1) {
+          addLabel(ev.x, ev.y - 122, 'MULTI x' + ev.multi, '#ffd166', 18);
+          addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.75)', 140, 0.55);
+          if (audio) audio.play('multi', ev.multi);
+        }
         if (ev.heal) {
           addLabel(ev.x, ev.y + 52, 'LIFE +1', '#57e08a', 14);
           addRing(ev.x, ev.y, 'rgba(87, 224, 138, 0.8)', 60, 0.5);
           if (audio) audio.play('heal');
         }
+      } else if (ev.type === 'itemPickup') {
+        var itemInfo = C.ITEM_INFO[ev.itemType] || C.ITEM_INFO.score;
+        spawnParticles(ev.x, ev.y, 22, [itemInfo.color, '#ffffff'], 220, 0.7);
+        addRing(ev.x, ev.y, itemInfo.color, 58, 0.45);
+        addLabel(ev.x - 30, ev.y - 22, itemInfo.label, itemInfo.color, 18);
+        if (audio) audio.play('item');
+      } else if (ev.type === 'allySpawn') {
+        spawnParticles(ev.x, ev.y, 30, [C.ITEM_INFO.graph.color, '#ffffff'], 260, 0.8);
+        addRing(ev.x, ev.y, C.ITEM_INFO.graph.color, 100, 0.6);
+        addLabel(ev.x - 50, ev.y - 28, 'ALLY GRAPH', C.ITEM_INFO.graph.color, 22);
+        if (audio) audio.play('ally');
+      } else if (ev.type === 'allyHit') {
+        spawnParticles(ev.x, ev.y, 16, [C.ITEM_INFO.graph.color, '#ffd166'], 200, 0.55);
+        addLabel(ev.x - 12, ev.y - 20, '+' + ev.gain, '#9ffaff', 14);
+        if (audio) audio.play('ally');
+      } else if (ev.type === 'allyBossHit') {
+        spawnParticles(ev.x, ev.y, 20, [C.ITEM_INFO.graph.color, '#ffffff'], 220, 0.6);
+        addLabel(ev.x - 20, ev.y - 48, 'ALLY -1', C.ITEM_INFO.graph.color, 15);
+        if (audio) audio.play('ally');
       } else if (ev.type === 'bossSpawn') {
         spawnParticles(ev.x, ev.y, 32, ['#ff4d8d', '#ffd166', '#ffffff'], 280, 0.9);
         addRing(ev.x, ev.y, 'rgba(255, 77, 141, 0.95)', 90, 0.6);

@@ -162,6 +162,17 @@
       tone(659, now + 0.1, 0.13, 'square', 0.10, sfxGain);
       tone(784, now + 0.2, 0.16, 'triangle', 0.11, sfxGain);
       tone(1046, now + 0.34, 0.4, 'sine', 0.10, sfxGain);
+    } else if (name === 'item') {
+      tone(880, now, 0.08, 'triangle', 0.10, sfxGain);
+      tone(1174, now + 0.06, 0.12, 'sine', 0.09, sfxGain);
+    } else if (name === 'ally') {
+      tone(523, now, 0.08, 'triangle', 0.08, sfxGain);
+      tone(659, now + 0.05, 0.10, 'triangle', 0.08, sfxGain);
+      tone(784, now + 0.10, 0.16, 'sine', 0.08, sfxGain);
+    } else if (name === 'multi') {
+      var n = Math.max(2, Math.min(5, a || 2));
+      tone(700 + n * 80, now, 0.07, 'square', 0.09, sfxGain);
+      tone(900 + n * 90, now + 0.05, 0.12, 'sine', 0.09, sfxGain);
     } else if (name === 'weak') {
       tone(1046, now, 0.09, 'sine', 0.11, sfxGain);
       tone(1318, now + 0.055, 0.12, 'sine', 0.10, sfxGain);

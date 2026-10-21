@@ -338,6 +338,69 @@ assert(g.upgrades.life === 1 && g.upgrades.slot === 1, '取得強化の記録');
 assert(E.snapshot(g).maxHp === 4 && E.snapshot(g).hitBonus === 2, '強化がスナップショットに反映');
 assert(E.applyUpgrade(g, 'unknown') === false, '不明な強化は無効');
 
+/* 9d2) マルチクロス */
+g = makeGame(905, ['hold', 'up', 'wave']);
+g.rivals = [];
+g.coinList = [];
+g.items = [];
+g.itemTimer = 999;
+g.trail = [{ x: g.headX - 5, y: g.y, mode: 'hold' }, { x: g.headX, y: g.y, mode: 'hold' }];
+g.rivals.push(lineRival(g.headX - 100, g.y, 200));
+E.update(g, 1 / 60);
+var firstHit = E.consumeEvents(g).filter(function (e) { return e.type === 'hit'; })[0];
+g.rivals.push(lineRival(g.headX - 100, g.y, 200));
+g.trail = [{ x: g.headX - 5, y: g.y, mode: 'hold' }, { x: g.headX, y: g.y, mode: 'hold' }];
+E.update(g, 1 / 60);
+var secondHit = E.consumeEvents(g).filter(function (e) { return e.type === 'hit'; })[0];
+assert(firstHit && secondHit, 'マルチクロスのヒットが起きる');
+assert(secondHit.multi >= 2 && secondHit.multiMult > 1, '連続交差でマルチ倍率');
+assert(secondHit.gain > firstHit.gain, 'マルチで得点アップ');
+for (i = 0; i < 40; i++) { g.rivals = []; E.update(g, 1 / 60); }
+assert(g.multi === 0, '時間切れでマルチ終了');
+
+/* 9d3) アイテムと追加グラフ */
+g = makeGame(906, ['hold', 'up', 'wave']);
+g.rivals = [];
+g.items = [];
+g.itemTimer = 999;
+g.trail = [{ x: g.headX, y: g.y, mode: 'hold' }];
+g.items.push({ x: g.headX, y: g.y, type: 'graph', r: 12, phase: 0 });
+E.update(g, 1 / 60);
+assert(g.items.length === 0 && g.allies.length === 1, '非対称グラフのアイテムで追加グラフ');
+var itemEvents = E.consumeEvents(g);
+assert(itemEvents.some(function (e) { return e.type === 'itemPickup'; }), 'itemPickupイベント');
+assert(itemEvents.some(function (e) { return e.type === 'allySpawn'; }), 'allySpawnイベント');
+
+g.hp = 2;
+g.items = [{ x: g.headX, y: g.y, type: 'life', r: 12, phase: 0 }];
+g.itemTimer = 999;
+g.trail = [{ x: g.headX, y: g.y, mode: 'hold' }];
+E.update(g, 1 / 60);
+assert(g.hp === 3, 'ライフアイテムで回復');
+
+g.items = [{ x: g.headX, y: g.y, type: 'score', r: 12, phase: 0 }];
+g.itemTimer = 999;
+g.trail = [{ x: g.headX, y: g.y, mode: 'hold' }];
+var scoreBeforeItem = g.score;
+E.update(g, 1 / 60);
+assert(g.score >= scoreBeforeItem + 500, 'スコアアイテム');
+
+/* 9d4) 追加グラフが敵を交差する */
+g = makeGame(907, ['hold', 'up', 'wave']);
+g.rivals = [];
+g.items = [];
+g.itemTimer = 999;
+g.y = g.top + 30;
+g.allies = [{
+  x0: 0, x1: g.width, baseY: (g.top + g.bottom) / 2,
+  amp: 0, freq: 1, phase: 0, slope: 0,
+  life: 9, maxLife: 9, cooldown: 0
+}];
+g.rivals.push(lineRival(g.headX - 100, (g.top + g.bottom) / 2, 200));
+E.update(g, 1 / 60);
+assert(g.rivals.length === 0, '追加グラフが通常敵を迎撃する');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'allyHit'; }), 'allyHitイベント');
+
 /* 9e) デッキの強制ローテーション */
 g = makeGame(903, ['hold', 'up', 'wave']);
 var deckBefore = g.deck.slice();
