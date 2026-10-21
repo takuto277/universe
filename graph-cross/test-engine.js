@@ -6,6 +6,8 @@ var E;
 try {
   E = require('./engine.js');
 } catch (e) {
+  load('content.js');
+  load('balance.js');
   load('engine.js');
   E = GraphCrossEngine;
 }

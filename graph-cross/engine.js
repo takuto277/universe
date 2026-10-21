@@ -18,54 +18,36 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  var MAX_HP = 3;
-  var BASE_SPEED = 220;
-  var MAX_SPEED = 380;
-  var SPEED_RAMP = 2.2;
-  var RAMP_TIME = 50;
-  var PLAYER_HALF = 12;
-  var HIT_DIST = 15;
-  var COMBO_WINDOW = 2.6;
-  var MAX_PLAYER_VY = 1600;
-  var HEAL_COMBO = 5;
-  var MAX_DT = 0.05;
-  var MAX_EVENTS = 120;
+  var C = (typeof module !== 'undefined' && module.exports)
+    ? require('./content.js')
+    : (typeof GraphContent !== 'undefined' ? GraphContent : null);
+  var B = (typeof module !== 'undefined' && module.exports)
+    ? require('./balance.js')
+    : (typeof GraphBalance !== 'undefined' ? GraphBalance : null);
+  if (!C || !B) throw new Error('graph-cross: content.js / balance.js が必要です');
 
-  var MODES = {
-    hold: { key: 'hold', label: 'y = 0', note: 'キープ', color: '#a8bad8', family: 'none' },
-    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', color: '#5ff0ff', family: 'linear' },
-    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', color: '#7ea9ff', family: 'linear' },
-    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', color: '#57e08a', family: 'linear' },
-    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', color: '#ff9f6b', family: 'linear' },
-    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', color: '#ffd166', family: 'quad' },
-    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', color: '#ff6b8a', family: 'quad' },
-    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', color: '#ff7ad9', family: 'wave' }
-  };
-  var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave'];
-  var DEFAULT_DECK = ['hold', 'up', 'down'];
-  var DECK_SIZE = 3;
-  var FAMILY_LABELS = { linear: '直線', quad: '累乗', wave: '波', none: '—' };
+  var MAX_HP = B.MAX_HP;
+  var BASE_SPEED = B.BASE_SPEED;
+  var MAX_SPEED = B.MAX_SPEED;
+  var SPEED_RAMP = B.SPEED_RAMP;
+  var RAMP_TIME = B.RAMP_TIME;
+  var PLAYER_HALF = B.PLAYER_HALF;
+  var HIT_DIST = B.HIT_DIST;
+  var COMBO_WINDOW = B.COMBO_WINDOW;
+  var MAX_PLAYER_VY = B.MAX_PLAYER_VY;
+  var HEAL_COMBO = B.HEAL_COMBO;
+  var MAX_DT = B.MAX_DT;
+  var MAX_EVENTS = B.MAX_EVENTS;
+  var WAVE_AMPLITUDE = B.WAVE_AMPLITUDE;
+
+  var MODES = C.MODES;
+  var MODE_KEYS = C.MODE_KEYS;
+  var DEFAULT_DECK = C.DEFAULT_DECK;
+  var DECK_SIZE = C.DECK_SIZE;
+  var FAMILY_LABELS = C.FAMILY_LABELS;
+  var PARAM_SPECS = C.PARAM_SPECS;
+  var WAVE_SHAPES = C.WAVE_SHAPES;
   var BOSS_FAMILIES = ['linear', 'quad', 'wave'];
-  var WAVE_SHAPES = ['sin', 'cos', 'tri', 'soft', 'damp'];
-  var WAVE_AMPLITUDE = 68;
-  var PARAM_SPECS = {
-    quad: {
-      a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
-      b: { min: -1.5, max: 1.5, step: 0.1, default: 0 },
-      p: { min: 2, max: 4, step: 1, default: 2 }
-    },
-    quadDown: {
-      a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
-      b: { min: -1.5, max: 1.5, step: 0.1, default: 0 },
-      p: { min: 2, max: 4, step: 1, default: 2 }
-    },
-    wave: {
-      a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
-      b: { min: 0.5, max: 2.5, step: 0.25, default: 1 },
-      c: { min: -3, max: 3, step: 0.2, default: 0 },
-      shape: { min: 0, max: 4, step: 1, default: 0 }
-    }
-  };
 
   function snapToSpec(value, spec) {
     var v = clamp(value, spec.min, spec.max);
@@ -388,7 +370,7 @@
   }
 
   function stageTargetFor(stage) {
-    return 6 + stage * 2;
+    return B.STAGE_TARGET_BASE + stage * B.STAGE_TARGET_PER_STAGE;
   }
 
   function bossShapeFor(family, stage) {
@@ -415,7 +397,7 @@
     var familyIndex = (state.stage - 1) % BOSS_FAMILIES.length;
     var family = BOSS_FAMILIES[familyIndex];
     var centerY = (state.top + state.bottom) / 2;
-    var hp = Math.max(4, 7 + state.stage * 3 - (state.bossHpReduction || 0));
+    var hp = Math.max(B.BOSS_MIN_HP, B.BOSS_BASE_HP + state.stage * B.BOSS_HP_PER_STAGE - (state.bossHpReduction || 0));
     var boss = {
       x: state.width + 80,
       len: 500 + state.stage * 30,
@@ -451,7 +433,7 @@
   }
 
   function clearStage(state, boss, hitX, hitY) {
-    var bonus = Math.round(1000 * state.stage * (state.scoreMult || 1));
+    var bonus = Math.round(B.STAGE_CLEAR_SCORE * state.stage * (state.scoreMult || 1));
     state.stageCleared = true;
     state.stageClearBonus = bonus;
     state.score += bonus;
@@ -483,20 +465,8 @@
       var by = rivalY(boss, local);
       if (Math.abs(p.y - by) > HIT_DIST + 2 + (state.hitBonus || 0)) continue;
 
-      var prev = trail[ti - 1] || trail[ti + 1];
-      var playerSlope = 0;
-      if (prev && Math.abs(p.x - prev.x) > 0.001) {
-        playerSlope = (p.y - prev.y) / (p.x - prev.x);
-      }
-      var localA = Math.max(0, local - 3);
-      var localB = Math.min(boss.len, local + 3);
-      var bossSlope = (shapeOffset(boss, localB) - shapeOffset(boss, localA)) / Math.max(1, localB - localA);
-      var angle = Math.atan(Math.abs((playerSlope - bossSlope) / (1 + playerSlope * bossSlope)));
-      var angleDeg = angle * 180 / Math.PI;
-      var playerMode = p.mode || state.mode;
-      var playerFamily = modeFamily(playerMode);
-      var weak = playerFamily === boss.family;
-      var damage = 1 + (angleDeg >= 50 ? 1 : 0) + (weak ? 1 : 0);
+      var m = crossMetrics(state, trail, ti, boss, local);
+      var damage = 1 + (m.angle >= 50 ? 1 : 0) + (m.weak ? 1 : 0);
       boss.hp = Math.max(0, boss.hp - damage);
       boss.invuln = 0.32;
       boss.flash = 0.32;
@@ -506,9 +476,8 @@
       state.combo = state.comboTimer > 0 ? state.combo + 1 : 1;
       state.comboTimer = state.comboWindow;
       if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-      var mult = 1 + 0.8 * (angle / (Math.PI / 2));
       var baseGain = 200 + (state.combo - 1) * 60;
-      var gain = Math.round(baseGain * mult * (weak ? 1.5 : 1) * (state.scoreMult || 1));
+      var gain = Math.round(baseGain * m.mult * m.weakMult * (state.scoreMult || 1));
       state.score += gain;
       var event = {
         type: 'bossHit',
@@ -517,12 +486,12 @@
         gain: gain,
         combo: state.combo,
         damage: damage,
-        angle: Math.round(angleDeg),
-        mult: Math.round(mult * 10) / 10,
-        perfect: angleDeg >= 70,
-        weak: weak,
-        weakMult: weak ? 1.5 : 1,
-        playerFamily: playerFamily,
+        angle: Math.round(m.angle),
+        mult: Math.round(m.mult * 10) / 10,
+        perfect: m.angle >= 70,
+        weak: m.weak,
+        weakMult: m.weakMult,
+        playerFamily: m.playerFamily,
         weakness: boss.family,
         bossHp: boss.hp,
         bossMaxHp: boss.maxHp
@@ -576,6 +545,31 @@
     return true;
   }
 
+  /* 通常敵とボスで共通の交差角度・弱点・倍率を計算する */
+  function crossMetrics(state, trail, ti, target, local) {
+    var p = trail[ti];
+    var prev = trail[ti - 1] || trail[ti + 1];
+    var playerSlope = 0;
+    if (prev && Math.abs(p.x - prev.x) > 0.001) {
+      playerSlope = (p.y - prev.y) / (p.x - prev.x);
+    }
+    var localA = Math.max(0, local - 3);
+    var localB = Math.min(target.len, local + 3);
+    var targetSlope = (shapeOffset(target, localB) - shapeOffset(target, localA)) /
+      Math.max(1, localB - localA);
+    var angle = Math.atan(Math.abs((playerSlope - targetSlope) / (1 + playerSlope * targetSlope)));
+    var playerFamily = modeFamily(p.mode || state.mode);
+    var weak = !!(target.family && target.family !== 'none' && playerFamily === target.family);
+    return {
+      p: p,
+      angle: angle * 180 / Math.PI,
+      mult: 1 + 0.8 * (angle / (Math.PI / 2)),
+      playerFamily: playerFamily,
+      weak: weak,
+      weakMult: weak ? 1.5 : 1
+    };
+  }
+
   function checkHits(state) {
     var trail = state.trail;
     for (var ri = state.rivals.length - 1; ri >= 0; ri--) {
@@ -599,23 +593,9 @@
           state.combo = state.comboTimer > 0 ? state.combo + 1 : 1;
           state.comboTimer = state.comboWindow;
           if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-          var prev = trail[ti - 1] || trail[ti + 1];
-          var playerSlope = 0;
-          if (prev && Math.abs(p.x - prev.x) > 0.001) {
-            playerSlope = (p.y - prev.y) / (p.x - prev.x);
-          }
-          var localA = Math.max(0, local - 3);
-          var localB = Math.min(r.len, local + 3);
-          var rivalSlope = (shapeOffset(r, localB) - shapeOffset(r, localA)) / Math.max(1, localB - localA);
-          var angle = Math.atan(Math.abs((playerSlope - rivalSlope) / (1 + playerSlope * rivalSlope)));
-          var angleDeg = angle * 180 / Math.PI;
-          var mult = 1 + 0.8 * (angle / (Math.PI / 2));
-          var playerMode = p.mode || state.mode;
-          var playerFamily = modeFamily(playerMode);
-          var weak = !!(r.family && r.family !== 'none' && playerFamily === r.family);
-          var weakMult = weak ? 1.5 : 1;
+          var m = crossMetrics(state, trail, ti, r, local);
           var baseGain = 100 + (state.combo - 1) * 50;
-          var gain = Math.round(baseGain * mult * weakMult * (state.scoreMult || 1));
+          var gain = Math.round(baseGain * m.mult * m.weakMult * (state.scoreMult || 1));
           state.score += gain;
           var event = {
             type: 'hit',
@@ -623,12 +603,12 @@
             y: (p.y + ry) / 2,
             gain: gain,
             combo: state.combo,
-            angle: Math.round(angleDeg),
-            mult: Math.round(mult * 10) / 10,
-            perfect: angleDeg >= 70,
-            weak: weak,
-            weakMult: weakMult,
-            playerFamily: playerFamily,
+            angle: Math.round(m.angle),
+            mult: Math.round(m.mult * 10) / 10,
+            perfect: m.angle >= 70,
+            weak: m.weak,
+            weakMult: m.weakMult,
+            playerFamily: m.playerFamily,
             weakness: r.family,
             label: r.label
           };
@@ -790,23 +770,23 @@
   function applyUpgrade(state, id) {
     if (!state || !state.stageCleared) return false;
     if (id === 'life') {
-      if (state.maxHp >= 5 && state.hp >= state.maxHp) return false;
-      state.maxHp = Math.min(5, state.maxHp + 1);
+      if (state.maxHp >= B.UPGRADE_MAX_LIFE && state.hp >= state.maxHp) return false;
+      state.maxHp = Math.min(B.UPGRADE_MAX_LIFE, state.maxHp + 1);
       state.hp = Math.min(state.maxHp, state.hp + 1);
     } else if (id === 'hit') {
-      if (state.hitBonus >= 6) return false;
-      state.hitBonus = Math.min(6, state.hitBonus + 2);
+      if (state.hitBonus >= B.UPGRADE_MAX_HIT_BONUS) return false;
+      state.hitBonus = Math.min(B.UPGRADE_MAX_HIT_BONUS, state.hitBonus + B.UPGRADE_HIT_STEP);
     } else if (id === 'combo') {
-      if (state.comboWindow >= 4.6) return false;
-      state.comboWindow = Math.min(4.6, Math.round((state.comboWindow + 0.8) * 10) / 10);
+      if (state.comboWindow >= B.UPGRADE_MAX_COMBO_WINDOW) return false;
+      state.comboWindow = Math.min(B.UPGRADE_MAX_COMBO_WINDOW, Math.round((state.comboWindow + B.UPGRADE_COMBO_STEP) * 10) / 10);
     } else if (id === 'score') {
-      if (state.scoreMult >= 2) return false;
-      state.scoreMult = Math.min(2, Math.round((state.scoreMult + 0.2) * 10) / 10);
+      if (state.scoreMult >= B.UPGRADE_MAX_SCORE_MULT) return false;
+      state.scoreMult = Math.min(B.UPGRADE_MAX_SCORE_MULT, Math.round((state.scoreMult + B.UPGRADE_SCORE_STEP) * 10) / 10);
     } else if (id === 'boss') {
-      if (state.bossHpReduction >= 12) return false;
-      state.bossHpReduction = Math.min(12, state.bossHpReduction + 3);
+      if (state.bossHpReduction >= B.UPGRADE_MAX_BOSS_REDUCTION) return false;
+      state.bossHpReduction = Math.min(B.UPGRADE_MAX_BOSS_REDUCTION, state.bossHpReduction + B.UPGRADE_BOSS_STEP);
     } else if (id === 'bonus') {
-      state.score += Math.round(3000 * (state.scoreMult || 1));
+      state.score += Math.round(B.UPGRADE_BONUS_SCORE * (state.scoreMult || 1));
     } else if (id === 'slot') {
       if (state.deck.length >= 4 || state.deck.length >= MODE_KEYS.length) return false;
       var candidates = [];
@@ -829,11 +809,11 @@
 
   function upgradeChoices(state) {
     var pool = [];
-    if (state.maxHp < 5 || state.hp < state.maxHp) pool.push('life');
-    if (state.hitBonus < 6) pool.push('hit');
-    if (state.comboWindow < 4.6) pool.push('combo');
-    if (state.scoreMult < 2) pool.push('score');
-    if (state.bossHpReduction < 12) pool.push('boss');
+    if (state.maxHp < B.UPGRADE_MAX_LIFE || state.hp < state.maxHp) pool.push('life');
+    if (state.hitBonus < B.UPGRADE_MAX_HIT_BONUS) pool.push('hit');
+    if (state.comboWindow < B.UPGRADE_MAX_COMBO_WINDOW) pool.push('combo');
+    if (state.scoreMult < B.UPGRADE_MAX_SCORE_MULT) pool.push('score');
+    if (state.bossHpReduction < B.UPGRADE_MAX_BOSS_REDUCTION) pool.push('boss');
     if (state.deck.length < 4 && state.deck.length < MODE_KEYS.length) pool.push('slot');
     var picks = [];
     while (picks.length < 3 && pool.length) {
