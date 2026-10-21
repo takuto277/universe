@@ -6,10 +6,12 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | --- | --- |
 | アプリを追加する | [アプリの追加手順](adding-an-app.md) |
 | ブランチ・PR・マージの流れを知る | [PR 運用](pr-workflow.md) |
+| Issue をキューにして実装まで無人で進める | [無人実装ランナー](unattended-agents.md) |
 | テストの書き方と実行方法を知る | [テスト](testing.md) |
 | GitHub Pages への公開と URL の扱いを知る | [公開](deployment.md) |
 | なぜこの構成なのかを知る | [0001 universe を静的モノレポとして維持する](decisions/0001-universe-as-static-monorepo.md) |
 | AI に PR をレビュー・マージさせる仕組みを知る | [0003 PR のレビューとマージを分離した AI に任せる](decisions/0003-ai-review-and-merge.md) |
+| 実装まで無人で動かす判断を知る | [0005 Issue キューで実装まで無人実行する](decisions/0005-unattended-agent-runner.md) |
 | CodeRabbit を使っていたときの判断を知る | [0002 PR の承認を CodeRabbit に任せる](decisions/0002-ai-review-with-coderabbit.md) |
 | 学んだことを記録する | [学習ログ](learning-log.md) |
 

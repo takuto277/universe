@@ -9,6 +9,9 @@ universe は自作ゲーム・アプリを静的ファイルで公開する個�
 ./tools/run-tests.sh          # 全アプリの test-*.js
 python3 tools/check_site.py   # apps.json / index.html / ローカルリンクの検査
 python3 tools/pr_merge.py --pr <n>  # 五点ゲート + squash merge
+./tools/agent.sh status       # 無人実装キューの状態
+./tools/agent.sh run --dry-run  # 実行対象の確認
+./tools/install-agent-runner.sh  # 無人実装ランナーの LaunchAgent 登録
 python3 -m http.server 8000   # ローカル確認
 ```
 
@@ -34,3 +37,5 @@ python3 -m http.server 8000   # ローカル確認
 - テストは利用者から見た挙動を検証する。実装の詳細やソース文字列の一致に依存しすぎない
 - コメントはコードを読めば分かることを繰り返さず、なぜそうしたかを短く書く
 - 判断の理由は `docs/`、アプリ固有の使い方は各アプリの `README.md` に書く
+- 無人実装は `agent:ready` ラベルの Issue だけを対象にする。ランナーは push と PR 作成までで、マージは五点ゲートに任せる。停止は `./tools/agent.sh pause`
+- 改善提案は planner が `agent:proposed` で作り、`./tools/agent.sh promote <n>` で実装キューに移す(既定)。詳細は [無人実装ランナー](docs/unattended-agents.md)
