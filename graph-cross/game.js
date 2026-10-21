@@ -3,6 +3,9 @@
   'use strict';
 
   var E = (typeof window !== 'undefined' && window.GraphCrossEngine) ? window.GraphCrossEngine : null;
+  var AU = (typeof window !== 'undefined' && window.GraphCrossAudio) ? window.GraphCrossAudio : null;
+  var audio = AU ? AU.create() : null;
+  var muted = loadMuted();
 
   var canvas = null;
   var ctx = null;
@@ -34,6 +37,21 @@
     return v < min ? min : (v > max ? max : v);
   }
 
+  function loadMuted() {
+    try {
+      if (typeof localStorage === 'undefined') return false;
+      return localStorage.getItem('graph-cross-muted') === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveMuted(value) {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem('graph-cross-muted', value ? '1' : '0');
+    } catch (e) { }
+  }
+
   function loadBest() {
     try {
       if (typeof localStorage === 'undefined') return 0;
@@ -54,6 +72,13 @@
     var out = '';
     for (var i = 0; i < E.MAX_HP; i++) out += i < hp ? '●' : '○';
     return out;
+  }
+
+  function updateSoundButton() {
+    if (!els.btnSound) return;
+    els.btnSound.textContent = audio ? (muted ? '音 OFF' : '音 ON') : '音 OFF';
+    els.btnSound.classList.toggle('muted', !audio || muted);
+    els.btnSound.disabled = !audio;
   }
 
   function updateHud() {
@@ -138,6 +163,7 @@
     else return;
     saveDeck();
     updateDeckUi();
+    if (audio && !muted) audio.play('ui');
   }
 
   function showStart() {
@@ -162,6 +188,14 @@
     if (els.screenEnd) els.screenEnd.classList.remove('visible');
     if (els.btnStart && els.btnStart.blur) els.btnStart.blur();
     if (els.btnAgain && els.btnAgain.blur) els.btnAgain.blur();
+    if (audio) {
+      audio.setMuted(muted);
+      if (!muted) {
+        audio.unlock();
+        audio.startBgm();
+        audio.play('start');
+      }
+    }
     updateSlots();
     updateHud();
   }
@@ -178,6 +212,10 @@
     if (els.endCombo) els.endCombo.textContent = 'x' + snap.maxCombo;
     if (els.endX) els.endX.textContent = String(snap.x);
     if (els.screenEnd) els.screenEnd.classList.add('visible');
+    if (audio) {
+      audio.stopBgm();
+      audio.play('over');
+    }
     updateSlots();
     updateHud();
   }
@@ -194,6 +232,7 @@
   }
 
   function backToDeck() {
+    if (audio) audio.stopBgm();
     state = null;
     view.phase = 'idle';
     particles = [];
@@ -203,6 +242,21 @@
     flash = 0;
     updateHud();
     showStart();
+  }
+
+  function toggleSound() {
+    muted = !muted;
+    saveMuted(muted);
+    if (audio) {
+      audio.setMuted(muted);
+      if (muted) audio.stopBgm();
+      else {
+        audio.unlock();
+        if (view.phase === 'run') audio.startBgm();
+        audio.play('ui');
+      }
+    }
+    updateSoundButton();
   }
 
   function onKey(e) {
@@ -267,13 +321,16 @@
         shake = Math.max(shake, 0.7);
         flash = Math.max(flash, 0.28);
         flashColor = '180, 245, 255';
+        if (audio) audio.play('hit', ev.combo, ev.perfect);
         if (ev.heal) {
           addLabel(ev.x, ev.y + 52, 'LIFE +1', '#57e08a', 14);
           addRing(ev.x, ev.y, 'rgba(87, 224, 138, 0.8)', 60, 0.5);
+          if (audio) audio.play('heal');
         }
       } else if (ev.type === 'miss') {
         spawnParticles(ev.x, ev.y, 14, ['#ff4d8d', '#ff8f6b'], 190, 0.6);
         addLabel(ev.x + 60, ev.y, 'MISS', '#ff6b5e', 15);
+        if (audio) audio.play('miss');
         shake = Math.max(shake, 0.6);
         flash = Math.max(flash, 0.3);
         flashColor = '255, 77, 141';
@@ -597,6 +654,7 @@
     els.endBest = $('end-best');
     els.endCombo = $('end-combo');
     els.endX = $('end-x');
+    els.btnSound = $('btn-sound');
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
@@ -632,6 +690,8 @@
     if (els.btnStart) els.btnStart.addEventListener('click', beginRun);
     if (els.btnAgain) els.btnAgain.addEventListener('click', beginRun);
     if (els.btnDeck) els.btnDeck.addEventListener('click', backToDeck);
+    if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
+    if (audio) audio.setMuted(muted);
     if (canvas) {
       canvas.addEventListener('pointerdown', function (e) {
         if (e && e.preventDefault) e.preventDefault();
@@ -642,10 +702,18 @@
     }
     window.addEventListener('keydown', onKey);
     window.addEventListener('resize', resizeCanvas);
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('visibilitychange', function () {
+        if (!audio) return;
+        if (document.hidden) audio.stopBgm();
+        else if (view.phase === 'run' && !muted) audio.startBgm();
+      });
+    }
 
     resizeCanvas();
     watchStageSize();
     updateHud();
+    updateSoundButton();
     updateDeckUi();
     showStart();
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
