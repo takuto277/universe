@@ -890,7 +890,19 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     sub.add_parser("resume", help="実行を再開する")
 
     if not argv:
-        argv = ["run"]
+        print("""universe 無人実装ランナー
+
+使い方:
+  ./tools/agent.sh enqueue "タイトル" --body "依頼内容"   実装キューに追加
+  ./tools/agent.sh propose                               改善提案を Issue 化
+  ./tools/agent.sh promote <番号>                         提案を実装キューへ
+  ./tools/agent.sh status                                状態確認
+  ./tools/agent.sh pause / resume                        停止 / 再開
+  ./tools/agent.sh run --dry-run                         次の対象を確認
+
+詳しい説明: docs/unattended-agents.md
+すべてのオプション: ./tools/agent.sh --help""")
+        return 0
     args = parser.parse_args(argv)
     runner = Runner(cfg)
 
