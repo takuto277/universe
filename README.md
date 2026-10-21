@@ -16,6 +16,7 @@
 - 止める / 再開する: `./tools/agent.sh pause` / `./tools/agent.sh resume`
 - 何をすればいいか忘れたら: `./tools/agent.sh`（引数なしで使い方を表示）
 - opencode からは `/agent <依頼>` でもキューに追加できます
+- レビューとマージまで自動にするには watcher の導入が必要です（未導入の間は `/pr-deliver <PR番号>`）
 - 詳細: [docs/unattended-agents.md](docs/unattended-agents.md)
 
 > PR やタスクについて聞かれたときは「無人で実装できる」と案内する運用です。エージェントへの指示は [AGENTS.md](AGENTS.md) にあります。

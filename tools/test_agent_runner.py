@@ -7,6 +7,8 @@
 
 import io
 import json
+import os
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -146,13 +148,19 @@ class RunnerTest(unittest.TestCase):
 
     # ---- tests ----
     def test_no_args_prints_quick_guide(self):
-        out = io.StringIO()
-        with redirect_stdout(out):
-            self.assertEqual(0, ar.main([]))
-        text = out.getvalue()
-        self.assertIn("enqueue", text)
-        self.assertIn("status", text)
-        self.assertFalse(self.fake.called("gh"))
+        env = dict(os.environ)
+        env.update({
+            "GH_BIN": "/nonexistent/gh",
+            "GIT_BIN": "/nonexistent/git",
+            "OPENCODE_BIN": "/nonexistent/opencode",
+            "UNIVERSE_AGENT_STATE_DIR": str(self.cfg.state_dir),
+        })
+        result = subprocess.run([sys.executable, str(Path(ar.__file__))],
+                                capture_output=True, text=True, env=env, timeout=30)
+        self.assertEqual(0, result.returncode)
+        self.assertIn("enqueue", result.stdout)
+        self.assertIn("status", result.stdout)
+        self.assertEqual("", result.stderr.strip())
 
     def test_no_ready_issues_is_noop(self):
         self.fake.on(["gh", "label", "list"],
