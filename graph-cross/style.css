@@ -290,6 +290,57 @@ body {
   flex-wrap: wrap;
 }
 
+/* ===== 係数チューニング ===== */
+#tune-panel {
+  width: min(660px, 100%);
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 10px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(16, 24, 42, 0.9);
+}
+.tune-hint { float: right; color: var(--muted); font-size: 10px; font-weight: 600; }
+#tune-rows { display: flex; flex-direction: column; gap: 4px; }
+.tune-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 3px 8px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(23, 34, 56, 0.75);
+}
+.tune-row.hidden { display: none; }
+.tune-name {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 11.5px;
+  color: var(--text);
+  white-space: nowrap;
+}
+.tune-name b { color: var(--gold); font-size: 12.5px; }
+.tune-controls { display: flex; align-items: center; gap: 4px; }
+.tune-controls button {
+  width: 28px;
+  height: 28px;
+  border-radius: 7px;
+  border: 1px solid var(--line);
+  background: var(--panel-2);
+  color: var(--cyan);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 800;
+  cursor: pointer;
+  line-height: 1;
+}
+.tune-controls button:hover { border-color: var(--cyan); }
+.tune-label { color: var(--muted); font-size: 10px; margin-left: 3px; }
+#tune-empty { color: var(--muted); font-size: 10.5px; text-align: center; padding: 2px 0; }
+#tune-empty.hidden { display: none; }
+
 /* ===== 関数ボタン ===== */
 #controlbar {
   display: flex;
@@ -397,6 +448,9 @@ body {
   #deck-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .deck-card b { font-size: 11px; }
   .deck-card span { font-size: 9px; }
+  .tune-name { font-size: 10.5px; }
+  .tune-controls button { width: 26px; height: 26px; font-size: 13px; }
+  #tune-panel { padding: 6px 8px 7px; }
   #tip { font-size: 9.5px; }
   #btn-sound { font-size: 9.5px; padding: 2px 8px; }
   .end-stats div { min-width: 92px; padding: 6px 10px; }

@@ -82,6 +82,11 @@ audio.play('hit', 1, false);
 assert(createdOsc === mutedBefore, 'ミュート中は効果音なし');
 
 /* 再開と停止 */
+audio.setIntensity(3);
+assert(audio.getIntensity() === 3, 'コンボ強度を設定できる');
+audio.setIntensity(0);
+assert(audio.getIntensity() === 0, '強度を戻せる');
+
 audio.setMuted(false);
 audio.stopBgm();
 assert(intervalFn === null, 'BGMを止められる');

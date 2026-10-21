@@ -29,6 +29,7 @@ Harness.run({
     h.assert(state.best >= state.score, 'ベストがスコアより小さい');
     h.assert(state.maxCombo >= 0, '最大コンボが不正');
     h.assert(state.deck && state.deck.length === 3, 'デッキが3つでない');
+    h.assert(state.deckParams && typeof state.deckParams === 'object', '係数パラメータがない');
     var els = h.elements;
     h.assert(els['screen-end'] && els['screen-end'].classList.contains('visible'), '終了画面が出ていない');
     h.assert(els['screen-start'] && !els['screen-start'].classList.contains('visible'), '開始画面が残っている');
