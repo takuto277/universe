@@ -10,6 +10,7 @@ REPO="${UNIVERSE_AUTO_PR_REPO:-takuto277/universe}"
 BASE="${UNIVERSE_AUTO_PR_BASE:-main}"
 MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
 AUTOFIX="${UNIVERSE_AUTO_PR_AUTOFIX:-1}"
+SANDBOX="${UNIVERSE_AGENT_SANDBOX:-none}"
 GH="${GH_BIN:-$(command -v gh || true)}"
 
 usage() {
@@ -58,6 +59,7 @@ PLIST_MODEL="$(xml_escape "$MODEL")"
 PLIST_REPO="$(xml_escape "$REPO")"
 PLIST_BASE="$(xml_escape "$BASE")"
 PLIST_AUTOFIX="$(xml_escape "$AUTOFIX")"
+PLIST_SANDBOX="$(xml_escape "$SANDBOX")"
 
 cat >"$PLIST" <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
@@ -87,6 +89,8 @@ cat >"$PLIST" <<EOF
     <string>$PLIST_BASE</string>
     <key>UNIVERSE_AUTO_PR_AUTOFIX</key>
     <string>$PLIST_AUTOFIX</string>
+    <key>UNIVERSE_AGENT_SANDBOX</key>
+    <string>$PLIST_SANDBOX</string>
   </dict>
   <key>StartInterval</key>
   <integer>60</integer>

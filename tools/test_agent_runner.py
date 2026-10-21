@@ -8,6 +8,7 @@
 import io
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -725,6 +726,58 @@ class RunnerTest(unittest.TestCase):
         self.fix_happy()
         self.assertEqual(2, self.runner.fix(12))
         self.assertFalse(self.fake.called("gh", "pr", "view"))
+
+    def test_sandbox_none_keeps_command(self):
+        self.assertEqual(["opencode", "--version"],
+                         self.runner.sandbox_argv(["opencode", "--version"], self.worktree))
+
+    @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
+    def test_sandbox_wraps_commands_and_profile(self):
+        cfg = replace(self.cfg, sandbox="seatbelt")
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        argv = runner.sandbox_argv(["opencode", "--version"], self.worktree)
+        self.assertEqual("sandbox-exec", Path(argv[0]).name)
+        self.assertIn("-f", argv)
+        profile = Path(argv[argv.index("-f") + 1]).read_text(encoding="utf-8")
+        self.assertIn(str(self.worktree), profile)
+        self.assertIn(".ssh", profile)
+        self.assertIn("(deny default)", profile)
+
+    @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
+    def test_sandbox_denies_writes_outside_worktree(self):
+        cfg = replace(self.cfg, sandbox="seatbelt")
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        allowed = self.worktree / "ok.txt"
+        result = ar.Commands().run(
+            runner.sandbox_argv(["/bin/sh", "-c", "echo ok > %s" % allowed], self.worktree),
+            cwd=str(self.worktree), timeout=30)
+        self.assertTrue(result.ok)
+        denied = Path.home() / ("universe-sandbox-test-%d" % os.getpid())
+        try:
+            denied.unlink()
+        except OSError:
+            pass
+        result = ar.Commands().run(
+            runner.sandbox_argv(["/bin/sh", "-c", "echo no > %s" % denied], self.worktree),
+            cwd=str(self.worktree), timeout=30)
+        self.assertFalse(result.ok)
+        self.assertFalse(denied.exists())
+
+    @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
+    def test_run_wraps_agent_and_verify(self):
+        cfg = replace(self.cfg, sandbox="seatbelt")
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        self.happy()
+        self.assertEqual(0, runner.run_once())
+        run_calls = [call for call in self.fake.calls
+                     if "opencode" in call["argv"] and "run" in call["argv"]]
+        self.assertTrue(run_calls)
+        self.assertEqual("sandbox-exec", Path(run_calls[0]["argv"][0]).name)
+        verify_calls = [call for call in self.fake.calls
+                        if any(str(arg).endswith("verify.sh") for arg in call["argv"])]
+        self.assertTrue(verify_calls)
+        self.assertEqual("sandbox-exec", Path(verify_calls[0]["argv"][0]).name)
 
     def test_commands_env_is_merged(self):
         commands = ar.Commands(env={"BASE_VAR": "base"})

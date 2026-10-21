@@ -157,6 +157,7 @@ class Config:
     stall_minutes: int = 90
     fix_max: int = DEFAULT_FIX_MAX
     fix_timeout: int = DEFAULT_FIX_TIMEOUT
+    sandbox: str = "none"
     gh_bin: str = "gh"
     git_bin: str = "git"
     opencode_bin: str = "opencode"
@@ -189,6 +190,7 @@ class Config:
             fix_max=int(os.environ.get("UNIVERSE_AGENT_FIX_MAX", DEFAULT_FIX_MAX)),
             fix_timeout=int(os.environ.get(
                 "UNIVERSE_AGENT_FIX_TIMEOUT", DEFAULT_FIX_TIMEOUT)),
+            sandbox=os.environ.get("UNIVERSE_AGENT_SANDBOX", "none"),
             gh_bin=os.environ.get("GH_BIN", "gh"),
             git_bin=os.environ.get("GIT_BIN", "git"),
             opencode_bin=os.environ.get("OPENCODE_BIN", "opencode"),
@@ -298,6 +300,66 @@ class Runner:
         if os.environ.get("UNIVERSE_AGENT_DISABLE") == "1":
             return True
         return (self.cfg.state_dir / "pause").exists()
+
+    def _sandbox_profile(self, worktree: Path) -> Path:
+        home = Path.home()
+        writable = [
+            worktree, self.cfg.state_dir, self.cfg.root / ".git",
+            Path("/tmp"), Path("/private/tmp"), Path("/dev"),
+            Path("/var/folders"),
+            home / ".local/share/opencode", home / ".config/opencode",
+            home / ".cache/opencode", home / ".local/state/opencode",
+        ]
+        deny_read = [
+            home / ".ssh", home / ".aws", home / ".config/gh",
+            home / ".config/gcloud", home / ".kube", home / "Library/Keychains",
+            home / "Documents", home / "Desktop", home / "Downloads",
+            home / "Library/Messages", home / "Library/Mail",
+        ]
+        extra = [home / ".netrc", home / ".git-credentials"]
+
+        # /var と /private/var のように symlink でパスが変わるため、実体も許可する
+        expanded = []
+        for path in writable:
+            expanded.append(path)
+            try:
+                expanded.append(Path(os.path.realpath(str(path))))
+            except OSError:
+                pass
+
+        def q(path: Path) -> str:
+            return '(subpath "%s")' % str(path).replace("\\", "\\\\").replace('"', '\\"')
+
+        lines = [
+            "(version 1)",
+            "(deny default)",
+            "(allow process-exec)",
+            "(allow process-fork)",
+            "(allow signal)",
+            "(allow sysctl-read)",
+            "(allow mach-lookup)",
+            "(allow ipc-posix-shm)",
+            "(allow file-read*)",
+            "(deny file-read* %s)" % " ".join(q(path) for path in deny_read + extra),
+            "(allow file-write* %s)" % " ".join(q(path) for path in expanded),
+            "(allow network*)",
+        ]
+        path = self.cfg.state_dir / "sandbox" / "profile.sb"
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+        return path
+
+    def sandbox_argv(self, argv: List[str], worktree: Path) -> List[str]:
+        mode = (self.cfg.sandbox or "none").lower()
+        if mode in ("", "none", "off", "0"):
+            return argv
+        if mode != "seatbelt":
+            raise TaskError("未対応のサンドボックスです: %s" % self.cfg.sandbox)
+        binary = shutil.which("sandbox-exec") or "/usr/bin/sandbox-exec"
+        if not Path(binary).exists():
+            raise TaskError("sandbox-exec が見つかりません")
+        profile = self._sandbox_profile(worktree)
+        return [binary, "-f", str(profile)] + argv
 
     def notify(self, message: str) -> None:
         """macOS の通知。UNIVERSE_AGENT_NOTIFY=0 で無効。"""
@@ -554,8 +616,9 @@ class Runner:
 
             changed = self._assert_tools_untouched(worktree, base_sha)
             verify_script = worktree / "tools" / "verify.sh"
-            verify = self.cmd.run(["bash", str(verify_script)],
-                                  cwd=str(worktree), timeout=cfg.verify_timeout)
+            verify = self.cmd.run(
+                self.sandbox_argv(["bash", str(verify_script)], worktree),
+                cwd=str(worktree), timeout=cfg.verify_timeout)
             self._append_log(issue_log, "\n$ ./tools/verify.sh\n" +
                              (verify.stdout or "") + (verify.stderr or ""))
             if verify.timed_out:
@@ -731,6 +794,7 @@ class Runner:
             "--title", "universe-agent-%d" % int(time.time()),
             prompt,
         ]
+        argv = self.sandbox_argv(argv, worktree)
         limit = timeout or self.cfg.timeout
         self.log("agent を開始します (model=%s, timeout=%ss)" % (self.cfg.model, limit))
         self._append_log(issue_log, "$ opencode run --agent %s --model %s\n" %
@@ -1023,8 +1087,10 @@ class Runner:
             if not count.ok or commits == 0:
                 raise TaskError("レビュー指摘に対する変更がありませんでした(人の対応が必要です)")
             changed = self._assert_tools_untouched(worktree, head_sha)
-            verify = self.cmd.run(["bash", str(worktree / "tools" / "verify.sh")],
-                                  cwd=str(worktree), timeout=self.cfg.verify_timeout)
+            verify = self.cmd.run(
+                self.sandbox_argv(
+                    ["bash", str(worktree / "tools" / "verify.sh")], worktree),
+                cwd=str(worktree), timeout=self.cfg.verify_timeout)
             self._append_log(fix_log, "\n$ ./tools/verify.sh\n" +
                              (verify.stdout or "") + (verify.stderr or ""))
             if verify.timed_out:
@@ -1241,6 +1307,7 @@ class Runner:
             for line in (worktrees.stdout or "").splitlines():
                 print("  " + line)
         print("notify:  %s" % ("on" if self.cfg.notify else "off"))
+        print("sandbox: %s" % (self.cfg.sandbox or "none"))
         plist = Path.home() / "Library/LaunchAgents/com.takuto277.universe-agent-runner.plist"
         print("launchd: %s" % ("installed" if plist.exists() else "not installed"))
         recent = self.recent_history(5)
