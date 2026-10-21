@@ -86,7 +86,7 @@ gh auth status
 | `agent:proposed` | 改善提案(未承認) | planner |
 | `agent-generated` | 無人エージェントが作成した PR | runner |
 
-失敗した Issue をやり直すときは、原因を直したうえで `promote <番号>` を実行します(`agent:failed` / `agent:done` を外して `agent:ready` に戻します)。
+失敗した Issue をやり直すときは、原因を直したうえで `promote <番号>` を実行します(`agent:failed` / `agent:done` / `agent:running` を外して `agent:ready` に戻します)。実行中の Issue には使わないでください。
 
 ## 実行の流れ
 

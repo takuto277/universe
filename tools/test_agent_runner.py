@@ -264,6 +264,7 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("opencode", "run"))
         edits = [call["argv"] for call in self.fake.find("gh", "issue", "edit")]
         self.assertTrue(any("agent:done" in argv for argv in edits))
+        self.assertTrue(any("agent:failed" in argv for argv in edits))
 
     def test_existing_merged_pr_is_skipped(self):
         self.happy(all_prs=[{"number": 5, "state": "MERGED",
@@ -310,6 +311,17 @@ class RunnerTest(unittest.TestCase):
 
     def test_modified_ci_workflow_is_rejected(self):
         self.happy(changed="M\t.github/workflows/ci.yml\n")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_modified_agent_runner_is_rejected(self):
+        self.happy(changed="M\ttools/agent_runner.py\n")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("bash"))
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
+    def test_renamed_protected_file_is_rejected(self):
+        self.happy(changed="D\ttools/harness.js\nA\ttools/harness.js.bak\n")
         self.assertEqual(1, self.runner.run_once())
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
@@ -432,6 +444,14 @@ class RunnerTest(unittest.TestCase):
         self.fake.on(["gh", "issue", "edit"], ar.Result(1, "", "denied"))
         self.assertEqual(1, self.runner.promote(42))
         self.assertFalse(self.fake.called("gh", "issue", "comment"))
+
+    def test_commands_env_is_merged(self):
+        commands = ar.Commands(env={"BASE_VAR": "base"})
+        result = commands.run(
+            [sys.executable, "-c", "import os; print(os.environ['BASE_VAR'], os.environ['EXTRA_VAR'])"],
+            env={"EXTRA_VAR": "extra"})
+        self.assertTrue(result.ok)
+        self.assertEqual("base extra", result.stdout.strip())
 
     def test_commands_timeout_kills_process_group(self):
         commands = ar.Commands()

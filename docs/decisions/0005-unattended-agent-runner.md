@@ -5,7 +5,7 @@
 
 ## Context
 
-ADR 0004 で PR のレビューとマージは自動化したが、実装の開始は人間の依頼に依存していた。u7chan の `code-agent-launcher` のように、エージェントを無人で起動して夜間にも実装を進めたい。一方で、実装とマージを同じエージェントに任せると、レビューの独立性と五点ゲートが形骸化する。
+ADR 0003 で PR のレビューとマージは自動化したが、実装の開始は人間の依頼に依存していた。u7chan の `code-agent-launcher` のように、エージェントを無人で起動して夜間にも実装を進めたい。一方で、実装とマージを同じエージェントに任せると、レビューの独立性と五点ゲートが形骸化する。
 
 ## Decision
 
@@ -13,7 +13,7 @@ ADR 0004 で PR のレビューとマージは自動化したが、実装の開�
 - macOS の LaunchAgent から `tools/agent_runner.py run` を120秒ごとに実行する
 - 1回につき1件、専用 worktree と `agent/issue-<n>` ブランチで builder を実行する
 - builder はコミットまで。push・PR 作成・マージはしない。runner が verify と push、PR 作成を行う
-- レビューとマージは ADR 0003/0004 の五点ゲートと watcher に任せる
+- レビューとマージは ADR 0003 の五点ゲートと watcher に任せる
 - 改善提案は planner が `agent:proposed` で作り、人間の `promote` を経て実装キューに入れる(既定)
 - 安全策として、flock による排他ロック、pause ファイル、タイムアウト、deny-by-default の権限 allowlist(push / gh / rm / ネットワークを拒否)、失敗時のラベルとコメントを設ける
 - verify は worktree 側で実行し、検証スクリプトと CI の変更を検出したら失敗させる

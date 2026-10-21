@@ -48,6 +48,7 @@ PROTECTED_PATHS = (
     "tools/run-tests.sh",
     "tools/check_site.py",
     "tools/harness.js",
+    "tools/agent_runner.py",
     "tools/test_agent_runner.py",
     "tools/pr_gate.py",
     "tools/pr_review.py",
@@ -232,11 +233,23 @@ class Lock:
             self.fh = None
 
     def held(self) -> bool:
-        probe = Lock(self.path.parent)
-        if probe.acquire():
-            probe.release()
+        """読み取り専用の状態確認。旧ロックの移行は行わない。"""
+        if not self.path.exists():
             return False
-        return probe.fh is None and self.path.exists()
+        if self.path.is_dir():
+            return True
+        try:
+            fh = self.path.open("a+")
+        except OSError:
+            return True
+        try:
+            fcntl.flock(fh.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError:
+            fh.close()
+            return True
+        fcntl.flock(fh.fileno(), fcntl.LOCK_UN)
+        fh.close()
+        return False
 
 
 class Runner:
@@ -485,7 +498,7 @@ class Runner:
                 raise TaskError("pause されたため PR 作成前に中断しました")
             url = self.create_pr(number, title, branch, issue_log)
             if not self.edit_labels(number, add=["agent:done"],
-                                    remove=["agent:running", "agent:failed"]):
+                                    remove=["agent:running", "agent:ready", "agent:failed"]):
                 self.log("Issue #%s: agent:done の付与に失敗しました" % number)
             self.comment(
                 number,
@@ -774,7 +787,8 @@ class Runner:
     def promote(self, number: int) -> int:
         self.ensure_labels()
         if not self.edit_labels(number, add=["agent:ready"],
-                                remove=["agent:proposed", "agent:done", "agent:failed"]):
+                                remove=["agent:proposed", "agent:done",
+                                        "agent:failed", "agent:running"]):
             self.log("Issue #%s を実装キューに移せませんでした" % number)
             return 1
         self.comment(number, "実装キューに追加しました。")

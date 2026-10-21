@@ -66,7 +66,7 @@ permission:
 
 ## コミット
 
-`user.name` と `user.email` は runner が worktree に設定済みです。
+`GIT_AUTHOR_NAME` / `GIT_AUTHOR_EMAIL` / `GIT_COMMITTER_NAME` / `GIT_COMMITTER_EMAIL` は runner が環境変数で設定済みです。git config の変更は不要です。
 
 ```sh
 git commit -m "<アプリ名または repo>: 日本語の要約"
