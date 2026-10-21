@@ -106,15 +106,20 @@
     function updateHud(state) {
       lastState = state || null;
       var snap = state ? E.snapshot(state) : null;
+      var stress = !!(snap && snap.infiniteLives);
       if (els.score) els.score.textContent = snap ? String(snap.score) : '0';
       if (els.best) els.best.textContent = String(best);
       if (els.combo) els.combo.textContent = snap && snap.combo > 0 ? 'x' + snap.combo : '-';
-      if (els.life) els.life.textContent = snap ? lifeText(snap.hp, snap.maxHp) : lifeText(E.MAX_HP, E.MAX_HP);
-      if (els.life) els.life.classList.toggle('danger', !!(snap && snap.hp <= 1));
+      if (els.life) els.life.textContent = stress ? '∞' : (snap ? lifeText(snap.hp, snap.maxHp) : lifeText(E.MAX_HP, E.MAX_HP));
+      if (els.life) els.life.classList.toggle('danger', !!(snap && !stress && snap.hp <= 1));
 
       if (els.stageLabel) {
         var stage = snap ? snap.stage : 1;
-        if (snap && snap.stageCleared) {
+        if (stress) {
+          els.stageLabel.textContent = 'STRESS MODE';
+          if (els.stageFill) els.stageFill.style.width = '100%';
+          if (els.stageNote) els.stageNote.textContent = '倒した敵 ' + (snap.hits || 0) + ' / COMBO x' + (snap.combo || 0);
+        } else if (snap && snap.stageCleared) {
           els.stageLabel.textContent = 'STAGE ' + stage + ' CLEAR';
           if (els.stageFill) els.stageFill.style.width = '100%';
           if (els.stageNote) els.stageNote.textContent = 'クリア!';
@@ -130,10 +135,12 @@
           if (els.stageNote) els.stageNote.textContent = '敵 ' + hits + '/' + target;
         }
         if (els.stageInfo) {
-          els.stageInfo.classList.toggle('boss', !!(snap && snap.boss && !snap.stageCleared));
-          els.stageInfo.classList.toggle('cleared', !!(snap && snap.stageCleared));
+          els.stageInfo.classList.toggle('stress', stress);
+          els.stageInfo.classList.toggle('boss', !!(snap && snap.boss && !snap.stageCleared && !stress));
+          els.stageInfo.classList.toggle('cleared', !!(snap && snap.stageCleared && !stress));
         }
       }
+      if (els.btnExit) els.btnExit.classList.toggle('hidden', !stress);
     }
 
     function updateSlots(state, phase) {
@@ -149,10 +156,13 @@
           btn.disabled = true;
           btn.classList.remove('active');
           btn.classList.add('hidden');
+          if (btn.removeAttribute) btn.removeAttribute('data-genre');
+          else btn.setAttribute('data-genre', '');
           continue;
         }
         btn.classList.remove('hidden');
         var mode = C.MODES[key];
+        btn.setAttribute('data-genre', C.GENRE_LABELS[mode.genre] || '');
         var familyNote = mode.family !== 'none' ? ' · ' + C.FAMILY_LABELS[mode.family] : '';
         btn.innerHTML = '<b>' + C.formatModeLabel(key, params) + '</b><span>' + mode.note + familyNote + '</span><em>' + (i + 1) + '</em>';
         btn.style.setProperty('--mode-color', C.modeColor(key));
@@ -248,6 +258,9 @@
         var ready = selectedDeck.length === C.DECK_SIZE;
         els.btnStart.disabled = !ready;
         els.btnStart.classList.toggle('disabled', !ready);
+        if (els.btnStress) {
+          els.btnStress.disabled = !ready;
+        }
       }
       updateSlots(lastState, lastPhase);
       updateTunePanel();
@@ -312,7 +325,7 @@
 
     function showStageBanner(stage) {
       if (!els.stageBanner) return;
-      els.stageBanner.textContent = 'STAGE ' + stage;
+      els.stageBanner.textContent = typeof stage === 'number' ? 'STAGE ' + stage : String(stage);
       els.stageBanner.classList.remove('show');
       void els.stageBanner.offsetWidth;
       els.stageBanner.classList.add('show');
@@ -330,6 +343,7 @@
       if (els.screenStart) els.screenStart.classList.add('visible');
       if (els.screenEnd) els.screenEnd.classList.remove('visible');
       if (els.screenClear) els.screenClear.classList.remove('visible');
+      if (els.btnExit) els.btnExit.classList.add('hidden');
       updateDeckUi();
       updateHud(null);
     }
@@ -382,6 +396,7 @@
       if (els.screenEnd) els.screenEnd.classList.add('visible');
       if (els.screenStart) els.screenStart.classList.remove('visible');
       if (els.screenClear) els.screenClear.classList.remove('visible');
+      if (els.btnExit) els.btnExit.classList.add('hidden');
       updateHud(state);
       updateSlots(state, 'over');
     }
@@ -399,7 +414,8 @@
       if (els.deckSwap) {
         var swap = snap.lastDeckSwap;
         if (swap) {
-          els.deckSwap.innerHTML = 'デッキ変動: ' + C.formatModeLabel(swap.oldKey, snap.deckParams) +
+          var genreText = swap.genre ? ' [' + (C.GENRE_LABELS[swap.genre] || '') + ']' : '';
+          els.deckSwap.innerHTML = 'デッキ変動' + genreText + ': ' + C.formatModeLabel(swap.oldKey, snap.deckParams) +
             ' <span>→</span> ' + C.formatModeLabel(swap.newKey, snap.deckParams);
           els.deckSwap.classList.remove('hidden');
         } else {
@@ -410,6 +426,7 @@
       if (els.screenClear) els.screenClear.classList.add('visible');
       if (els.screenStart) els.screenStart.classList.remove('visible');
       if (els.screenEnd) els.screenEnd.classList.remove('visible');
+      if (els.btnExit) els.btnExit.classList.add('hidden');
       updateHud(state);
       updateSlots(state, 'clear');
     }
@@ -431,6 +448,8 @@
       els.screenEnd = $('screen-end');
       els.screenClear = $('screen-clear');
       els.btnStart = $('btn-start');
+      els.btnStress = $('btn-stress');
+      els.btnExit = $('btn-exit');
       els.btnAgain = $('btn-again');
       els.btnDeck = $('btn-deck');
       els.btnSound = $('btn-sound');
@@ -466,6 +485,7 @@
         if (!card) continue;
         deckCards[key] = card;
         card.style.setProperty('--mode-color', C.modeColor(key));
+        card.setAttribute('data-genre', C.GENRE_LABELS[C.MODES[key].genre] || '');
         var b = card.children && card.children[0];
         var note = card.children && card.children[1];
         if (b) b.textContent = C.MODES[key].label;
@@ -524,6 +544,8 @@
       }
 
       if (els.btnStart) els.btnStart.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
+      if (els.btnStress) els.btnStress.addEventListener('click', function () { if (typeof actions.onStressStart === 'function') actions.onStressStart(); });
+      if (els.btnExit) els.btnExit.addEventListener('click', function () { if (typeof actions.onExit === 'function') actions.onExit(); });
       if (els.btnAgain) els.btnAgain.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
       if (els.btnDeck) els.btnDeck.addEventListener('click', function () { if (typeof actions.onBackToDeck === 'function') actions.onBackToDeck(); });
       if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);

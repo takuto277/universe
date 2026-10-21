@@ -193,7 +193,7 @@
     state.rivals = [];
     state.items = [];
     state.allies = [];
-    state.itemTimer = B.ITEM_FIRST_DELAY;
+    state.itemTimer = state.gameMode === 'stress' ? 2.0 : B.ITEM_FIRST_DELAY;
     state.multi = 0;
     state.multiTimer = 0;
     state.events = [];
@@ -202,6 +202,10 @@
     state.spawnTimer = 0.9;
     state.hits = 0;
     state.misses = 0;
+    if (state.gameMode === 'stress') {
+      state.spawnTimer = 0.12;
+      return;
+    }
     state.stage = 1;
     state.stageHits = 0;
     state.stageTarget = stageTargetFor(1);
@@ -226,6 +230,7 @@
     var deck = normalizeDeck(options.deck);
     var state = {
       rng: options.rng || Math.random,
+      gameMode: options.mode === 'stress' ? 'stress' : 'normal',
       deck: deck,
       deckParams: normalizeDeckParams(options.deckParams, deck),
       width: 0,
@@ -548,7 +553,7 @@
     state.trail = [];
     state.items = [];
     state.allies = [];
-    state.itemTimer = B.ITEM_FIRST_DELAY;
+    state.itemTimer = state.gameMode === 'stress' ? 2.0 : B.ITEM_FIRST_DELAY;
     state.multi = 0;
     state.multiTimer = 0;
     state.y = (state.top + state.bottom) / 2;
@@ -591,6 +596,7 @@
   }
 
   function registerStageProgress(state) {
+    if (state.gameMode === 'stress') return;
     if (!state.boss && !state.stageCleared && state.stageHits < state.stageTarget) {
       state.stageHits++;
       if (state.stageHits >= state.stageTarget) {
@@ -815,6 +821,7 @@
       }
       if (r.x + r.len < 0) {
         state.rivals.splice(i, 1);
+        if (state.gameMode === 'stress') continue;
         state.misses++;
         state.combo = 0;
         state.comboTimer = 0;
@@ -883,10 +890,20 @@
     state.itemTimer -= dt;
     if (state.itemTimer <= 0) {
       spawnItem(state);
-      state.itemTimer = B.ITEM_INTERVAL_MIN + rand(state.rng) * (B.ITEM_INTERVAL_MAX - B.ITEM_INTERVAL_MIN);
+      state.itemTimer = state.gameMode === 'stress'
+        ? 2.4 + rand(state.rng) * 2.0
+        : B.ITEM_INTERVAL_MIN + rand(state.rng) * (B.ITEM_INTERVAL_MAX - B.ITEM_INTERVAL_MIN);
     }
 
-    if (!state.boss && state.stageHits < state.stageTarget) {
+    if (state.gameMode === 'stress') {
+      state.spawnTimer -= dt;
+      if (state.spawnTimer <= 0) {
+        spawnRival(state);
+        spawnRival(state);
+        if (state.rng() < 0.45) spawnRival(state);
+        state.spawnTimer = 0.32 + state.rng() * 0.28;
+      }
+    } else if (!state.boss && state.stageHits < state.stageTarget) {
       state.spawnTimer -= dt;
       if (state.spawnTimer <= 0) {
         spawnRival(state);
@@ -895,7 +912,7 @@
       }
     }
 
-    if (!state.boss && state.stageHits >= state.stageTarget && !state.stageCleared) {
+    if (state.gameMode !== 'stress' && !state.boss && state.stageHits >= state.stageTarget && !state.stageCleared) {
       state.bossCooldown -= dt;
       if (state.bossCooldown <= 0) spawnBoss(state);
     }
@@ -954,22 +971,40 @@
 
   function rotateDeck(state) {
     if (!state || !state.deck.length) return null;
-    var candidates = [];
-    for (var i = 0; i < MODE_KEYS.length; i++) {
-      if (state.deck.indexOf(MODE_KEYS[i]) < 0) candidates.push(MODE_KEYS[i]);
+    var groups = {};
+    for (var i = 0; i < state.deck.length; i++) {
+      var key = state.deck[i];
+      var genre = MODES[key] ? MODES[key].genre : 'other';
+      if (!groups[genre]) groups[genre] = { slots: [], candidates: [] };
+      groups[genre].slots.push(i);
     }
-    if (!candidates.length) return null;
-    var slot = Math.floor(rand(state.rng) * state.deck.length) % state.deck.length;
+    for (var m = 0; m < MODE_KEYS.length; m++) {
+      var modeKey = MODE_KEYS[m];
+      if (state.deck.indexOf(modeKey) >= 0) continue;
+      var modeGenre = MODES[modeKey] ? MODES[modeKey].genre : 'other';
+      if (groups[modeGenre]) groups[modeGenre].candidates.push(modeKey);
+    }
+    var genres = [];
+    for (var g in groups) {
+      if (Object.prototype.hasOwnProperty.call(groups, g) &&
+        groups[g].slots.length > 0 && groups[g].candidates.length > 0) {
+        genres.push(g);
+      }
+    }
+    if (!genres.length) return null;
+    var pickGenre = genres[Math.floor(rand(state.rng) * genres.length) % genres.length];
+    var group = groups[pickGenre];
+    var slot = group.slots[Math.floor(rand(state.rng) * group.slots.length) % group.slots.length];
     var oldKey = state.deck[slot];
-    var newKey = candidates[Math.floor(rand(state.rng) * candidates.length) % candidates.length];
+    var newKey = group.candidates[Math.floor(rand(state.rng) * group.candidates.length) % group.candidates.length];
     state.deck[slot] = newKey;
     if (PARAM_SPECS[newKey]) {
       var all = normalizeParams(state.deckParams);
       state.deckParams[newKey] = all[newKey];
     }
-    var swap = { oldKey: oldKey, newKey: newKey, slot: slot };
+    var swap = { oldKey: oldKey, newKey: newKey, slot: slot, genre: pickGenre };
     state.lastDeckSwap = swap;
-    pushEvent(state, { type: 'deckSwap', oldKey: oldKey, newKey: newKey, slot: slot });
+    pushEvent(state, { type: 'deckSwap', oldKey: oldKey, newKey: newKey, slot: slot, genre: pickGenre });
     return swap;
   }
 
@@ -1039,6 +1074,8 @@
 
   function snapshot(state) {
     return {
+      gameMode: state.gameMode,
+      infiniteLives: state.gameMode === 'stress',
       score: state.score,
       combo: state.combo,
       maxCombo: state.maxCombo,

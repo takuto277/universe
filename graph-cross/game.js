@@ -214,13 +214,15 @@
   }
 
   /* ===== 進行 ===== */
-  function beginRun() {
+  function beginRun(mode) {
     if (!ui || ui.getDeck().length !== C.DECK_SIZE) return;
+    var stress = mode === 'stress';
     state = E.createGame({
       width: viewW,
       height: viewH,
       deck: ui.getDeck(),
-      deckParams: ui.getParams()
+      deckParams: ui.getParams(),
+      mode: stress ? 'stress' : 'normal'
     });
     view.phase = 'run';
     view.deathAt = 0;
@@ -235,7 +237,7 @@
     lastTs = 0;
     ui.hideScreens();
     ui.setRuntime(state, 'run');
-    ui.showStageBanner(1);
+    ui.showStageBanner(stress ? 'STRESS MODE' : 1);
     if (audio) {
       audio.setMuted(ui.isMuted());
       audio.setIntensity(0);
@@ -330,6 +332,12 @@
   function onKey(e) {
     if (!e) return;
     var k = e.key || '';
+    if (k === 'Escape' || k === 'Esc') {
+      if (state && state.gameMode === 'stress') {
+        showStart();
+        return;
+      }
+    }
     if (view.phase === 'clear') {
       if (k === '1') chooseUpgrade(0);
       else if (k === '2') chooseUpgrade(1);
@@ -421,7 +429,9 @@
     ui = UI.create({
       renderer: renderer,
       actions: {
-        onStart: beginRun,
+        onStart: function () { beginRun('normal'); },
+        onStressStart: function () { beginRun('stress'); },
+        onExit: showStart,
         onBackToDeck: showStart,
         onUpgrade: chooseUpgrade,
         onSlot: selectSlot,
@@ -449,7 +459,7 @@
       window.__GAME__ = {
         id: 'graph-cross',
         title: 'グラフクロス',
-        start: function () { beginRun(); },
+        start: function () { beginRun('normal'); },
         autoPlayStep: function () {},
         isDone: function () {
           return !!(state && ((state.over && view.phase === 'over') ||

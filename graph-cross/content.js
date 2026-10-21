@@ -11,20 +11,21 @@
   'use strict';
 
   var MODES = {
-    hold: { key: 'hold', label: 'y = 0', note: 'キープ', family: 'none' },
-    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', family: 'linear' },
-    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', family: 'linear' },
-    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', family: 'linear' },
-    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', family: 'linear' },
-    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', family: 'quad' },
-    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', family: 'quad' },
-    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', family: 'wave' }
+    hold: { key: 'hold', label: 'y = 0', note: 'キープ', family: 'none', genre: 'other' },
+    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', family: 'linear', genre: 'up' },
+    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', family: 'linear', genre: 'down' },
+    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', family: 'linear', genre: 'up' },
+    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', family: 'linear', genre: 'down' },
+    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', family: 'quad', genre: 'up' },
+    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', family: 'quad', genre: 'down' },
+    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', family: 'wave', genre: 'other' }
   };
   var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave'];
   var DEFAULT_DECK = ['hold', 'up', 'down'];
   var DECK_SIZE = 3;
 
   var FAMILY_LABELS = { linear: '直線', quad: '累乗', wave: '波', none: '—' };
+  var GENRE_LABELS = { up: '上昇', down: '下降', other: 'その他' };
   var FAMILY_COLORS = { linear: '#5ff0ff', quad: '#ffd166', wave: '#ff7ad9', none: '#a8bad8' };
 
   var PARAM_SPECS = {
@@ -113,6 +114,7 @@
     DEFAULT_DECK: DEFAULT_DECK,
     DECK_SIZE: DECK_SIZE,
     FAMILY_LABELS: FAMILY_LABELS,
+    GENRE_LABELS: GENRE_LABELS,
     FAMILY_COLORS: FAMILY_COLORS,
     PARAM_SPECS: PARAM_SPECS,
     WAVE_SHAPES: WAVE_SHAPES,
