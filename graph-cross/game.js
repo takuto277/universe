@@ -97,14 +97,16 @@
       return qlabel;
     }
     if (key === 'wave') {
-      var wp = params && params.wave ? params.wave : { a: 1, b: 1, c: 0 };
+      var wp = params && params.wave ? params.wave : { a: 1, b: 1, c: 0, shape: 0 };
       var wa = wp.a || 1;
       var wb = wp.b || 1;
       var wc = wp.c || 0;
+      var wshape = Math.max(0, Math.min(4, Math.round(wp.shape || 0)));
       var acoef = wa === 1 ? '' : fmtNum(wa) + ' ';
       var inner = wb === 1 ? 'x' : fmtNum(wb) + 'x';
       if (wc !== 0) inner += (wc > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(wc));
-      return 'y = ' + acoef + 'sin(' + inner + ')';
+      var fname = wshape === 4 ? 'damp·sin' : (E.WAVE_SHAPES[wshape] || 'sin');
+      return 'y = ' + acoef + fname + '(' + inner + ')';
     }
     return E.MODES[key] ? E.MODES[key].label : '';
   }
@@ -319,6 +321,15 @@
     updateDeckUi();
   }
 
+  function onWaveShapeChange(value) {
+    var shape = Math.max(0, Math.min(4, Math.round(parseFloat(value) || 0)));
+    selectedParams.wave.shape = shape;
+    previewKey = 'wave';
+    saveParams();
+    updateTunePanel();
+    updateSlots();
+  }
+
   function updateTunePreview() {
     if (!previewCtx) return;
     var W = 560;
@@ -363,17 +374,21 @@
     var fieldH = 520;
     var y = fieldH / 2;
     var power = Math.max(2, Math.round(params.p || 2));
-    var vy = previewKey === 'wave' ? 0 : (params.b || 0) * 120;
+    var shapeIndex = Math.max(0, Math.min(4, Math.round(params.shape || 0)));
+    var waveAmp = 68 * (params.a || 1);
+    var waveBase = fieldH / 2 - waveAmp * E.waveShapeValue(shapeIndex, params.c || 0, 0);
+    var vy = (params.b || 0) * 120;
     var powerSign = previewKey === 'quad' ? -1 : 1;
     var points = [{ x: 0, y: top + (y / fieldH) * (bottom - top) }];
     var off = false;
     for (var t = dt; t <= tmax + 1e-9; t += dt) {
       if (previewKey === 'wave') {
-        vy = 285 * (params.a || 1) * Math.sin(4.2 * (params.b || 1) * t + (params.c || 0));
+        var theta = t * 4.2 * (params.b || 1) + (params.c || 0);
+        y = waveBase + waveAmp * E.waveShapeValue(shapeIndex, theta, t);
       } else {
         vy = powerSign * 280 * (params.a || 1) * power * Math.pow(t, power - 1) + (params.b || 0) * 120;
+        y += vy * dt;
       }
-      y += vy * dt;
       if (y < 0 || y > fieldH) {
         off = true;
         y = clamp(y, 0, fieldH);
@@ -408,8 +423,10 @@
 
     var desc;
     if (previewKey === 'wave') {
-      desc = '振幅 a=' + fmtNum(params.a) + ' / 周波数 b=' + fmtNum(params.b) + ' / 位相 c=' + fmtNum(params.c) +
-        '。' + (params.b >= 1.5 ? '小刻みな' : 'ゆったりした') + '上下の波。';
+      var shapeNames = ['サイン', 'コサイン', '三角波', '角丸スクエア', '減衰サイン'];
+      var shapeDescs = ['滑らかな上下', 'sinを位相ずらし', '折れ線で上下', '角を丸くした方形波', '時間とともに小さくなる'];
+      desc = shapeNames[shapeIndex] + ' / 振幅 a=' + fmtNum(params.a) + ' / 周波数 b=' + fmtNum(params.b) + ' / 位相 c=' + fmtNum(params.c) +
+        '。' + shapeDescs[shapeIndex] + '。';
     } else {
       var dir = previewKey === 'quad' ? '上' : '下';
       var bend = power >= 4 ? '終盤で一気に曲がる' : power === 3 ? '後半で強く曲がる' : 'じわじわ曲がる';
@@ -1174,6 +1191,12 @@
         el.addEventListener('change', function () { onParamCommit(def[1], def[2], el.value); });
         el.addEventListener('focus', function () { setPreviewKey(def[1]); });
       })(paramDefs[i]);
+    }
+    var waveShapeSelect = $('tune-wave-shape');
+    if (waveShapeSelect) {
+      waveShapeSelect.addEventListener('change', function () {
+        onWaveShapeChange(waveShapeSelect.value);
+      });
     }
     var tuneKeys = ['quad', 'quadDown', 'wave'];
     for (i = 0; i < tuneKeys.length; i++) {
