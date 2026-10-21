@@ -105,7 +105,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 - **main へ push しない**: 触るのは `agent/` 配下のブランチと専用 worktree だけ。main への push は branch protection でも拒否される
 - **マージしない**: レビューとマージは五点ゲートに任せる(`--admin` や直接マージは使わない)
 - **builder の権限は allowlist**: 既定 deny で、git の読み書き・commit、verify、jsc、読み取り系ユーティリティだけを許可する。`git push`、`gh`、`rm`、ネットワーク、外部ディレクトリは拒否する
-- **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/verify.sh` / `run-tests.sh` / `check_site.py` / `harness.js` / `test_agent_runner.py` / `pr_*.py` / `.github/workflows/` が変更されていたら失敗させる。検証を緩めて通すことはできない
+- **検証のすり抜け防止**: verify は worktree 側で実行し、`tools/` 配下と `.github/workflows/` が変更されていたら失敗させる。検証スクリプトの改変や、verify が import する追加モジュールによる任意コード実行を防ぐ
 - **状態不明なら中止**: PR 一覧の取得失敗など、既存 PR の有無を確認できない場合はブランチを消さずに止める
 - **pause は公開直前にも確認**: 実行開始時に加えて、push と PR 作成の直前にも pause を確認する
 - **タイムアウト**: エージェント既定 2700 秒、verify 600 秒。超えたらプロセスグループごと終了する
@@ -164,4 +164,5 @@ python3 tools/test_agent_runner.py
 - opencode の認証とモデルの利用枠に依存する
 - 1件ずつ・自動リトライなし。並列実行や失敗の無限ループはしない
 - 生成物の品質は最終的に五点ゲートと AI レビューで担保する
-- 検証スクリプトや CI の変更は無人では通さない(人間のレビューが必要)。調査したいときは `UNIVERSE_AGENT_KEEP_WORKTREE=1` で再実行して worktree を残す
+- `tools/` 配下や CI の変更は無人では通さない(人間のレビューが必要)。調査したいときは `UNIVERSE_AGENT_KEEP_WORKTREE=1` で再実行して worktree を残す
+- 検証失敗時、Issue コメントには要点だけを書き、verify の生出力はローカルの実行ログに残す

@@ -44,15 +44,7 @@ DEFAULT_TIMEOUT = 2700
 DEFAULT_VERIFY_TIMEOUT = 600
 LOG_RETENTION_DAYS = 14
 PROTECTED_PATHS = (
-    "tools/verify.sh",
-    "tools/run-tests.sh",
-    "tools/check_site.py",
-    "tools/harness.js",
-    "tools/agent_runner.py",
-    "tools/test_agent_runner.py",
-    "tools/pr_gate.py",
-    "tools/pr_review.py",
-    "tools/pr_merge.py",
+    "tools/",
     ".github/workflows/",
 )
 
@@ -473,8 +465,7 @@ class Runner:
             if verify.timed_out:
                 raise TaskError("verify.sh がタイムアウトしました (%ss)" % cfg.verify_timeout)
             if not verify.ok:
-                raise TaskError("./tools/verify.sh が失敗しました\n```\n%s\n```" %
-                                tail(verify.stdout + verify.stderr, 1200))
+                raise TaskError("./tools/verify.sh が失敗しました。詳細は実行ログを確認してください")
 
             if self.paused():
                 raise TaskError("pause されたため push 前に中断しました")

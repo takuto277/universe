@@ -320,6 +320,12 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("bash"))
         self.assertFalse(self.fake.called("gh", "pr", "create"))
 
+    def test_new_module_under_tools_is_rejected(self):
+        self.happy(changed="A\ttools/json.py\n")
+        self.assertEqual(1, self.runner.run_once())
+        self.assertFalse(self.fake.called("bash"))
+        self.assertFalse(self.fake.called("gh", "pr", "create"))
+
     def test_renamed_protected_file_is_rejected(self):
         self.happy(changed="D\ttools/harness.js\nA\ttools/harness.js.bak\n")
         self.assertEqual(1, self.runner.run_once())
