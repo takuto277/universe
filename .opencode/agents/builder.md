@@ -1,5 +1,5 @@
 ---
-description: Implements one GitHub issue inside an isolated worktree. Commits locally and never pushes, opens PRs, or merges.
+description: Implements one GitHub issue inside an isolated worktree. Only edits files; the runner commits. Never pushes, opens PRs, or merges.
 mode: primary
 temperature: 0.2
 permission:
