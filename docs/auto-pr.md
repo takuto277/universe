@@ -9,7 +9,7 @@ PR を Ready にするだけで、レビューとマージまで自動で進め�
 1. 自分が作成した open かつ非 Draft の PR を `main` 向けに探す
 2. 最新 head のレビューがなければ `opencode run --command pr-review` で AI レビューを投稿する
 3. Blocker が 0 で五点ゲートが通れば、`tools/pr_merge.py` で squash merge する
-4. Blocker があれば通知して止める。自動修正はしない
+4. Blocker があれば `tools/agent_runner.py fix` で自動修正を試み、同じ PR に push して再レビューする。上限に達したら通知して止める
 5. CI 待ちや一時的な失敗は次回以降に再試行する
 
 対象外:
@@ -49,6 +49,17 @@ PR 単位で止める:
 - PR を Draft に戻す（マージ直前の再確認で止まります。再確認を通過した後の Draft 化は、現在のマージを止められません）
 - `ai-pause` ラベルまたは `do-not-merge` ラベルを付ける
 
+## Blocker の自動修正
+
+Blocker が出た PR は、`builder` がレビュー指摘を読んで修正し、同じ head ブランチへ push します。以後は通常どおり再レビューされ、Blocker 0 になれば五点ゲートでマージされます（自動修正がマージすることはありません）。
+
+- 1 PR あたり最大 `UNIVERSE_AGENT_FIX_MAX`（既定3）回。上限後は通知して停止します
+- 失敗した head は60分クールダウンし、同じ失敗を繰り返しません
+- `tools/` と `.github/workflows/` を変更する必要がある指摘は自動修正できません（保護対象）。通知して人の対応に回します
+- `UNIVERSE_AUTO_PR_AUTOFIX=0` で無効化できます（LaunchAgent の plist に反映するには再インストール）
+- pause / Draft / `ai-pause` / `do-not-merge` は従来どおり尊重します
+- 実行履歴と通知は `tools/agent_runner.py` 側に残ります
+
 ## ログ
 
 ```sh
@@ -72,7 +83,7 @@ tail -f ~/Library/Logs/universe-auto-pr.log
 - `tests` / `site` の完了を最大90秒待ってからゲートを判定します
 - AI レビューは30分で打ち切ります（perl の alarm を使用）
 - ロックが120分以上残った場合は次回に回収します。回収時は稼働中のプロセスを強制終了することがあります
-- Blocker の自動修正はしません。修正して push するか、`/pr-deliver` を使ってください
+- Blocker は自動修正を試みます（上限・保護パス・失敗時は人へ）。詳しくは「Blocker の自動修正」を参照してください
 - 五点ゲートはローカル手順なので、マージ権限を持つ人が迂回できます
 
 ## 環境変数
@@ -82,6 +93,7 @@ LaunchAgent の plist に反映されるもの:
 - `UNIVERSE_AUTO_PR_MODEL`: AI レビューに使う opencode のモデル。既定は `opencode/deepseek-v4.1-flash-free`
 - `UNIVERSE_AUTO_PR_REPO`: 対象リポジトリ。既定は `takuto277/universe`
 - `UNIVERSE_AUTO_PR_BASE`: 対象 base branch。既定は `main`
+- `UNIVERSE_AUTO_PR_AUTOFIX`: Blocker の自動修正。既定は `1`（`0` で無効）
 
 手動実行時だけ有効なもの:
 

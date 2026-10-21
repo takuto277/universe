@@ -28,7 +28,8 @@ Usage: tools/auto-pr.sh [--dry-run] [--force] [--verbose]
 
 Checks open, non-draft pull requests authored by the current GitHub user.
 A PR with no current AI review is reviewed headlessly. A PR whose five-point
-gate passes is squash-merged. PRs with a Blocker are reported and skipped.
+gate passes is squash-merged. A PR with a Blocker gets an automatic fix attempt
+(limited per PR), then is re-reviewed.
 
 Options:
   --dry-run  Show what would happen without reviewing or merging.
@@ -317,6 +318,51 @@ merge_pr() {
   return 0
 }
 
+autofix() {
+  local number="$1"
+  local head="$2"
+  if [ "${UNIVERSE_AUTO_PR_AUTOFIX:-1}" != "1" ]; then
+    return 1
+  fi
+  local failed="$STATE_DIR/${number}-${head}.autofix-failed"
+  if recent "$failed" 60; then
+    log "PR #$number: autofix failed recently; skip"
+    return 1
+  fi
+  log "PR #$number: attempting automatic fix for blockers"
+  if [ "$DRY_RUN" = "1" ]; then
+    log "PR #$number: would run automatic fix"
+    return 0
+  fi
+  if [ "${UNIVERSE_AUTO_PR_DISABLE:-0}" = "1" ] || [ -f "$STATE_DIR/pause" ]; then
+    log "PR #$number: autofix paused; skip"
+    return 0
+  fi
+  local paused
+  paused="$("$GH" pr view "$number" --repo "$REPO" --json isDraft,labels --jq 'if .isDraft then "draft" elif ([.labels[].name] | index("ai-pause")) then "ai-pause" elif ([.labels[].name] | index("do-not-merge")) then "do-not-merge" else "" end' 2>/dev/null || true)"
+  if [ -n "$paused" ]; then
+    log "PR #$number: autofix paused ($paused); skip"
+    return 0
+  fi
+  local rc=0
+  "$PYTHON" "$ROOT/tools/agent_runner.py" fix --pr "$number" >>"$LOG_FILE" 2>&1 || rc=$?
+  if [ "$rc" = "0" ]; then
+    log "PR #$number: autofix completed; re-review next cycle"
+    return 0
+  fi
+  if [ "$rc" = "2" ]; then
+    log "PR #$number: autofix skipped (paused, busy, or fork)"
+    return 0
+  fi
+  if [ "$rc" = "3" ]; then
+    log "PR #$number: autofix attempt limit reached"
+    return 1
+  fi
+  mark "$failed"
+  log "PR #$number: autofix failed"
+  return 1
+}
+
 prs="$("$GH" pr list \
   --repo "$REPO" \
   --state open \
@@ -367,6 +413,9 @@ while IFS=$'\t' read -r number head; do
   fi
 
   if is_positive_integer "$GATE_BLOCKERS"; then
+    if autofix "$number" "$head"; then
+      continue
+    fi
     blocked="$STATE_DIR/${number}-${head}.blocked"
     if [ ! -f "$blocked" ] || [ "$FORCE" = "1" ]; then
       mark "$blocked"
@@ -403,6 +452,9 @@ while IFS=$'\t' read -r number head; do
       continue
     fi
     if is_positive_integer "$GATE_BLOCKERS"; then
+      if autofix "$number" "$head"; then
+        continue
+      fi
       blocked="$STATE_DIR/${number}-${head}.blocked"
       mark "$blocked"
       log "PR #$number: $GATE_BLOCKERS blocker(s); waiting for a fix"
