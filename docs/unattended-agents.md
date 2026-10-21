@@ -2,6 +2,15 @@
 
 GitHub Issue を実装キューにして、builder エージェントを無人で実行し、PR を作るところまで自動化します。レビューとマージは既存の五点ゲート(と `auto-pr` watcher)が担当するため、「実装」と「マージ」の分離は保ったまま、夜間や離席中にも変更を進められます。
 
+## 最短で使う
+
+```sh
+./tools/agent.sh enqueue "タイトル" --body "背景 / 提案 / 受け入れ条件 / 対象範囲"
+./tools/agent.sh status
+```
+
+引数なしの `./tools/agent.sh` でも使い方を表示します。opencode では `/agent <依頼>` を使えます。
+
 ## 全体像
 
 ```text

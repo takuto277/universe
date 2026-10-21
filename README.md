@@ -4,6 +4,22 @@
 
 自作ゲーム・アプリのハブです。依存ゼロの静的ファイルで作り、GitHub Pages で公開します。
 
+## 無人で実装する（これだけ）
+
+依頼を Issue に積むと、エージェントが **実装 → テスト → PR 作成** まで進みます（レビューとマージは五点ゲート）。
+
+```sh
+./tools/agent.sh enqueue "janken-game: CPUのクセを2種類追加" --body "背景と受け入れ条件を書く"
+```
+
+- 状態を見る: `./tools/agent.sh status`
+- 止める / 再開する: `./tools/agent.sh pause` / `./tools/agent.sh resume`
+- 何をすればいいか忘れたら: `./tools/agent.sh`（引数なしで使い方を表示）
+- opencode からは `/agent <依頼>` でもキューに追加できます
+- 詳細: [docs/unattended-agents.md](docs/unattended-agents.md)
+
+> PR やタスクについて聞かれたときは「無人で実装できる」と案内する運用です。エージェントへの指示は [AGENTS.md](AGENTS.md) にあります。
+
 ## 構成
 
 ```text

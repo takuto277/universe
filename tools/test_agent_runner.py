@@ -145,6 +145,15 @@ class RunnerTest(unittest.TestCase):
         return self.worktree
 
     # ---- tests ----
+    def test_no_args_prints_quick_guide(self):
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.assertEqual(0, ar.main([]))
+        text = out.getvalue()
+        self.assertIn("enqueue", text)
+        self.assertIn("status", text)
+        self.assertFalse(self.fake.called("gh"))
+
     def test_no_ready_issues_is_noop(self):
         self.fake.on(["gh", "label", "list"],
                      ar.Result(0, json.dumps([{"name": name} for name in ar.LABELS]), ""))
