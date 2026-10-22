@@ -12,6 +12,8 @@ updates:
       - "area:automation"
       - "priority:p3"
     open-pull-requests-limit: 5
+    commit-message:
+      prefix: "repo: "
 
 # `.opencode/package.json` は .opencode/.gitignore の対象でリポジトリに含まれないため、
 # npm の自動更新は行わない。@opencode-ai/plugin は手動で更新する。
