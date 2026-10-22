@@ -114,8 +114,30 @@
     return WAVE_AMPLITUDE * (wp.a || 1) * waveShapeValue(shape, theta, t);
   }
 
-  function setWaveBase(state) {
-    state.waveBaseY = state.y - waveOffset(state, 0);
+  function directMode(key) {
+    return key === 'wave' || key === 'expo' || key === 'log' ||
+      key === 'sigmoid' || key === 'gauss' || key === 'easeDown';
+  }
+
+  function directOffset(state, key, t) {
+    var span = Math.max(1, state.bottom - state.top);
+    if (key === 'wave') return waveOffset(state, t);
+    if (key === 'expo') return -0.12 * span * (Math.exp(1.8 * t) - 1);
+    if (key === 'log') return -0.28 * span * Math.log(1 + 3 * t);
+    if (key === 'sigmoid') {
+      var sig = function (x) { return 1 / (1 + Math.exp(-x)); };
+      return -0.6 * span * (sig(3 * (t - 0.6)) - sig(-1.8));
+    }
+    if (key === 'gauss') {
+      var g = function (x) { return Math.exp(-Math.pow((x - 1.0) / 0.55, 2)); };
+      return -0.45 * span * (g(t) - g(0));
+    }
+    if (key === 'easeDown') return 0.5 * span * (1 - Math.exp(-2.2 * t));
+    return 0;
+  }
+
+  function setModeBase(state) {
+    state.waveBaseY = state.y - directOffset(state, state.mode, 0);
   }
 
   function normalizeDeck(deck) {
@@ -188,7 +210,7 @@
     state.vy = baseVy(state, state.mode);
     state.y = (state.top + state.bottom) / 2;
     state.waveBaseY = state.y;
-    if (state.mode === 'wave') setWaveBase(state);
+    if (directMode(state.mode)) setModeBase(state);
     state.trail = [];
     state.rivals = [];
     state.items = [];
@@ -298,7 +320,7 @@
     state.modeTime = 0;
     state.vy = baseVy(state, key);
     state.waveBaseY = state.y;
-    if (key === 'wave') setWaveBase(state);
+    if (directMode(key)) setModeBase(state);
     return true;
   }
 
@@ -561,7 +583,7 @@
     state.modeTime = 0;
     state.vy = baseVy(state, state.mode);
     state.waveBaseY = state.y;
-    if (state.mode === 'wave') setWaveBase(state);
+    if (directMode(state.mode)) setModeBase(state);
     state.combo = 0;
     state.comboTimer = 0;
     state.spawnTimer = 1.0;
@@ -865,8 +887,8 @@
       var powerTerm = 280 * (qp.a || 1) * power * Math.pow(state.modeTime, power - 1);
       var dir = state.mode === 'quadDown' ? 1 : -1;
       state.vy = clamp(dir * powerTerm + (qp.b || 0) * 120, -MAX_PLAYER_VY, MAX_PLAYER_VY);
-    } else if (state.mode === 'wave') {
-      state.y = state.waveBaseY + waveOffset(state, state.modeTime);
+    } else if (directMode(state.mode)) {
+      state.y = state.waveBaseY + directOffset(state, state.mode, state.modeTime);
       state.vy = 0;
     } else state.vy = 0;
 
