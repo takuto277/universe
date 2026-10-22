@@ -334,9 +334,48 @@ var deckSize = g.deck.length;
 assert(E.applyUpgrade(g, 'slot') === true && g.deck.length === deckSize + 1, '関数スロット+1');
 assert(E.snapshot(g).deck.length === deckSize + 1, '4枠デッキがスナップショットに入る');
 assert(E.applyUpgrade(g, 'slot') === false, '4枠を超えて増やせない');
-assert(g.upgrades.life === 1 && g.upgrades.slot === 1, '取得強化の記録');
+assert(E.applyUpgrade(g, 'beam') === true && g.upgrades.beam === 1, 'ビーム強化');
+assert(E.applyUpgrade(g, 'beam') === false, 'ビーム強化は1回だけ');
+assert(g.upgrades.life === 1 && g.upgrades.slot === 1 && g.upgrades.beam === 1, '取得強化の記録');
 assert(E.snapshot(g).maxHp === 4 && E.snapshot(g).hitBonus === 2, '強化がスナップショットに反映');
 assert(E.applyUpgrade(g, 'unknown') === false, '不明な強化は無効');
+
+/* 9d0) プリズムクロス */
+g = makeGame(909, ['hold', 'up', 'wave']);
+g.rivals = [];
+g.items = [];
+g.allies = [];
+g.boss = null;
+g.stageHits = 0;
+g.stageTarget = 99;
+g.upgrades = { beam: 1 };
+g.beamCooldown = 0;
+g.y = 300;
+g.spawnTimer = 99;
+g.itemTimer = 99;
+g.trail = [
+  { x: 420, y: 300, mode: 'hold' },
+  { x: 418, y: 300, mode: 'hold' }
+];
+var beamA = lineRival(400, 300, 200);
+var beamB = lineRival(400, 330, 200);
+var beamC = lineRival(410, 270, 100);
+g.rivals = [beamA, beamB, beamC];
+E.update(g, 1 / 60);
+var beamEvents = E.consumeEvents(g).filter(function (e) { return e.type === 'beam'; });
+assert(beamEvents.length === 1, 'ビームは1回だけ発動する');
+assert(beamEvents[0].kills.length === 2, 'ビームで縦線上の敵を撃ち抜く');
+assert(g.rivals.length === 0 && g.hits === 3, 'ビーム撃破もステージ進行に数える');
+assert(g.beamCooldown > 0, 'ビームのクールダウン');
+g.rivals = [lineRival(400, 300, 200)];
+g.trail = [
+  { x: 420, y: 300, mode: 'hold' },
+  { x: 418, y: 300, mode: 'hold' }
+];
+E.update(g, 1 / 60);
+var cooldownEvents = E.consumeEvents(g);
+assert(!cooldownEvents.some(function (e) { return e.type === 'beam'; }), 'クールダウン中はビームが出ない');
+assert(g.hits === 4, '通常交差は継続する');
 
 /* 9d1) ストレス解消モード */
 g = E.createGame({ width: 1000, height: 620, deck: ['hold', 'up', 'wave'], mode: 'stress', rng: mulberry32(908) });

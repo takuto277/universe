@@ -319,10 +319,33 @@
     }
 
     function drawEffects(effects) {
+      var beams = effects.beams || [];
       var rings = effects.rings || [];
       var particles = effects.particles || [];
       var labels = effects.labels || [];
       var i;
+      for (i = 0; i < beams.length; i++) {
+        var beam = beams[i];
+        var ba = Math.max(0, Math.min(1, beam.life / beam.max));
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = ba;
+        ctx.strokeStyle = 'rgba(120, 245, 255, 0.95)';
+        ctx.shadowColor = '#5ff0ff';
+        ctx.shadowBlur = 28;
+        ctx.lineWidth = 2 + 8 * ba;
+        ctx.beginPath();
+        ctx.moveTo(beam.x, 0);
+        ctx.lineTo(beam.x, viewH);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.globalAlpha = ba * 0.36;
+        ctx.lineWidth = 18;
+        ctx.stroke();
+        ctx.restore();
+      }
       for (i = 0; i < rings.length; i++) {
         var r = rings[i];
         var a = Math.max(0, Math.min(1, r.life / r.max));

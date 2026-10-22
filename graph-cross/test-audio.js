@@ -66,6 +66,10 @@ var before = oscStarts;
 audio.play('miss');
 assert(oscStarts > before, 'ミス音が鳴る');
 
+var beamBefore = oscStarts;
+audio.play('beam');
+assert(oscStarts > beamBefore, 'ビーム音が鳴る');
+
 /* BGM は先読みでスケジュールされる */
 audio.startBgm();
 assert(typeof intervalFn === 'function', 'BGMスケジューラが動く');
