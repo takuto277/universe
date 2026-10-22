@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: セキュリティ報告
+    url: https://github.com/takuto277/universe/security/advisories/new
+    about: 脆弱性は非公開で報告してください
+  - name: ドキュメント
+    url: https://github.com/takuto277/universe/blob/main/docs/README.md
+    about: 開発・運用・公開のドキュメント

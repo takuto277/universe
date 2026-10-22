@@ -1,0 +1,46 @@
+name: バグ報告
+description: アプリや開発ツールの不具合を報告する
+title: "[bug] "
+labels:
+  - "bug"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        報告ありがとうございます。可能な範囲で再現手順を書いてください。
+        セキュリティ上の問題は公開Issueではなく [Security Advisories](https://github.com/takuto277/universe/security/advisories/new) へお願いします。
+  - type: textarea
+    id: summary
+    attributes:
+      label: 概要
+      description: 何が起きたかを1〜2文で
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: 再現手順
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: 期待した結果 / 実際の結果
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: 環境
+      description: OS・ブラウザ・画面幅など
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: 確認
+      options:
+        - label: 既存のIssueを検索しました
+          required: true

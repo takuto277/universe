@@ -1,0 +1,45 @@
+name: 実装依頼
+description: 無人実装ランナーに渡せる形で依頼する
+title: "[task] "
+labels:
+  - "enhancement"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        実装してほしい内容を、そのまま無人実装ランナーに渡せる形で書いてください。
+        `agent:ready` ラベルを付けると実装キューに入ります。`tools/` と `.github/workflows/` を変更する依頼は無人実行の対象外です（人のレビューが必要です）。
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+      description: なぜ必要か
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案
+      description: どう変えるか
+    validations:
+      required: true
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: 受け入れ条件
+      description: 完了と判断できる条件
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対象範囲
+      description: 触ってよいファイル・アプリ
+    validations:
+      required: true
+  - type: checkboxes
+    id: agent
+    attributes:
+      label: 無人実行
+      options:
+        - label: このIssueに `agent:ready` を付けてよい

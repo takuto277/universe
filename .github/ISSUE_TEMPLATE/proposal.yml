@@ -1,0 +1,31 @@
+name: 改善提案
+description: 小さな改善アイデアを提案する
+title: "[proposal] "
+labels:
+  - "enhancement"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        実装まで決めずにアイデアを残すためのテンプレートです。
+        planner やレビュー指摘の自動Issue化では `agent:proposed` が付きます。実装する場合は `agent:ready` に移してください。
+  - type: textarea
+    id: background
+    attributes:
+      label: 背景
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: 提案
+    validations:
+      required: true
+  - type: textarea
+    id: effect
+    attributes:
+      label: 期待する効果
+  - type: textarea
+    id: scope
+    attributes:
+      label: 対象範囲（任意）
