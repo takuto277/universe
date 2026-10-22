@@ -23,7 +23,8 @@
     log: { key: 'log', label: 'y = ln(x+1)', note: '対数カーブ', family: 'quad', genre: 'up' },
     sigmoid: { key: 'sigmoid', label: 'y = sigmoid(x)', note: 'Sカーブ', family: 'wave', genre: 'up' },
     gauss: { key: 'gauss', label: 'y = e^{-x²}', note: '山カーブ', family: 'wave', genre: 'other' },
-    easeDown: { key: 'easeDown', label: 'y = -1 + e^{-x}', note: '減速下降', family: 'quad', genre: 'down' }
+    easeDown: { key: 'easeDown', label: 'y = -1 + e^{-x}', note: '減速下降', family: 'quad', genre: 'down' },
+    fusion: { key: 'fusion', label: 'y = fusion', note: '2関数の合成', family: 'none', genre: 'other', color: '#b48cff' }
   };
   var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave', 'expo', 'log', 'sigmoid', 'gauss', 'easeDown'];
   var DEFAULT_DECK = ['hold', 'up', 'down'];
@@ -82,7 +83,13 @@
     return marks[power] || ('^' + power);
   }
 
-  function formatModeLabel(key, params) {
+  function formatModeLabel(key, params, fusion) {
+    if (key === 'fusion') {
+      if (!fusion || !MODES[fusion.primary] || !MODES[fusion.secondary]) return 'y = fusion';
+      var left = formatModeLabel(fusion.primary, params);
+      var right = formatModeLabel(fusion.secondary, params);
+      return 'y = ' + left.replace(/^y = /, '') + ' + ' + right.replace(/^y = /, '');
+    }
     if (key === 'quad' || key === 'quadDown') {
       var qp = params && params[key] ? params[key] : { a: 1, b: 0, p: 2 };
       var qa = qp.a || 1;
@@ -110,7 +117,7 @@
 
   function modeColor(key) {
     var mode = MODES[key];
-    return mode ? (FAMILY_COLORS[mode.family] || FAMILY_COLORS.none) : FAMILY_COLORS.none;
+    return mode ? (mode.color || FAMILY_COLORS[mode.family] || FAMILY_COLORS.none) : FAMILY_COLORS.none;
   }
 
   return {

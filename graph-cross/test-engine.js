@@ -445,6 +445,28 @@ for (i = 0; i < 20; i++) {
 }
 
 
+/* 9e2) 関数合成 */
+g = E.createGame({
+  width: 1000, height: 620, deck: ['fusion', 'up', 'hold'],
+  fusion: { primary: 'quad', secondary: 'wave' },
+  deckParams: { quad: { a: 1.5, b: 0, p: 2 }, wave: { a: 1, b: 2, c: 0, shape: 0 } },
+  rng: mulberry32(930)
+});
+assert(g.fusion && g.fusion.primary === 'quad' && g.fusion.secondary === 'wave', '合成設定を保持');
+assert(g.deckParams.quad && g.deckParams.wave, 'デッキ外の合成元パラメータも保持');
+var fusionStart = g.y;
+for (i = 0; i < 60; i++) { g.rivals = []; g.items = []; E.update(g, 1 / 60); }
+assert(g.y !== fusionStart, '合成関数が軌道に反映される');
+assert(E.snapshot(g).fusion.primary === 'quad', '合成設定がスナップショットに入る');
+var fusionDeck = E.createGame({
+  width: 1000, height: 620, deck: ['fusion', 'up', 'down'],
+  fusion: { primary: 'quad', secondary: 'wave' }, rng: mulberry32(931)
+});
+for (i = 0; i < 12; i++) E.rotateDeck(fusionDeck);
+assert(fusionDeck.deck.indexOf('fusion') === 0, '強制入れ替えで合成カードは消えない');
+var badFusion = E.createGame({ width: 1000, height: 620, deck: ['fusion', 'up', 'hold'], fusion: { primary: 'quad', secondary: 'quad' }, rng: mulberry32(932) });
+assert(badFusion.fusion === null, '不正な合成設定は無効');
+
 /* 9f) 追加された関数の軌道 */
 var directCases = [
   ['expo', -1], ['log', -1], ['sigmoid', -1], ['gauss', -1], ['easeDown', 1]

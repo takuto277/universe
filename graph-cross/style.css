@@ -327,6 +327,27 @@ body {
 
 /* ===== デッキ選択 ===== */
 #deck-builder.hidden { display: none; }
+#fusion-panel {
+  width: min(660px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 7px 10px 8px;
+  border: 1px solid rgba(180, 140, 255, 0.4);
+  border-radius: 12px;
+  background: rgba(16, 24, 42, 0.9);
+}
+.fusion-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+.fusion-controls select { flex: 1 1 150px; min-width: 0; }
+.fusion-plus { color: var(--gold); font-weight: 900; }
+.fusion-btn { margin: 0; padding: 6px 14px; font-size: 11px; }
+#fusion-note { font-size: 10px; }
+.deck-card.hidden { display: none; }
 #deck-builder {
   width: min(660px, 100%);
   display: flex;

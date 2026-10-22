@@ -17,6 +17,7 @@
     var els = {};
     var slotButtons = [];
     var deckCards = {};
+    var selectedFusion = loadFusion();
     var selectedDeck = loadDeck();
     var selectedParams = loadParams();
     var previewKey = null;
@@ -64,8 +65,30 @@
         }
       } catch (e) { }
     }
+    function loadFusion() {
+      try {
+        if (typeof localStorage === 'undefined') return null;
+        var raw = localStorage.getItem('graph-cross-fusion');
+        if (!raw) return null;
+        var f = JSON.parse(raw);
+        if (f && C.MODES[f.primary] && C.MODES[f.secondary] &&
+          f.primary !== 'fusion' && f.secondary !== 'fusion' && f.primary !== f.secondary) {
+          return { primary: f.primary, secondary: f.secondary };
+        }
+      } catch (e) { }
+      return null;
+    }
+    function saveFusion() {
+      try {
+        if (typeof localStorage !== 'undefined') {
+          if (selectedFusion) localStorage.setItem('graph-cross-fusion', JSON.stringify(selectedFusion));
+          else localStorage.removeItem('graph-cross-fusion');
+        }
+      } catch (e) { }
+    }
     function deckIsValid(deck) {
       if (!Array.isArray(deck) || deck.length !== C.DECK_SIZE) return false;
+      if (deck.indexOf('fusion') >= 0 && !selectedFusion) return false;
       var seen = {};
       for (var i = 0; i < deck.length; i++) {
         if (!C.MODES[deck[i]] || seen[deck[i]]) return false;
@@ -147,6 +170,7 @@
       lastPhase = phase || lastPhase;
       var deck = state ? state.deck : selectedDeck;
       var params = state ? state.deckParams : selectedParams;
+      var fusion = state ? state.fusion : selectedFusion;
       for (var i = 0; i < 4; i++) {
         var btn = slotButtons[i];
         if (!btn) continue;
@@ -164,7 +188,7 @@
         var mode = C.MODES[key];
         btn.setAttribute('data-genre', C.GENRE_LABELS[mode.genre] || '');
         var familyNote = mode.family !== 'none' ? ' · ' + C.FAMILY_LABELS[mode.family] : '';
-        btn.innerHTML = '<b>' + C.formatModeLabel(key, params) + '</b><span>' + mode.note + familyNote + '</span><em>' + (i + 1) + '</em>';
+        btn.innerHTML = '<b>' + C.formatModeLabel(key, params, fusion) + '</b><span>' + mode.note + familyNote + '</span><em>' + (i + 1) + '</em>';
         btn.style.setProperty('--mode-color', C.modeColor(key));
         btn.disabled = !(state && phase === 'run' && !state.over);
         btn.classList.toggle('active', !!(state && state.mode === key));
@@ -259,6 +283,67 @@
       if (els.btnBuild) els.btnBuild.textContent = isHidden ? 'デッキを組む' : '閉じる';
     }
 
+    function buildFusionSelects() {
+      var options = C.MODE_KEYS.map(function (key) {
+        return '<option value="' + key + '">' + C.MODES[key].label + '</option>';
+      }).join('');
+      if (els.fusionPrimary) {
+        els.fusionPrimary.innerHTML = options;
+        els.fusionPrimary.value = selectedFusion ? selectedFusion.primary : 'quad';
+      }
+      if (els.fusionSecondary) {
+        els.fusionSecondary.innerHTML = options;
+        els.fusionSecondary.value = selectedFusion ? selectedFusion.secondary : 'wave';
+      }
+    }
+
+    function updateFusionUi() {
+      var card = deckCards.fusion;
+      if (card) {
+        if (!selectedFusion) {
+          card.classList.add('hidden');
+        } else {
+          card.classList.remove('hidden');
+          card.innerHTML = '<b>' + C.formatModeLabel('fusion', selectedParams, selectedFusion) +
+            '</b><span>2関数の合成</span>';
+          card.style.setProperty('--mode-color', C.modeColor('fusion'));
+          card.setAttribute('data-genre', C.GENRE_LABELS.other);
+        }
+      }
+      if (selectedFusion && els.fusionPrimary) els.fusionPrimary.value = selectedFusion.primary;
+      if (selectedFusion && els.fusionSecondary) els.fusionSecondary.value = selectedFusion.secondary;
+      if (els.fusionNote) {
+        if (!selectedFusion) {
+          els.fusionNote.textContent = '2つの関数を選んで合成できます。';
+        } else {
+          var label = C.formatModeLabel('fusion', selectedParams, selectedFusion);
+          var selected = selectedDeck.indexOf('fusion') >= 0;
+          els.fusionNote.textContent = '合成: ' + label +
+            (selected ? ' / デッキに入っています' : ' / デッキに1枚空きがあれば追加できます');
+        }
+      }
+    }
+
+    function createFusion() {
+      var primary = els.fusionPrimary ? els.fusionPrimary.value : '';
+      var secondary = els.fusionSecondary ? els.fusionSecondary.value : '';
+      if (!C.MODES[primary] || !C.MODES[secondary] || primary === secondary ||
+        primary === 'fusion' || secondary === 'fusion') {
+        if (els.fusionNote) els.fusionNote.textContent = '別の関数を2つ選んでください。';
+        return;
+      }
+      selectedFusion = { primary: primary, secondary: secondary };
+      saveFusion();
+      var canAdd = selectedDeck.length < C.DECK_SIZE && selectedDeck.indexOf('fusion') < 0;
+      if (canAdd) {
+        selectedDeck.push('fusion');
+        saveDeck();
+      }
+      updateFusionUi();
+      updateDeckUi();
+      playUi();
+    }
+
     function updateDeckUi() {
       if (els.deckCount) els.deckCount.textContent = selectedDeck.length + '/' + C.DECK_SIZE;
       if (els.deckSummary) {
@@ -267,7 +352,7 @@
           var dkey = selectedDeck[di];
           var dgenre = C.GENRE_LABELS[C.MODES[dkey].genre] || '';
           chips.push('<span class="deck-chip" data-genre="' + dgenre + '">' +
-            C.formatModeLabel(dkey, selectedParams) + '<em>' + dgenre + '</em></span>');
+            C.formatModeLabel(dkey, selectedParams, selectedFusion) + '<em>' + dgenre + '</em></span>');
         }
         els.deckSummary.innerHTML = chips.length ? chips.join('') : '<span class="deck-chip empty">デッキを選ぼう</span>';
       }
@@ -285,6 +370,7 @@
       }
       updateSlots(lastState, lastPhase);
       updateTunePanel();
+      updateFusionUi();
     }
 
     function setPreviewKey(key) {
@@ -497,6 +583,10 @@
       els.deckSummary = $('deck-summary');
       els.btnBuild = $('btn-build');
       els.deckBuilder = $('deck-builder');
+      els.fusionPrimary = $('fusion-primary');
+      els.fusionSecondary = $('fusion-secondary');
+      els.btnFuse = $('btn-fuse');
+      els.fusionNote = $('fusion-note');
       els.tuneRows = $('tune-rows');
       els.tuneEmpty = $('tune-empty');
       els.tunePreviewWrap = $('tune-preview-wrap');
@@ -525,6 +615,19 @@
           });
         })(key, card);
       }
+
+      var fusionCard = $('card-fusion');
+      if (fusionCard) {
+        deckCards.fusion = fusionCard;
+        fusionCard.style.setProperty('--mode-color', C.modeColor('fusion'));
+        fusionCard.setAttribute('data-genre', C.GENRE_LABELS.other);
+        fusionCard.addEventListener('click', function () {
+          toggleDeck('fusion');
+          if (fusionCard.blur) fusionCard.blur();
+        });
+      }
+      buildFusionSelects();
+      if (els.btnFuse) els.btnFuse.addEventListener('click', createFusion);
 
       for (i = 0; i < 4; i++) {
         var slot = $('slot-' + i);
@@ -591,6 +694,7 @@
       init: init,
       getDeck: function () { return selectedDeck.slice(); },
       getParams: function () { return selectedParams; },
+      getFusion: function () { return selectedFusion ? { primary: selectedFusion.primary, secondary: selectedFusion.secondary } : null; },
       getBest: function () { return best; },
       isMuted: function () { return muted; },
       setRuntime: setRuntime,

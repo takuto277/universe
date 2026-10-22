@@ -116,11 +116,30 @@
 
   function directMode(key) {
     return key === 'wave' || key === 'expo' || key === 'log' ||
-      key === 'sigmoid' || key === 'gauss' || key === 'easeDown';
+      key === 'sigmoid' || key === 'gauss' || key === 'easeDown' || key === 'fusion';
+  }
+
+  function modeOffset(state, key, t) {
+    if (key === 'up') return -170 * t;
+    if (key === 'down') return 170 * t;
+    if (key === 'steepUp') return -320 * t;
+    if (key === 'steepDown') return 320 * t;
+    if (key === 'quad' || key === 'quadDown') {
+      var qp = state.deckParams[key] || { a: 1, b: 0, p: 2 };
+      var power = Math.max(2, Math.round(qp.p || 2));
+      var dir = key === 'quadDown' ? 1 : -1;
+      return dir * 280 * (qp.a || 1) * Math.pow(t, power) + (qp.b || 0) * 120 * t;
+    }
+    if (directMode(key)) return directOffset(state, key, t);
+    return 0;
   }
 
   function directOffset(state, key, t) {
     var span = Math.max(1, state.bottom - state.top);
+    if (key === 'fusion') {
+      if (!state.fusion) return 0;
+      return modeOffset(state, state.fusion.primary, t) + modeOffset(state, state.fusion.secondary, t);
+    }
     if (key === 'wave') return waveOffset(state, t);
     if (key === 'expo') return -0.12 * span * (Math.exp(1.8 * t) - 1);
     if (key === 'log') return -0.28 * span * Math.log(1 + 3 * t);
@@ -247,14 +266,29 @@
     state.spawnTimer = Math.max(0.9, wait);
   }
 
+  function normalizeFusion(fusion) {
+    if (!fusion || !MODES[fusion.primary] || !MODES[fusion.secondary]) return null;
+    if (fusion.primary === 'fusion' || fusion.secondary === 'fusion') return null;
+    if (fusion.primary === fusion.secondary) return null;
+    return { primary: fusion.primary, secondary: fusion.secondary };
+  }
+
   function createGame(options) {
     options = options || {};
     var deck = normalizeDeck(options.deck);
+    var fusion = normalizeFusion(options.fusion);
+    var allParams = normalizeParams(options.deckParams);
+    var deckParams = normalizeDeckParams(options.deckParams, deck);
+    if (fusion) {
+      if (PARAM_SPECS[fusion.primary]) deckParams[fusion.primary] = allParams[fusion.primary];
+      if (PARAM_SPECS[fusion.secondary]) deckParams[fusion.secondary] = allParams[fusion.secondary];
+    }
     var state = {
       rng: options.rng || Math.random,
       gameMode: options.mode === 'stress' ? 'stress' : 'normal',
+      fusion: fusion,
       deck: deck,
-      deckParams: normalizeDeckParams(options.deckParams, deck),
+      deckParams: deckParams,
       width: 0,
       height: 0,
       top: 0,
@@ -315,6 +349,7 @@
   function setMode(state, key) {
     if (!state || state.over || !MODES[key]) return false;
     if (state.deck.indexOf(key) < 0) return false;
+    if (key === 'fusion' && !state.fusion) return false;
     if (state.mode === key) return true;
     state.mode = key;
     state.modeTime = 0;
@@ -996,6 +1031,7 @@
     var groups = {};
     for (var i = 0; i < state.deck.length; i++) {
       var key = state.deck[i];
+      if (key === 'fusion') continue;
       var genre = MODES[key] ? MODES[key].genre : 'other';
       if (!groups[genre]) groups[genre] = { slots: [], candidates: [] };
       groups[genre].slots.push(i);
@@ -1109,6 +1145,7 @@
       modeFamilyLabel: FAMILY_LABELS[modeFamily(state.mode)],
       deck: state.deck.slice(),
       deckParams: JSON.parse(JSON.stringify(state.deckParams)),
+      fusion: state.fusion ? { primary: state.fusion.primary, secondary: state.fusion.secondary } : null,
       x: Math.floor(state.worldX),
       time: state.time,
       over: state.over,
