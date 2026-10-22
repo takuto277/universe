@@ -416,6 +416,9 @@ g.rivals.push(lineRival(g.headX - 100, (g.top + g.bottom) / 2, 200));
 E.update(g, 1 / 60);
 assert(g.rivals.length === 0, '追加グラフが通常敵を迎撃する');
 assert(E.consumeEvents(g).some(function (e) { return e.type === 'allyHit'; }), 'allyHitイベント');
+var allyMoveA = E.allyY(g.allies[0], 500, 0);
+var allyMoveB = E.allyY(g.allies[0], 500, 1);
+assert(Math.abs(allyMoveA - allyMoveB) > 1, '追加グラフが時間で動く');
 
 /* 9e) デッキの強制ローテーション */
 g = makeGame(903, ['hold', 'up', 'wave']);
