@@ -215,6 +215,33 @@
   }
 
   /* ===== 進行 ===== */
+  function clearEffects() {
+    particles = [];
+    rings = [];
+    labels = [];
+    shake = 0;
+    flash = 0;
+  }
+
+  function enterStageView(banner) {
+    view.phase = 'run';
+    view.deathAt = 0;
+    view.clearAt = 0;
+    view.upgradeIds = [];
+    lastCombo = 0;
+    clearEffects();
+    lastTs = 0;
+    ui.hideScreens();
+    ui.setRuntime(state, 'run');
+    ui.showStageBanner(banner);
+    if (audio && !ui.isMuted()) {
+      audio.setIntensity(0);
+      audio.unlock();
+      audio.startBgm();
+      audio.play('start');
+    }
+  }
+
   function beginRun(mode) {
     if (!ui || ui.getDeck().length !== C.DECK_SIZE) return;
     var stress = mode === 'stress';
@@ -227,29 +254,8 @@
       mode: stress ? 'stress' : 'normal'
     });
     checkpoint = state.gameMode === 'stress' ? null : E.makeCheckpoint(state);
-    view.phase = 'run';
-    view.deathAt = 0;
-    view.clearAt = 0;
-    view.upgradeIds = [];
-    lastCombo = 0;
-    particles = [];
-    rings = [];
-    labels = [];
-    shake = 0;
-    flash = 0;
-    lastTs = 0;
-    ui.hideScreens();
-    ui.setRuntime(state, 'run');
-    ui.showStageBanner(stress ? 'STRESS MODE' : 1);
-    if (audio) {
-      audio.setMuted(ui.isMuted());
-      audio.setIntensity(0);
-      if (!ui.isMuted()) {
-        audio.unlock();
-        audio.startBgm();
-        audio.play('start');
-      }
-    }
+    if (audio) audio.setMuted(ui.isMuted());
+    enterStageView(stress ? 'STRESS MODE' : 1);
   }
 
   function showStart() {
@@ -257,11 +263,7 @@
     state = null;
     view.phase = 'idle';
     view.upgradeIds = [];
-    particles = [];
-    rings = [];
-    labels = [];
-    shake = 0;
-    flash = 0;
+    clearEffects();
     ui.showStart();
   }
 
@@ -277,7 +279,6 @@
 
   function showClear() {
     view.phase = 'clear';
-    var snap = E.snapshot(state);
     view.upgradeIds = E.upgradeChoices(state);
     ui.showClear(state, view.upgradeIds);
   }
@@ -286,50 +287,13 @@
     if (!state || !state.stageCleared) return;
     if (!E.nextStage(state)) return;
     checkpoint = E.makeCheckpoint(state);
-    view.phase = 'run';
-    view.deathAt = 0;
-    view.clearAt = 0;
-    lastCombo = 0;
-    particles = [];
-    rings = [];
-    labels = [];
-    shake = 0;
-    flash = 0;
-    lastTs = 0;
-    ui.hideScreens();
-    ui.setRuntime(state, 'run');
-    ui.showStageBanner(state.stage);
-    if (audio && !ui.isMuted()) {
-      audio.setIntensity(0);
-      audio.unlock();
-      audio.startBgm();
-      audio.play('start');
-    }
+    enterStageView(state.stage);
   }
 
   function retryStage() {
     if (!checkpoint) return;
     state = E.restoreCheckpoint(checkpoint, { width: viewW, height: viewH });
-    view.phase = 'run';
-    view.deathAt = 0;
-    view.clearAt = 0;
-    view.upgradeIds = [];
-    lastCombo = 0;
-    particles = [];
-    rings = [];
-    labels = [];
-    shake = 0;
-    flash = 0;
-    lastTs = 0;
-    ui.hideScreens();
-    ui.setRuntime(state, 'run');
-    ui.showStageBanner(state.stage);
-    if (audio && !ui.isMuted()) {
-      audio.setIntensity(0);
-      audio.unlock();
-      audio.startBgm();
-      audio.play('start');
-    }
+    enterStageView(state.stage);
   }
 
   function chooseUpgrade(index) {
