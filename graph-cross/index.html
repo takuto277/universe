@@ -28,11 +28,19 @@
         <section id="screen-start" class="screen visible">
           <h1>グラフクロス</h1>
           <p class="subtitle">曲線を交差させろ! グラフ・アクション</p>
-          <ul class="rules">
-            <li>x が自動で進む。<b>1〜3 / 画面タップ</b>で関数切替。カード3つでデッキ、<b>x^p / sin</b> はスライダー調整</li>
-            <li>敵の曲線と交差で <b>大爆発 + 得点</b>。角度/弱点/連続交差 <b>MULTI</b> で倍率アップ、アイテム <b>G</b>=非対称グラフ追加 / <b>+</b>=回復 / <b>S</b>=スコア</li>
-            <li>敵を一定数交差すると <b>ボス出現</b>。倒すと <b>ステージクリア</b> → <b>同じジャンル(上昇/下降/その他)の関数に入れ替わり</b>、強化を1つ選択! ライフ-1、5コンボで1回復</li>
+          <ul class="rules compact-rules">
+            <li>曲線を敵に交差させて爆破。角度/弱点/連続 <b>MULTI</b> でスコアアップ</li>
+            <li>一定数倒すとボス。クリアで <b>同じジャンル</b> の関数と入れ替え+強化を選択</li>
+            <li>アイテムで非対称グラフ追加。ストレス解消は <b>ライフ∞・敵大量</b></li>
           </ul>
+          <div id="deck-summary" class="deck-summary"></div>
+          <div class="start-actions">
+            <button id="btn-start" class="primary" type="button">このデッキではじめる</button>
+            <button id="btn-stress" class="stress-cta" type="button">ストレス解消モード</button>
+          </div>
+          <button id="btn-build" class="secondary build-btn" type="button">デッキを組む</button>
+          <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦 / ストレス解消: ライフ∞・敵大量</p>
+          <div id="deck-builder" class="hidden">
           <div id="deck-picker">
             <div class="deck-head">デッキを選べ <span id="deck-count">3/3</span></div>
             <div id="deck-cards">
@@ -80,11 +88,7 @@
               <div id="tune-desc">スライダーを動かすと、この先の軌道がプレビューされます。</div>
             </div>
           </div>
-          <div class="start-actions">
-            <button id="btn-start" class="primary" type="button">このデッキではじめる</button>
-            <button id="btn-stress" class="stress-cta" type="button">ストレス解消モード</button>
           </div>
-          <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦 / ストレス解消: ライフ∞・敵大量</p>
         </section>
 
         <section id="screen-clear" class="screen clear-screen">
