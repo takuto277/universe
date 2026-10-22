@@ -235,6 +235,7 @@
     state.multiTimer = 0;
     state.combo = 0;
     state.comboTimer = 0;
+    state.beamCooldown = 0;
     state.y = (state.top + state.bottom) / 2;
     state.mode = state.deck[0];
     state.modeTime = 0;
@@ -779,6 +780,7 @@
 
   function checkHits(state) {
     var trail = state.trail;
+    var beam = null;
     for (var ri = state.rivals.length - 1; ri >= 0; ri--) {
       var r = state.rivals[ri];
       if (r.hit) continue;
@@ -822,10 +824,35 @@
           }
           pushEvent(state, event);
           state.rivals.splice(ri, 1);
+          if (!beam && state.upgrades && state.upgrades.beam && (state.beamCooldown || 0) <= 0) {
+            beam = { x: p.x, y: (p.y + ry) / 2 };
+          }
           break;
         }
       }
     }
+    return beam;
+  }
+
+  function fireBeam(state, x, y) {
+    if (!state.upgrades || !state.upgrades.beam || (state.beamCooldown || 0) > 0) return false;
+    state.beamCooldown = B.BEAM_COOLDOWN;
+    var kills = [];
+    var gainTotal = 0;
+    for (var i = state.rivals.length - 1; i >= 0; i--) {
+      var r = state.rivals[i];
+      if (r.hit) continue;
+      if (x < r.x - 8 || x > r.x + r.len + 8) continue;
+      state.rivals.splice(i, 1);
+      state.hits++;
+      registerStageProgress(state);
+      var gain = Math.round(B.BEAM_SCORE * (state.scoreMult || 1));
+      state.score += gain;
+      gainTotal += gain;
+      kills.push({ x: x, y: rivalY(r, clamp(x - r.x, 0, r.len)), gain: gain });
+    }
+    pushEvent(state, { type: 'beam', x: x, y: y, kills: kills, gain: gainTotal });
+    return true;
   }
 
   function checkMisses(state) {
@@ -950,8 +977,10 @@
       }
     }
 
+    state.beamCooldown = Math.max(0, (state.beamCooldown || 0) - dt);
     pickupItems(state);
-    checkHits(state);
+    var beam = checkHits(state);
+    if (beam) fireBeam(state, beam.x, beam.y);
     checkMisses(state);
     if (state.over) return state;
     checkBossHits(state);
@@ -1037,6 +1066,8 @@
       state.bossHpReduction = Math.min(B.UPGRADE_MAX_BOSS_REDUCTION, state.bossHpReduction + B.UPGRADE_BOSS_STEP);
     } else if (id === 'bonus') {
       state.score += Math.round(B.UPGRADE_BONUS_SCORE * (state.scoreMult || 1));
+    } else if (id === 'beam') {
+      if (state.upgrades.beam) return false;
     } else if (id === 'slot') {
       if (state.deck.length >= 4 || state.deck.length >= MODE_KEYS.length) return false;
       var candidates = [];
@@ -1064,6 +1095,7 @@
     if (state.comboWindow < B.UPGRADE_MAX_COMBO_WINDOW) pool.push('combo');
     if (state.scoreMult < B.UPGRADE_MAX_SCORE_MULT) pool.push('score');
     if (state.bossHpReduction < B.UPGRADE_MAX_BOSS_REDUCTION) pool.push('boss');
+    if (!state.upgrades.beam) pool.push('beam');
     if (state.deck.length < 4 && state.deck.length < MODE_KEYS.length) pool.push('slot');
     var picks = [];
     while (picks.length < 3 && pool.length) {

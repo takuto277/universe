@@ -22,6 +22,7 @@
   var lastCombo = 0;
   var particles = [];
   var rings = [];
+  var beams = [];
   var labels = [];
   var shake = 0;
   var flash = 0;
@@ -73,6 +74,10 @@
 
   function addRing(x, y, color, radius, life) {
     rings.push({ x: x, y: y, color: color, r: 6, maxR: radius, life: life, max: life });
+  }
+
+  function addBeam(x, y, life) {
+    beams.push({ x: x, y: y, life: life, max: life });
   }
 
   function addLabel(x, y, text, color, size) {
@@ -151,6 +156,23 @@
         addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.9)', 80, 0.5);
         addLabel(ev.x - 20, ev.y - 62, 'WEAK SHIFT: ' + ev.familyLabel, '#ffd166', 15);
         if (audio) audio.play('weak');
+      } else if (ev.type === 'beam') {
+        addBeam(ev.x, ev.y, 0.22);
+        spawnParticles(ev.x, ev.y, 18, ['#9ffaff', '#ffffff', '#5ff0ff'], 240, 0.55);
+        addRing(ev.x, ev.y, 'rgba(95, 240, 255, 0.75)', 58, 0.32);
+        if (ev.kills && ev.kills.length) {
+          for (var bk = 0; bk < ev.kills.length; bk++) {
+            var bkill = ev.kills[bk];
+            addLabel(bkill.x - 12, bkill.y - 20, '+' + bkill.gain, '#9ffaff', 14);
+            addRing(bkill.x, bkill.y, 'rgba(95, 240, 255, 0.6)', 28, 0.28);
+          }
+        } else {
+          addLabel(ev.x + 10, ev.y - 28, 'PRISM', '#9ffaff', 14);
+        }
+        shake = Math.max(shake, 0.35);
+        flash = Math.max(flash, 0.16);
+        flashColor = '180, 245, 255';
+        if (audio) audio.play('beam');
       } else if (ev.type === 'bossEscape') {
         addLabel(viewW * 0.5 - 80, viewH * 0.4, 'BOSS ESCAPED', '#ff6b5e', 24);
         spawnParticles(40, ev.y || viewH * 0.5, 24, ['#ff4d8d', '#ff8f6b'], 240, 0.8);
@@ -198,6 +220,11 @@
       p.vx *= Math.exp(-dt * 1.6);
       p.vy *= Math.exp(-dt * 0.4);
     }
+    for (i = beams.length - 1; i >= 0; i--) {
+      var bm = beams[i];
+      bm.life -= dt;
+      if (bm.life <= 0) { beams.splice(i, 1); }
+    }
     for (i = rings.length - 1; i >= 0; i--) {
       var r = rings[i];
       r.life -= dt;
@@ -218,6 +245,7 @@
   function clearEffects() {
     particles = [];
     rings = [];
+    beams = [];
     labels = [];
     shake = 0;
     flash = 0;
@@ -409,6 +437,7 @@
       renderer.draw(state, ts / 1000, {
         particles: particles,
         rings: rings,
+        beams: beams,
         labels: labels,
         shake: shake,
         flash: flash,

@@ -70,6 +70,7 @@
     score: { title: 'スコア +20%', desc: '獲得スコアアップ' },
     boss: { title: 'ボス HP -3', desc: '次のボスが弱体化' },
     slot: { title: '関数スロット +1', desc: '新しい関数を追加' },
+    beam: { title: 'プリズムクロス', desc: '敵撃破時、縦ビームで敵を撃ち抜く' },
     bonus: { title: 'スコア +3000', desc: '即時ボーナス' }
   };
 

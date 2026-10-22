@@ -177,6 +177,10 @@
       tone(1046, now, 0.09, 'sine', 0.11, sfxGain);
       tone(1318, now + 0.055, 0.12, 'sine', 0.10, sfxGain);
       tone(1568, now + 0.11, 0.18, 'triangle', 0.09, sfxGain);
+    } else if (name === 'beam') {
+      tone(1320, now, 0.05, 'sawtooth', 0.09, sfxGain);
+      tone(1760, now + 0.025, 0.12, 'sine', 0.09, sfxGain);
+      tone(2640, now + 0.055, 0.16, 'triangle', 0.07, sfxGain);
     } else if (name === 'heal') {
       tone(660, now, 0.10, 'triangle', 0.12, sfxGain);
       tone(880, now + 0.06, 0.14, 'triangle', 0.12, sfxGain);
