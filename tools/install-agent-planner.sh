@@ -132,5 +132,5 @@ launchctl bootstrap "$DOMAIN" "$PLIST"
 launchctl enable "$DOMAIN/$LABEL" 2>/dev/null || true
 
 printf 'installed: %s\n' "$PLIST"
-printf 'log:       %s\n' "$LOG_DIR/universe-agent-planner.log"
+printf 'log:       %s\n' "$LOG_DIR/universe-agent-planner.launchd.log"
 printf 'schedule:  every Monday 09:00\n'

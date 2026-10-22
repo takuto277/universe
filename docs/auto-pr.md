@@ -108,6 +108,7 @@ LaunchAgent の plist に反映されるもの:
 - `UNIVERSE_AUTO_PR_AUTOFIX`: Blocker の自動修正。既定は `1`（`0` で無効）
 - `UNIVERSE_AGENT_SANDBOX`: 自動修正の builder/verify の隔離。既定は `none`（`seatbelt` で有効）
 - `UNIVERSE_AUTO_PR_CREATE_ISSUES`: レビュー指摘の Issue 化。既定は `1`（`0` で無効）
+- `UNIVERSE_AGENT_FINDINGS_MAX`: 1回に Issue 化する指摘の上限。既定は `5`
 
 手動実行時だけ有効なもの:
 

@@ -93,7 +93,7 @@ UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-planner.sh
 ```
 
 - 直近の自分の AI レビュー（最新 head）から Consider / Nit を取り出します
-- 本文に `review-finding fp=<hash>` を埋め込み、同じ指摘は重複作成しません
+- 本文に `review-finding fp=<hash>` を埋め込み、同じ指摘は重複作成しません(クローズ済みも対象)
 - `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）で1回の作成数を制限します
 - watcher はレビュー後に自動で実行します（`UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効）
 
@@ -114,7 +114,7 @@ UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-planner.sh
 | `agent:running` | 実行中 | runner |
 | `agent:done` | 実装完了・PR 作成済み | runner |
 | `agent:failed` | 失敗(理由は Issue コメント) | runner |
-| `agent:proposed` | 改善提案(未承認) | planner |
+| `agent:proposed` | 改善提案・レビュー指摘(未承認) | planner / findings |
 | `agent-generated` | 無人エージェントが作成した PR | runner |
 
 失敗した Issue をやり直すときは、原因を直したうえで `promote <番号>` を実行します(`agent:failed` / `agent:done` / `agent:running` を外して `agent:ready` に戻します)。実行中の Issue には使わないでください。
@@ -222,7 +222,7 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 python3 tools/test_agent_runner.py
 ```
 
-`gh` / `git` / `opencode` を fake に差し替え、キュー取得、ラベル遷移、worktree 作成、verify 失敗、タイムアウト、既存 PR のスキップ、pause、排他ロックと旧ロック移行、提案モード、通知の有効/無効、実行履歴、滞留通知の重複防止、ログのサイズ上限を検証します。
+`gh` / `git` / `opencode` を fake に差し替え、キュー取得、ラベル遷移、worktree 作成、verify 失敗、タイムアウト、既存 PR のスキップ、pause、排他ロックと旧ロック移行、提案モード、通知の有効/無効、実行履歴、滞留通知の重複防止、ログのサイズ上限、レビュー指摘の解析・重複排除・上限を検証します。
 
 ## 制約
 

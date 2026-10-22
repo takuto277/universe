@@ -923,6 +923,23 @@ class RunnerTest(unittest.TestCase):
         self.findings_happy("### Consider\n- A")
         self.assertEqual(0, self.runner.findings(33, dry_run=True))
         self.assertFalse(self.fake.called("gh", "issue", "create"))
+        self.assertFalse(self.fake.called("gh", "label", "create"))
+
+    def test_parse_findings_accepts_bold_labels(self):
+        items = self.runner.parse_findings("- **Nit**: 太字の指摘\n- **Consider**: 二つ目")
+        self.assertEqual(2, len(items))
+        self.assertEqual("Nit", items[0]["type"])
+
+    def test_findings_limit_applies_after_dedup(self):
+        cfg = replace(self.cfg, findings_max=1)
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        body = "### Consider\n- 既存\n- 新規"
+        first = runner.parse_findings(body)[0]
+        self.findings_happy(body, existing=[runner._finding_fingerprint(first)])
+        self.assertEqual(0, runner.findings(33))
+        calls = self.fake.find("gh", "issue", "create")
+        self.assertEqual(1, len(calls))
+        self.assertIn("新規", calls[0]["argv"][calls[0]["argv"].index("--title") + 1])
 
     def test_findings_without_review_is_noop(self):
         self.fake.on(["gh", "pr", "view"], ar.Result(0, json.dumps({

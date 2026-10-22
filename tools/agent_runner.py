@@ -1247,7 +1247,8 @@ class Runner:
         for raw in (body or "").splitlines():
             line = raw.rstrip()
             section = re.match(r"^#{2,4}\s+(Consider|Nit|FYI)\b", line)
-            bullet = re.match(r"^[-*]\s+(Blocker|Consider|Nit|FYI):?\s+(.*)", line)
+            bullet = re.match(r"^[-*]\s+\*{0,2}(Blocker|Consider|Nit|FYI)\*{0,2}:?\s+(.*)",
+                              line)
             if section:
                 flush()
                 current = section.group(1)
@@ -1274,8 +1275,7 @@ class Runner:
                 current = None
                 detail = []
         flush()
-        return [item for item in items if item["type"] in ("Consider", "Nit")][
-            : max(0, self.cfg.findings_max)]
+        return [item for item in items if item["type"] in ("Consider", "Nit")]
 
     def _finding_fingerprint(self, item: dict) -> str:
         normalized = re.sub(r"\s+", " ", item["text"]).strip()
@@ -1303,10 +1303,11 @@ class Runner:
             self.log("PR #%d: Issue 化する Consider/Nit はありません" % number)
             return 0
 
-        self.ensure_labels()
+        if not dry_run:
+            self.ensure_labels()
         existing = set()
-        listed = self.gh("issue", "list", "--repo", self.cfg.repo, "--state", "open",
-                         "--limit", "200", "--json", "number,body")
+        listed = self.gh("issue", "list", "--repo", self.cfg.repo, "--state", "all",
+                         "--limit", "300", "--json", "number,body")
         if listed.ok:
             try:
                 for issue in json.loads(listed.stdout or "[]"):
@@ -1318,10 +1319,13 @@ class Runner:
                 pass
 
         created = 0
+        created_any = 0
         for item in items:
             fingerprint = self._finding_fingerprint(item)
             if fingerprint in existing:
                 continue
+            if created_any >= max(0, self.cfg.findings_max):
+                break
             title = "repo: レビュー指摘 - %s" % item["text"][:50]
             body = "\n".join([
                 "## 背景",
@@ -1340,6 +1344,7 @@ class Runner:
                 "",
                 "<!-- review-finding fp=%s -->" % fingerprint,
             ])
+            created_any += 1
             if dry_run:
                 self.log("dry-run: Issue を作成します: %s" % title)
                 continue
@@ -1630,6 +1635,15 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         finally:
             lock.release()
     if args.command == "findings":
+        lock = None
+        if not args.dry_run:
+            lock = Lock(cfg.state_dir)
+            if not lock.acquire():
+                if lock.error:
+                    runner.log("ロックを取得できません: %s" % lock.error)
+                    return 1
+                runner.log("別の実行が進行中のためスキップします")
+                return 2
         try:
             return runner.findings(args.pr, dry_run=args.dry_run)
         except TaskError as exc:
@@ -1638,6 +1652,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         except Exception as exc:  # noqa: BLE001
             runner.log("指摘の Issue 化で予期しないエラー: %s" % exc)
             return 1
+        finally:
+            if lock:
+                lock.release()
     if args.command == "status":
         return runner.status()
     if args.command == "ensure-labels":
