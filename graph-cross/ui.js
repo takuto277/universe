@@ -438,19 +438,31 @@
       els.stageBanner.classList.add('show');
     }
 
+    function showScreen(name) {
+      var screens = { start: els.screenStart, end: els.screenEnd, clear: els.screenClear };
+      for (var key in screens) {
+        if (Object.prototype.hasOwnProperty.call(screens, key) && screens[key]) {
+          screens[key].classList.toggle('visible', key === name);
+        }
+      }
+      if (els.btnExit) els.btnExit.classList.add('hidden');
+    }
+
     function hideScreens() {
-      if (els.screenStart) els.screenStart.classList.remove('visible');
-      if (els.screenEnd) els.screenEnd.classList.remove('visible');
-      if (els.screenClear) els.screenClear.classList.remove('visible');
+      showScreen(null);
+    }
+
+    function recordBest(score) {
+      if (score > best) {
+        best = score;
+        saveBest(best);
+      }
     }
 
     function showStart() {
       lastState = null;
       lastPhase = 'idle';
-      if (els.screenStart) els.screenStart.classList.add('visible');
-      if (els.screenEnd) els.screenEnd.classList.remove('visible');
-      if (els.screenClear) els.screenClear.classList.remove('visible');
-      if (els.btnExit) els.btnExit.classList.add('hidden');
+      showScreen('start');
       closeDeckBuilder();
       updateDeckUi();
       updateHud(null);
@@ -492,19 +504,13 @@
 
     function showEnd(state, canRetry) {
       var snap = E.snapshot(state);
-      if (snap.score > best) {
-        best = snap.score;
-        saveBest(best);
-      }
+      recordBest(snap.score);
       if (els.endScore) els.endScore.textContent = String(snap.score);
       if (els.endBest) els.endBest.textContent = String(best);
       if (els.endCombo) els.endCombo.textContent = 'x' + snap.maxCombo;
       if (els.endStage) els.endStage.textContent = String(snap.stage);
       if (els.endX) els.endX.textContent = String(snap.x);
-      if (els.screenEnd) els.screenEnd.classList.add('visible');
-      if (els.screenStart) els.screenStart.classList.remove('visible');
-      if (els.screenClear) els.screenClear.classList.remove('visible');
-      if (els.btnExit) els.btnExit.classList.add('hidden');
+      showScreen('end');
       if (els.btnRetry) els.btnRetry.classList.toggle('hidden', !canRetry);
       updateHud(state);
       updateSlots(state, 'over');
@@ -512,10 +518,7 @@
 
     function showClear(state, upgradeIds) {
       var snap = E.snapshot(state);
-      if (snap.score > best) {
-        best = snap.score;
-        saveBest(best);
-      }
+      recordBest(snap.score);
       if (els.clearStage) els.clearStage.textContent = 'STAGE ' + snap.stage;
       if (els.clearScore) els.clearScore.textContent = String(snap.score);
       if (els.clearBonus) els.clearBonus.textContent = '+' + snap.stageClearBonus;
@@ -532,10 +535,7 @@
         }
       }
       updateUpgradeCards(upgradeIds, snap);
-      if (els.screenClear) els.screenClear.classList.add('visible');
-      if (els.screenStart) els.screenStart.classList.remove('visible');
-      if (els.screenEnd) els.screenEnd.classList.remove('visible');
-      if (els.btnExit) els.btnExit.classList.add('hidden');
+      showScreen('clear');
       updateHud(state);
       updateSlots(state, 'clear');
     }

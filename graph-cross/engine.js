@@ -87,14 +87,18 @@
     return MODES[key] ? MODES[key].family : 'none';
   }
 
-  function baseVy(state, key) {
+  function playerVy(state) {
+    var key = state.mode;
     if (key === 'up') return -170;
     if (key === 'down') return 170;
     if (key === 'steepUp') return -320;
     if (key === 'steepDown') return 320;
     if (key === 'quad' || key === 'quadDown') {
-      var q = state.deckParams[key] || {};
-      return (q.b || 0) * 120;
+      var q = state.deckParams[key] || { a: 1, b: 0, p: 2 };
+      var power = Math.max(2, Math.round(q.p || 2));
+      var dir = key === 'quadDown' ? 1 : -1;
+      var powerTerm = 280 * (q.a || 1) * power * Math.pow(state.modeTime, power - 1);
+      return clamp(dir * powerTerm + (q.b || 0) * 120, -MAX_PLAYER_VY, MAX_PLAYER_VY);
     }
     return 0;
   }
@@ -178,6 +182,10 @@
 
   function rand(rng) { return (rng || Math.random)(); }
 
+  function clone(value) {
+    return JSON.parse(JSON.stringify(value));
+  }
+
   function difficulty(state) {
     return clamp(state.time / RAMP_TIME, 0, 1);
   }
@@ -208,6 +216,33 @@
     }
   }
 
+  function resetStageState(state, stage, options) {
+    options = options || {};
+    state.stage = stage;
+    state.stageHits = 0;
+    if (!options.keepStageTarget) state.stageTarget = stageTargetFor(stage);
+    state.stageCleared = false;
+    state.stageClearBonus = 0;
+    state.lastDeckSwap = null;
+    state.boss = null;
+    state.bossCooldown = 0;
+    state.rivals = [];
+    state.trail = [];
+    state.items = [];
+    state.allies = [];
+    state.itemTimer = state.gameMode === 'stress' ? 2.0 : B.ITEM_FIRST_DELAY;
+    state.multi = 0;
+    state.multiTimer = 0;
+    state.combo = 0;
+    state.comboTimer = 0;
+    state.y = (state.top + state.bottom) / 2;
+    state.mode = state.deck[0];
+    state.modeTime = 0;
+    state.vy = playerVy(state);
+    state.waveBaseY = state.y;
+    if (directMode(state.mode)) setModeBase(state);
+  }
+
   function resetRun(state) {
     state.time = 0;
     state.worldX = 0;
@@ -223,37 +258,17 @@
     state.scoreMult = 1;
     state.bossHpReduction = 0;
     state.upgrades = {};
-    state.lastDeckSwap = null;
-    state.mode = state.deck[0];
-    state.modeTime = 0;
-    state.vy = baseVy(state, state.mode);
-    state.y = (state.top + state.bottom) / 2;
-    state.waveBaseY = state.y;
-    if (directMode(state.mode)) setModeBase(state);
-    state.trail = [];
-    state.rivals = [];
-    state.items = [];
-    state.allies = [];
-    state.itemTimer = state.gameMode === 'stress' ? 2.0 : B.ITEM_FIRST_DELAY;
-    state.multi = 0;
-    state.multiTimer = 0;
     state.events = [];
     state.over = false;
     state.deathCause = null;
     state.spawnTimer = 0.9;
     state.hits = 0;
     state.misses = 0;
+    resetStageState(state, 1, { keepStageTarget: state.gameMode === 'stress' });
     if (state.gameMode === 'stress') {
       state.spawnTimer = 0.12;
       return;
     }
-    state.stage = 1;
-    state.stageHits = 0;
-    state.stageTarget = stageTargetFor(1);
-    state.stageCleared = false;
-    state.stageClearBonus = 0;
-    state.boss = null;
-    state.bossCooldown = 0;
 
     var openingSpacing = 300;
     for (var i = 0; i < 3; i++) {
@@ -294,46 +309,7 @@
       top: 0,
       bottom: 0,
       headX: 0,
-      y: 0,
-      vy: 0,
-      waveBaseY: 0,
-      mode: 'wave',
-      modeTime: 0,
-      time: 0,
-      worldX: 0,
-      speed: BASE_SPEED,
-      score: 0,
-      combo: 0,
-      comboTimer: 0,
-      maxCombo: 0,
-      hp: MAX_HP,
-      maxHp: MAX_HP,
-      hitBonus: 0,
-      comboWindow: COMBO_WINDOW,
-      scoreMult: 1,
-      bossHpReduction: 0,
-      upgrades: {},
-      lastDeckSwap: null,
-      trail: [],
-      rivals: [],
-      items: [],
-      allies: [],
-      itemTimer: B.ITEM_FIRST_DELAY,
-      multi: 0,
-      multiTimer: 0,
-      events: [],
-      over: false,
-      deathCause: null,
-      spawnTimer: 0.9,
-      hits: 0,
-      misses: 0,
-      stage: 1,
-      stageHits: 0,
-      stageTarget: 0,
-      stageCleared: false,
-      stageClearBonus: 0,
-      boss: null,
-      bossCooldown: 0
+      stageTarget: 0
     };
     setBounds(state, options.width || 960, options.height || 560);
     resetRun(state);
@@ -353,7 +329,7 @@
     if (state.mode === key) return true;
     state.mode = key;
     state.modeTime = 0;
-    state.vy = baseVy(state, key);
+    state.vy = playerVy(state);
     state.waveBaseY = state.y;
     if (directMode(key)) setModeBase(state);
     return true;
@@ -598,29 +574,7 @@
 
   function nextStage(state) {
     if (!state || !state.stageCleared) return false;
-    state.stage++;
-    state.stageHits = 0;
-    state.stageTarget = stageTargetFor(state.stage);
-    state.stageCleared = false;
-    state.stageClearBonus = 0;
-    state.lastDeckSwap = null;
-    state.boss = null;
-    state.bossCooldown = 0;
-    state.rivals = [];
-    state.trail = [];
-    state.items = [];
-    state.allies = [];
-    state.itemTimer = state.gameMode === 'stress' ? 2.0 : B.ITEM_FIRST_DELAY;
-    state.multi = 0;
-    state.multiTimer = 0;
-    state.y = (state.top + state.bottom) / 2;
-    state.mode = state.deck[0];
-    state.modeTime = 0;
-    state.vy = baseVy(state, state.mode);
-    state.waveBaseY = state.y;
-    if (directMode(state.mode)) setModeBase(state);
-    state.combo = 0;
-    state.comboTimer = 0;
+    resetStageState(state, state.stage + 1);
     state.spawnTimer = 1.0;
     state.hp = Math.min(state.maxHp, state.hp + 1);
     pushEvent(state, { type: 'stageStart', stage: state.stage });
@@ -917,20 +871,12 @@
     state.worldX += dx;
 
     state.modeTime += dt;
-    if (state.mode === 'up') state.vy = -170;
-    else if (state.mode === 'down') state.vy = 170;
-    else if (state.mode === 'steepUp') state.vy = -320;
-    else if (state.mode === 'steepDown') state.vy = 320;
-    else if (state.mode === 'quad' || state.mode === 'quadDown') {
-      var qp = state.deckParams[state.mode] || { a: 1, b: 0, p: 2 };
-      var power = Math.max(2, Math.round(qp.p || 2));
-      var powerTerm = 280 * (qp.a || 1) * power * Math.pow(state.modeTime, power - 1);
-      var dir = state.mode === 'quadDown' ? 1 : -1;
-      state.vy = clamp(dir * powerTerm + (qp.b || 0) * 120, -MAX_PLAYER_VY, MAX_PLAYER_VY);
-    } else if (directMode(state.mode)) {
+    if (directMode(state.mode)) {
       state.y = state.waveBaseY + directOffset(state, state.mode, state.modeTime);
       state.vy = 0;
-    } else state.vy = 0;
+    } else {
+      state.vy = playerVy(state);
+    }
 
     state.y += state.vy * dt;
     var minY = state.top + PLAYER_HALF;
@@ -1133,7 +1079,7 @@
     return {
       gameMode: state.gameMode,
       deck: state.deck.slice(),
-      deckParams: JSON.parse(JSON.stringify(state.deckParams)),
+      deckParams: clone(state.deckParams),
       fusion: state.fusion ? { primary: state.fusion.primary, secondary: state.fusion.secondary } : null,
       stage: state.stage,
       stageTarget: state.stageTarget,
@@ -1144,7 +1090,7 @@
       comboWindow: state.comboWindow,
       scoreMult: state.scoreMult,
       bossHpReduction: state.bossHpReduction,
-      upgrades: JSON.parse(JSON.stringify(state.upgrades)),
+      upgrades: clone(state.upgrades),
       maxCombo: state.maxCombo,
       hits: state.hits,
       misses: state.misses,
@@ -1166,11 +1112,10 @@
       rng: options.rng
     });
     g.deck = checkpoint.deck.slice();
-    g.deckParams = JSON.parse(JSON.stringify(checkpoint.deckParams || {}));
+    g.deckParams = clone(checkpoint.deckParams || {});
     g.fusion = normalizeFusion(checkpoint.fusion);
-    g.stage = checkpoint.stage || 1;
+    resetStageState(g, checkpoint.stage || 1);
     g.stageTarget = checkpoint.stageTarget || stageTargetFor(g.stage);
-    g.stageHits = 0;
     g.score = checkpoint.score || 0;
     g.maxHp = checkpoint.maxHp || MAX_HP;
     g.hp = Math.max(1, Math.min(g.maxHp, checkpoint.hp == null ? g.maxHp : checkpoint.hp));
@@ -1178,37 +1123,17 @@
     g.comboWindow = checkpoint.comboWindow || COMBO_WINDOW;
     g.scoreMult = checkpoint.scoreMult || 1;
     g.bossHpReduction = checkpoint.bossHpReduction || 0;
-    g.upgrades = JSON.parse(JSON.stringify(checkpoint.upgrades || {}));
+    g.upgrades = clone(checkpoint.upgrades || {});
     g.maxCombo = checkpoint.maxCombo || 0;
     g.hits = checkpoint.hits || 0;
     g.misses = checkpoint.misses || 0;
     g.time = checkpoint.time || 0;
     g.worldX = checkpoint.worldX || 0;
     g.speed = BASE_SPEED + Math.min(MAX_SPEED - BASE_SPEED, g.time * SPEED_RAMP);
-    g.stageCleared = false;
-    g.stageClearBonus = 0;
-    g.lastDeckSwap = null;
-    g.boss = null;
-    g.bossCooldown = 0;
-    g.rivals = [];
-    g.items = [];
-    g.allies = [];
-    g.trail = [];
     g.events = [];
     g.over = false;
     g.deathCause = null;
-    g.combo = 0;
-    g.comboTimer = 0;
-    g.multi = 0;
-    g.multiTimer = 0;
-    g.mode = g.deck[0];
-    g.modeTime = 0;
-    g.vy = baseVy(g, g.mode);
-    g.y = (g.top + g.bottom) / 2;
-    g.waveBaseY = g.y;
-    if (directMode(g.mode)) setModeBase(g);
     g.spawnTimer = 1.0;
-    g.itemTimer = g.gameMode === 'stress' ? 2.0 : B.ITEM_FIRST_DELAY;
     return g;
   }
 
@@ -1233,7 +1158,7 @@
       modeFamily: modeFamily(state.mode),
       modeFamilyLabel: FAMILY_LABELS[modeFamily(state.mode)],
       deck: state.deck.slice(),
-      deckParams: JSON.parse(JSON.stringify(state.deckParams)),
+      deckParams: clone(state.deckParams),
       fusion: state.fusion ? { primary: state.fusion.primary, secondary: state.fusion.secondary } : null,
       x: Math.floor(state.worldX),
       time: state.time,
@@ -1256,7 +1181,7 @@
       comboWindow: state.comboWindow,
       scoreMult: state.scoreMult,
       bossHpReduction: state.bossHpReduction,
-      upgrades: JSON.parse(JSON.stringify(state.upgrades)),
+      upgrades: clone(state.upgrades),
       lastDeckSwap: state.lastDeckSwap ? {
         oldKey: state.lastDeckSwap.oldKey,
         newKey: state.lastDeckSwap.newKey,
