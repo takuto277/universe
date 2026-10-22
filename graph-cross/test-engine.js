@@ -445,6 +445,22 @@ for (i = 0; i < 20; i++) {
 }
 
 
+/* 9f) 追加された関数の軌道 */
+var directCases = [
+  ['expo', -1], ['log', -1], ['sigmoid', -1], ['gauss', -1], ['easeDown', 1]
+];
+for (var dc = 0; dc < directCases.length; dc++) {
+  var modeKey = directCases[dc][0];
+  var direction = directCases[dc][1];
+  var dg = E.createGame({ width: 1000, height: 620, deck: [modeKey, 'hold', 'up'], rng: mulberry32(920 + dc) });
+  var startY = dg.y;
+  for (i = 0; i < 60; i++) { dg.rivals = []; dg.items = []; E.update(dg, 1 / 60); }
+  if (direction < 0) assert(dg.y < startY, modeKey + ' は上方向に動く');
+  else assert(dg.y > startY, modeKey + ' は下方向に動く');
+  assert(E.MODES[modeKey] && E.MODES[modeKey].genre, modeKey + ' にジャンルがある');
+}
+assert(E.MODE_KEYS.length === 13, '関数カードが13種類ある');
+
 /* 10) 何もしないより、敵の高さに合わせて動く方が長く/多く当たる */
 function play(seed, smart, seconds) {
   var game = makeGame(seed);
@@ -471,7 +487,7 @@ function play(seed, smart, seconds) {
         }
       }
       function chooseMode(up) {
-        var prefs = up ? ['up', 'steepUp', 'quad', 'wave'] : ['down', 'steepDown', 'quadDown', 'wave'];
+        var prefs = up ? ['up', 'steepUp', 'quad', 'expo', 'log', 'sigmoid', 'wave'] : ['down', 'steepDown', 'quadDown', 'easeDown', 'wave'];
         for (var p = 0; p < prefs.length; p++) {
           if (game.deck.indexOf(prefs[p]) >= 0) { E.setMode(game, prefs[p]); return; }
         }

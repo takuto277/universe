@@ -18,9 +18,14 @@
     steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', family: 'linear', genre: 'down' },
     quad: { key: 'quad', label: 'y = x²', note: '上カーブ', family: 'quad', genre: 'up' },
     quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', family: 'quad', genre: 'down' },
-    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', family: 'wave', genre: 'other' }
+    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', family: 'wave', genre: 'other' },
+    expo: { key: 'expo', label: 'y = e^x - 1', note: '指数カーブ', family: 'quad', genre: 'up' },
+    log: { key: 'log', label: 'y = ln(x+1)', note: '対数カーブ', family: 'quad', genre: 'up' },
+    sigmoid: { key: 'sigmoid', label: 'y = sigmoid(x)', note: 'Sカーブ', family: 'wave', genre: 'up' },
+    gauss: { key: 'gauss', label: 'y = e^{-x²}', note: '山カーブ', family: 'wave', genre: 'other' },
+    easeDown: { key: 'easeDown', label: 'y = -1 + e^{-x}', note: '減速下降', family: 'quad', genre: 'down' }
   };
-  var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave'];
+  var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave', 'expo', 'log', 'sigmoid', 'gauss', 'easeDown'];
   var DEFAULT_DECK = ['hold', 'up', 'down'];
   var DECK_SIZE = 3;
 
