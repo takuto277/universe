@@ -26,13 +26,13 @@ cd universe
 | gh | Issue/PR 操作 | https://cli.github.com/ または `brew install gh` |
 | opencode | AI レビュー・実装 | https://opencode.ai/docs/ |
 | gh 認証 | PR・Issue 操作 | `gh auth login` |
-| opencode 認証 | モデル利用 | `opencode` の初回セットアップ |
+| opencode 認証 | モデル利用 | `opencode` の初回セットアップ（setup は存在のみ確認） |
 
 Homebrew がある場合、`--install` で不足している `gh` だけを導入します。opencode は公式手順で入れてください（`curl | bash` を勝手に実行しないため）。
 
 ## 何をするか
 
-1. コマンドと認証を確認し、MISS があれば終了コード1で止まる
+1. コマンドと gh 認証を確認し、MISS があれば最後に終了コード1で終わる
 2. `--with-agents` のとき、すべて OK なら LaunchAgent を登録する
 3. `--verify` のとき、`./tools/verify.sh` を実行する
 
@@ -50,7 +50,7 @@ launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -E 'stat
 | --- | --- |
 | `jsc` が見つからない | `xcode-select --install` を実行し、`/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc` があるか確認 |
 | `gh` が未認証 | `gh auth login` |
-| opencode が動かない | 公式手順でインストールし、認証とモデル設定を確認 |
+| opencode が動かない | 公式手順でインストールし、認証とモデル設定を確認（setup は認証を確認しません） |
 | LaunchAgent が動かない | Mac にログイン中か、スリープしていないか確認。`launchctl print` で状態を見る |
 | sandbox で失敗する | `UNIVERSE_AGENT_SANDBOX=none` で切り分け、原因を確認して戻す |
 

@@ -61,8 +61,10 @@ else
   bad "python3 がありません (xcode-select --install)"
 fi
 
-JSC=""
-if command -v jsc >/dev/null 2>&1; then
+JSC="${JSC:-}"
+if [ -n "$JSC" ] && [ -x "$JSC" ]; then
+  :
+elif command -v jsc >/dev/null 2>&1; then
   JSC="$(command -v jsc)"
 elif [ -x /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc ]; then
   JSC=/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc
@@ -82,6 +84,14 @@ else
 fi
 
 printf '\nGitHub / エージェント\n'
+if ! command -v gh >/dev/null 2>&1; then
+  note "gh がありません"
+  note "Homebrew: brew install gh / 公式: https://cli.github.com/"
+  if [ "$MODE" = "install" ] && command -v brew >/dev/null 2>&1; then
+    note "brew install gh を実行します"
+    brew install gh || note "brew install gh に失敗しました"
+  fi
+fi
 if command -v gh >/dev/null 2>&1; then
   ok "gh $(gh --version | head -1 | awk '{print $3}')"
   if gh auth status >/dev/null 2>&1; then
@@ -91,11 +101,6 @@ if command -v gh >/dev/null 2>&1; then
   fi
 else
   bad "gh がありません"
-  note "Homebrew: brew install gh / 公式: https://cli.github.com/"
-  if [ "$MODE" = "install" ] && command -v brew >/dev/null 2>&1; then
-    note "brew install gh を実行します"
-    brew install gh
-  fi
 fi
 
 if command -v opencode >/dev/null 2>&1; then
@@ -106,21 +111,20 @@ else
 fi
 
 printf '\nエージェントの状態\n'
-if [ -f "$HOME/Library/LaunchAgents/com.takuto277.universe-agent-runner.plist" ]; then
-  ok "runner LaunchAgent 登録済み"
-else
-  note "runner は未登録です (--with-agents で登録)"
-fi
-if [ -f "$HOME/Library/LaunchAgents/com.takuto277.universe-auto-pr.plist" ]; then
-  ok "watcher LaunchAgent 登録済み"
-else
-  note "watcher は未登録です (--with-agents で登録)"
-fi
-if [ -f "$HOME/Library/LaunchAgents/com.takuto277.universe-agent-planner.plist" ]; then
-  ok "planner LaunchAgent 登録済み"
-else
-  note "planner は未登録です (--with-agents で登録)"
-fi
+agent_status() {
+  local label="$1" name="$2"
+  local plist="$HOME/Library/LaunchAgents/com.takuto277.$label.plist"
+  if launchctl print "gui/$(id -u)/com.takuto277.$label" >/dev/null 2>&1; then
+    ok "$name LaunchAgent 登録済み"
+  elif [ -f "$plist" ]; then
+    note "$name は plist のみで未ロードです (--with-agents で再登録)"
+  else
+    note "$name は未登録です (--with-agents で登録)"
+  fi
+}
+agent_status universe-agent-runner runner
+agent_status universe-auto-pr watcher
+agent_status universe-agent-planner planner
 
 if [ "$WITH_AGENTS" = "1" ]; then
   if [ "$fail" = "1" ]; then

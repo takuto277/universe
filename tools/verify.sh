@@ -31,4 +31,5 @@ print("auto pr scripts syntax OK")
 PY
 python3 "$ROOT/tools/test_agent_runner.py"
 bash "$ROOT/tools/test-auto-pr.sh"
+bash "$ROOT/tools/test-setup.sh"
 "$ROOT/tools/run-tests.sh"
