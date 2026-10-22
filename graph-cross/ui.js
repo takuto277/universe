@@ -490,7 +490,7 @@
       }
     }
 
-    function showEnd(state) {
+    function showEnd(state, canRetry) {
       var snap = E.snapshot(state);
       if (snap.score > best) {
         best = snap.score;
@@ -505,6 +505,7 @@
       if (els.screenStart) els.screenStart.classList.remove('visible');
       if (els.screenClear) els.screenClear.classList.remove('visible');
       if (els.btnExit) els.btnExit.classList.add('hidden');
+      if (els.btnRetry) els.btnRetry.classList.toggle('hidden', !canRetry);
       updateHud(state);
       updateSlots(state, 'over');
     }
@@ -559,6 +560,7 @@
       els.btnStress = $('btn-stress');
       els.btnExit = $('btn-exit');
       els.btnAgain = $('btn-again');
+      els.btnRetry = $('btn-retry');
       els.btnDeck = $('btn-deck');
       els.btnSound = $('btn-sound');
       els.clearStage = $('clear-stage');
@@ -674,6 +676,7 @@
       if (els.btnStart) els.btnStart.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
       if (els.btnStress) els.btnStress.addEventListener('click', function () { if (typeof actions.onStressStart === 'function') actions.onStressStart(); });
       if (els.btnExit) els.btnExit.addEventListener('click', function () { if (typeof actions.onExit === 'function') actions.onExit(); });
+      if (els.btnRetry) els.btnRetry.addEventListener('click', function () { if (typeof actions.onRetry === 'function') actions.onRetry(); });
       if (els.btnBuild) els.btnBuild.addEventListener('click', toggleDeckBuilder);
       if (els.btnAgain) els.btnAgain.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
       if (els.btnDeck) els.btnDeck.addEventListener('click', function () { if (typeof actions.onBackToDeck === 'function') actions.onBackToDeck(); });
