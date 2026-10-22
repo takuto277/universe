@@ -57,7 +57,18 @@
               <button id="card-sigmoid" class="deck-card" type="button"><b>y = sigmoid(x)</b><span>Sカーブ / 波</span></button>
               <button id="card-gauss" class="deck-card" type="button"><b>y = e^{-x²}</b><span>山カーブ / 波</span></button>
               <button id="card-easeDown" class="deck-card" type="button"><b>y = -1 + e^{-x}</b><span>減速下降 / 累乗</span></button>
+              <button id="card-fusion" class="deck-card hidden" type="button"><b>y = fusion</b><span>2関数の合成</span></button>
             </div>
+          </div>
+          <div id="fusion-panel">
+            <div class="deck-head">関数合成 <span class="tune-hint">2つを重ねて1枚のカードに</span></div>
+            <div class="fusion-controls">
+              <select id="fusion-primary" class="tune-select"></select>
+              <span class="fusion-plus">+</span>
+              <select id="fusion-secondary" class="tune-select"></select>
+              <button id="btn-fuse" class="secondary fusion-btn" type="button">合成</button>
+            </div>
+            <div id="fusion-note" class="hud-note">2つの関数を選んで合成できます。</div>
           </div>
           <div id="tune-panel">
             <div class="deck-head">関数をつくる <span class="tune-hint">スライダーで軌道が変わります</span></div>

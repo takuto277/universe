@@ -286,8 +286,7 @@
         ctx.lineCap = 'round';
         for (i = 1; i < trail.length; i++) {
           var pointMode = trail[i].mode || state.mode;
-          var pointFamily = C.MODES[pointMode] ? C.MODES[pointMode].family : 'none';
-          ctx.strokeStyle = C.FAMILY_COLORS[pointFamily] || C.FAMILY_COLORS.none;
+          ctx.strokeStyle = C.modeColor(pointMode);
           ctx.beginPath();
           ctx.moveTo(trail[i - 1].x, trail[i - 1].y);
           ctx.lineTo(trail[i].x, trail[i].y);
@@ -316,7 +315,7 @@
 
       ctx.fillStyle = headColor;
       ctx.font = '11px ui-monospace, Menlo, monospace';
-      ctx.fillText(C.formatModeLabel(state.mode, state.deckParams), hx + 15, hy - 12);
+      ctx.fillText(C.formatModeLabel(state.mode, state.deckParams, state.fusion), hx + 15, hy - 12);
     }
 
     function drawEffects(effects) {

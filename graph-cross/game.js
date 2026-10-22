@@ -222,6 +222,7 @@
       height: viewH,
       deck: ui.getDeck(),
       deckParams: ui.getParams(),
+      fusion: ui.getFusion(),
       mode: stress ? 'stress' : 'normal'
     });
     view.phase = 'run';
