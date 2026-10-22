@@ -17,7 +17,7 @@ PR を Ready にするだけで、レビューとマージまで自動で進め�
 - `ai-pause` ラベル付きの PR（五点ゲートでも停止します）
 - `do-not-merge` ラベル付きの PR（五点ゲートでも停止します）
 - Draft PR
-- 他人が作成した PR
+- 他人が作成した PR（Dependabot の PR も含みます。必要な場合は `/pr-deliver` でレビュー・マージしてください）
 - `main` 以外を base にする PR
 
 ## セットアップ

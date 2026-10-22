@@ -13,5 +13,5 @@ updates:
       - "priority:p3"
     open-pull-requests-limit: 5
 
-# .opencode の npm 依存は manifest を追跡していないため Dependabot の対象外。
-# 更新方法は SECURITY.md を参照。
+# `.opencode/package.json` は .opencode/.gitignore の対象でリポジトリに含まれないため、
+# npm の自動更新は行わない。@opencode-ai/plugin は手動で更新する。
