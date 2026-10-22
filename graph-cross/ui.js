@@ -516,8 +516,29 @@
       updateSlots(state, 'over');
     }
 
+    function showFunctionChoices(state, choices) {
+      if (els.clearTitle) els.clearTitle.textContent = 'FUNCTION +1';
+      if (els.clearHint) els.clearHint.textContent = '1〜3 / クリックで追加する関数を選ぶ';
+      for (var i = 0; i < 3; i++) {
+        var btn = $('upgrade-' + i);
+        if (!btn) continue;
+        var key = choices[i];
+        if (!key || !C.MODES[key]) {
+          btn.classList.add('hidden');
+          continue;
+        }
+        btn.classList.remove('hidden');
+        btn.style.setProperty('--mode-color', C.modeColor(key));
+        btn.innerHTML = '<em>' + (i + 1) + '</em><b>' +
+          C.formatModeLabel(key, state ? state.deckParams : selectedParams, state ? state.fusion : selectedFusion) +
+          '</b><span>' + C.MODES[key].note + ' / ' + (C.GENRE_LABELS[C.MODES[key].genre] || '') + '</span>';
+      }
+    }
+
     function showClear(state, upgradeIds) {
       var snap = E.snapshot(state);
+      if (els.clearTitle) els.clearTitle.textContent = 'STAGE CLEAR';
+      if (els.clearHint) els.clearHint.textContent = '1〜3 / クリックで強化を選んで次のステージへ';
       recordBest(snap.score);
       if (els.clearStage) els.clearStage.textContent = 'STAGE ' + snap.stage;
       if (els.clearScore) els.clearScore.textContent = String(snap.score);
@@ -563,6 +584,8 @@
       els.btnRetry = $('btn-retry');
       els.btnDeck = $('btn-deck');
       els.btnSound = $('btn-sound');
+      els.clearTitle = $('clear-title');
+      els.clearHint = $('clear-hint');
       els.clearStage = $('clear-stage');
       els.clearScore = $('clear-score');
       els.clearBonus = $('clear-bonus');
@@ -708,6 +731,7 @@
       hideScreens: hideScreens,
       showEnd: showEnd,
       showClear: showClear,
+      showFunctionChoices: showFunctionChoices,
       showStageBanner: showStageBanner
     };
   }

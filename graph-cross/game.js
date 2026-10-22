@@ -14,7 +14,7 @@
   var audio = AU ? AU.create() : null;
   var state = null;
   var checkpoint = null;
-  var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [] };
+  var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [], pendingSlot: false, slotChoices: [] };
   var viewW = 960;
   var viewH = 560;
   var dpr = 1;
@@ -173,6 +173,19 @@
         flash = Math.max(flash, 0.16);
         flashColor = '180, 245, 255';
         if (audio) audio.play('beam');
+      } else if (ev.type === 'revive') {
+        spawnParticles(ev.x, ev.y, 48, ['#57e08a', '#9ffaff', '#ffffff'], 320, 0.9);
+        addRing(ev.x, ev.y, 'rgba(87, 224, 138, 0.9)', 150, 0.7);
+        addLabel(ev.x - 40, ev.y - 30, 'REVIVE', '#57e08a', 28);
+        addLabel(ev.x - 30, ev.y + 18, 'LIFE 1', '#9ffaff', 15);
+        shake = 0.8;
+        flash = 0.5;
+        flashColor = '87, 224, 138';
+        if (audio) audio.play('revive');
+      } else if (ev.type === 'guard') {
+        addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.9)', 70, 0.45);
+        addLabel(ev.x + 24, ev.y - 20, 'COMBO GUARD', '#ffd166', 16);
+        if (audio) audio.play('guard');
       } else if (ev.type === 'bossEscape') {
         addLabel(viewW * 0.5 - 80, viewH * 0.4, 'BOSS ESCAPED', '#ff6b5e', 24);
         spawnParticles(40, ev.y || viewH * 0.5, 24, ['#ff4d8d', '#ff8f6b'], 240, 0.8);
@@ -256,6 +269,8 @@
     view.deathAt = 0;
     view.clearAt = 0;
     view.upgradeIds = [];
+    view.pendingSlot = false;
+    view.slotChoices = [];
     lastCombo = 0;
     clearEffects();
     lastTs = 0;
@@ -291,6 +306,8 @@
     state = null;
     view.phase = 'idle';
     view.upgradeIds = [];
+    view.pendingSlot = false;
+    view.slotChoices = [];
     clearEffects();
     ui.showStart();
   }
@@ -307,6 +324,8 @@
 
   function showClear() {
     view.phase = 'clear';
+    view.pendingSlot = false;
+    view.slotChoices = [];
     view.upgradeIds = E.upgradeChoices(state);
     ui.showClear(state, view.upgradeIds);
   }
@@ -326,8 +345,25 @@
 
   function chooseUpgrade(index) {
     if (view.phase !== 'clear' || !state) return;
+    if (view.pendingSlot) {
+      var key = view.slotChoices[index];
+      if (!key) return;
+      if (!E.applyUpgrade(state, 'slot', key)) return;
+      view.pendingSlot = false;
+      view.slotChoices = [];
+      goNextStage();
+      return;
+    }
     var id = view.upgradeIds[index];
     if (!id) return;
+    if (id === 'slot') {
+      var choices = E.slotChoices(state);
+      if (!choices.length) return;
+      view.pendingSlot = true;
+      view.slotChoices = choices;
+      ui.showFunctionChoices(state, choices);
+      return;
+    }
     if (!E.applyUpgrade(state, id)) {
       view.upgradeIds = E.upgradeChoices(state);
       ui.updateUpgradeCards(view.upgradeIds, E.snapshot(state));
