@@ -70,6 +70,14 @@ var beamBefore = oscStarts;
 audio.play('beam');
 assert(oscStarts > beamBefore, 'ビーム音が鳴る');
 
+var reviveBefore = oscStarts;
+audio.play('revive');
+assert(oscStarts > reviveBefore, 'リバイブ音が鳴る');
+
+var guardBefore = oscStarts;
+audio.play('guard');
+assert(oscStarts > guardBefore, 'コンボガード音が鳴る');
+
 /* BGM は先読みでスケジュールされる */
 audio.startBgm();
 assert(typeof intervalFn === 'function', 'BGMスケジューラが動く');

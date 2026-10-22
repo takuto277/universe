@@ -236,6 +236,7 @@
     state.combo = 0;
     state.comboTimer = 0;
     state.beamCooldown = 0;
+    state.guardUsed = false;
     state.y = (state.top + state.bottom) / 2;
     state.mode = state.deck[0];
     state.modeTime = 0;
@@ -262,6 +263,7 @@
     state.events = [];
     state.over = false;
     state.deathCause = null;
+    state.reviveUsed = false;
     state.spawnTimer = 0.9;
     state.hits = 0;
     state.misses = 0;
@@ -518,7 +520,7 @@
 
       var m = crossMetrics(state, trail, ti, boss, local);
       var multi = registerMulti(state);
-      var damage = 1 + (m.angle >= 50 ? 1 : 0) + (m.weak ? 1 : 0);
+      var damage = 1 + (m.angle >= 50 ? 1 : 0) + (m.weak ? 1 : 0) + (state.upgrades.bossBreaker ? 1 : 0);
       boss.hp = Math.max(0, boss.hp - damage);
       boss.invuln = 0.32;
       boss.flash = 0.32;
@@ -704,6 +706,32 @@
     return null;
   }
 
+  function pullItems(state, dt) {
+    if (!state.upgrades || !state.upgrades.magnet || !state.items.length || !state.trail.length) return;
+    var reach = B.MAGNET_RADIUS;
+    for (var i = 0; i < state.items.length; i++) {
+      var item = state.items[i];
+      var best = null;
+      var bestDist = Infinity;
+      for (var ti = 0; ti < state.trail.length; ti++) {
+        var p = state.trail[ti];
+        var dx = item.x - p.x;
+        var dy = item.y - p.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        if (dist < bestDist) {
+          bestDist = dist;
+          best = p;
+        }
+      }
+      if (!best || bestDist > reach) continue;
+      var move = Math.min(bestDist, B.MAGNET_SPEED * dt);
+      if (bestDist > 0.001) {
+        item.x += (best.x - item.x) / bestDist * move;
+        item.y += (best.y - item.y) / bestDist * move;
+      }
+    }
+  }
+
   function pickupItems(state) {
     for (var i = state.items.length - 1; i >= 0; i--) {
       var item = state.items[i];
@@ -855,6 +883,19 @@
     return true;
   }
 
+  function tryRevive(state, x, y) {
+    if (!state.upgrades || !state.upgrades.revive || state.reviveUsed) return false;
+    state.reviveUsed = true;
+    state.hp = 1;
+    state.combo = 0;
+    state.comboTimer = 0;
+    state.multi = 0;
+    state.multiTimer = 0;
+    state.rivals = [];
+    pushEvent(state, { type: 'revive', x: x, y: y, hp: 1 });
+    return true;
+  }
+
   function checkMisses(state) {
     for (var i = state.rivals.length - 1; i >= 0; i--) {
       var r = state.rivals[i];
@@ -866,8 +907,15 @@
         state.rivals.splice(i, 1);
         if (state.gameMode === 'stress') continue;
         state.misses++;
-        state.combo = 0;
-        state.comboTimer = 0;
+        var guarded = !!(state.upgrades.comboGuard && !state.guardUsed && state.combo > 0);
+        if (guarded) {
+          state.guardUsed = true;
+          state.comboTimer = state.comboWindow;
+          pushEvent(state, { type: 'guard', x: 30, y: r.baseY });
+        } else {
+          state.combo = 0;
+          state.comboTimer = 0;
+        }
         state.multi = 0;
         state.multiTimer = 0;
         state.hp--;
@@ -879,6 +927,7 @@
           label: r.label
         });
         if (state.hp <= 0) {
+          if (tryRevive(state, 30, r.baseY)) return;
           state.hp = 0;
           state.over = true;
           state.deathCause = 'miss';
@@ -921,6 +970,7 @@
       state.items[i].x -= dx;
       if (state.items[i].x < -30) state.items.splice(i, 1);
     }
+    pullItems(state, dt);
 
     state.itemTimer -= dt;
     if (state.itemTimer <= 0) {
@@ -968,6 +1018,7 @@
         state.multiTimer = 0;
         pushEvent(state, { type: 'bossEscape', hp: state.hp, stage: state.stage });
         if (state.hp <= 0) {
+          if (tryRevive(state, state.width * 0.5, state.height * 0.5)) return state;
           state.hp = 0;
           state.over = true;
           state.deathCause = 'bossEscape';
@@ -1046,7 +1097,26 @@
     return swap;
   }
 
-  function applyUpgrade(state, id) {
+  function slotCandidates(state) {
+    var out = [];
+    if (!state || state.deck.length >= 4 || state.deck.length >= MODE_KEYS.length) return out;
+    for (var i = 0; i < MODE_KEYS.length; i++) {
+      if (state.deck.indexOf(MODE_KEYS[i]) < 0) out.push(MODE_KEYS[i]);
+    }
+    return out;
+  }
+
+  function slotChoices(state) {
+    var pool = slotCandidates(state);
+    var picks = [];
+    while (picks.length < 3 && pool.length) {
+      var index = Math.floor(rand(state.rng) * pool.length) % pool.length;
+      picks.push(pool.splice(index, 1)[0]);
+    }
+    return picks;
+  }
+
+  function applyUpgrade(state, id, choice) {
     if (!state || !state.stageCleared) return false;
     if (id === 'life') {
       if (state.maxHp >= B.UPGRADE_MAX_LIFE && state.hp >= state.maxHp) return false;
@@ -1068,14 +1138,20 @@
       state.score += Math.round(B.UPGRADE_BONUS_SCORE * (state.scoreMult || 1));
     } else if (id === 'beam') {
       if (state.upgrades.beam) return false;
+    } else if (id === 'magnet') {
+      if (state.upgrades.magnet) return false;
+    } else if (id === 'revive') {
+      if (state.upgrades.revive) return false;
+    } else if (id === 'comboGuard') {
+      if (state.upgrades.comboGuard) return false;
+    } else if (id === 'bossBreaker') {
+      if (state.upgrades.bossBreaker) return false;
     } else if (id === 'slot') {
-      if (state.deck.length >= 4 || state.deck.length >= MODE_KEYS.length) return false;
-      var candidates = [];
-      for (var i = 0; i < MODE_KEYS.length; i++) {
-        if (state.deck.indexOf(MODE_KEYS[i]) < 0) candidates.push(MODE_KEYS[i]);
-      }
+      var candidates = slotCandidates(state);
       if (!candidates.length) return false;
-      var key = candidates[Math.floor(rand(state.rng) * candidates.length) % candidates.length];
+      var key = choice && candidates.indexOf(choice) >= 0
+        ? choice
+        : candidates[Math.floor(rand(state.rng) * candidates.length) % candidates.length];
       state.deck.push(key);
       if (PARAM_SPECS[key]) {
         var all = normalizeParams(state.deckParams);
@@ -1096,6 +1172,10 @@
     if (state.scoreMult < B.UPGRADE_MAX_SCORE_MULT) pool.push('score');
     if (state.bossHpReduction < B.UPGRADE_MAX_BOSS_REDUCTION) pool.push('boss');
     if (!state.upgrades.beam) pool.push('beam');
+    if (!state.upgrades.magnet) pool.push('magnet');
+    if (!state.upgrades.revive) pool.push('revive');
+    if (!state.upgrades.comboGuard) pool.push('comboGuard');
+    if (!state.upgrades.bossBreaker) pool.push('bossBreaker');
     if (state.deck.length < 4 && state.deck.length < MODE_KEYS.length) pool.push('slot');
     var picks = [];
     while (picks.length < 3 && pool.length) {
@@ -1126,6 +1206,7 @@
       maxCombo: state.maxCombo,
       hits: state.hits,
       misses: state.misses,
+      reviveUsed: !!state.reviveUsed,
       time: state.time,
       worldX: state.worldX
     };
@@ -1159,6 +1240,7 @@
     g.maxCombo = checkpoint.maxCombo || 0;
     g.hits = checkpoint.hits || 0;
     g.misses = checkpoint.misses || 0;
+    g.reviveUsed = !!checkpoint.reviveUsed;
     g.time = checkpoint.time || 0;
     g.worldX = checkpoint.worldX || 0;
     g.speed = BASE_SPEED + Math.min(MAX_SPEED - BASE_SPEED, g.time * SPEED_RAMP);
@@ -1254,6 +1336,7 @@
     restoreCheckpoint: restoreCheckpoint,
     applyUpgrade: applyUpgrade,
     upgradeChoices: upgradeChoices,
+    slotChoices: slotChoices,
     rotateDeck: rotateDeck,
     stageTargetFor: stageTargetFor,
     consumeEvents: consumeEvents,

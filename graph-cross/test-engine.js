@@ -336,9 +336,26 @@ assert(E.snapshot(g).deck.length === deckSize + 1, '4枠デッキがスナップ
 assert(E.applyUpgrade(g, 'slot') === false, '4枠を超えて増やせない');
 assert(E.applyUpgrade(g, 'beam') === true && g.upgrades.beam === 1, 'ビーム強化');
 assert(E.applyUpgrade(g, 'beam') === false, 'ビーム強化は1回だけ');
+assert(E.applyUpgrade(g, 'magnet') === true && g.upgrades.magnet === 1, 'アイテム磁石');
+assert(E.applyUpgrade(g, 'magnet') === false, 'アイテム磁石は1回だけ');
+assert(E.applyUpgrade(g, 'revive') === true && g.upgrades.revive === 1, 'リバイブ');
+assert(E.applyUpgrade(g, 'revive') === false, 'リバイブは1回だけ');
+assert(E.applyUpgrade(g, 'comboGuard') === true && g.upgrades.comboGuard === 1, 'コンボガード');
+assert(E.applyUpgrade(g, 'bossBreaker') === true && g.upgrades.bossBreaker === 1, 'ボスブレイカー');
 assert(g.upgrades.life === 1 && g.upgrades.slot === 1 && g.upgrades.beam === 1, '取得強化の記録');
 assert(E.snapshot(g).maxHp === 4 && E.snapshot(g).hitBonus === 2, '強化がスナップショットに反映');
 assert(E.applyUpgrade(g, 'unknown') === false, '不明な強化は無効');
+
+/* 9d-1) スロット追加の関数3択 */
+g = makeGame(925, ['hold', 'up', 'wave']);
+g.stageCleared = true;
+var slotPicks = E.slotChoices(g);
+assert(slotPicks.length === 3, 'スロット追加は3択');
+assert(slotPicks[0] !== slotPicks[1] && slotPicks[1] !== slotPicks[2] && slotPicks[0] !== slotPicks[2], 'スロット候補が重複しない');
+assert(slotPicks.every(function (k) { return g.deck.indexOf(k) < 0; }), 'スロット候補はデッキ外');
+var slotPick = slotPicks[1];
+assert(E.applyUpgrade(g, 'slot', slotPick) === true && g.deck.indexOf(slotPick) >= 0, '選んだ関数をスロットに追加');
+assert(g.deck.length === 4, '選択後に4枠になる');
 
 /* 9d0) プリズムクロス */
 g = makeGame(909, ['hold', 'up', 'wave']);
@@ -376,6 +393,100 @@ E.update(g, 1 / 60);
 var cooldownEvents = E.consumeEvents(g);
 assert(!cooldownEvents.some(function (e) { return e.type === 'beam'; }), 'クールダウン中はビームが出ない');
 assert(g.hits === 4, '通常交差は継続する');
+
+/* 9d0a) アイテム磁石 */
+g = makeGame(926, ['hold', 'up', 'wave']);
+g.upgrades = { magnet: 1 };
+g.rivals = [];
+g.boss = null;
+g.stageHits = 0;
+g.stageTarget = 99;
+g.spawnTimer = 999;
+g.itemTimer = 999;
+g.y = 300;
+g.trail = [{ x: g.headX, y: g.y, mode: 'hold' }];
+g.items = [{ x: g.headX + 80, y: g.y + 80, type: 'score', r: 12, phase: 0 }];
+var noMagnet = makeGame(926, ['hold', 'up', 'wave']);
+noMagnet.rivals = [];
+noMagnet.boss = null;
+noMagnet.stageHits = 0;
+noMagnet.stageTarget = 99;
+noMagnet.spawnTimer = 999;
+noMagnet.itemTimer = 999;
+noMagnet.y = 300;
+noMagnet.trail = [{ x: noMagnet.headX, y: noMagnet.y, mode: 'hold' }];
+noMagnet.items = [{ x: noMagnet.headX + 80, y: noMagnet.y + 80, type: 'score', r: 12, phase: 0 }];
+for (i = 0; i < 20; i++) {
+  E.update(g, 1 / 60);
+  E.update(noMagnet, 1 / 60);
+}
+assert(g.items.length === 0 && noMagnet.items.length === 1, '磁石が近くのアイテムを回収する');
+
+/* 9d0b) コンボガード */
+g = makeGame(927, ['hold', 'up', 'wave']);
+g.upgrades = { comboGuard: 1 };
+g.combo = 5;
+g.comboTimer = 1;
+g.hp = 3;
+g.rivals = [lineRival(-300, g.y, 100)];
+g.trail = [];
+g.items = [];
+g.itemTimer = 999;
+g.spawnTimer = 999;
+g.boss = null;
+g.stageTarget = 99;
+E.update(g, 1 / 60);
+assert(g.combo === 5 && g.guardUsed === true && g.hp === 2, 'コンボガードでコンボを維持');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'guard'; }), 'guardイベント');
+g.rivals = [lineRival(-300, g.y, 100)];
+E.update(g, 1 / 60);
+assert(g.combo === 0 && g.hp === 1, 'コンボガードは1ステージ1回');
+
+/* 9d0c) リバイブ */
+g = makeGame(928, ['hold', 'up', 'wave']);
+g.upgrades = { revive: 1 };
+g.hp = 1;
+g.rivals = [lineRival(-300, g.y, 100)];
+g.trail = [];
+g.items = [];
+g.itemTimer = 999;
+g.spawnTimer = 999;
+g.boss = null;
+g.stageTarget = 99;
+E.update(g, 1 / 60);
+assert(!g.over && g.hp === 1 && g.reviveUsed === true, 'リバイブで1ライフ復活');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'revive'; }), 'reviveイベント');
+g.rivals = [lineRival(-300, g.y, 100)];
+E.update(g, 1 / 60);
+assert(g.over === true && g.hp === 0, 'リバイブは1ラン1回');
+
+/* 9d0d) ボスブレイカー */
+g = makeGame(929, ['hold', 'up', 'wave']);
+g.stageHits = g.stageTarget;
+g.bossCooldown = 0;
+g.rivals = [];
+E.update(g, 1 / 60);
+g.boss.x = g.headX - 5;
+g.boss.len = 100;
+g.boss.shape = 'line';
+g.boss.amp = 0;
+g.boss.slope = 0;
+g.boss.waves = 1;
+g.boss.baseY = g.y;
+g.boss.centerY = g.y;
+g.boss.family = 'linear';
+g.boss.hp = 20;
+g.boss.maxHp = 20;
+g.boss.invuln = 0;
+g.upgrades = { bossBreaker: 1 };
+g.trail = [
+  { x: g.headX - 5, y: g.y, mode: 'up' },
+  { x: g.headX, y: g.y, mode: 'up' }
+];
+E.setMode(g, 'up');
+E.update(g, 1 / 60);
+var bossBreakerHit = E.consumeEvents(g).filter(function (e) { return e.type === 'bossHit'; })[0];
+assert(bossBreakerHit && bossBreakerHit.damage === 3, 'ボスブレイカーで弱点ダメージ+1');
 
 /* 9d1) ストレス解消モード */
 g = E.createGame({ width: 1000, height: 620, deck: ['hold', 'up', 'wave'], mode: 'stress', rng: mulberry32(908) });
@@ -524,6 +635,7 @@ g.comboWindow = 3.4;
 g.scoreMult = 1.2;
 g.bossHpReduction = 3;
 g.upgrades = { life: 2 };
+g.reviveUsed = true;
 g.maxCombo = 9;
 g.time = 42;
 g.worldX = 5000;
@@ -538,6 +650,7 @@ assert(restored.stage === 3 && restored.stageTarget === 12 && restored.stageHits
 assert(restored.score === 1234 && restored.hp === 2 && restored.maxHp === 4, 'スコアとライフを復元');
 assert(restored.hitBonus === 2 && restored.comboWindow === 3.4 && restored.scoreMult === 1.2, '強化値を復元');
 assert(restored.bossHpReduction === 3 && restored.upgrades.life === 2, 'ボス弱体化と強化履歴を復元');
+assert(restored.reviveUsed === true, 'リバイブ使用済みも復元');
 assert(restored.time === 42 && restored.worldX === 5000, '難易度とx位置を復元');
 assert(restored.combo === 0 && restored.multi === 0 && restored.boss === null, 'ステージ内の状態をリセット');
 assert(!restored.over && !restored.stageCleared, '再開可能な状態');

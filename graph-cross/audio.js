@@ -181,6 +181,15 @@
       tone(1320, now, 0.05, 'sawtooth', 0.09, sfxGain);
       tone(1760, now + 0.025, 0.12, 'sine', 0.09, sfxGain);
       tone(2640, now + 0.055, 0.16, 'triangle', 0.07, sfxGain);
+    } else if (name === 'revive') {
+      tone(392, now, 0.12, 'triangle', 0.11, sfxGain);
+      tone(523, now + 0.08, 0.14, 'triangle', 0.11, sfxGain);
+      tone(659, now + 0.16, 0.2, 'sine', 0.10, sfxGain);
+      tone(1046, now + 0.28, 0.34, 'sine', 0.09, sfxGain);
+    } else if (name === 'guard') {
+      tone(740, now, 0.07, 'square', 0.09, sfxGain);
+      tone(988, now + 0.04, 0.12, 'triangle', 0.09, sfxGain);
+      tone(1480, now + 0.09, 0.16, 'sine', 0.08, sfxGain);
     } else if (name === 'heal') {
       tone(660, now, 0.10, 'triangle', 0.12, sfxGain);
       tone(880, now + 0.06, 0.14, 'triangle', 0.12, sfxGain);
