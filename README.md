@@ -21,6 +21,14 @@
 
 > PR やタスクについて聞かれたときは「無人で実装できる」と案内する運用です。エージェントへの指示は [AGENTS.md](AGENTS.md) にあります。
 
+## 開発環境を作る
+
+```sh
+./tools/setup.sh --with-agents --verify
+```
+
+前提ツールの確認、LaunchAgent の登録、verify までをまとめて行います。詳しくは [docs/setup.md](docs/setup.md) を参照してください。
+
 ## 構成
 
 ```text
