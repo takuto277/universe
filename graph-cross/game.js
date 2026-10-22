@@ -13,6 +13,7 @@
   var ui = null;
   var audio = AU ? AU.create() : null;
   var state = null;
+  var checkpoint = null;
   var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [] };
   var viewW = 960;
   var viewH = 560;
@@ -225,6 +226,7 @@
       fusion: ui.getFusion(),
       mode: stress ? 'stress' : 'normal'
     });
+    checkpoint = state.gameMode === 'stress' ? null : E.makeCheckpoint(state);
     view.phase = 'run';
     view.deathAt = 0;
     view.clearAt = 0;
@@ -270,7 +272,7 @@
       audio.stopBgm();
       audio.play('over');
     }
-    ui.showEnd(state);
+    ui.showEnd(state, !!checkpoint);
   }
 
   function showClear() {
@@ -283,9 +285,35 @@
   function goNextStage() {
     if (!state || !state.stageCleared) return;
     if (!E.nextStage(state)) return;
+    checkpoint = E.makeCheckpoint(state);
     view.phase = 'run';
     view.deathAt = 0;
     view.clearAt = 0;
+    lastCombo = 0;
+    particles = [];
+    rings = [];
+    labels = [];
+    shake = 0;
+    flash = 0;
+    lastTs = 0;
+    ui.hideScreens();
+    ui.setRuntime(state, 'run');
+    ui.showStageBanner(state.stage);
+    if (audio && !ui.isMuted()) {
+      audio.setIntensity(0);
+      audio.unlock();
+      audio.startBgm();
+      audio.play('start');
+    }
+  }
+
+  function retryStage() {
+    if (!checkpoint) return;
+    state = E.restoreCheckpoint(checkpoint, { width: viewW, height: viewH });
+    view.phase = 'run';
+    view.deathAt = 0;
+    view.clearAt = 0;
+    view.upgradeIds = [];
     lastCombo = 0;
     particles = [];
     rings = [];
@@ -338,6 +366,10 @@
         showStart();
         return;
       }
+    }
+    if (view.phase === 'over' && (k === 'r' || k === 'R')) {
+      retryStage();
+      return;
     }
     if (view.phase === 'clear') {
       if (k === '1') chooseUpgrade(0);
@@ -433,6 +465,7 @@
         onStart: function () { beginRun('normal'); },
         onStressStart: function () { beginRun('stress'); },
         onExit: showStart,
+        onRetry: retryStage,
         onBackToDeck: showStart,
         onUpgrade: chooseUpgrade,
         onSlot: selectSlot,

@@ -737,6 +737,7 @@ body {
   text-overflow: ellipsis;
 }
 #deck-swap.hidden { display: none; }
+#btn-retry.hidden { display: none; }
 #deck-swap span { color: var(--gold); margin: 0 4px; }
 #run-upgrades {
   width: min(760px, 100%);

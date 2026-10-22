@@ -470,6 +470,39 @@ assert(fusionDeck.deck.indexOf('fusion') === 0, '強制入れ替えで合成カ�
 var badFusion = E.createGame({ width: 1000, height: 620, deck: ['fusion', 'up', 'hold'], fusion: { primary: 'quad', secondary: 'quad' }, rng: mulberry32(932) });
 assert(badFusion.fusion === null, '不正な合成設定は無効');
 
+/* 9e3) ステージ開始チェックポイント */
+g = makeGame(940, ['hold', 'up', 'wave']);
+g.deck.push('down');
+g.deckParams.down = E.normalizeParams(g.deckParams).down;
+g.fusion = { primary: 'quad', secondary: 'wave' };
+g.stage = 3;
+g.stageTarget = 12;
+g.score = 1234;
+g.maxHp = 4;
+g.hp = 2;
+g.hitBonus = 2;
+g.comboWindow = 3.4;
+g.scoreMult = 1.2;
+g.bossHpReduction = 3;
+g.upgrades = { life: 2 };
+g.maxCombo = 9;
+g.time = 42;
+g.worldX = 5000;
+var cp = E.makeCheckpoint(g);
+g.score = 0;
+g.hp = 0;
+var restored = E.restoreCheckpoint(cp, { width: 1000, height: 620, rng: mulberry32(941) });
+assert(restored, 'チェックポイントから復元できる');
+assert(restored.deck.length === 4 && restored.deck[3] === 'down', '4枠デッキも復元');
+assert(restored.fusion && restored.fusion.primary === 'quad', '合成設定も復元');
+assert(restored.stage === 3 && restored.stageTarget === 12 && restored.stageHits === 0, 'ステージ進行を復元');
+assert(restored.score === 1234 && restored.hp === 2 && restored.maxHp === 4, 'スコアとライフを復元');
+assert(restored.hitBonus === 2 && restored.comboWindow === 3.4 && restored.scoreMult === 1.2, '強化値を復元');
+assert(restored.bossHpReduction === 3 && restored.upgrades.life === 2, 'ボス弱体化と強化履歴を復元');
+assert(restored.time === 42 && restored.worldX === 5000, '難易度とx位置を復元');
+assert(restored.combo === 0 && restored.multi === 0 && restored.boss === null, 'ステージ内の状態をリセット');
+assert(!restored.over && !restored.stageCleared, '再開可能な状態');
+
 /* 9f) 追加された関数の軌道 */
 var directCases = [
   ['expo', -1], ['log', -1], ['sigmoid', -1], ['gauss', -1], ['easeDown', 1]

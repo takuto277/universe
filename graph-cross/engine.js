@@ -1128,6 +1128,90 @@
     return picks;
   }
 
+  function makeCheckpoint(state) {
+    if (!state) return null;
+    return {
+      gameMode: state.gameMode,
+      deck: state.deck.slice(),
+      deckParams: JSON.parse(JSON.stringify(state.deckParams)),
+      fusion: state.fusion ? { primary: state.fusion.primary, secondary: state.fusion.secondary } : null,
+      stage: state.stage,
+      stageTarget: state.stageTarget,
+      score: state.score,
+      hp: state.hp,
+      maxHp: state.maxHp,
+      hitBonus: state.hitBonus,
+      comboWindow: state.comboWindow,
+      scoreMult: state.scoreMult,
+      bossHpReduction: state.bossHpReduction,
+      upgrades: JSON.parse(JSON.stringify(state.upgrades)),
+      maxCombo: state.maxCombo,
+      hits: state.hits,
+      misses: state.misses,
+      time: state.time,
+      worldX: state.worldX
+    };
+  }
+
+  function restoreCheckpoint(checkpoint, options) {
+    if (!checkpoint) return null;
+    options = options || {};
+    var g = createGame({
+      width: options.width || 960,
+      height: options.height || 560,
+      deck: checkpoint.deck,
+      deckParams: checkpoint.deckParams,
+      fusion: checkpoint.fusion,
+      mode: checkpoint.gameMode,
+      rng: options.rng
+    });
+    g.deck = checkpoint.deck.slice();
+    g.deckParams = JSON.parse(JSON.stringify(checkpoint.deckParams || {}));
+    g.fusion = normalizeFusion(checkpoint.fusion);
+    g.stage = checkpoint.stage || 1;
+    g.stageTarget = checkpoint.stageTarget || stageTargetFor(g.stage);
+    g.stageHits = 0;
+    g.score = checkpoint.score || 0;
+    g.maxHp = checkpoint.maxHp || MAX_HP;
+    g.hp = Math.max(1, Math.min(g.maxHp, checkpoint.hp == null ? g.maxHp : checkpoint.hp));
+    g.hitBonus = checkpoint.hitBonus || 0;
+    g.comboWindow = checkpoint.comboWindow || COMBO_WINDOW;
+    g.scoreMult = checkpoint.scoreMult || 1;
+    g.bossHpReduction = checkpoint.bossHpReduction || 0;
+    g.upgrades = JSON.parse(JSON.stringify(checkpoint.upgrades || {}));
+    g.maxCombo = checkpoint.maxCombo || 0;
+    g.hits = checkpoint.hits || 0;
+    g.misses = checkpoint.misses || 0;
+    g.time = checkpoint.time || 0;
+    g.worldX = checkpoint.worldX || 0;
+    g.speed = BASE_SPEED + Math.min(MAX_SPEED - BASE_SPEED, g.time * SPEED_RAMP);
+    g.stageCleared = false;
+    g.stageClearBonus = 0;
+    g.lastDeckSwap = null;
+    g.boss = null;
+    g.bossCooldown = 0;
+    g.rivals = [];
+    g.items = [];
+    g.allies = [];
+    g.trail = [];
+    g.events = [];
+    g.over = false;
+    g.deathCause = null;
+    g.combo = 0;
+    g.comboTimer = 0;
+    g.multi = 0;
+    g.multiTimer = 0;
+    g.mode = g.deck[0];
+    g.modeTime = 0;
+    g.vy = baseVy(g, g.mode);
+    g.y = (g.top + g.bottom) / 2;
+    g.waveBaseY = g.y;
+    if (directMode(g.mode)) setModeBase(g);
+    g.spawnTimer = 1.0;
+    g.itemTimer = g.gameMode === 'stress' ? 2.0 : B.ITEM_FIRST_DELAY;
+    return g;
+  }
+
   function consumeEvents(state) {
     if (!state) return [];
     var events = state.events;
@@ -1209,6 +1293,8 @@
     setMode: setMode,
     update: update,
     nextStage: nextStage,
+    makeCheckpoint: makeCheckpoint,
+    restoreCheckpoint: restoreCheckpoint,
     applyUpgrade: applyUpgrade,
     upgradeChoices: upgradeChoices,
     rotateDeck: rotateDeck,
