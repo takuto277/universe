@@ -210,6 +210,9 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 
 - LaunchAgent は main 追従の専用チェックアウト（既定 `~/.local/share/universe-automation`）から動く。人間の作業ブランチには依存しない
 - 起動のたびに `origin/main` へ更新し、更新ログは `~/Library/Logs/universe-automation-update.log` に残る
+- 同時起動時は更新ロックで片方だけが更新し、もう片方は現在の版で実行する
+- 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除するときは `automation-root.sh remove` を使う
+- ブランチをチェックアウトした worktree は指定できません（detached HEAD の専用 worktree のみ）
 - 手動操作: `./tools/automation-root.sh status|update|remove`（`UNIVERSE_AUTOMATION_ROOT` でパス変更）
 - LaunchAgent は 120 秒ごとに起動する。Mac がスリープ中は遅延する
 - 実行ログは `~/.local/state/universe-agent-runner/logs/issue-<n>-<ts>.log` に残し、14日より古いものを削除する

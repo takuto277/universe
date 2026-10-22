@@ -31,6 +31,19 @@ if [ -e "$DEST" ] && [ ! -e "$DEST/.git" ]; then
   exit 1
 fi
 
+if [ -e "$DEST/.git" ]; then
+  source_common="$(git -C "$SOURCE_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  dest_common="$(git -C "$DEST" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+  if [ -z "$dest_common" ] || [ "$dest_common" != "$source_common" ]; then
+    printf 'UNIVERSE_AUTOMATION_ROOT はこのリポジトリの worktree ではありません: %s\n' "$DEST" >&2
+    exit 1
+  fi
+  if git -C "$DEST" symbolic-ref -q HEAD >/dev/null 2>&1; then
+    printf 'UNIVERSE_AUTOMATION_ROOT は detached HEAD の worktree にしてください（ブランチのチェックアウトは更新しません）: %s\n' "$DEST" >&2
+    exit 1
+  fi
+fi
+
 case "$cmd" in
   status)
     printf 'path: %s\n' "$DEST"
@@ -43,7 +56,8 @@ case "$cmd" in
     ;;
   remove)
     if [ -e "$DEST/.git" ]; then
-      git -C "$SOURCE_ROOT" worktree remove --force "$DEST"
+      common="$(git -C "$DEST" rev-parse --path-format=absolute --git-common-dir)"
+      git --git-dir="$common" worktree remove --force "$DEST"
       printf 'removed: %s\n' "$DEST"
     else
       printf 'not found: %s\n' "$DEST"
@@ -58,7 +72,6 @@ case "$cmd" in
       git -C "$SOURCE_ROOT" fetch --quiet origin "$BASE"
       git -C "$SOURCE_ROOT" worktree add --detach "$DEST" "origin/$BASE"
     fi
-    git -C "$DEST" config core.hooksPath /dev/null
     printf '%s\n' "$DEST"
     ;;
 esac

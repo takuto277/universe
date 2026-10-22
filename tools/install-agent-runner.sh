@@ -78,7 +78,6 @@ xml_escape() {
 }
 
 PLIST_LABEL="$(xml_escape "$LABEL")"
-PLIST_ROOT="$(xml_escape "$ROOT")"
 PLIST_AUTO="$(xml_escape "$AUTO_ROOT")"
 PLIST_HOME="$(xml_escape "$HOME")"
 PLIST_LOG_DIR="$(xml_escape "$LOG_DIR")"
@@ -143,7 +142,7 @@ if [ "$PRINT_ONLY" = "1" ]; then
 fi
 
 mkdir -p "$HOME/Library/LaunchAgents" "$LOG_DIR"
-if ! bash "$ROOT/tools/automation-root.sh" ensure >/dev/null; then
+if ! UNIVERSE_AGENT_BASE="$BASE" bash "$ROOT/tools/automation-root.sh" ensure >/dev/null; then
   printf 'failed to prepare automation root: %s\n' "$AUTO_ROOT" >&2
   exit 1
 fi

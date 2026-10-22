@@ -24,6 +24,8 @@ LaunchAgent は、人間が作業しているチェックアウトとは別の *
 ```
 
 - パスを変える場合: `UNIVERSE_AUTOMATION_ROOT=/path ./tools/setup.sh --with-agents`
+- 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除は `./tools/automation-root.sh remove` を使ってください
+- ブランチをチェックアウトした worktree は指定できません（detached HEAD のみ）
 
 ## 前提
 
