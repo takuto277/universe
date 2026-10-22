@@ -326,6 +326,45 @@ body {
 .end-stats b { font-size: 18px; }
 
 /* ===== デッキ選択 ===== */
+#deck-builder.hidden { display: none; }
+#deck-builder {
+  width: min(660px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 2px;
+}
+.deck-summary {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 24px;
+}
+.deck-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 3px 9px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: rgba(16, 24, 42, 0.9);
+  color: var(--cyan);
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 10.5px;
+  font-weight: 700;
+}
+.deck-chip em {
+  font-style: normal;
+  font-size: 8px;
+  color: var(--muted);
+}
+.deck-chip[data-genre="上昇"] { border-color: rgba(87, 224, 138, 0.45); }
+.deck-chip[data-genre="下降"] { border-color: rgba(255, 159, 107, 0.45); }
+.deck-chip.empty { color: var(--muted); }
+.build-btn { margin: 0 auto; display: block; }
+.compact-rules { line-height: 1.75; }
+
 #deck-picker {
   width: min(660px, 100%);
   flex: 0 0 auto;

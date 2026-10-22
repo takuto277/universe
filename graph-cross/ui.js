@@ -248,8 +248,29 @@
       updateTunePreview();
     }
 
+    function closeDeckBuilder() {
+      if (els.deckBuilder) els.deckBuilder.classList.add('hidden');
+      if (els.btnBuild) els.btnBuild.textContent = 'デッキを組む';
+    }
+
+    function toggleDeckBuilder() {
+      if (!els.deckBuilder) return;
+      var isHidden = els.deckBuilder.classList.toggle('hidden');
+      if (els.btnBuild) els.btnBuild.textContent = isHidden ? 'デッキを組む' : '閉じる';
+    }
+
     function updateDeckUi() {
       if (els.deckCount) els.deckCount.textContent = selectedDeck.length + '/' + C.DECK_SIZE;
+      if (els.deckSummary) {
+        var chips = [];
+        for (var di = 0; di < selectedDeck.length; di++) {
+          var dkey = selectedDeck[di];
+          var dgenre = C.GENRE_LABELS[C.MODES[dkey].genre] || '';
+          chips.push('<span class="deck-chip" data-genre="' + dgenre + '">' +
+            C.formatModeLabel(dkey, selectedParams) + '<em>' + dgenre + '</em></span>');
+        }
+        els.deckSummary.innerHTML = chips.length ? chips.join('') : '<span class="deck-chip empty">デッキを選ぼう</span>';
+      }
       for (var key in deckCards) {
         if (!Object.prototype.hasOwnProperty.call(deckCards, key)) continue;
         deckCards[key].classList.toggle('selected', selectedDeck.indexOf(key) >= 0);
@@ -344,6 +365,7 @@
       if (els.screenEnd) els.screenEnd.classList.remove('visible');
       if (els.screenClear) els.screenClear.classList.remove('visible');
       if (els.btnExit) els.btnExit.classList.add('hidden');
+      closeDeckBuilder();
       updateDeckUi();
       updateHud(null);
     }
@@ -472,6 +494,9 @@
       els.modeButtons = $('mode-buttons');
       els.tip = $('tip');
       els.deckCount = $('deck-count');
+      els.deckSummary = $('deck-summary');
+      els.btnBuild = $('btn-build');
+      els.deckBuilder = $('deck-builder');
       els.tuneRows = $('tune-rows');
       els.tuneEmpty = $('tune-empty');
       els.tunePreviewWrap = $('tune-preview-wrap');
@@ -546,6 +571,7 @@
       if (els.btnStart) els.btnStart.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
       if (els.btnStress) els.btnStress.addEventListener('click', function () { if (typeof actions.onStressStart === 'function') actions.onStressStart(); });
       if (els.btnExit) els.btnExit.addEventListener('click', function () { if (typeof actions.onExit === 'function') actions.onExit(); });
+      if (els.btnBuild) els.btnBuild.addEventListener('click', toggleDeckBuilder);
       if (els.btnAgain) els.btnAgain.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
       if (els.btnDeck) els.btnDeck.addEventListener('click', function () { if (typeof actions.onBackToDeck === 'function') actions.onBackToDeck(); });
       if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
