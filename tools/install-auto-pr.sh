@@ -7,6 +7,7 @@ DOMAIN="gui/$(id -u)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/Library/Logs"
 REPO="${UNIVERSE_AUTO_PR_REPO:-takuto277/universe}"
+AUTO_ROOT="${UNIVERSE_AUTOMATION_ROOT:-$HOME/.local/share/universe-automation}"
 BASE="${UNIVERSE_AUTO_PR_BASE:-main}"
 MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
 AUTOFIX="${UNIVERSE_AUTO_PR_AUTOFIX:-1}"
@@ -55,6 +56,7 @@ xml_escape() {
 
 PLIST_LABEL="$(xml_escape "$LABEL")"
 PLIST_ROOT="$(xml_escape "$ROOT")"
+PLIST_AUTO="$(xml_escape "$AUTO_ROOT")"
 PLIST_HOME="$(xml_escape "$HOME")"
 PLIST_LOG_DIR="$(xml_escape "$LOG_DIR")"
 PLIST_MODEL="$(xml_escape "$MODEL")"
@@ -75,10 +77,11 @@ cat >"$PLIST" <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>$PLIST_ROOT/tools/auto-pr.sh</string>
+    <string>$PLIST_AUTO/tools/automation-run.sh</string>
+    <string>auto-pr.sh</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>$PLIST_ROOT</string>
+  <string>$PLIST_AUTO</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
@@ -134,5 +137,6 @@ if [ -n "$GH" ] && [ -x "$GH" ]; then
 fi
 
 printf 'installed: %s\n' "$PLIST"
+printf 'run from:  %s\n' "$AUTO_ROOT"
 printf 'log:       %s\n' "$LOG_DIR/universe-auto-pr.log"
 printf 'pause:     touch %s/.local/state/universe-auto-pr/pause\n' "$HOME"

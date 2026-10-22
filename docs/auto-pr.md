@@ -28,6 +28,8 @@ PR を Ready にするだけで、レビューとマージまで自動で進め�
 ./tools/install-auto-pr.sh
 ```
 
+watcher は main 追従の専用チェックアウト（`~/.local/share/universe-automation`）から動き、起動時に自動更新します。
+
 状態確認と停止:
 
 ```sh

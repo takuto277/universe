@@ -12,6 +12,19 @@ cd universe
 
 `--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、builder と verify を sandbox で実行します。
 
+LaunchAgent は、人間が作業しているチェックアウトとは別の **main 追従の専用チェックアウト** から動きます。既定は `~/.local/share/universe-automation` です。
+
+- 起動のたびに `origin/main` へ自動更新します（失敗時は現在の版で続行し、ログに残します）
+- 手動確認・更新・削除:
+
+```sh
+./tools/automation-root.sh status
+./tools/automation-root.sh update
+./tools/automation-root.sh remove
+```
+
+- パスを変える場合: `UNIVERSE_AUTOMATION_ROOT=/path ./tools/setup.sh --with-agents`
+
 ## 前提
 
 `tools/setup.sh` が次を確認します。

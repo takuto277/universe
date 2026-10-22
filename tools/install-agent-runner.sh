@@ -8,6 +8,7 @@ DOMAIN="gui/$(id -u)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/Library/Logs"
 REPO="${UNIVERSE_AGENT_REPO:-takuto277/universe}"
+AUTO_ROOT="${UNIVERSE_AUTOMATION_ROOT:-$HOME/.local/share/universe-automation}"
 BASE="${UNIVERSE_AGENT_BASE:-main}"
 MODEL="${UNIVERSE_AGENT_MODEL:-opencode/deepseek-v4.1-flash-free}"
 SANDBOX="${UNIVERSE_AGENT_SANDBOX:-none}"
@@ -78,6 +79,7 @@ xml_escape() {
 
 PLIST_LABEL="$(xml_escape "$LABEL")"
 PLIST_ROOT="$(xml_escape "$ROOT")"
+PLIST_AUTO="$(xml_escape "$AUTO_ROOT")"
 PLIST_HOME="$(xml_escape "$HOME")"
 PLIST_LOG_DIR="$(xml_escape "$LOG_DIR")"
 PLIST_MODEL="$(xml_escape "$MODEL")"
@@ -97,11 +99,12 @@ cat <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>$PLIST_ROOT/tools/agent.sh</string>
+    <string>$PLIST_AUTO/tools/automation-run.sh</string>
+    <string>agent.sh</string>
     <string>run</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>$PLIST_ROOT</string>
+  <string>$PLIST_AUTO</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
@@ -140,6 +143,10 @@ if [ "$PRINT_ONLY" = "1" ]; then
 fi
 
 mkdir -p "$HOME/Library/LaunchAgents" "$LOG_DIR"
+if ! bash "$ROOT/tools/automation-root.sh" ensure >/dev/null; then
+  printf 'failed to prepare automation root: %s\n' "$AUTO_ROOT" >&2
+  exit 1
+fi
 plist_body >"$PLIST"
 
 launchctl bootout "$DOMAIN" "$PLIST" 2>/dev/null || true
@@ -149,6 +156,7 @@ launchctl enable "$DOMAIN/$LABEL" 2>/dev/null || true
 python3 "$ROOT/tools/agent_runner.py" ensure-labels >/dev/null 2>&1 || true
 
 printf 'installed: %s\n' "$PLIST"
+printf 'run from:  %s\n' "$AUTO_ROOT"
 printf 'log:       %s\n' "$LOG_DIR/universe-agent-runner.log"
 printf 'queue:     label issues with "agent:ready" (or tools/agent.sh enqueue)\n'
 

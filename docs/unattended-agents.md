@@ -208,6 +208,9 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 - `agent:running` のまま `UNIVERSE_AGENT_STALL_MINUTES` を超えた Issue は一度だけ通知します
 - 滞留通知は runner 実行時に確認するため、`UNIVERSE_AGENT_TIMEOUT` を滞留時間より長くすると、固まった実行は検出できません（timeout を短くするか、別プロセスの監視が必要）
 
+- LaunchAgent は main 追従の専用チェックアウト（既定 `~/.local/share/universe-automation`）から動く。人間の作業ブランチには依存しない
+- 起動のたびに `origin/main` へ更新し、更新ログは `~/Library/Logs/universe-automation-update.log` に残る
+- 手動操作: `./tools/automation-root.sh status|update|remove`（`UNIVERSE_AUTOMATION_ROOT` でパス変更）
 - LaunchAgent は 120 秒ごとに起動する。Mac がスリープ中は遅延する
 - 実行ログは `~/.local/state/universe-agent-runner/logs/issue-<n>-<ts>.log` に残し、14日より古いものを削除する
 - 失敗の切り分けは Issue コメント → 個別ログ → `git worktree list` の順で見る
