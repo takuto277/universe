@@ -23,4 +23,5 @@ https://github.com/takuto277/universe/security/advisories/new
 
 - 秘密情報（トークン、鍵、個人情報）をコミットしないでください。GitHub Actions は最小権限の `permissions` を使います
 - 無人エージェントは `sandbox-exec` で書き込み先と読み取りを制限できます（`docs/unattended-agents.md`）。ただし完全なサンドボックスではありません
-- Dependabot と CodeQL を有効にし、依存とコードの変化を確認します
+- Dependabot で GitHub Actions の更新を確認します。`.opencode/` の npm 依存は manifest をリポジトリにコミットしていないため対象外で、opencode の更新時に手元で確認します
+- CodeQL でコードの変化を確認します
