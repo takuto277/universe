@@ -126,6 +126,14 @@ agent_status universe-agent-runner runner
 agent_status universe-auto-pr watcher
 agent_status universe-agent-planner planner
 
+printf '\n自動化チェックアウト\n'
+AUTO_ROOT="${UNIVERSE_AUTOMATION_ROOT:-$HOME/.local/share/universe-automation}"
+if [ -e "$AUTO_ROOT/.git" ]; then
+  ok "$AUTO_ROOT"
+else
+  note "未作成です (--with-agents で作成します)"
+fi
+
 if [ "$WITH_AGENTS" = "1" ]; then
   if [ "$fail" = "1" ]; then
     printf '\n未解決の項目があるため、エージェントの登録を中止します。\n' >&2

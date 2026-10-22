@@ -18,6 +18,7 @@ python3 tools/pr_merge.py --pr <n>  # 五点ゲート + squash merge
 ./tools/agent.sh findings --pr <n>  # レビューのConsider/NitをIssue化
 ./tools/install-agent-planner.sh    # 週次提案のLaunchAgent登録
 ./tools/agent.sh status       # 無人実装キューの状態
+./tools/automation-root.sh status  # LaunchAgent用main追従チェックアウト
 ./tools/agent.sh run --dry-run  # 実行対象の確認
 ./tools/install-agent-runner.sh  # 無人実装ランナーの LaunchAgent 登録
 python3 -m http.server 8000   # ローカル確認

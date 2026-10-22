@@ -7,6 +7,7 @@ DOMAIN="gui/$(id -u)"
 PLIST="$HOME/Library/LaunchAgents/$LABEL.plist"
 LOG_DIR="$HOME/Library/Logs"
 REPO="${UNIVERSE_AUTO_PR_REPO:-takuto277/universe}"
+AUTO_ROOT="${UNIVERSE_AUTOMATION_ROOT:-$HOME/.local/share/universe-automation}"
 BASE="${UNIVERSE_AUTO_PR_BASE:-main}"
 MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
 AUTOFIX="${UNIVERSE_AUTO_PR_AUTOFIX:-1}"
@@ -17,7 +18,7 @@ GH="${GH_BIN:-$(command -v gh || true)}"
 
 usage() {
   cat <<'EOF'
-Usage: tools/install-auto-pr.sh [--uninstall|--status]
+Usage: tools/install-auto-pr.sh [--print|--uninstall|--status]
 
 Installs a macOS LaunchAgent that runs tools/auto-pr.sh every 60 seconds.
 EOF
@@ -38,6 +39,9 @@ case "${1:-}" in
     usage
     exit 0
     ;;
+  --print)
+    PRINT_ONLY=1
+    ;;
   '')
     ;;
   *)
@@ -54,7 +58,7 @@ xml_escape() {
 }
 
 PLIST_LABEL="$(xml_escape "$LABEL")"
-PLIST_ROOT="$(xml_escape "$ROOT")"
+PLIST_AUTO="$(xml_escape "$AUTO_ROOT")"
 PLIST_HOME="$(xml_escape "$HOME")"
 PLIST_LOG_DIR="$(xml_escape "$LOG_DIR")"
 PLIST_MODEL="$(xml_escape "$MODEL")"
@@ -65,7 +69,8 @@ PLIST_SANDBOX="$(xml_escape "$SANDBOX")"
 PLIST_CREATE_ISSUES="$(xml_escape "$CREATE_ISSUES")"
 PLIST_FINDINGS_MAX="$(xml_escape "$FINDINGS_MAX")"
 
-cat >"$PLIST" <<EOF
+plist_body() {
+cat <<EOF
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
@@ -75,10 +80,11 @@ cat >"$PLIST" <<EOF
   <key>ProgramArguments</key>
   <array>
     <string>/bin/bash</string>
-    <string>$PLIST_ROOT/tools/auto-pr.sh</string>
+    <string>$PLIST_AUTO/tools/automation-run.sh</string>
+    <string>auto-pr.sh</string>
   </array>
   <key>WorkingDirectory</key>
-  <string>$PLIST_ROOT</string>
+  <string>$PLIST_AUTO</string>
   <key>EnvironmentVariables</key>
   <dict>
     <key>PATH</key>
@@ -115,6 +121,19 @@ cat >"$PLIST" <<EOF
 </dict>
 </plist>
 EOF
+}
+
+if [ "${PRINT_ONLY:-0}" = "1" ]; then
+  plist_body
+  exit 0
+fi
+
+mkdir -p "$HOME/Library/LaunchAgents" "$LOG_DIR"
+if ! UNIVERSE_AGENT_BASE="$BASE" bash "$ROOT/tools/automation-root.sh" ensure >/dev/null; then
+  printf 'failed to prepare automation root: %s\n' "$AUTO_ROOT" >&2
+  exit 1
+fi
+plist_body >"$PLIST"
 
 launchctl bootout "$DOMAIN" "$PLIST" 2>/dev/null || true
 launchctl bootstrap "$DOMAIN" "$PLIST"
@@ -134,5 +153,6 @@ if [ -n "$GH" ] && [ -x "$GH" ]; then
 fi
 
 printf 'installed: %s\n' "$PLIST"
+printf 'run from:  %s\n' "$AUTO_ROOT"
 printf 'log:       %s\n' "$LOG_DIR/universe-auto-pr.log"
 printf 'pause:     touch %s/.local/state/universe-auto-pr/pause\n' "$HOME"
