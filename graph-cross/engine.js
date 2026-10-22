@@ -700,6 +700,7 @@
       slope: (rand(state.rng) < 0.5 ? -1 : 1) * (0.05 + rand(state.rng) * 0.08),
       life: B.ALLY_LIFESPAN,
       maxLife: B.ALLY_LIFESPAN,
+      age: 0,
       cooldown: 0
     };
     if (state.allies.length >= B.ALLY_MAX) state.allies.shift();
@@ -713,33 +714,36 @@
     return ally;
   }
 
-  function allyY(ally, x) {
+  function allyY(ally, x, age) {
+    var t = age || 0;
     var mid = (ally.x0 + ally.x1) / 2;
-    return ally.baseY + ally.amp * Math.sin(ally.freq * (x - ally.x0) + ally.phase) +
+    var bob = Math.sin(t * 1.8 + ally.phase) * 26;
+    var wavePhase = ally.phase + t * 1.2;
+    return ally.baseY + bob + ally.amp * Math.sin(ally.freq * (x - ally.x0) + wavePhase) +
       ally.slope * (x - mid);
   }
 
-  function allyCrossRival(ally, rival) {
+  function allyCrossRival(ally, rival, age) {
     var xStart = Math.max(ally.x0, rival.x);
     var xEnd = Math.min(ally.x1, rival.x + rival.len);
     if (xEnd <= xStart) return null;
     for (var i = 0; i <= 24; i++) {
       var x = xStart + (xEnd - xStart) * i / 24;
       var ry = rivalY(rival, x - rival.x);
-      var ay = allyY(ally, x);
+      var ay = allyY(ally, x, age);
       if (Math.abs(ry - ay) <= B.ALLY_HIT_DIST) return { x: x, y: (ry + ay) / 2 };
     }
     return null;
   }
 
-  function allyCrossBoss(ally, boss) {
+  function allyCrossBoss(ally, boss, age) {
     var xStart = Math.max(ally.x0, boss.x);
     var xEnd = Math.min(ally.x1, boss.x + boss.len);
     if (xEnd <= xStart) return null;
     for (var i = 0; i <= 32; i++) {
       var x = xStart + (xEnd - xStart) * i / 32;
       var by = rivalY(boss, x - boss.x);
-      var ay = allyY(ally, x);
+      var ay = allyY(ally, x, age);
       if (Math.abs(by - ay) <= B.ALLY_HIT_DIST) return { x: x, y: (by + ay) / 2 };
     }
     return null;
@@ -774,6 +778,7 @@
     for (var ai = state.allies.length - 1; ai >= 0; ai--) {
       var ally = state.allies[ai];
       ally.life -= dt;
+      ally.age += dt;
       ally.cooldown = Math.max(0, ally.cooldown - dt);
       if (ally.life <= 0) {
         state.allies.splice(ai, 1);
@@ -781,7 +786,7 @@
       }
       for (var ri = state.rivals.length - 1; ri >= 0; ri--) {
         var r = state.rivals[ri];
-        var hit = allyCrossRival(ally, r);
+        var hit = allyCrossRival(ally, r, ally.age);
         if (hit) {
           state.rivals.splice(ri, 1);
           state.hits++;
@@ -792,7 +797,7 @@
         }
       }
       if (state.boss && ally.cooldown <= 0) {
-        var bhit = allyCrossBoss(ally, state.boss);
+        var bhit = allyCrossBoss(ally, state.boss, ally.age);
         if (bhit) {
           var boss = state.boss;
           boss.hp = Math.max(0, boss.hp - 1);

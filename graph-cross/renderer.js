@@ -146,7 +146,7 @@
         ctx.globalAlpha = 0.35 + alpha * 0.5;
         ctx.beginPath();
         for (var x = ally.x0; x <= ally.x1; x += 18) {
-          var y = E.allyY(ally, x);
+          var y = E.allyY(ally, x, ally.age || 0);
           if (x === ally.x0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
         }
         ctx.shadowColor = color;
@@ -164,7 +164,7 @@
         ctx.globalAlpha = 0.85;
         ctx.fillStyle = color;
         ctx.font = '900 10px ui-monospace, Menlo, monospace';
-        ctx.fillText('ALLY GRAPH', ally.x0 + 10, E.allyY(ally, ally.x0) - 10);
+        ctx.fillText('ALLY GRAPH', ally.x0 + 10, E.allyY(ally, ally.x0, ally.age || 0) - 10);
         ctx.restore();
       }
     }
