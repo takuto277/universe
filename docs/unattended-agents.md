@@ -77,6 +77,26 @@ gh auth status
 
 `UNIVERSE_AGENT_AUTO_READY_PROPOSALS=1` を設定すると、planner は最初から `agent:ready` で作り、承認なしで実装まで進みます。既定は人間の promote を挟む安全側です。
 
+週次で自動提案する場合:
+
+```sh
+UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-planner.sh
+```
+
+毎週月曜 09:00 に `propose` を実行します。採否は `promote` で決めます。
+
+### レビュー指摘の Issue 化
+
+```sh
+./tools/agent.sh findings --pr 35           # Consider/Nit を agent:proposed の Issue に
+./tools/agent.sh findings --pr 35 --dry-run # 作成内容の確認だけ
+```
+
+- 直近の自分の AI レビュー（最新 head）から Consider / Nit を取り出します
+- 本文に `review-finding fp=<hash>` を埋め込み、同じ指摘は重複作成しません
+- `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）で1回の作成数を制限します
+- watcher はレビュー後に自動で実行します（`UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効）
+
 ### 止める・再開する
 
 ```sh
@@ -169,6 +189,7 @@ launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -A1 UNIV
 | `UNIVERSE_AGENT_FIX_MAX` | `3` | 1 PR あたりの自動修正回数の上限 |
 | `UNIVERSE_AGENT_FIX_TIMEOUT` | `1500` | 自動修正エージェントの上限秒数 |
 | `UNIVERSE_AGENT_SANDBOX` | `none` | `seatbelt` で builder と verify を隔離する |
+| `UNIVERSE_AGENT_FINDINGS_MAX` | `5` | 1回のレビューから Issue 化する指摘の上限 |
 | `UNIVERSE_AGENT_STALL_MINUTES` | `90` | `agent:running` のまま通知するまでの分数(0で無効) |
 | `UNIVERSE_AGENT_DISABLE` | `0` | `1` で実行を止める(pause と同じ) |
 | `UNIVERSE_AGENT_BRANCH_PREFIX` | `agent/` | ブランチ接頭辞 |

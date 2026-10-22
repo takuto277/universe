@@ -9,6 +9,7 @@ python3 "$ROOT/tools/check_site.py"
 for script in \
   "$ROOT/tools/agent.sh" \
   "$ROOT/tools/install-agent-runner.sh" \
+  "$ROOT/tools/install-agent-planner.sh" \
   "$ROOT/tools/auto-pr.sh" \
   "$ROOT/tools/auto-pr-lib.sh" \
   "$ROOT/tools/install-auto-pr.sh" \

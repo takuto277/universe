@@ -49,6 +49,17 @@ PR 単位で止める:
 - PR を Draft に戻す（マージ直前の再確認で止まります。再確認を通過した後の Draft 化は、現在のマージを止められません）
 - `ai-pause` ラベルまたは `do-not-merge` ラベルを付ける
 
+## レビュー指摘の Issue 化
+
+AI レビューを投稿したあと、Consider / Nit を `agent:proposed` の Issue として記録します（既定で有効）。
+
+- 同じ指摘は本文の `review-finding fp=<hash>` で重複作成しません
+- 1回の上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
+- `UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効化できます（plist に反映するには再インストール）
+- 提案は自動実装されません。`./tools/agent.sh promote <n>` で実装キューに移します
+
+週次で新しい提案を作るには `./tools/install-agent-planner.sh` を使います。
+
 ## Blocker の自動修正
 
 Blocker が出た PR は、`builder` がレビュー指摘を読んで修正し、同じ head ブランチへ push します。以後は通常どおり再レビューされ、Blocker 0 になれば五点ゲートでマージされます（自動修正がマージすることはありません）。
@@ -96,6 +107,7 @@ LaunchAgent の plist に反映されるもの:
 - `UNIVERSE_AUTO_PR_BASE`: 対象 base branch。既定は `main`
 - `UNIVERSE_AUTO_PR_AUTOFIX`: Blocker の自動修正。既定は `1`（`0` で無効）
 - `UNIVERSE_AGENT_SANDBOX`: 自動修正の builder/verify の隔離。既定は `none`（`seatbelt` で有効）
+- `UNIVERSE_AUTO_PR_CREATE_ISSUES`: レビュー指摘の Issue 化。既定は `1`（`0` で無効）
 
 手動実行時だけ有効なもの:
 

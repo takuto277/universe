@@ -318,6 +318,23 @@ merge_pr() {
   return 0
 }
 
+record_findings() {
+  local number="$1"
+  if [ "${UNIVERSE_AUTO_PR_CREATE_ISSUES:-1}" != "1" ]; then
+    return 0
+  fi
+  if [ "$DRY_RUN" = "1" ]; then
+    "$PYTHON" "$ROOT/tools/agent_runner.py" findings --pr "$number" --dry-run \
+      >>"$LOG_FILE" 2>&1 || true
+    return 0
+  fi
+  if "$PYTHON" "$ROOT/tools/agent_runner.py" findings --pr "$number" >>"$LOG_FILE" 2>&1; then
+    log "PR #$number: review findings recorded"
+  else
+    log "PR #$number: failed to record review findings"
+  fi
+}
+
 autofix() {
   local number="$1"
   local head="$2"
@@ -438,6 +455,7 @@ while IFS=$'\t' read -r number head; do
     if ! run_review "$number" "$head"; then
       continue
     fi
+    record_findings "$number"
     if [ "$DRY_RUN" = "1" ]; then
       continue
     fi
