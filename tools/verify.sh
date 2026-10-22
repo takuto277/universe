@@ -8,6 +8,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 python3 "$ROOT/tools/check_site.py"
 for script in \
   "$ROOT/tools/agent.sh" \
+  "$ROOT/tools/setup.sh" \
   "$ROOT/tools/install-agent-runner.sh" \
   "$ROOT/tools/install-agent-planner.sh" \
   "$ROOT/tools/auto-pr.sh" \
@@ -30,4 +31,5 @@ print("auto pr scripts syntax OK")
 PY
 python3 "$ROOT/tools/test_agent_runner.py"
 bash "$ROOT/tools/test-auto-pr.sh"
+bash "$ROOT/tools/test-setup.sh"
 "$ROOT/tools/run-tests.sh"

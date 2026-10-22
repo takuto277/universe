@@ -5,6 +5,7 @@ universe は自作ゲーム・アプリを静的ファイルで公開する個�
 ## コマンド
 
 ```sh
+./tools/setup.sh              # 開発環境の確認（--with-agents で LaunchAgent 登録）
 ./tools/verify.sh             # テスト + サイト検査 + PR スクリプトの構文検査
 ./tools/run-tests.sh          # 全アプリの test-*.js
 python3 tools/check_site.py   # apps.json / index.html / ローカルリンクの検査
