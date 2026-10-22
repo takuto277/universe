@@ -24,6 +24,7 @@
 
 import argparse
 import fcntl
+import hashlib
 import json
 import re
 import os
@@ -158,6 +159,7 @@ class Config:
     stall_minutes: int = 90
     fix_max: int = DEFAULT_FIX_MAX
     fix_timeout: int = DEFAULT_FIX_TIMEOUT
+    findings_max: int = 5
     sandbox: str = "none"
     gh_bin: str = "gh"
     git_bin: str = "git"
@@ -191,6 +193,7 @@ class Config:
             fix_max=int(os.environ.get("UNIVERSE_AGENT_FIX_MAX", DEFAULT_FIX_MAX)),
             fix_timeout=int(os.environ.get(
                 "UNIVERSE_AGENT_FIX_TIMEOUT", DEFAULT_FIX_TIMEOUT)),
+            findings_max=int(os.environ.get("UNIVERSE_AGENT_FINDINGS_MAX", "5")),
             sandbox=os.environ.get("UNIVERSE_AGENT_SANDBOX", "none"),
             gh_bin=os.environ.get("GH_BIN", "gh"),
             git_bin=os.environ.get("GIT_BIN", "git"),
@@ -938,10 +941,10 @@ class Runner:
             raise TaskError("GitHub のログインユーザーを取得できませんでした")
         return login
 
-    def latest_blocker_review(self, number: int, head: str) -> Optional[dict]:
-        """自分が現在の head に投稿した最新の AI レビューだけを対象にする。
+    def latest_ai_review(self, number: int, head: str) -> Optional[dict]:
+        """自分が現在の head に投稿した最新の AI レビューを返す。
 
-        第三者が blocker 付き marker を投稿しても builder への指示に使わない。
+        第三者が marker を投稿しても採用しない。
         """
         viewer = self._viewer_login()
         result = self.gh("api", "repos/%s/pulls/%d/reviews" % (self.cfg.repo, number),
@@ -981,10 +984,15 @@ class Runner:
                 blockers = int(marker.get("blockers") or 0)
             except (TypeError, ValueError):
                 continue
-            if blockers <= 0:
-                return None
             findings = REVIEW_MARKER_RE.sub("", body).strip()
-            return {"blockers": blockers, "body": findings}
+            return {"blockers": blockers, "body": findings,
+                    "review_id": review.get("id"), "url": review.get("html_url") or ""}
+        return None
+
+    def latest_blocker_review(self, number: int, head: str) -> Optional[dict]:
+        review = self.latest_ai_review(number, head)
+        if review and review.get("blockers", 0) > 0:
+            return review
         return None
 
     def comment_pr(self, number: int, body: str) -> None:
@@ -1223,6 +1231,135 @@ class Runner:
         except OSError:
             pass
 
+    # ---- レビュー指摘の Issue 化 ----
+    def parse_findings(self, body: str) -> List[dict]:
+        """レビュー本文から Consider / Nit の指摘を取り出す。"""
+        items = []
+        current = None
+        detail = []
+
+        def flush():
+            if current and detail:
+                text = " ".join(" ".join(detail).split())
+                if text:
+                    items.append({"type": current, "text": text})
+
+        for raw in (body or "").splitlines():
+            line = raw.rstrip()
+            section = re.match(r"^#{2,4}\s+(Consider|Nit|FYI)\b", line)
+            bullet = re.match(r"^[-*]\s+\*{0,2}(Blocker|Consider|Nit|FYI)\*{0,2}:?\s+(.*)",
+                              line)
+            if section:
+                flush()
+                current = section.group(1)
+                detail = []
+                continue
+            if bullet:
+                flush()
+                current = bullet.group(1)
+                detail = [bullet.group(2)]
+                continue
+            if current and re.match(r"^[-*]\s+", line):
+                # セクション配下の型なし bullet は新しい指摘として扱う
+                flush()
+                detail = [re.sub(r"^[-*]\s+", "", line)]
+                continue
+            if current and (raw.startswith("  ") or raw.startswith("\t") or
+                            (line and not line.startswith(("#", "-", "*")))):
+                detail.append(line.strip())
+                continue
+            if current and not line:
+                continue
+            if current:
+                flush()
+                current = None
+                detail = []
+        flush()
+        return [item for item in items if item["type"] in ("Consider", "Nit")]
+
+    def _finding_fingerprint(self, item: dict) -> str:
+        normalized = re.sub(r"\s+", " ", item["text"]).strip()
+        return hashlib.sha1((item["type"] + ":" + normalized).encode("utf-8")).hexdigest()[:12]
+
+    def findings(self, number: int, dry_run: bool = False) -> int:
+        if self.paused():
+            self.log("pause 中のため指摘を Issue 化しません")
+            return 0
+        result = self.gh("pr", "view", str(number), "--repo", self.cfg.repo,
+                         "--json", "number,title,headRefOid,url")
+        if not result.ok:
+            raise TaskError("PR #%d を取得できません: %s" % (number, tail(result.stderr)))
+        try:
+            data = json.loads(result.stdout or "{}")
+        except ValueError as exc:
+            raise TaskError("PR の JSON を解釈できません: %s" % exc)
+        head = data.get("headRefOid") or ""
+        review = self.latest_ai_review(number, head)
+        if not review:
+            self.log("PR #%d: 対象のAIレビューがありません" % number)
+            return 0
+        items = self.parse_findings(review.get("body") or "")
+        if not items:
+            self.log("PR #%d: Issue 化する Consider/Nit はありません" % number)
+            return 0
+
+        if not dry_run:
+            self.ensure_labels()
+        existing = set()
+        listed = self.gh("issue", "list", "--repo", self.cfg.repo, "--state", "all",
+                         "--limit", "300", "--json", "number,body")
+        if listed.ok:
+            try:
+                for issue in json.loads(listed.stdout or "[]"):
+                    body = issue.get("body") or ""
+                    match = re.search(r"<!--\s*review-finding\s+fp=([0-9a-f]+)\s*-->", body)
+                    if match:
+                        existing.add(match.group(1))
+            except ValueError:
+                pass
+
+        created = 0
+        created_any = 0
+        for item in items:
+            fingerprint = self._finding_fingerprint(item)
+            if fingerprint in existing:
+                continue
+            if created_any >= max(0, self.cfg.findings_max):
+                break
+            title = "repo: レビュー指摘 - %s" % item["text"][:50]
+            body = "\n".join([
+                "## 背景",
+                "",
+                "PR #%d のAIレビューで %s として指摘されました。" % (number, item["type"]),
+                "",
+                "## 指摘",
+                "",
+                item["text"],
+                "",
+                "## 出典",
+                "",
+                "- PR: %s" % (data.get("url") or ""),
+                "- レビュー: %s" % (review.get("url") or ""),
+                "- head: `%s`" % head,
+                "",
+                "<!-- review-finding fp=%s -->" % fingerprint,
+            ])
+            created_any += 1
+            if dry_run:
+                self.log("dry-run: Issue を作成します: %s" % title)
+                continue
+            created_issue = self.gh("issue", "create", "--repo", self.cfg.repo,
+                                    "--title", title, "--body", body,
+                                    "--label", "agent:proposed", timeout=120)
+            if not created_issue.ok:
+                self.log("Issue の作成に失敗: %s" % tail(created_issue.stderr))
+                continue
+            created += 1
+            self.log("PR #%d: %s を Issue 化しました" % (number, item["type"]))
+        if not dry_run:
+            self.log("PR #%d: 指摘を %d 件 Issue 化しました" % (number, created))
+        return 0
+
     # ---- 提案 ----
     def propose(self, dry_run: bool = False) -> int:
         if self.paused():
@@ -1428,6 +1565,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     fixp.add_argument("--pr", type=int, required=True)
     fixp.add_argument("--dry-run", action="store_true")
 
+    findp = sub.add_parser("findings", help="レビューの指摘を Issue 化する")
+    findp.add_argument("--pr", type=int, required=True)
+    findp.add_argument("--dry-run", action="store_true")
+
     propose = sub.add_parser("propose", help="改善提案 Issue を作る")
     propose.add_argument("--dry-run", action="store_true")
 
@@ -1445,6 +1586,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
   ./tools/agent.sh pause / resume                        停止 / 再開
   ./tools/agent.sh run --dry-run                         次の対象を確認
   ./tools/agent.sh fix --pr <番号>                       PRのBlockerを自動修正
+  ./tools/agent.sh findings --pr <番号>                  レビューのConsider/NitをIssue化
 
 詳しい説明: docs/unattended-agents.md
 すべてのオプション: ./tools/agent.sh --help""")
@@ -1492,6 +1634,27 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                 return 1
         finally:
             lock.release()
+    if args.command == "findings":
+        lock = None
+        if not args.dry_run:
+            lock = Lock(cfg.state_dir)
+            if not lock.acquire():
+                if lock.error:
+                    runner.log("ロックを取得できません: %s" % lock.error)
+                    return 1
+                runner.log("別の実行が進行中のためスキップします")
+                return 2
+        try:
+            return runner.findings(args.pr, dry_run=args.dry_run)
+        except TaskError as exc:
+            runner.log("指摘の Issue 化を中止しました: %s" % exc)
+            return 1
+        except Exception as exc:  # noqa: BLE001
+            runner.log("指摘の Issue 化で予期しないエラー: %s" % exc)
+            return 1
+        finally:
+            if lock:
+                lock.release()
     if args.command == "status":
         return runner.status()
     if args.command == "ensure-labels":

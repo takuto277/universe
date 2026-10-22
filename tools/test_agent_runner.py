@@ -866,6 +866,91 @@ class RunnerTest(unittest.TestCase):
         self.assertTrue(verify_calls)
         self.assertEqual("sandbox-exec", Path(verify_calls[0]["argv"][0]).name)
 
+    def findings_happy(self, body, existing=()):
+        pr = {"number": 33, "title": "demo", "headRefOid": "abc123",
+              "url": "https://github.com/takuto277/universe/pull/33"}
+        marker = ('<!-- ai-pr-review {"version":1,"head":"abc123","blockers":0,'
+                  '"findings":3,"reviewer":"opencode"} -->')
+        review = {"user": {"login": "takuto277"}, "state": "COMMENTED",
+                  "commit_id": "abc123", "id": 1,
+                  "html_url": "https://github.com/takuto277/universe/pull/33#review",
+                  "body": marker + "\n" + body}
+        self.fake.on(["gh", "label", "list"], ar.Result(0, "[]"))
+        self.fake.on(["gh", "label", "create"], ar.Result(0))
+        self.fake.on(["gh", "pr", "view"], ar.Result(0, json.dumps(pr), ""))
+        self.fake.on(["gh", "api", "user"], ar.Result(0, "takuto277\n", ""))
+        self.fake.on(["gh", "api", "repos/takuto277/universe/pulls/33/reviews"],
+                     ar.Result(0, json.dumps(review) + "\n", ""))
+        self.fake.on(["gh", "issue", "list"], ar.Result(0, json.dumps(
+            [{"number": 1, "body": "<!-- review-finding fp=%s -->" % fp}
+             for fp in existing]), ""))
+        self.fake.on(["gh", "issue", "create"],
+                     ar.Result(0, "https://github.com/takuto277/universe/issues/99\n"))
+
+    def test_parse_findings_bullets_and_sections(self):
+        body = ("**Blocker: 0件**\n\n### Consider\n"
+                "- 一つ目の指摘\n- 二つ目の指摘\n\n"
+                "### Nit\n- 三つ目の指摘\n\n### FYI\n- 参考情報")
+        items = self.runner.parse_findings(body)
+        self.assertEqual(["Consider", "Consider", "Nit"], [i["type"] for i in items])
+        self.assertEqual("三つ目の指摘", items[2]["text"])
+
+    def test_findings_creates_proposed_issues(self):
+        self.findings_happy("### Consider\n- 指摘A\n### Nit\n- 指摘B")
+        self.assertEqual(0, self.runner.findings(33))
+        calls = self.fake.find("gh", "issue", "create")
+        self.assertEqual(2, len(calls))
+        self.assertTrue(all("agent:proposed" in call["argv"] for call in calls))
+        bodies = [call["argv"][call["argv"].index("--body") + 1] for call in calls]
+        self.assertTrue(all("review-finding fp=" in body for body in bodies))
+
+    def test_findings_deduplicates_existing(self):
+        body = "### Consider\n- 指摘A"
+        item = self.runner.parse_findings(body)[0]
+        fp = self.runner._finding_fingerprint(item)
+        self.findings_happy(body, existing=[fp])
+        self.assertEqual(0, self.runner.findings(33))
+        self.assertFalse(self.fake.called("gh", "issue", "create"))
+
+    def test_findings_respects_limit(self):
+        cfg = replace(self.cfg, findings_max=1)
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        self.findings_happy("### Consider\n- A\n- B\n- C")
+        self.assertEqual(0, runner.findings(33))
+        self.assertEqual(1, len(self.fake.find("gh", "issue", "create")))
+
+    def test_findings_dry_run_does_not_create(self):
+        self.findings_happy("### Consider\n- A")
+        self.assertEqual(0, self.runner.findings(33, dry_run=True))
+        self.assertFalse(self.fake.called("gh", "issue", "create"))
+        self.assertFalse(self.fake.called("gh", "label", "create"))
+
+    def test_parse_findings_accepts_bold_labels(self):
+        items = self.runner.parse_findings("- **Nit**: 太字の指摘\n- **Consider**: 二つ目")
+        self.assertEqual(2, len(items))
+        self.assertEqual("Nit", items[0]["type"])
+
+    def test_findings_limit_applies_after_dedup(self):
+        cfg = replace(self.cfg, findings_max=1)
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        body = "### Consider\n- 既存\n- 新規"
+        first = runner.parse_findings(body)[0]
+        self.findings_happy(body, existing=[runner._finding_fingerprint(first)])
+        self.assertEqual(0, runner.findings(33))
+        calls = self.fake.find("gh", "issue", "create")
+        self.assertEqual(1, len(calls))
+        self.assertIn("新規", calls[0]["argv"][calls[0]["argv"].index("--title") + 1])
+
+    def test_findings_without_review_is_noop(self):
+        self.fake.on(["gh", "pr", "view"], ar.Result(0, json.dumps({
+            "number": 33, "title": "demo", "headRefOid": "abc123",
+            "url": "https://example.com/pr/33"}), ""))
+        self.fake.on(["gh", "api", "user"], ar.Result(0, "takuto277\n", ""))
+        self.fake.on(["gh", "api", "repos/takuto277/universe/pulls/33/reviews"],
+                     ar.Result(0, "", ""))
+        self.assertEqual(0, self.runner.findings(33))
+        self.assertFalse(self.fake.called("gh", "issue", "create"))
+
     def test_commands_env_is_merged(self):
         commands = ar.Commands(env={"BASE_VAR": "base"})
         result = commands.run(

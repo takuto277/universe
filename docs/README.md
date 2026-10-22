@@ -16,6 +16,7 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | 実装まで無人で動かす判断を知る | [0005 Issue キューで実装まで無人実行する](decisions/0005-unattended-agent-runner.md) |
 | Blocker の自動修正の判断を知る | [0006 PR の Blocker を自動修正して再レビューする](decisions/0006-autofix-review-blockers.md) |
 | 実行の隔離の判断を知る | [0007 builder と verify を sandbox-exec で隔離する](decisions/0007-sandbox-exec-isolation.md) |
+| 自己改善ループの判断を知る | [0008 レビュー指摘を Issue 化し、週次で提案する](decisions/0008-self-improvement-loop.md) |
 | CodeRabbit を使っていたときの判断を知る | [0002 PR の承認を CodeRabbit に任せる](decisions/0002-ai-review-with-coderabbit.md) |
 | 今後の改善予定を知る | [改善ロードマップ (Issue #22)](https://github.com/takuto277/universe/issues/22) |
 | 学んだことを記録する | [学習ログ](learning-log.md) |
