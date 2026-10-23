@@ -262,7 +262,7 @@ g.rivals = [];
 g.y = 330;
 var tutTarget = E.spawnTutorialTarget(g);
 assert(tutTarget && g.rivals.length === 1, 'チュートリアル用の的が1体出る');
-assert(tutTarget.baseY === g.y && tutTarget.x === g.headX + 560 && tutTarget.len === 300, 'チュートリアル用の位置と長さ');
+assert(tutTarget.baseY === g.y && tutTarget.x === g.headX - 120 && tutTarget.len === 260, 'チュートリアル用の位置と長さ');
 assert(tutTarget.shape === 'line' && tutTarget.family === 'linear', 'チュートリアル用の直線敵');
 E.setMode(g, 'up');
 g.spawnTimer = 999;

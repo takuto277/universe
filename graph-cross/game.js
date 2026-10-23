@@ -292,7 +292,7 @@
 
   function spawnTutorialItem() {
     if (!state) return;
-    state.items.push({ x: state.headX + 12, y: state.y, type: 'score', r: 12, phase: 0 });
+    state.items.push({ x: state.headX + 60, y: state.y, type: 'score', r: 12, phase: 0 });
   }
 
   function advanceTutorial(step) {
@@ -301,8 +301,7 @@
     if (step === 1) {
       state.rivals = [];
       state.items = [];
-      E.spawnTutorialTarget(state);
-      tutorial.targetTimer = 1.2;
+      tutorial.targetTimer = 1.5;
     } else if (step === 2) {
       state.rivals = [];
       state.items = [];
