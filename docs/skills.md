@@ -30,6 +30,7 @@
 他のリポジトリや個人設定で使う場合は、スキルディレクトリをコピーまたはシンボリックリンクします。
 
 ```sh
+mkdir -p ~/.config/opencode/skills
 ln -s "$PWD/.opencode/skills/pr-review" ~/.config/opencode/skills/pr-review
 ```
 
