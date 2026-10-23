@@ -1368,6 +1368,7 @@ class Runner:
             self.log("pause 中のため提案しません")
             return 0
         label = "agent:ready" if self.cfg.auto_ready_proposals else "agent:proposed"
+        planner_model = self.cfg.planner_model or self.cfg.model
         worktree = self.cfg.state_dir / "worktrees" / "planner"
         if dry_run:
             self.log("dry-run: planner を実行し、Issue を %s で作成します" % label)
@@ -1396,10 +1397,11 @@ class Runner:
                 "- コード変更、PR 作成、マージ、既存 Issue のクローズはしない",
                 "- 最後に作成した Issue の番号と URL を列挙する",
             ])
+            self.log("planner を開始します (model=%s)" % planner_model)
             result = self.cmd.run([
                 self.cfg.opencode_bin, "run",
                 "--agent", self.cfg.planner_agent,
-                "--model", (self.cfg.planner_model or self.cfg.model),
+                "--model", planner_model,
                 "--dir", str(worktree),
                 "--auto",
                 "--title", "universe-planner-%d" % int(time.time()),
@@ -1412,13 +1414,14 @@ class Runner:
                 raise TaskError("planner が異常終了しました (exit=%s)" % result.code)
             self.log("提案を作成しました (label=%s, log=%s)" % (label, planner_log))
             self.record_history({"kind": "propose", "result": "success",
-                                 "model": self.cfg.model, "label": label})
+                                 "model": planner_model, "label": label})
             self.notify("改善提案を作成しました")
             return 0
         except TaskError as exc:
             self.log("提案に失敗: %s" % exc)
             self.record_history({"kind": "propose", "result": "failed",
-                                 "model": self.cfg.model, "reason": tail(str(exc), 300)})
+                                 "model": planner_model,
+                                 "reason": tail(str(exc), 300)})
             self.notify("改善提案の作成に失敗しました")
             return 1
         finally:
