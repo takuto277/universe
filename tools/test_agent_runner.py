@@ -831,6 +831,25 @@ class RunnerTest(unittest.TestCase):
     @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
                      "already inside sandbox-exec")
     @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
+    def test_sandbox_allows_mktemp(self):
+        cfg = replace(self.cfg, sandbox="seatbelt")
+        runner = ar.Runner(cfg, cmd=ar.Commands(), log=lambda line: None)
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        result = runner._run_sandboxed(
+            ["/bin/bash", "-c",
+             'd=$(mktemp -d "${TMPDIR}/universe-test.XXXXXXXXXX") || exit 1;'
+             'test -d "$d" && echo "$d"'],
+            self.worktree, self.worktree, 30)
+        self.assertTrue(result.ok, result.stderr)
+        text = result.stdout.strip()
+        self.assertTrue(text, "mktemp がパスを返しませんでした")
+        created = Path(text)
+        self.assertTrue(str(created.parent.resolve()).startswith(
+            str(Path(tempfile.gettempdir()).resolve())))
+
+    @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
+                     "already inside sandbox-exec")
+    @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
     def test_sandbox_denies_reading_ssh(self):
         fake_home = Path(tempfile.mkdtemp(prefix="sb-home-"))
         (fake_home / ".ssh").mkdir()
