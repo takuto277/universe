@@ -500,7 +500,7 @@ body {
   bottom: 16px;
   transform: translateX(-50%);
   z-index: 4;
-  width: min(560px, calc(100% - 28px));
+  width: min(680px, calc(100% - 28px));
   padding: 11px 14px 12px;
   border: 1px solid rgba(95, 240, 255, 0.48);
   border-radius: 14px;
@@ -515,6 +515,72 @@ body {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+}
+.tutorial-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 6px;
+}
+.tutorial-visual {
+  flex: 0 0 210px;
+  width: 210px;
+  height: 104px;
+  overflow: hidden;
+  border: 1px solid rgba(95, 240, 255, 0.22);
+  border-radius: 10px;
+  background: #081425;
+  box-shadow: inset 0 0 22px rgba(95, 240, 255, 0.06);
+}
+.tutorial-visual svg {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+.tutorial-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+.tut-draw {
+  stroke-dasharray: 320;
+  stroke-dashoffset: 320;
+  animation: tutDraw 1.1s ease-out forwards;
+}
+.tut-draw-delay { animation-delay: 0.18s; }
+@keyframes tutDraw { to { stroke-dashoffset: 0; } }
+.tut-pulse {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tutPulse 1.8s ease-in-out infinite;
+}
+@keyframes tutPulse {
+  0%, 100% { opacity: 0.72; }
+  50% { opacity: 1; }
+}
+.tut-burst {
+  transform-box: fill-box;
+  transform-origin: center;
+  animation: tutBurst 1.25s ease-in-out infinite;
+}
+@keyframes tutBurst {
+  0%, 100% { transform: scale(0.9); opacity: 0.78; }
+  50% { transform: scale(1.12); opacity: 1; }
+}
+.tut-spark { animation: tutSpark 1.3s ease-in-out infinite; }
+@keyframes tutSpark {
+  0%, 100% { opacity: 0.22; }
+  50% { opacity: 1; }
+}
+.tut-key-active { animation: tutKey 1.2s ease-in-out infinite; }
+@keyframes tutKey {
+  0%, 100% { opacity: 0.82; }
+  50% { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .tut-draw, .tut-pulse, .tut-burst, .tut-spark, .tut-key-active {
+    animation: none;
+  }
+  .tut-draw { stroke-dashoffset: 0; }
 }
 .tutorial-kicker {
   color: var(--cyan);
@@ -913,6 +979,8 @@ body {
   .start-sub-actions { gap: 5px; }
   .start-sub-actions .secondary { padding: 8px 14px; font-size: 12px; }
   #tutorial-panel { bottom: 8px; padding: 9px 11px 10px; border-radius: 12px; }
+  .tutorial-main { flex-direction: column; align-items: stretch; gap: 7px; }
+  .tutorial-visual { flex: 0 0 auto; width: 100%; height: 88px; }
   #tutorial-title { font-size: 14px; }
   #tutorial-desc { font-size: 10.5px; }
   .tutorial-tip { font-size: 9.5px; }

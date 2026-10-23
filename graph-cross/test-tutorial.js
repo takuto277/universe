@@ -15,12 +15,22 @@ tryLoad(['ui.js', 'graph-cross/ui.js']);
 tryLoad(['game.js', 'graph-cross/game.js']);
 
 var GAME = globalThis.__GAME__;
+var sawSwitch = false;
+var sawCross = false;
+var sawItem = false;
 GAME.start = GAME.startTutorial;
 GAME.autoPlayStep = function () {
   var state = GAME.getState();
+  var visual = document.getElementById('tutorial-visual');
+  var html = visual ? visual.innerHTML : '';
   if (state && state.tutorial && state.tutorial.step === 0) {
+    sawSwitch = html.indexOf('キー / 画面下のボタンで切替') >= 0;
     var slot = document.getElementById('slot-1');
     if (slot && slot.listeners.click && slot.listeners.click[0]) slot.listeners.click[0]();
+  } else if (state && state.tutorial && state.tutorial.step === 1) {
+    sawCross = html.indexOf('CROSS!') >= 0;
+  } else if (state && state.tutorial && state.tutorial.step === 2) {
+    sawItem = html.indexOf('GET') >= 0;
   }
 };
 GAME.isDone = function () {
@@ -42,6 +52,8 @@ Harness.run({
     h.assert(els['btn-tutorial-skip'] && els['btn-tutorial-skip'].classList.contains('hidden'), 'スキップボタンが残っている');
     h.assert(els['tutorial-count'] && els['tutorial-count'].textContent === 'READY', '完了表示がREADYでない');
     h.assert(els['tutorial-title'] && els['tutorial-title'].textContent === '準備完了', '完了タイトルが不正');
+    h.assert(els['tutorial-visual'] && els['tutorial-visual'].innerHTML.indexOf('READY') >= 0, '完了時の図解がない');
+    h.assert(sawSwitch && sawCross && sawItem, '各ステップの図解が表示されない');
   },
   summary: function (state) {
     print('  最終: チュートリアル完了 / ' + state.score + '点 / ' + state.time.toFixed(1) + '秒');
