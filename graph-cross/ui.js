@@ -10,6 +10,83 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function (C, E, B) {
   'use strict';
 
+  function tutorialSvg(body) {
+    return '<svg viewBox="0 0 240 120" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs>' +
+        '<filter id="tutGlow" x="-60%" y="-60%" width="220%" height="220%">' +
+          '<feGaussianBlur stdDeviation="3" result="b"/>' +
+          '<feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge>' +
+        '</filter>' +
+        '<linearGradient id="tutBg" x1="0" y1="0" x2="0" y2="1">' +
+          '<stop offset="0" stop-color="#0a1a2c"/>' +
+          '<stop offset="1" stop-color="#050b14"/>' +
+        '</linearGradient>' +
+      '</defs>' +
+      '<rect x="1" y="1" width="238" height="118" rx="12" fill="url(#tutBg)" stroke="#1e3b56"/>' +
+      '<g stroke="#224666" stroke-width="1" opacity=".42">' +
+        '<path d="M16 30 H224"/><path d="M16 60 H224"/><path d="M16 90 H224"/>' +
+        '<path d="M50 10 V110"/><path d="M120 10 V110"/><path d="M190 10 V110"/>' +
+      '</g>' +
+      body +
+    '</svg>';
+  }
+
+  var TUTORIAL_ART = {
+    switch: tutorialSvg([
+      '<rect x="17" y="16" width="58" height="54" rx="8" fill="#0b1a2c" stroke="#23435f"/>',
+      '<path d="M27 54 C37 54 43 42 49 42 S60 54 67 54" fill="none" stroke="#5ff0ff" stroke-width="2" stroke-linecap="round"/>',
+      '<rect x="89" y="12" width="62" height="62" rx="8" fill="#13283d" stroke="#ffd166" stroke-width="1.5" filter="url(#tutGlow)"/>',
+      '<path d="M99 61 C112 61 120 34 141 24" fill="none" stroke="#ffd166" stroke-width="2.2" stroke-linecap="round"/>',
+      '<circle cx="141" cy="24" r="3.2" fill="#ffd166" class="tut-pulse"/>',
+      '<rect x="165" y="16" width="58" height="54" rx="8" fill="#0b1a2c" stroke="#23435f"/>',
+      '<path d="M175 45 C183 30 191 58 199 45 S209 30 215 45" fill="none" stroke="#ff7ad9" stroke-width="2" stroke-linecap="round"/>',
+      '<rect x="35" y="84" width="22" height="18" rx="4" fill="#102338" stroke="#2b4c6a"/>',
+      '<text x="46" y="97" text-anchor="middle" fill="#9fb3cf" font-size="9" font-family="ui-monospace, Menlo, monospace" font-weight="700">1</text>',
+      '<rect x="109" y="84" width="22" height="18" rx="4" fill="#ffd166" stroke="#fff1b8" class="tut-key-active"/>',
+      '<text x="120" y="97" text-anchor="middle" fill="#241b06" font-size="9" font-family="ui-monospace, Menlo, monospace" font-weight="700">2</text>',
+      '<rect x="183" y="84" width="22" height="18" rx="4" fill="#102338" stroke="#2b4c6a"/>',
+      '<text x="194" y="97" text-anchor="middle" fill="#9fb3cf" font-size="9" font-family="ui-monospace, Menlo, monospace" font-weight="700">3</text>',
+      '<text x="120" y="112" text-anchor="middle" fill="#8fa1bd" font-size="7.5">キー / 画面下のボタンで切替</text>'
+    ].join('')),
+    cross: tutorialSvg([
+      '<text x="18" y="18" fill="#5ff0ff" font-size="7.5" font-weight="700">自分</text>',
+      '<text x="18" y="112" fill="#ff7ad9" font-size="7.5" font-weight="700">敵</text>',
+      '<path d="M18 76 C50 76 62 36 94 36 S136 76 168 76 S208 36 226 36" fill="none" stroke="#5ff0ff" stroke-width="2.4" stroke-linecap="round" class="tut-draw"/>',
+      '<path d="M18 36 C50 36 62 76 94 76 S136 36 168 36 S208 76 226 76" fill="none" stroke="#ff7ad9" stroke-width="2.4" stroke-linecap="round" class="tut-draw tut-draw-delay"/>',
+      '<path d="M120 14 V104" stroke="#ffd166" stroke-width="1" stroke-dasharray="3 4" opacity=".42"/>',
+      '<g transform="translate(120 56)">',
+        '<g class="tut-burst">',
+          '<circle r="16" fill="rgba(95,240,255,.12)" stroke="#9ffaff" stroke-width="1.2"/>',
+          '<path d="M0 -21 L4 -6 L18 -11 L7 1 L17 13 L2 7 L-2 22 L-7 7 L-20 12 L-9 0 L-18 -11 L-4 -6 Z" fill="#ffd166" opacity=".92"/>',
+          '<circle r="5" fill="#ffffff"/>',
+        '</g>',
+      '</g>',
+      '<text x="120" y="32" text-anchor="middle" fill="#ffd166" font-size="9" font-weight="900" letter-spacing="1">CROSS!</text>'
+    ].join('')),
+    item: tutorialSvg([
+      '<path d="M18 78 C52 78 64 44 100 44 S154 74 222 56" fill="none" stroke="#5ff0ff" stroke-width="2.4" stroke-linecap="round" class="tut-draw"/>',
+      '<g class="tut-pulse" transform="translate(164 40)">',
+        '<circle r="21" fill="none" stroke="#ffd166" stroke-width="1.1" opacity=".45"/>',
+        '<circle r="13" fill="rgba(255,209,102,.12)" stroke="#ffd166" stroke-width="1.2"/>',
+        '<path d="M0 -12 L12 0 L0 12 L-12 0 Z" fill="#ffd166" stroke="#fff8d8" stroke-width="1"/>',
+        '<text x="0" y="4" text-anchor="middle" fill="#241b06" font-size="10" font-weight="900">S</text>',
+      '</g>',
+      '<path d="M190 18 l2 6 6 2 -6 2 -2 6 -2 -6 -6 -2 6 -2 Z" fill="#ffffff" class="tut-spark"/>',
+      '<path d="M136 18 l1.5 4 4 1.5 -4 1.5 -1.5 4 -1.5 -4 -4 -1.5 4 -1.5 Z" fill="#9ffaff" class="tut-spark"/>',
+      '<text x="164" y="70" text-anchor="middle" fill="#ffd166" font-size="7" font-weight="700">GET</text>',
+      '<text x="120" y="112" text-anchor="middle" fill="#8fa1bd" font-size="7.5">曲線で触れると取得</text>'
+    ].join('')),
+    ready: tutorialSvg([
+      '<circle cx="120" cy="50" r="30" fill="rgba(87,224,138,.08)" stroke="#57e08a" stroke-width="1.5" filter="url(#tutGlow)"/>',
+      '<path d="M104 51 l11 11 l25 -29" fill="none" stroke="#57e08a" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" class="tut-draw"/>',
+      '<circle cx="74" cy="26" r="2.5" fill="#ffd166" class="tut-spark"/>',
+      '<circle cx="168" cy="30" r="2" fill="#5ff0ff" class="tut-spark"/>',
+      '<circle cx="176" cy="78" r="2" fill="#ff7ad9" class="tut-spark"/>',
+      '<text x="120" y="96" text-anchor="middle" fill="#57e08a" font-size="10" font-weight="900" letter-spacing="2">READY</text>',
+      '<text x="120" y="110" text-anchor="middle" fill="#8fa1bd" font-size="7">3ステップ完了</text>'
+    ].join(''))
+  };
+
   function create(options) {
     options = options || {};
     var renderer = options.renderer || null;
@@ -479,6 +556,10 @@
       updateSlots(lastState, lastPhase);
     }
 
+    function renderTutorialVisual(kind) {
+      if (els.tutorialVisual) els.tutorialVisual.innerHTML = TUTORIAL_ART[kind] || '';
+    }
+
     function showTutorialStep(index, total) {
       var step = C.TUTORIAL_STEPS[index];
       if (!step || !els.tutorialPanel) return;
@@ -487,6 +568,7 @@
       if (els.tutorialTitle) els.tutorialTitle.textContent = step.title;
       if (els.tutorialDesc) els.tutorialDesc.textContent = step.desc;
       if (els.tutorialTip) els.tutorialTip.textContent = step.tip;
+      renderTutorialVisual(['switch', 'cross', 'item'][index] || 'switch');
       if (els.btnTutorialSkip) els.btnTutorialSkip.classList.remove('hidden');
       if (els.btnTutorialStart) els.btnTutorialStart.classList.add('hidden');
       if (els.btnTutorialBack) els.btnTutorialBack.classList.add('hidden');
@@ -501,6 +583,7 @@
       if (els.tutorialTitle) els.tutorialTitle.textContent = info.title;
       if (els.tutorialDesc) els.tutorialDesc.textContent = info.desc;
       if (els.tutorialTip) els.tutorialTip.textContent = info.tip;
+      renderTutorialVisual('ready');
       if (els.btnTutorialSkip) els.btnTutorialSkip.classList.add('hidden');
       if (els.btnTutorialStart) els.btnTutorialStart.classList.remove('hidden');
       if (els.btnTutorialBack) els.btnTutorialBack.classList.remove('hidden');
@@ -666,6 +749,7 @@
       els.tutorialTitle = $('tutorial-title');
       els.tutorialDesc = $('tutorial-desc');
       els.tutorialTip = $('tutorial-tip');
+      els.tutorialVisual = $('tutorial-visual');
       els.btnTutorialSkip = $('btn-tutorial-skip');
       els.btnTutorialStart = $('btn-tutorial-start');
       els.btnTutorialBack = $('btn-tutorial-back');
