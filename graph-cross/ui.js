@@ -560,6 +560,12 @@
       if (els.tutorialVisual) els.tutorialVisual.innerHTML = TUTORIAL_ART[kind] || '';
     }
 
+    function setTutorialTarget(index) {
+      for (var i = 0; i < slotButtons.length; i++) {
+        slotButtons[i].classList.toggle('tutorial-target', i === index);
+      }
+    }
+
     function showTutorialStep(index, total) {
       var step = C.TUTORIAL_STEPS[index];
       if (!step || !els.tutorialPanel) return;
@@ -569,6 +575,7 @@
       if (els.tutorialDesc) els.tutorialDesc.textContent = step.desc;
       if (els.tutorialTip) els.tutorialTip.textContent = step.tip;
       renderTutorialVisual(['switch', 'cross', 'item'][index] || 'switch');
+      setTutorialTarget(index === 0 ? 1 : -1);
       if (els.btnTutorialSkip) els.btnTutorialSkip.classList.remove('hidden');
       if (els.btnTutorialStart) els.btnTutorialStart.classList.add('hidden');
       if (els.btnTutorialBack) els.btnTutorialBack.classList.add('hidden');
@@ -584,6 +591,7 @@
       if (els.tutorialDesc) els.tutorialDesc.textContent = info.desc;
       if (els.tutorialTip) els.tutorialTip.textContent = info.tip;
       renderTutorialVisual('ready');
+      setTutorialTarget(-1);
       if (els.btnTutorialSkip) els.btnTutorialSkip.classList.add('hidden');
       if (els.btnTutorialStart) els.btnTutorialStart.classList.remove('hidden');
       if (els.btnTutorialBack) els.btnTutorialBack.classList.remove('hidden');
@@ -592,6 +600,7 @@
 
     function hideTutorial() {
       if (els.tutorialPanel) els.tutorialPanel.classList.add('hidden');
+      setTutorialTarget(-1);
     }
 
     function markTutorialDone() {

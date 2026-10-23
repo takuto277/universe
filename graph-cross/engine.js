@@ -418,8 +418,8 @@
   function spawnTutorialTarget(state) {
     if (!state) return null;
     var r = {
-      x: state.headX + 560,
-      len: 300,
+      x: state.headX - 120,
+      len: 260,
       shape: 'line',
       family: 'linear',
       baseY: state.y,
@@ -987,8 +987,7 @@
     state.trail.push({ x: state.headX, y: state.y, mode: state.mode });
 
     for (i = 0; i < state.rivals.length; i++) {
-      state.rivals[i].x -= dx;
-      if (state.rivals[i].tutorial) state.rivals[i].baseY = state.y;
+      if (!state.rivals[i].tutorial) state.rivals[i].x -= dx;
     }
     for (i = state.items.length - 1; i >= 0; i--) {
       state.items[i].x -= dx;
