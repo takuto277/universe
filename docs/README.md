@@ -7,6 +7,7 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | アプリを追加する | [アプリの追加手順](adding-an-app.md) |
 | ブランチ・PR・マージの流れを知る | [PR 運用](pr-workflow.md) |
 | 新しい Mac で環境を作る | [セットアップ](setup.md) |
+| スキルを配布・検証する | [スキル](skills.md) |
 | Issue をキューにして実装まで無人で進める | [無人実装ランナー](unattended-agents.md) |
 | PR のレビューとマージを自動化する | [PR の自動レビューと自動マージ](auto-pr.md) |
 | テストの書き方と実行方法を知る | [テスト](testing.md) |
@@ -18,6 +19,7 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | Blocker の自動修正の判断を知る | [0006 PR の Blocker を自動修正して再レビューする](decisions/0006-autofix-review-blockers.md) |
 | 実行の隔離の判断を知る | [0007 builder と verify を sandbox-exec で隔離する](decisions/0007-sandbox-exec-isolation.md) |
 | 自己改善ループの判断を知る | [0008 レビュー指摘を Issue 化し、週次で提案する](decisions/0008-self-improvement-loop.md) |
+| 並列・スキル・クラウドの判断を知る | [0009 並列ワーカー・スキル配布・クラウド実行の段階導入](decisions/0009-parallel-skills-cloud.md) |
 | CodeRabbit を使っていたときの判断を知る | [0002 PR の承認を CodeRabbit に任せる](decisions/0002-ai-review-with-coderabbit.md) |
 | 今後の改善予定を知る | [改善ロードマップ (Issue #22)](https://github.com/takuto277/universe/issues/22) |
 | 学んだことを記録する | [学習ログ](learning-log.md) |

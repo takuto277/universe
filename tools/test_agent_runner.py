@@ -985,6 +985,18 @@ class RunnerTest(unittest.TestCase):
         run = self.fake.find("opencode", "run")[0]["argv"]
         self.assertIn("planner", run)
         self.assertIn("agent:proposed", run[-1])
+
+    def test_propose_uses_planner_model(self):
+        cfg = replace(self.cfg, planner_model="provider/planner-model")
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        self.fake.on(["gh", "label", "list"], ar.Result(0, "[]"))
+        self.fake.on(["gh", "label", "create"], ar.Result(0))
+        self.fake.on(["git", "worktree", "add"], ar.Result(0), effect=make_worktree)
+        self.fake.on(["git", "worktree", "remove"], ar.Result(0))
+        self.fake.on(["opencode", "run"], ar.Result(0, "created", ""))
+        self.assertEqual(0, runner.propose(dry_run=False))
+        run = self.fake.find("opencode", "run")[0]["argv"]
+        self.assertIn("provider/planner-model", run)
         logs = list((self.cfg.state_dir / "logs").glob("planner-*.log"))
         self.assertTrue(logs)
         self.assertIn("created", logs[0].read_text(encoding="utf-8"))

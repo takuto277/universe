@@ -176,7 +176,8 @@ launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -A1 UNIV
 | --- | --- | --- |
 | `UNIVERSE_AGENT_REPO` | `takuto277/universe` | 対象リポジトリ |
 | `UNIVERSE_AGENT_BASE` | `main` | ベースブランチ |
-| `UNIVERSE_AGENT_MODEL` | `opencode/deepseek-v4.1-flash-free` | 使用モデル |
+| `UNIVERSE_AGENT_MODEL` | `opencode/deepseek-v4.1-flash-free` | builder/fix のモデル |
+| `UNIVERSE_AGENT_PLANNER_MODEL` | `UNIVERSE_AGENT_MODEL` と同じ | planner のモデル（役割別ルーティング） |
 | `UNIVERSE_AGENT_AGENT` | `builder` | 実装エージェント |
 | `UNIVERSE_AGENT_PLANNER_AGENT` | `planner` | 提案エージェント |
 | `UNIVERSE_AGENT_TIMEOUT` | `2700` | エージェントのタイムアウト秒 |
