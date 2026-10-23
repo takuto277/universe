@@ -23,11 +23,24 @@
 
 ## 開発環境を作る
 
+新規の Mac では、前提ツールを入れてから setup を実行します。前提が欠けていると `--with-agents` / `--verify` は登録・実行の前に中止します。
+
 ```sh
+# 1. git / python3 / jsc を入れる
+xcode-select --install
+
+# 2. opencode を公式手順でインストールする
+#    https://opencode.ai/docs/
+
+# 3. gh を導入して認証する（--install は Homebrew がある場合のみ）
+./tools/setup.sh --install   # 未認証だと exit 1。続けて認証する
+gh auth login
+
+# 4. 前提の確認、LaunchAgent の登録、verify
 ./tools/setup.sh --with-agents --verify
 ```
 
-前提ツールの確認、LaunchAgent の登録、verify までをまとめて行います。詳しくは [docs/setup.md](docs/setup.md) を参照してください。
+`--install` は不足している `gh` だけを導入し、opencode は自動では入れません。Homebrew が無い場合は https://cli.github.com/ から `gh` を入れてください。詳しくは [docs/setup.md](docs/setup.md) を参照してください。
 
 ## 構成
 
