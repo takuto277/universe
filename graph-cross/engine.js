@@ -186,8 +186,19 @@
     return JSON.parse(JSON.stringify(value));
   }
 
+  function stagePressure(state) {
+    var stage = state.stage || 1;
+    return Math.min(B.STAGE_DIFFICULTY_MAX, Math.max(0, stage - 1) * B.STAGE_DIFFICULTY_STEP);
+  }
+
   function difficulty(state) {
-    return clamp(state.time / RAMP_TIME, 0, 1);
+    return clamp(state.time / RAMP_TIME + stagePressure(state), 0, 1);
+  }
+
+  function speedFor(state) {
+    var stage = state.stage || 1;
+    var stageSpeed = Math.min(B.STAGE_SPEED_MAX, Math.max(0, stage - 1) * B.STAGE_SPEED_STEP);
+    return BASE_SPEED + Math.min(MAX_SPEED - BASE_SPEED, state.time * SPEED_RAMP + stageSpeed);
   }
 
   function pushEvent(state, event) {
@@ -963,7 +974,7 @@
     if (!state || state.over || state.stageCleared) return state;
     dt = clamp(Number(dt) || 0, 0, MAX_DT);
     state.time += dt;
-    state.speed = BASE_SPEED + Math.min(MAX_SPEED - BASE_SPEED, state.time * SPEED_RAMP);
+    state.speed = speedFor(state);
     var dx = state.speed * dt;
     state.worldX += dx;
 
@@ -1266,7 +1277,7 @@
     g.reviveUsed = !!checkpoint.reviveUsed;
     g.time = checkpoint.time || 0;
     g.worldX = checkpoint.worldX || 0;
-    g.speed = BASE_SPEED + Math.min(MAX_SPEED - BASE_SPEED, g.time * SPEED_RAMP);
+    g.speed = speedFor(g);
     g.events = [];
     g.over = false;
     g.deathCause = null;
