@@ -312,7 +312,6 @@ class Runner:
         writable = [
             worktree,
             tmpdir,
-            Path(tempfile.gettempdir()),
             Path("/dev"),
             home / ".local/share/opencode",
             home / ".cache/opencode",

@@ -5,12 +5,14 @@
 
 ## Context
 
+macOS の `mktemp` は `TMPDIR` ではなく Darwin のユーザー一時ディレクトリを使うため、テストスクリプトでは `mktemp -d "${TMPDIR:-/tmp}/..."` のようにテンプレートを渡して sandbox の実行用ディレクトリ内に作る。
+
 ADR 0005 の builder は、権限 allowlist と保護パス検査で危険な操作を制限しているが、プロセス自体はユーザー権限で動く。モデルの誤操作や Issue 本文由来の指示で、worktree 外のファイルを読む・書く可能性が残る。専用 OS ユーザやコンテナは強いが、認証の再設定や追加インストールが必要になる。
 
 ## Decision
 
 - `UNIVERSE_AGENT_SANDBOX=seatbelt` のとき、builder と `verify.sh` を macOS の `sandbox-exec` で包む
-- deny-by-default とし、書き込みは「その実行の worktree」「実行ごとの一時ディレクトリ」「OSの一時ディレクトリ（TMPDIR）」「`/dev`」「opencode のデータ/キャッシュ」だけを許可する。リポジトリの `.git`、state dir、`~/.config/opencode` は書き込み禁止とする
+- deny-by-default とし、書き込みは「その実行の worktree」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけを許可する。リポジトリの `.git`、state dir、`~/.config/opencode` は書き込み禁止とする
 - builder は編集だけを行い、コミットは sandbox の外で runner が行う（`.git/hooks` や `config` を書かせない）
 - builder の前後で `git rev-parse --absolute-git-dir` を比較し、worktree の `.git` ポインタ差し替えを検出する
 - runner の commit / push は `core.hooksPath=/dev/null` と `core.fsmonitor=false` を付けて実行する

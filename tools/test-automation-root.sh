@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/universe-automation-test.XXXXXXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
 git init -q -b main "$TMP/remote.git" --bare

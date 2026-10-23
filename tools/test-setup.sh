@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-TMP="$(mktemp -d)"
+TMP="$(mktemp -d "${TMPDIR:-/tmp}/universe-setup.XXXXXXXXXX")"
 trap 'rm -rf "$TMP"' EXIT
 
 mkdir -p "$TMP/bin" "$TMP/home"
