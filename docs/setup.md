@@ -10,7 +10,7 @@ cd universe
 ./tools/setup.sh --with-agents --verify
 ```
 
-`--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、builder と verify を sandbox で実行します。
+`--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、エージェントが実行する builder と verify を sandbox で実行します（このコマンド自身の `--verify` は sandbox されません）。
 
 LaunchAgent は、人間が作業しているチェックアウトとは別の **main 追従の専用チェックアウト** から動きます。既定は `~/.local/share/universe-automation` です。
 
