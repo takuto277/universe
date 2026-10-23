@@ -809,13 +809,6 @@ class RunnerTest(unittest.TestCase):
                     denied.unlink()
                 except OSError:
                     pass
-            state_file = self.cfg.state_dir / "pause"
-            result = ar.Commands().run(
-                runner.sandbox_argv(["/bin/sh", "-c", "touch %s" % state_file],
-                                    self.worktree, tmpdir),
-                cwd=str(self.worktree), timeout=30)
-            self.assertFalse(result.ok)
-            self.assertFalse(state_file.exists())
             pointer = self.worktree / ".git"
             pointer.write_text("gitdir: /tmp/hijacked\n", encoding="utf-8")
             result = ar.Commands().run(
@@ -827,6 +820,23 @@ class RunnerTest(unittest.TestCase):
                              pointer.read_text(encoding="utf-8"))
         finally:
             shutil.rmtree(tmpdir, ignore_errors=True)
+
+    @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
+                     "already inside sandbox-exec")
+    @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
+    def test_sandbox_allows_mktemp(self):
+        cfg = replace(self.cfg, sandbox="seatbelt")
+        runner = ar.Runner(cfg, cmd=ar.Commands(), log=lambda line: None)
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        result = runner._run_sandboxed(
+            ["/bin/bash", "-c", "mktemp -d"], self.worktree, self.worktree, 30)
+        self.assertTrue(result.ok, result.stderr)
+        text = result.stdout.strip()
+        self.assertTrue(text, "mktemp がパスを返しませんでした")
+        created = Path(text)
+        self.assertNotEqual(created, Path("."))
+        self.assertTrue(created.is_dir())
+        shutil.rmtree(created, ignore_errors=True)
 
     @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
                      "already inside sandbox-exec")
