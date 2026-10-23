@@ -985,6 +985,9 @@ class RunnerTest(unittest.TestCase):
         run = self.fake.find("opencode", "run")[0]["argv"]
         self.assertIn("planner", run)
         self.assertIn("agent:proposed", run[-1])
+        logs = list((self.cfg.state_dir / "logs").glob("planner-*.log"))
+        self.assertTrue(logs)
+        self.assertIn("created", logs[0].read_text(encoding="utf-8"))
 
     def test_propose_uses_planner_model(self):
         cfg = replace(self.cfg, planner_model="provider/planner-model")
@@ -997,9 +1000,8 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(0, runner.propose(dry_run=False))
         run = self.fake.find("opencode", "run")[0]["argv"]
         self.assertIn("provider/planner-model", run)
-        logs = list((self.cfg.state_dir / "logs").glob("planner-*.log"))
-        self.assertTrue(logs)
-        self.assertIn("created", logs[0].read_text(encoding="utf-8"))
+        items = self.history()
+        self.assertEqual("provider/planner-model", items[-1]["model"])
 
 
 if __name__ == "__main__":

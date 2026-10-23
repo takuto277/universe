@@ -65,6 +65,13 @@ class SkillsTest(unittest.TestCase):
         errors = check_skills.validate(self.root)
         self.assertTrue(any("リンク先がありません" in error for error in errors))
 
+    def test_link_fragment_and_query_are_ignored(self):
+        directory = self.skills / "one"
+        directory.mkdir(parents=True, exist_ok=True)
+        (directory / "doc.md").write_text("doc", encoding="utf-8")
+        self.write("one", body="[x](doc.md#section) [y](doc.md?raw=1)")
+        self.assertEqual([], check_skills.validate(self.root))
+
     def test_bad_version(self):
         self.write("one", registry=[{"name": "one", "version": 0, "path": "one"}])
         errors = check_skills.validate(self.root)

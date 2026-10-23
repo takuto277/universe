@@ -10,6 +10,7 @@
 import json
 import re
 import sys
+from urllib.parse import unquote, urlsplit
 from pathlib import Path
 
 REQUIRED = ("name", "description")
@@ -87,7 +88,10 @@ def validate(root):
         for target in re.findall(r"\]\(([^)]+)\)", body):
             if target.startswith(("http://", "https://", "#", "mailto:")):
                 continue
-            target_path = (skill_dir / target).resolve()
+            path = unquote(urlsplit(target).path)
+            if not path:
+                continue
+            target_path = (skill_dir / path).resolve()
             if not target_path.exists():
                 errors.append("%s: リンク先がありません: %s" %
                               (skill_md.relative_to(root), target))
