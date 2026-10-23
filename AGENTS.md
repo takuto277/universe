@@ -9,6 +9,7 @@ universe は自作ゲーム・アプリを静的ファイルで公開する個�
 ./tools/verify.sh             # テスト + サイト検査 + PR スクリプトの構文検査
 ./tools/run-tests.sh          # 全アプリの test-*.js
 python3 tools/check_site.py   # apps.json / index.html / ローカルリンクの検査
+python3 tools/check_skills.py # スキルの契約検査
 ./tools/auto-pr.sh --dry-run  # 自動PR処理の対象確認
 ./tools/install-auto-pr.sh    # 自動PR処理のLaunchAgent登録
 python3 tools/pr_merge.py --pr <n>  # 五点ゲート + squash merge

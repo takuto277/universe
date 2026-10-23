@@ -148,6 +148,7 @@ class Config:
     state_dir: Path = Path.home() / ".local/state/universe-agent-runner"
     log_file: Path = Path.home() / "Library/Logs/universe-agent-runner.log"
     model: str = DEFAULT_MODEL
+    planner_model: str = ""
     agent: str = DEFAULT_AGENT
     planner_agent: str = DEFAULT_PLANNER
     timeout: int = DEFAULT_TIMEOUT
@@ -179,6 +180,7 @@ class Config:
             state_dir=state,
             log_file=log,
             model=os.environ.get("UNIVERSE_AGENT_MODEL", DEFAULT_MODEL),
+            planner_model=os.environ.get("UNIVERSE_AGENT_PLANNER_MODEL", ""),
             agent=os.environ.get("UNIVERSE_AGENT_AGENT", DEFAULT_AGENT),
             planner_agent=os.environ.get("UNIVERSE_AGENT_PLANNER_AGENT", DEFAULT_PLANNER),
             timeout=int(os.environ.get("UNIVERSE_AGENT_TIMEOUT", DEFAULT_TIMEOUT)),
@@ -1397,7 +1399,7 @@ class Runner:
             result = self.cmd.run([
                 self.cfg.opencode_bin, "run",
                 "--agent", self.cfg.planner_agent,
-                "--model", self.cfg.model,
+                "--model", (self.cfg.planner_model or self.cfg.model),
                 "--dir", str(worktree),
                 "--auto",
                 "--title", "universe-planner-%d" % int(time.time()),
@@ -1466,6 +1468,7 @@ class Runner:
         print("repo:    %s (base %s)" % (self.cfg.repo, self.cfg.base))
         print("model:   %s / agent: %s / planner: %s" %
               (self.cfg.model, self.cfg.agent, self.cfg.planner_agent))
+        print("planner model: %s" % (self.cfg.planner_model or self.cfg.model))
         print("state:   %s" % self.cfg.state_dir)
         print("log:     %s" % self.cfg.log_file)
         pause = self.cfg.state_dir / "pause"

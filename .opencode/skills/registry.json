@@ -1,0 +1,7 @@
+{
+  "skills": [
+    {"name": "pr-review", "version": 1, "path": "pr-review"},
+    {"name": "pr-merge", "version": 1, "path": "pr-merge"},
+    {"name": "unattended-ops", "version": 1, "path": "unattended-ops"}
+  ]
+}
