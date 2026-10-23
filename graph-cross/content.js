@@ -78,6 +78,29 @@
     bonus: { title: 'スコア +3000', desc: '即時ボーナス' }
   };
 
+  var TUTORIAL_STEPS = [
+    {
+      title: '関数を切り替えよう',
+      desc: '1・2・3 か画面下のボタンで、これから描く曲線の形が変わる。まずは「2」を押してみよう。',
+      tip: '曲線の色と動きが変わればOK'
+    },
+    {
+      title: '敵に交差させよう',
+      desc: '敵の曲線の高さに自分の曲線を重ねると大爆発。敵が左へ流れる前に交差させよう。',
+      tip: '曲線は通った場所に残って攻撃範囲になる'
+    },
+    {
+      title: 'アイテムを拾おう',
+      desc: 'G / + / S のアイテムが流れてくる。曲線で触れると取得できる。近くにアイテムを出したよ。',
+      tip: 'G: 追加グラフ / +: ライフ / S: スコア'
+    }
+  ];
+  var TUTORIAL_COMPLETE = {
+    title: '準備完了',
+    desc: 'あとはステージを進んでボスを倒すだけ。クリアしたら強化を選んで、自分だけのビルドを作ろう。',
+    tip: 'ゲームオーバーになっても、ステージ開始時点からやり直せる'
+  };
+
   function fmtNum(value) {
     var rounded = Math.round(value * 100) / 100;
     return String(rounded).replace(/\.0+$/, '');
@@ -138,6 +161,8 @@
     WAVE_SHAPE_LABELS: WAVE_SHAPE_LABELS,
     WAVE_SHAPE_DESCS: WAVE_SHAPE_DESCS,
     UPGRADE_INFO: UPGRADE_INFO,
+    TUTORIAL_STEPS: TUTORIAL_STEPS,
+    TUTORIAL_COMPLETE: TUTORIAL_COMPLETE,
     ITEM_INFO: ITEM_INFO,
     fmtNum: fmtNum,
     powLabel: powLabel,

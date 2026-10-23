@@ -415,6 +415,27 @@
     return r;
   }
 
+  function spawnTutorialTarget(state) {
+    if (!state) return null;
+    var r = {
+      x: state.headX + 560,
+      len: 300,
+      shape: 'line',
+      family: 'linear',
+      baseY: state.y,
+      amp: 0,
+      waves: 1,
+      phase: 0,
+      slope: 0,
+      dir: 1,
+      label: 'y = x/2',
+      hit: false,
+      tutorial: true
+    };
+    state.rivals.push(r);
+    return r;
+  }
+
   function spawnInterval(state) {
     var d = difficulty(state);
     return Math.max(0.82, 1.55 - 0.62 * d + state.rng() * 0.3);
@@ -965,7 +986,10 @@
     while (state.trail.length && state.trail[0].x < -40) state.trail.shift();
     state.trail.push({ x: state.headX, y: state.y, mode: state.mode });
 
-    for (i = 0; i < state.rivals.length; i++) state.rivals[i].x -= dx;
+    for (i = 0; i < state.rivals.length; i++) {
+      state.rivals[i].x -= dx;
+      if (state.rivals[i].tutorial) state.rivals[i].baseY = state.y;
+    }
     for (i = state.items.length - 1; i >= 0; i--) {
       state.items[i].x -= dx;
       if (state.items[i].x < -30) state.items.splice(i, 1);
@@ -1327,6 +1351,7 @@
     COMBO_WINDOW: COMBO_WINDOW,
     HEAL_COMBO: HEAL_COMBO,
     createGame: createGame,
+    spawnTutorialTarget: spawnTutorialTarget,
     resetRun: resetRun,
     resize: resize,
     setMode: setMode,

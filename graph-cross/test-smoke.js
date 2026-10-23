@@ -32,6 +32,8 @@ Harness.run({
     h.assert(state.deckParams && typeof state.deckParams === 'object', '係数パラメータがない');
     h.assert(state.stage >= 1, 'ステージ番号が不正');
     var els = h.elements;
+    h.assert(els['btn-tutorial'], 'チュートリアルボタンがない');
+    h.assert(els['tutorial-panel'] && els['tutorial-panel'].classList.contains('hidden'), 'チュートリアルパネルが残っている');
     h.assert(els['screen-start'] && !els['screen-start'].classList.contains('visible'), '開始画面が残っている');
     h.assert(els['score'] && els['score'].textContent === String(state.score), 'HUDのスコアが一致しない');
     if (state.stageCleared) {
