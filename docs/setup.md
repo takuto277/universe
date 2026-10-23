@@ -4,11 +4,26 @@ universe の開発・無人実行に必要な環境を確認し、LaunchAgent �
 
 ## 最短手順
 
+新規の Mac では、前提ツールを入れてから setup を実行します。前提が欠けていると `--with-agents` / `--verify` は登録・実行の前に中止するため、先に MISS を解消してください。
+
 ```sh
 git clone https://github.com/takuto277/universe.git
 cd universe
+
+# 1. git / python3 / jsc を入れる
+xcode-select --install
+
+# 2. opencode を公式手順でインストールする: https://opencode.ai/docs/
+
+# 3. gh を導入して認証する（--install は Homebrew がある場合のみ）
+./tools/setup.sh --install   # 未認証だと exit 1。続けて認証する
+gh auth login
+
+# 4. 前提の確認、LaunchAgent の登録、verify
 ./tools/setup.sh --with-agents --verify
 ```
+
+`--install` は不足している `gh` だけを Homebrew で導入し、opencode は自動では入れません。Homebrew が無い場合は https://cli.github.com/ から `gh` を入れてください。
 
 `--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、builder と verify を sandbox で実行します。
 
@@ -47,9 +62,10 @@ Homebrew がある場合、`--install` で不足している `gh` だけを導�
 
 ## 何をするか
 
-1. コマンドと gh 認証を確認し、MISS があれば最後に終了コード1で終わる
-2. `--with-agents` のとき、すべて OK なら LaunchAgent を登録する
-3. `--verify` のとき、`./tools/verify.sh` を実行する
+1. コマンドと gh 認証を確認する
+2. MISS がある場合、`--with-agents` と `--verify` は何もせずに終了コード1で終わる
+3. `--with-agents` のとき、すべて OK なら LaunchAgent を登録する
+4. `--verify` のとき、すべて OK なら `./tools/verify.sh` を実行する
 
 エージェントの状態は次で確認できます。
 
@@ -66,6 +82,7 @@ launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -E 'stat
 | `jsc` が見つからない | `xcode-select --install` を実行し、`/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc` があるか確認 |
 | `gh` が未認証 | `gh auth login` |
 | opencode が動かない | 公式手順でインストールし、認証とモデル設定を確認（setup は認証を確認しません） |
+| 「未解決の項目があるため…中止します」と出る | 上の MISS を解消してから `--with-agents --verify` を再実行する（新規 Mac は上の最短手順の順番で入れる） |
 | LaunchAgent が動かない | Mac にログイン中か、スリープしていないか確認。`launchctl print` で状態を見る |
 | sandbox で失敗する | `UNIVERSE_AGENT_SANDBOX=none` で切り分け、原因を確認して戻す |
 
