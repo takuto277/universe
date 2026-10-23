@@ -273,6 +273,22 @@ assert(g.hits === 1 && g.rivals.length === 0, 'チュートリアル用の的は
 
 /* 9b) ステージ進行とボス */
 assert(E.stageTargetFor(1) === 8 && E.stageTargetFor(2) === 10, 'ステージ目標数');
+assert(E.difficulty({ time: 0, stage: 5 }) > E.difficulty({ time: 0, stage: 1 }), 'ステージが進むと難易度が上がる');
+assert(E.difficulty({ time: 0, stage: 100 }) === E.difficulty({ time: 0, stage: 9 }), 'ステージ難易度の上限');
+var speedStage1 = makeGame(9011, ['hold', 'up', 'wave']);
+speedStage1.rivals = [];
+speedStage1.items = [];
+speedStage1.spawnTimer = 999;
+speedStage1.itemTimer = 999;
+E.update(speedStage1, 1 / 60);
+var speedStage5 = makeGame(9011, ['hold', 'up', 'wave']);
+speedStage5.stage = 5;
+speedStage5.rivals = [];
+speedStage5.items = [];
+speedStage5.spawnTimer = 999;
+speedStage5.itemTimer = 999;
+E.update(speedStage5, 1 / 60);
+assert(speedStage5.speed > speedStage1.speed, '後半ステージはスクロールが少し速い');
 g = makeGame(900, ['hold', 'up', 'wave']);
 g.stageHits = g.stageTarget;
 g.bossCooldown = 0;
