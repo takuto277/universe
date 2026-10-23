@@ -25,6 +25,8 @@
     var muted = loadMuted();
     var lastState = null;
     var lastPhase = 'idle';
+    var tutorialMode = false;
+    var tutorialDone = loadTutorialDone();
 
     function $(id) { return document.getElementById(id); }
     function playUi() { if (typeof actions.playUi === 'function' && !muted) actions.playUi(); }
@@ -38,6 +40,17 @@
     function saveMuted(value) {
       try {
         if (typeof localStorage !== 'undefined') localStorage.setItem('graph-cross-muted', value ? '1' : '0');
+      } catch (e) { }
+    }
+    function loadTutorialDone() {
+      try {
+        if (typeof localStorage === 'undefined') return false;
+        return localStorage.getItem('graph-cross-tutorial-done') === '1';
+      } catch (e) { return false; }
+    }
+    function saveTutorialDone() {
+      try {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('graph-cross-tutorial-done', '1');
       } catch (e) { }
     }
     function loadBest() {
@@ -126,19 +139,30 @@
       els.btnSound.classList.toggle('muted', muted);
     }
 
+    function updateTutorialButton() {
+      if (!els.btnTutorial) return;
+      els.btnTutorial.textContent = tutorialDone ? 'チュートリアル' : 'はじめての遊び方';
+      els.btnTutorial.classList.toggle('recommended', !tutorialDone);
+    }
+
     function updateHud(state) {
       lastState = state || null;
       var snap = state ? E.snapshot(state) : null;
       var stress = !!(snap && snap.infiniteLives);
+      var tutorial = tutorialMode;
       if (els.score) els.score.textContent = snap ? String(snap.score) : '0';
       if (els.best) els.best.textContent = String(best);
       if (els.combo) els.combo.textContent = snap && snap.combo > 0 ? 'x' + snap.combo : '-';
-      if (els.life) els.life.textContent = stress ? '∞' : (snap ? lifeText(snap.hp, snap.maxHp) : lifeText(E.MAX_HP, E.MAX_HP));
-      if (els.life) els.life.classList.toggle('danger', !!(snap && !stress && snap.hp <= 1));
+      if (els.life) els.life.textContent = (tutorial || stress) ? '∞' : (snap ? lifeText(snap.hp, snap.maxHp) : lifeText(E.MAX_HP, E.MAX_HP));
+      if (els.life) els.life.classList.toggle('danger', !!(snap && !tutorial && !stress && snap.hp <= 1));
 
       if (els.stageLabel) {
         var stage = snap ? snap.stage : 1;
-        if (stress) {
+        if (tutorial) {
+          els.stageLabel.textContent = 'TUTORIAL';
+          if (els.stageFill) els.stageFill.style.width = '100%';
+          if (els.stageNote) els.stageNote.textContent = '操作を練習中';
+        } else if (stress) {
           els.stageLabel.textContent = 'STRESS MODE';
           if (els.stageFill) els.stageFill.style.width = '100%';
           if (els.stageNote) els.stageNote.textContent = '倒した敵 ' + (snap.hits || 0) + ' / COMBO x' + (snap.combo || 0);
@@ -159,11 +183,12 @@
         }
         if (els.stageInfo) {
           els.stageInfo.classList.toggle('stress', stress);
-          els.stageInfo.classList.toggle('boss', !!(snap && snap.boss && !snap.stageCleared && !stress));
-          els.stageInfo.classList.toggle('cleared', !!(snap && snap.stageCleared && !stress));
+          els.stageInfo.classList.toggle('tutorial', tutorial);
+          els.stageInfo.classList.toggle('boss', !!(snap && snap.boss && !snap.stageCleared && !stress && !tutorial));
+          els.stageInfo.classList.toggle('cleared', !!(snap && snap.stageCleared && !stress && !tutorial));
         }
       }
-      if (els.btnExit) els.btnExit.classList.toggle('hidden', !stress);
+      if (els.btnExit) els.btnExit.classList.toggle('hidden', !(stress || tutorial));
     }
 
     function updateSlots(state, phase) {
@@ -448,6 +473,50 @@
       if (els.btnExit) els.btnExit.classList.add('hidden');
     }
 
+    function setTutorialMode(value) {
+      tutorialMode = !!value;
+      updateHud(lastState);
+      updateSlots(lastState, lastPhase);
+    }
+
+    function showTutorialStep(index, total) {
+      var step = C.TUTORIAL_STEPS[index];
+      if (!step || !els.tutorialPanel) return;
+      els.tutorialPanel.classList.remove('hidden');
+      if (els.tutorialCount) els.tutorialCount.textContent = (index + 1) + ' / ' + total;
+      if (els.tutorialTitle) els.tutorialTitle.textContent = step.title;
+      if (els.tutorialDesc) els.tutorialDesc.textContent = step.desc;
+      if (els.tutorialTip) els.tutorialTip.textContent = step.tip;
+      if (els.btnTutorialSkip) els.btnTutorialSkip.classList.remove('hidden');
+      if (els.btnTutorialStart) els.btnTutorialStart.classList.add('hidden');
+      if (els.btnTutorialBack) els.btnTutorialBack.classList.add('hidden');
+      setTutorialMode(true);
+    }
+
+    function showTutorialComplete() {
+      var info = C.TUTORIAL_COMPLETE;
+      if (!info || !els.tutorialPanel) return;
+      els.tutorialPanel.classList.remove('hidden');
+      if (els.tutorialCount) els.tutorialCount.textContent = 'READY';
+      if (els.tutorialTitle) els.tutorialTitle.textContent = info.title;
+      if (els.tutorialDesc) els.tutorialDesc.textContent = info.desc;
+      if (els.tutorialTip) els.tutorialTip.textContent = info.tip;
+      if (els.btnTutorialSkip) els.btnTutorialSkip.classList.add('hidden');
+      if (els.btnTutorialStart) els.btnTutorialStart.classList.remove('hidden');
+      if (els.btnTutorialBack) els.btnTutorialBack.classList.remove('hidden');
+      setTutorialMode(true);
+    }
+
+    function hideTutorial() {
+      if (els.tutorialPanel) els.tutorialPanel.classList.add('hidden');
+    }
+
+    function markTutorialDone() {
+      tutorialDone = true;
+      saveTutorialDone();
+      updateTutorialButton();
+    }
+
     function hideScreens() {
       showScreen(null);
     }
@@ -462,8 +531,11 @@
     function showStart() {
       lastState = null;
       lastPhase = 'idle';
+      tutorialMode = false;
+      hideTutorial();
       showScreen('start');
       closeDeckBuilder();
+      updateTutorialButton();
       updateDeckUi();
       updateHud(null);
     }
@@ -503,6 +575,8 @@
     }
 
     function showEnd(state, canRetry) {
+      tutorialMode = false;
+      hideTutorial();
       var snap = E.snapshot(state);
       recordBest(snap.score);
       if (els.endScore) els.endScore.textContent = String(snap.score);
@@ -536,6 +610,8 @@
     }
 
     function showClear(state, upgradeIds) {
+      tutorialMode = false;
+      hideTutorial();
       var snap = E.snapshot(state);
       if (els.clearTitle) els.clearTitle.textContent = 'STAGE CLEAR';
       if (els.clearHint) els.clearHint.textContent = '1〜3 / クリックで強化を選んで次のステージへ';
@@ -584,6 +660,15 @@
       els.btnRetry = $('btn-retry');
       els.btnDeck = $('btn-deck');
       els.btnSound = $('btn-sound');
+      els.btnTutorial = $('btn-tutorial');
+      els.tutorialPanel = $('tutorial-panel');
+      els.tutorialCount = $('tutorial-count');
+      els.tutorialTitle = $('tutorial-title');
+      els.tutorialDesc = $('tutorial-desc');
+      els.tutorialTip = $('tutorial-tip');
+      els.btnTutorialSkip = $('btn-tutorial-skip');
+      els.btnTutorialStart = $('btn-tutorial-start');
+      els.btnTutorialBack = $('btn-tutorial-back');
       els.clearTitle = $('clear-title');
       els.clearHint = $('clear-hint');
       els.clearStage = $('clear-stage');
@@ -704,6 +789,10 @@
       if (els.btnAgain) els.btnAgain.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
       if (els.btnDeck) els.btnDeck.addEventListener('click', function () { if (typeof actions.onBackToDeck === 'function') actions.onBackToDeck(); });
       if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
+      if (els.btnTutorial) els.btnTutorial.addEventListener('click', function () { if (typeof actions.onTutorial === 'function') actions.onTutorial(); });
+      if (els.btnTutorialSkip) els.btnTutorialSkip.addEventListener('click', function () { if (typeof actions.onTutorialSkip === 'function') actions.onTutorialSkip(); });
+      if (els.btnTutorialStart) els.btnTutorialStart.addEventListener('click', function () { if (typeof actions.onTutorialStart === 'function') actions.onTutorialStart(); });
+      if (els.btnTutorialBack) els.btnTutorialBack.addEventListener('click', function () { if (typeof actions.onTutorialSkip === 'function') actions.onTutorialSkip(); });
       for (i = 0; i < 3; i++) {
         (function (index) {
           var btn = $('upgrade-' + index);
@@ -712,6 +801,7 @@
       }
 
       updateSoundButton();
+      updateTutorialButton();
       updateDeckUi();
       showStart();
     }
@@ -732,7 +822,13 @@
       showEnd: showEnd,
       showClear: showClear,
       showFunctionChoices: showFunctionChoices,
-      showStageBanner: showStageBanner
+      showStageBanner: showStageBanner,
+      showTutorialStep: showTutorialStep,
+      showTutorialComplete: showTutorialComplete,
+      hideTutorial: hideTutorial,
+      setTutorialMode: setTutorialMode,
+      markTutorialDone: markTutorialDone,
+      isTutorialDone: function () { return tutorialDone; }
     };
   }
 

@@ -15,6 +15,7 @@
   var state = null;
   var checkpoint = null;
   var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [], pendingSlot: false, slotChoices: [] };
+  var tutorial = { active: false, step: 0, total: 3, completed: false, targetTimer: 0, itemTimer: 0 };
   var viewW = 960;
   var viewH = 560;
   var dpr = 1;
@@ -219,6 +220,10 @@
         flash = 0.65;
         flashColor = '255, 77, 141';
       }
+      if (tutorial.active && !tutorial.completed) {
+        if (ev.type === 'hit' && tutorial.step === 1) advanceTutorial(2);
+        else if (ev.type === 'itemPickup' && tutorial.step === 2) advanceTutorial(3);
+      }
     }
   }
 
@@ -285,8 +290,103 @@
     }
   }
 
+  function spawnTutorialItem() {
+    if (!state) return;
+    state.items.push({ x: state.headX + 12, y: state.y, type: 'score', r: 12, phase: 0 });
+  }
+
+  function advanceTutorial(step) {
+    if (!tutorial.active || tutorial.completed || step <= tutorial.step) return;
+    tutorial.step = step;
+    if (step === 1) {
+      state.rivals = [];
+      state.items = [];
+      E.spawnTutorialTarget(state);
+      tutorial.targetTimer = 1.2;
+    } else if (step === 2) {
+      state.rivals = [];
+      state.items = [];
+      tutorial.itemTimer = 2.2;
+    } else if (step >= 3) {
+      tutorial.completed = true;
+      view.phase = 'tutorialDone';
+      ui.markTutorialDone();
+      ui.showTutorialComplete();
+      if (audio) audio.play('clear');
+      return;
+    }
+    ui.showTutorialStep(step, tutorial.total);
+    if (audio) audio.play('ui');
+  }
+
+  function tutorialTick(dt) {
+    if (!tutorial.active || tutorial.completed || !state) return;
+    if (tutorial.step === 1) {
+      if (state.rivals.length) {
+        tutorial.targetTimer = 1.2;
+      } else {
+        tutorial.targetTimer -= dt;
+        if (tutorial.targetTimer <= 0) {
+          E.spawnTutorialTarget(state);
+          tutorial.targetTimer = 1.2;
+        }
+      }
+    } else if (tutorial.step === 2) {
+      if (state.items.length) {
+        tutorial.itemTimer = 1.5;
+      } else {
+        tutorial.itemTimer -= dt;
+        if (tutorial.itemTimer <= 0) {
+          spawnTutorialItem();
+          tutorial.itemTimer = 1.5;
+        }
+      }
+    }
+  }
+
+  function beginTutorial() {
+    if (!ui) return;
+    state = E.createGame({
+      width: viewW,
+      height: viewH,
+      deck: ['hold', 'up', 'wave'],
+      deckParams: null,
+      fusion: null,
+      mode: 'normal'
+    });
+    state.hp = 99;
+    state.maxHp = 3;
+    state.stageHits = 0;
+    state.stageTarget = 999;
+    state.stageCleared = false;
+    state.spawnTimer = 999;
+    state.itemTimer = 999;
+    state.rivals = [];
+    state.items = [];
+    state.boss = null;
+    state.bossCooldown = 0;
+    checkpoint = null;
+    tutorial = { active: true, step: 0, total: 3, completed: false, targetTimer: 0, itemTimer: 0 };
+    enterStageView('TUTORIAL');
+    ui.setTutorialMode(true);
+    ui.showTutorialStep(0, tutorial.total);
+  }
+
+  function finishTutorial(startGame) {
+    tutorial.active = false;
+    tutorial.completed = false;
+    ui.hideTutorial();
+    ui.setTutorialMode(false);
+    if (startGame && ui.getDeck().length === C.DECK_SIZE) beginRun('normal');
+    else showStart();
+  }
+
   function beginRun(mode) {
     if (!ui || ui.getDeck().length !== C.DECK_SIZE) return;
+    tutorial.active = false;
+    tutorial.completed = false;
+    ui.hideTutorial();
+    ui.setTutorialMode(false);
     var stress = mode === 'stress';
     state = E.createGame({
       width: viewW,
@@ -304,6 +404,11 @@
   function showStart() {
     if (audio) audio.stopBgm();
     state = null;
+    tutorial.active = false;
+    tutorial.step = 0;
+    tutorial.completed = false;
+    ui.hideTutorial();
+    ui.setTutorialMode(false);
     view.phase = 'idle';
     view.upgradeIds = [];
     view.pendingSlot = false;
@@ -313,6 +418,9 @@
   }
 
   function showEnd() {
+    tutorial.active = false;
+    ui.hideTutorial();
+    ui.setTutorialMode(false);
     view.phase = 'over';
     if (audio) {
       audio.setIntensity(0);
@@ -323,6 +431,9 @@
   }
 
   function showClear() {
+    tutorial.active = false;
+    ui.hideTutorial();
+    ui.setTutorialMode(false);
     view.phase = 'clear';
     view.pendingSlot = false;
     view.slotChoices = [];
@@ -375,7 +486,10 @@
   function selectSlot(index) {
     if (!state || view.phase !== 'run' || state.over) return;
     var key = state.deck[index];
-    if (key && E.setMode(state, key)) ui.updateSlots(state, view.phase);
+    if (key && E.setMode(state, key)) {
+      ui.updateSlots(state, view.phase);
+      if (tutorial.active && !tutorial.completed && tutorial.step === 0) advanceTutorial(1);
+    }
   }
 
   function startOrRestart() {
@@ -389,6 +503,15 @@
   function onKey(e) {
     if (!e) return;
     var k = e.key || '';
+    if (tutorial.active && (k === 'Escape' || k === 'Esc')) {
+      showStart();
+      return;
+    }
+    if (tutorial.completed && (k === ' ' || k === 'Enter')) {
+      if (e.preventDefault) e.preventDefault();
+      finishTutorial(true);
+      return;
+    }
     if (k === 'Escape' || k === 'Esc') {
       if (state && state.gameMode === 'stress') {
         showStart();
@@ -468,6 +591,9 @@
       if (ts - view.clearAt > 900) showClear();
     }
 
+    if (tutorial.active && !tutorial.completed && view.phase === 'run') {
+      tutorialTick(dt);
+    }
     updateEffects(dt);
     if (renderer) {
       renderer.draw(state, ts / 1000, {
@@ -493,6 +619,9 @@
       actions: {
         onStart: function () { beginRun('normal'); },
         onStressStart: function () { beginRun('stress'); },
+        onTutorial: beginTutorial,
+        onTutorialStart: function () { finishTutorial(true); },
+        onTutorialSkip: showStart,
         onExit: showStart,
         onRetry: retryStage,
         onBackToDeck: showStart,
@@ -523,6 +652,7 @@
         id: 'graph-cross',
         title: 'グラフクロス',
         start: function () { beginRun('normal'); },
+        startTutorial: beginTutorial,
         autoPlayStep: function () {},
         isDone: function () {
           return !!(state && ((state.over && view.phase === 'over') ||
@@ -533,6 +663,7 @@
           var snap = E.snapshot(state);
           snap.phase = view.phase;
           snap.best = ui.getBest();
+          snap.tutorial = tutorial.active ? { step: tutorial.step, completed: tutorial.completed } : null;
           return snap;
         }
       };

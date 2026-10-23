@@ -256,6 +256,21 @@ for (i = 0; i < 60 * 12; i++) {
 assert(spawned >= 3, '敵カーブが生成され続ける: max=' + spawned);
 assert(g.hits + g.misses > 0, '交差かミスが発生している');
 
+/* 9a2) チュートリアル用の的 */
+g = makeGame(9291, ['hold', 'up', 'wave']);
+g.rivals = [];
+g.y = 330;
+var tutTarget = E.spawnTutorialTarget(g);
+assert(tutTarget && g.rivals.length === 1, 'チュートリアル用の的が1体出る');
+assert(tutTarget.baseY === g.y && tutTarget.x === g.headX + 560 && tutTarget.len === 300, 'チュートリアル用の位置と長さ');
+assert(tutTarget.shape === 'line' && tutTarget.family === 'linear', 'チュートリアル用の直線敵');
+E.setMode(g, 'up');
+g.spawnTimer = 999;
+g.itemTimer = 999;
+g.stageTarget = 999;
+for (i = 0; i < 200; i++) E.update(g, 1 / 60);
+assert(g.hits === 1 && g.rivals.length === 0, 'チュートリアル用の的は曲線と交差する');
+
 /* 9b) ステージ進行とボス */
 assert(E.stageTargetFor(1) === 8 && E.stageTargetFor(2) === 10, 'ステージ目標数');
 g = makeGame(900, ['hold', 'up', 'wave']);

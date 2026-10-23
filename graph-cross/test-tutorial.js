@@ -1,0 +1,49 @@
+/* test-tutorial.js : チュートリアルを最後まで進められるか（jsc で実行） */
+function tryLoad(paths) {
+  for (var i = 0; i < paths.length; i++) {
+    try { load(paths[i]); return true; } catch (e) { }
+  }
+  throw new Error('load failed: ' + paths.join(' / '));
+}
+
+tryLoad(['../tools/harness.js', 'tools/harness.js']);
+tryLoad(['content.js', 'graph-cross/content.js']);
+tryLoad(['balance.js', 'graph-cross/balance.js']);
+tryLoad(['engine.js', 'graph-cross/engine.js']);
+tryLoad(['renderer.js', 'graph-cross/renderer.js']);
+tryLoad(['ui.js', 'graph-cross/ui.js']);
+tryLoad(['game.js', 'graph-cross/game.js']);
+
+var GAME = globalThis.__GAME__;
+GAME.start = GAME.startTutorial;
+GAME.autoPlayStep = function () {
+  var state = GAME.getState();
+  if (state && state.tutorial && state.tutorial.step === 0) {
+    var slot = document.getElementById('slot-1');
+    if (slot && slot.listeners.click && slot.listeners.click[0]) slot.listeners.click[0]();
+  }
+};
+GAME.isDone = function () {
+  var state = GAME.getState();
+  return !!(state && state.tutorial && state.tutorial.completed);
+};
+
+Harness.run({
+  name: 'graph-cross-tutorial',
+  maxSteps: 2000,
+  afterDone: 50,
+  check: function (state, h) {
+    var els = h.elements;
+    h.assert(state && state.tutorial && state.tutorial.completed, 'チュートリアルが完了しない');
+    h.assert(state.phase === 'tutorialDone', 'チュートリアル完了後のフェーズが不正: ' + (state && state.phase));
+    h.assert(state.score > 0, 'チュートリアル中にスコアが入っていない');
+    h.assert(els['tutorial-panel'] && !els['tutorial-panel'].classList.contains('hidden'), 'チュートリアルパネルが消えている');
+    h.assert(els['btn-tutorial-start'] && !els['btn-tutorial-start'].classList.contains('hidden'), '開始ボタンが出ていない');
+    h.assert(els['btn-tutorial-skip'] && els['btn-tutorial-skip'].classList.contains('hidden'), 'スキップボタンが残っている');
+    h.assert(els['tutorial-count'] && els['tutorial-count'].textContent === 'READY', '完了表示がREADYでない');
+    h.assert(els['tutorial-title'] && els['tutorial-title'].textContent === '準備完了', '完了タイトルが不正');
+  },
+  summary: function (state) {
+    print('  最終: チュートリアル完了 / ' + state.score + '点 / ' + state.time.toFixed(1) + '秒');
+  }
+});

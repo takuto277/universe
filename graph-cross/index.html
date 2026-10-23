@@ -38,7 +38,10 @@
             <button id="btn-start" class="primary" type="button">このデッキではじめる</button>
             <button id="btn-stress" class="stress-cta" type="button">ストレス解消モード</button>
           </div>
-          <button id="btn-build" class="secondary build-btn" type="button">デッキを組む</button>
+          <div class="start-sub-actions">
+            <button id="btn-build" class="secondary build-btn" type="button">デッキを組む</button>
+            <button id="btn-tutorial" class="secondary tutorial-btn" type="button">はじめての遊び方</button>
+          </div>
           <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦 / ストレス解消: ライフ∞・敵大量</p>
           <div id="deck-builder" class="hidden">
           <div id="deck-picker">
@@ -142,6 +145,20 @@
           <p class="tiny">R: このステージから / Space・Enter: 最初から</p>
         </section>
       </div>
+      <aside id="tutorial-panel" class="hidden" aria-live="polite">
+        <div class="tutorial-head">
+          <span class="tutorial-kicker">TUTORIAL</span>
+          <span id="tutorial-count">1 / 3</span>
+        </div>
+        <h3 id="tutorial-title">関数を切り替えよう</h3>
+        <p id="tutorial-desc"></p>
+        <p id="tutorial-tip" class="tutorial-tip"></p>
+        <div class="tutorial-actions">
+          <button id="btn-tutorial-skip" class="tutorial-skip" type="button">スキップ</button>
+          <button id="btn-tutorial-start" class="tutorial-start hidden" type="button">このデッキではじめる</button>
+          <button id="btn-tutorial-back" class="tutorial-back hidden" type="button">スタートへ</button>
+        </div>
+      </aside>
     </main>
 
     <footer id="controlbar">
