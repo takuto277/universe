@@ -9,10 +9,10 @@ ADR 0006 で Blocker は自動修正できるようになったが、レビュ�
 
 ## Decision
 
-- レビュー投稿後、Consider / Nit を `agent:proposed` の Issue として記録する
+- **マージ後**に、Consider 指摘だけを `agent:proposed` の Issue として1つにまとめる（Nit/FYIはPRコメント）
   - watcher から `agent_runner.py findings --pr <n>` を呼ぶ
-  - 指摘本文のハッシュを `review-finding fp=<hash>` として本文に埋め、重複を防ぐ
-  - 1回の上限を `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）で制限する
+  - 1 PR 1 Issue（チェックリスト）。`review-findings pr=<n>` marker で重複を防ぐ
+  - チェックリストの上限を `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）で制限する
   - `UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効化できる
 - 週次で planner を実行する LaunchAgent（`install-agent-planner.sh`、月曜09:00）を追加する
 - 提案は既定で `agent:proposed` に留め、人間の `promote` を待つ。`UNIVERSE_AGENT_AUTO_READY_PROPOSALS=1` のときだけ自動で実装キューに入れる

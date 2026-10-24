@@ -53,10 +53,11 @@ PR 単位で止める:
 
 ## レビュー指摘の Issue 化
 
-AI レビューを投稿したあと、Consider / Nit を `agent:proposed` の Issue として記録します（既定で有効）。
+**マージ後**に、レビューの Consider 指摘だけを `agent:proposed` の Issue として1つにまとめます（既定で有効）。Nit / FYI は PR のコメントに残します。
 
-- 同じ指摘は本文の `review-finding fp=<hash>` で重複作成しません
-- 1回の上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
+- 1 PR につき1 Issue（チェックリスト形式）。同じ PR の Issue が既にあれば作りません
+- 対象は Consider のみ。FYI/Nit は対象外
+- チェックリストの上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
 - `UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効化できます（plist に反映するには再インストール）
 - 提案は自動実装されません。`./tools/agent.sh promote <n>` で実装キューに移します
 

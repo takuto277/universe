@@ -300,6 +300,7 @@ merge_pr() {
     printf '%s\n' "$output" >>"$LOG_FILE"
     rm -f "$STATE_DIR/${number}-"*
     log "PR #$number: merged"
+    record_findings "$number"
     notify "PR #$number をマージしました"
     return 0
   fi
@@ -455,7 +456,6 @@ while IFS=$'\t' read -r number head; do
     if ! run_review "$number" "$head"; then
       continue
     fi
-    record_findings "$number"
     if [ "$DRY_RUN" = "1" ]; then
       continue
     fi
