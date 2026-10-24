@@ -682,6 +682,41 @@
       updateSlots(state, 'over');
     }
 
+    function modePreviewSvg(key, params, fusion) {
+      var points = E.modePreview(key, params, fusion, 36, 1.4);
+      if (!points || !points.length) return '';
+      var W = 180;
+      var H = 52;
+      var pad = 7;
+      var min = Infinity;
+      var max = -Infinity;
+      for (var i = 0; i < points.length; i++) {
+        if (points[i].y < min) min = points[i].y;
+        if (points[i].y > max) max = points[i].y;
+      }
+      if (max - min < 1) {
+        min -= 1;
+        max += 1;
+      }
+      var d = '';
+      var last = null;
+      for (i = 0; i < points.length; i++) {
+        var px = pad + points[i].x * (W - pad * 2);
+        var py = pad + (points[i].y - min) / (max - min) * (H - pad * 2);
+        d += (i === 0 ? 'M' : 'L') + px.toFixed(1) + ' ' + py.toFixed(1);
+        last = { x: px, y: py };
+      }
+      var color = C.modeColor(key);
+      return '<svg class="swap-preview" viewBox="0 0 ' + W + ' ' + H + '" aria-hidden="true">' +
+        '<rect x="0.5" y="0.5" width="' + (W - 1) + '" height="' + (H - 1) + '" rx="6" fill="#081425" stroke="#1d3550"/>' +
+        '<g stroke="#224666" stroke-width="1" opacity=".45">' +
+          '<path d="M6 26 H174"/><path d="M60 6 V46"/><path d="M120 6 V46"/>' +
+        '</g>' +
+        '<path d="' + d + '" fill="none" stroke="' + color + '" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>' +
+        '<circle cx="' + last.x.toFixed(1) + '" cy="' + last.y.toFixed(1) + '" r="2.4" fill="#ffffff"/>' +
+      '</svg>';
+    }
+
     function showFunctionChoices(state, choices) {
       if (els.clearTitle) els.clearTitle.textContent = 'FUNCTION +1';
       if (els.clearHint) els.clearHint.textContent = '1〜3 / クリックで追加する関数を選ぶ';
@@ -695,8 +730,11 @@
         }
         btn.classList.remove('hidden');
         btn.style.setProperty('--mode-color', C.modeColor(key));
-        btn.innerHTML = '<em>' + (i + 1) + '</em><b>' +
-          C.formatModeLabel(key, state ? state.deckParams : selectedParams, state ? state.fusion : selectedFusion) +
+        var params = state ? state.deckParams : selectedParams;
+        var fusion = state ? state.fusion : selectedFusion;
+        btn.innerHTML = '<em>' + (i + 1) + '</em>' +
+          modePreviewSvg(key, params, fusion) + '<b>' +
+          C.formatModeLabel(key, params, fusion) +
           '</b><span>' + C.MODES[key].note + ' / ' + (C.GENRE_LABELS[C.MODES[key].genre] || '') + '</span>';
       }
     }
@@ -725,7 +763,8 @@
         var mode = C.MODES[key];
         btn.classList.remove('hidden');
         btn.style.setProperty('--mode-color', C.modeColor(key));
-        btn.innerHTML = '<em>' + (i + 1) + '</em><b>' +
+        btn.innerHTML = '<em>' + (i + 1) + '</em>' +
+          modePreviewSvg(key, snap.deckParams, snap.fusion) + '<b>' +
           C.formatModeLabel(key, snap.deckParams, snap.fusion) + '</b><span>' +
           mode.note + ' / ' + (C.GENRE_LABELS[mode.genre] || '') +
           (mode.family !== 'none' ? ' / ' + C.FAMILY_LABELS[mode.family] : '') + '</span>';

@@ -163,6 +163,23 @@
     state.waveBaseY = state.y - directOffset(state, state.mode, 0);
   }
 
+  function modePreview(key, params, fusion, count, maxT) {
+    var n = Math.max(2, Math.round(count || 36));
+    var span = maxT || 1.4;
+    var temp = {
+      top: 0,
+      bottom: 520,
+      deckParams: normalizeParams(params),
+      fusion: normalizeFusion(fusion)
+    };
+    var points = [];
+    for (var i = 0; i < n; i++) {
+      var t = span * i / (n - 1);
+      points.push({ x: i / (n - 1), y: modeOffset(temp, key, t) });
+    }
+    return points;
+  }
+
   function normalizeDeck(deck) {
     if (!Array.isArray(deck) || deck.length !== DECK_SIZE) return DEFAULT_DECK.slice();
     var out = [];
@@ -1407,6 +1424,7 @@
     FAMILY_LABELS: FAMILY_LABELS,
     WAVE_SHAPES: WAVE_SHAPES,
     waveShapeValue: waveShapeValue,
+    modePreview: modePreview,
     allyY: allyY,
     PARAM_SPECS: PARAM_SPECS,
     normalizeParams: normalizeParams,

@@ -256,6 +256,12 @@ for (i = 0; i < 60 * 12; i++) {
 assert(spawned >= 3, '敵カーブが生成され続ける: max=' + spawned);
 assert(g.hits + g.misses > 0, '交差かミスが発生している');
 
+/* 9a1) 関数プレビュー */
+var upPreview = E.modePreview('up', null, null, 10, 1);
+assert(upPreview.length === 10 && upPreview[0].y === 0 && upPreview[9].y < upPreview[0].y, '上昇関数のプレビュー');
+var wavePreview = E.modePreview('wave', null, null, 20, 1.4);
+assert(wavePreview.some(function (p) { return p.y > 1; }) && wavePreview.some(function (p) { return p.y < -1; }), '波関数のプレビュー');
+
 /* 9a2) チュートリアル用の的 */
 g = makeGame(9291, ['hold', 'up', 'wave']);
 g.rivals = [];
