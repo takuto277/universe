@@ -14,7 +14,7 @@
   var audio = AU ? AU.create() : null;
   var state = null;
   var checkpoint = null;
-  var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [], pendingSlot: false, slotChoices: [] };
+  var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [], pendingSlot: false, slotChoices: [], pendingDeckSwap: false };
   var tutorial = { active: false, step: 0, total: 3, completed: false, targetTimer: 0, itemTimer: 0 };
   var viewW = 960;
   var viewH = 560;
@@ -276,6 +276,7 @@
     view.upgradeIds = [];
     view.pendingSlot = false;
     view.slotChoices = [];
+    view.pendingDeckSwap = false;
     lastCombo = 0;
     clearEffects();
     lastTs = 0;
@@ -412,6 +413,7 @@
     view.upgradeIds = [];
     view.pendingSlot = false;
     view.slotChoices = [];
+    view.pendingDeckSwap = false;
     clearEffects();
     ui.showStart();
   }
@@ -436,6 +438,13 @@
     view.phase = 'clear';
     view.pendingSlot = false;
     view.slotChoices = [];
+    view.pendingDeckSwap = false;
+    if (state.pendingDeckSwap) {
+      view.pendingDeckSwap = true;
+      view.upgradeIds = [];
+      ui.showDeckSwapChoices(state, state.pendingDeckSwap);
+      return;
+    }
     view.upgradeIds = E.upgradeChoices(state);
     ui.showClear(state, view.upgradeIds);
   }
@@ -455,6 +464,16 @@
 
   function chooseUpgrade(index) {
     if (view.phase !== 'clear' || !state) return;
+    if (view.pendingDeckSwap) {
+      var offer = state.pendingDeckSwap;
+      var swapKey = offer && offer.choices[index];
+      if (!swapKey) return;
+      if (!E.applyDeckSwap(state, swapKey)) return;
+      view.pendingDeckSwap = false;
+      view.upgradeIds = E.upgradeChoices(state);
+      ui.showClear(state, view.upgradeIds);
+      return;
+    }
     if (view.pendingSlot) {
       var key = view.slotChoices[index];
       if (!key) return;
@@ -493,7 +512,7 @@
 
   function startOrRestart() {
     if (view.phase === 'clear') {
-      chooseUpgrade(0);
+      if (!view.pendingDeckSwap) chooseUpgrade(0);
       return;
     }
     if (view.phase === 'idle' || view.phase === 'over') beginRun();
@@ -525,7 +544,7 @@
       if (k === '1') chooseUpgrade(0);
       else if (k === '2') chooseUpgrade(1);
       else if (k === '3') chooseUpgrade(2);
-      else if (k === ' ' || k === 'Enter') chooseUpgrade(0);
+      else if ((k === ' ' || k === 'Enter') && !view.pendingDeckSwap) chooseUpgrade(0);
       return;
     }
     if (k === ' ' || k === 'Enter') {

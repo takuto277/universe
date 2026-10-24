@@ -235,6 +235,7 @@
     state.stageCleared = false;
     state.stageClearBonus = 0;
     state.lastDeckSwap = null;
+    state.pendingDeckSwap = null;
     state.boss = null;
     state.bossCooldown = 0;
     state.rivals = [];
@@ -527,7 +528,8 @@
     state.multi = 0;
     state.multiTimer = 0;
     if (state.hp < state.maxHp) state.hp++;
-    rotateDeck(state);
+    state.lastDeckSwap = null;
+    makeDeckSwapOffer(state);
     pushEvent(state, {
       type: 'stageClear',
       x: hitX,
@@ -1091,7 +1093,7 @@
     return state;
   }
 
-  function rotateDeck(state) {
+  function deckSwapPlan(state, preferThree) {
     if (!state || !state.deck.length) return null;
     var groups = {};
     for (var i = 0; i < state.deck.length; i++) {
@@ -1115,20 +1117,66 @@
       }
     }
     if (!genres.length) return null;
-    var pickGenre = genres[Math.floor(rand(state.rng) * genres.length) % genres.length];
+    var eligible = genres;
+    if (preferThree) {
+      var rich = [];
+      for (var r = 0; r < genres.length; r++) {
+        if (groups[genres[r]].candidates.length >= 3) rich.push(genres[r]);
+      }
+      if (rich.length) eligible = rich;
+    }
+    var pickGenre = eligible[Math.floor(rand(state.rng) * eligible.length) % eligible.length];
     var group = groups[pickGenre];
     var slot = group.slots[Math.floor(rand(state.rng) * group.slots.length) % group.slots.length];
-    var oldKey = state.deck[slot];
-    var newKey = group.candidates[Math.floor(rand(state.rng) * group.candidates.length) % group.candidates.length];
-    state.deck[slot] = newKey;
+    return {
+      genre: pickGenre,
+      slot: slot,
+      oldKey: state.deck[slot],
+      candidates: group.candidates.slice()
+    };
+  }
+
+  function commitDeckSwap(state, plan, newKey) {
+    state.deck[plan.slot] = newKey;
     if (PARAM_SPECS[newKey]) {
       var all = normalizeParams(state.deckParams);
       state.deckParams[newKey] = all[newKey];
     }
-    var swap = { oldKey: oldKey, newKey: newKey, slot: slot, genre: pickGenre };
+    var swap = { oldKey: plan.oldKey, newKey: newKey, slot: plan.slot, genre: plan.genre };
     state.lastDeckSwap = swap;
-    pushEvent(state, { type: 'deckSwap', oldKey: oldKey, newKey: newKey, slot: slot, genre: pickGenre });
+    state.pendingDeckSwap = null;
+    pushEvent(state, { type: 'deckSwap', oldKey: swap.oldKey, newKey: newKey, slot: swap.slot, genre: swap.genre });
     return swap;
+  }
+
+  function rotateDeck(state) {
+    var plan = deckSwapPlan(state);
+    if (!plan) return null;
+    var index = Math.floor(rand(state.rng) * plan.candidates.length) % plan.candidates.length;
+    return commitDeckSwap(state, plan, plan.candidates[index]);
+  }
+
+  function makeDeckSwapOffer(state) {
+    var plan = deckSwapPlan(state, true);
+    if (!plan) {
+      state.pendingDeckSwap = null;
+      return null;
+    }
+    var pool = plan.candidates.slice();
+    var choices = [];
+    while (choices.length < 3 && pool.length) {
+      var index = Math.floor(rand(state.rng) * pool.length) % pool.length;
+      choices.push(pool.splice(index, 1)[0]);
+    }
+    var offer = { slot: plan.slot, oldKey: plan.oldKey, genre: plan.genre, choices: choices };
+    state.pendingDeckSwap = offer;
+    return offer;
+  }
+
+  function applyDeckSwap(state, newKey) {
+    var offer = state && state.pendingDeckSwap;
+    if (!offer || offer.choices.indexOf(newKey) < 0) return null;
+    return commitDeckSwap(state, offer, newKey);
   }
 
   function slotCandidates(state) {
@@ -1335,6 +1383,12 @@
         newKey: state.lastDeckSwap.newKey,
         slot: state.lastDeckSwap.slot
       } : null,
+      deckSwapOffer: state.pendingDeckSwap ? {
+        oldKey: state.pendingDeckSwap.oldKey,
+        genre: state.pendingDeckSwap.genre,
+        slot: state.pendingDeckSwap.slot,
+        choices: state.pendingDeckSwap.choices.slice()
+      } : null,
       boss: state.boss ? {
         hp: state.boss.hp,
         maxHp: state.boss.maxHp,
@@ -1373,6 +1427,7 @@
     upgradeChoices: upgradeChoices,
     slotChoices: slotChoices,
     rotateDeck: rotateDeck,
+    applyDeckSwap: applyDeckSwap,
     stageTargetFor: stageTargetFor,
     consumeEvents: consumeEvents,
     snapshot: snapshot,

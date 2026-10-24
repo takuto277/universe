@@ -701,6 +701,37 @@
       }
     }
 
+    function showDeckSwapChoices(state, offer) {
+      if (!offer) return;
+      showClear(state, []);
+      var snap = E.snapshot(state);
+      if (els.clearTitle) els.clearTitle.textContent = 'DECK CHANGE';
+      if (els.clearHint) els.clearHint.textContent = '1〜3 / 交換する関数を選ぶ';
+      if (els.deckSwap) {
+        var genreText = offer.genre ? ' [' + (C.GENRE_LABELS[offer.genre] || '') + ']' : '';
+        els.deckSwap.innerHTML = '入れ替え' + genreText + ': ' +
+          C.formatModeLabel(offer.oldKey, snap.deckParams, snap.fusion) +
+          ' <span>→</span> 3択から選択';
+        els.deckSwap.classList.remove('hidden');
+      }
+      for (var i = 0; i < 3; i++) {
+        var btn = $('upgrade-' + i);
+        if (!btn) continue;
+        var key = offer.choices[i];
+        if (!key || !C.MODES[key]) {
+          btn.classList.add('hidden');
+          continue;
+        }
+        var mode = C.MODES[key];
+        btn.classList.remove('hidden');
+        btn.style.setProperty('--mode-color', C.modeColor(key));
+        btn.innerHTML = '<em>' + (i + 1) + '</em><b>' +
+          C.formatModeLabel(key, snap.deckParams, snap.fusion) + '</b><span>' +
+          mode.note + ' / ' + (C.GENRE_LABELS[mode.genre] || '') +
+          (mode.family !== 'none' ? ' / ' + C.FAMILY_LABELS[mode.family] : '') + '</span>';
+      }
+    }
+
     function showClear(state, upgradeIds) {
       tutorialMode = false;
       hideTutorial();
@@ -915,6 +946,7 @@
       showEnd: showEnd,
       showClear: showClear,
       showFunctionChoices: showFunctionChoices,
+      showDeckSwapChoices: showDeckSwapChoices,
       showStageBanner: showStageBanner,
       showTutorialStep: showTutorialStep,
       showTutorialComplete: showTutorialComplete,
