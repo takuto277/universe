@@ -174,4 +174,22 @@ assert(s.knownWords.map(function (w) { return w.id; }).join(',') === 'me,you,wan
 assert(s.contractMemo.map(function (w) { return w.id; }).join(',') === 'me,you,want', '契約メモが不正');
 assert(s.choices.map(function (g) { return g.id; }).join(',') === 'bread,fish,gem', '品物の並びが不正');
 
+/* 11) 全問正解でも、+5の契約を断るとSのまま契約評価だけが甘くなる */
+var positiveGame = null;
+for (var seed = 1; seed < 80; seed++) {
+  var candidate = E.createGame({ seed: seed });
+  candidate.start();
+  while (candidate.state.phase !== 'contract') candidate.autoStep();
+  if (candidate.state.contract.effect > 0) {
+    positiveGame = candidate;
+    break;
+  }
+}
+assert(positiveGame !== null, '+5の契約になるシードが見つからない');
+assert(positiveGame.state.coins === 30, '全問正解の硬貨が30でない');
+assert(positiveGame.refuseContract() === true, '契約を拒否できない');
+assert(positiveGame.state.coins === 30 && positiveGame.state.rank === 'S', '拒否時にS/30でない');
+assert(positiveGame.getState().review.optimal === false, '良い契約を断ったのに最適扱い');
+assert(positiveGame.getState().endedAt > 0, 'endedAt が記録されていない');
+
 log('engine tests OK (' + passed + ' assertions)');

@@ -440,6 +440,7 @@
         review: reviewView(),
         rank: state.rank,
         score: state.score,
+        endedAt: state.endedAt,
         elapsedMs: state.startedAt ? ((state.endedAt || Date.now()) - state.startedAt) : 0
       };
     }

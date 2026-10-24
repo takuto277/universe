@@ -32,6 +32,7 @@ Harness.run({
     h.assert(els['start-overlay'] && !els['start-overlay'].classList.contains('visible'), 'スタート画面が残っている');
     h.assert(els['contract-overlay'] && !els['contract-overlay'].classList.contains('visible'), '契約画面が残っている');
     h.assert(els['coins'] && els['coins'].textContent === String(state.coins), 'HUDの硬貨が一致しない');
+    h.assert(els['best-label-end'] && els['best-label-end'].textContent.indexOf('更新') < 0, 'localStorageなしで自己ベスト更新と表示している');
   },
   summary: function (state) {
     print('  評価=' + state.rank + ' / 硬貨=' + state.coins +

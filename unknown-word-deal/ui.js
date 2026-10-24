@@ -46,20 +46,24 @@
 
   function readBest() {
     try {
-      if (!root.localStorage) return null;
+      if (!root.localStorage) return { available: false, value: null };
       var raw = root.localStorage.getItem('uwd-mobile-best');
-      if (raw == null) return null;
+      if (raw == null) return { available: true, value: null };
       var value = parseInt(raw, 10);
-      return isNaN(value) ? null : value;
+      return { available: true, value: isNaN(value) ? null : value };
     } catch (e) {
-      return null;
+      return { available: false, value: null };
     }
   }
 
   function writeBest(score) {
     try {
-      if (root.localStorage) root.localStorage.setItem('uwd-mobile-best', String(score));
-    } catch (e) { /* 保存できない環境では表示だけ */ }
+      if (!root.localStorage) return false;
+      root.localStorage.setItem('uwd-mobile-best', String(score));
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   function create(game) {
@@ -119,6 +123,7 @@
     var bestCacheKey = null;
     var bestCacheValue = null;
     var bestCacheNew = false;
+    var bestCacheAvailable = true;
 
     function sfx(name) {
       if (root.LangAudio) root.LangAudio.play(name);
@@ -205,7 +210,11 @@
 
     function renderStart(s) {
       var best = readBest();
-      setText(els.bestLabel, s.phase === 'start' && best != null ? '自己ベスト: ' + best + '硬貨' : '');
+      if (!best.available) {
+        setText(els.bestLabel, s.phase === 'start' ? '自己ベスト: 保存できません' : '');
+      } else {
+        setText(els.bestLabel, s.phase === 'start' && best.value != null ? '自己ベスト: ' + best.value + '硬貨' : '');
+      }
     }
 
     function renderTutorial() {
@@ -243,11 +252,20 @@
       var key = s.seed + ':' + s.score + ':' + s.endedAt;
       if (bestCacheKey !== key) {
         var best = readBest();
-        var isNew = best == null || s.score > best;
-        if (isNew) writeBest(s.score);
+        var isNew = false;
+        if (best.available) {
+          isNew = best.value == null || s.score > best.value;
+          if (isNew) isNew = writeBest(s.score);
+        }
         bestCacheKey = key;
-        bestCacheValue = isNew ? s.score : best;
+        bestCacheValue = isNew ? s.score : best.value;
         bestCacheNew = isNew;
+        bestCacheAvailable = best.available;
+      }
+      if (!bestCacheAvailable) {
+        setText(els.bestLabelEnd, '自己ベスト: 保存できません');
+        toggleClass(els.bestLabelEnd, 'new', false);
+        return;
       }
       setText(els.bestLabelEnd, (bestCacheNew ? '自己ベスト更新: ' : '自己ベスト: ') + bestCacheValue + '硬貨');
       toggleClass(els.bestLabelEnd, 'new', bestCacheNew);
@@ -256,7 +274,7 @@
     function renderEnding(s) {
       if (s.phase !== 'ending') return;
       var ranks = {
-        S: { title: '伝説の通訳者', text: '3人の商人を読み切り、契約も最適にまとめた。' },
+        S: { title: '伝説の通訳者', text: '3人の商人を読み切った。' },
         A: { title: '腕利きの交渉人', text: '十分な利益を上げた。あと一歩で完璧だった。' },
         B: { title: '旅の見習い', text: 'いくつか読み違えたが、旅を続ける力はある。' },
         C: { title: 'ことばに飲まれた者', text: '次はしぐさと消去法を頼りにしよう。' }
@@ -327,6 +345,7 @@
       bestCacheKey = null;
       bestCacheValue = null;
       bestCacheNew = false;
+      bestCacheAvailable = true;
     }
 
     /* ---------- events ---------- */
