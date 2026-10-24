@@ -1234,7 +1234,7 @@ class Runner:
 
     # ---- レビュー指摘の Issue 化 ----
     def parse_findings(self, body: str) -> List[dict]:
-        """レビュー本文から Consider / Nit の指摘を取り出す。"""
+        """レビュー本文から Consider の指摘を取り出す。"""
         items = []
         current = None
         detail = []
@@ -1318,7 +1318,8 @@ class Runner:
                     existing = True
                     break
                 # 旧形式（1指摘1Issue）の重複も避ける
-                if "review-finding fp=" in body and ("/pull/%d" % number) in body:
+                if "review-finding fp=" in body and re.search(
+                        r"/pull/%d(?!\d)" % number, body):
                     existing = True
                     break
         except ValueError:
@@ -1332,7 +1333,7 @@ class Runner:
             "## 背景",
             "",
             "PR #%d はマージ済みです。レビューの Consider 指摘をフォローアップとして残します。" % number,
-            "Nit / FYI は PR のコメントを参照してください。",
+            "Nit / FYI はレビュー本文を参照してください。",
             "",
             "## 指摘",
             "",
@@ -1594,7 +1595,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
   ./tools/agent.sh pause / resume                        停止 / 再開
   ./tools/agent.sh run --dry-run                         次の対象を確認
   ./tools/agent.sh fix --pr <番号>                       PRのBlockerを自動修正
-  ./tools/agent.sh findings --pr <番号>                  レビューのConsider/NitをIssue化
+  ./tools/agent.sh findings --pr <番号>                  マージ後ConsiderをIssue化
 
 詳しい説明: docs/unattended-agents.md
 すべてのオプション: ./tools/agent.sh --help""")

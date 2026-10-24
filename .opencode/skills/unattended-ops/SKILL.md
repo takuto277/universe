@@ -37,7 +37,7 @@ watcher 全体は `~/.local/state/universe-auto-pr/pause`、PR 単位は Draft /
 ## レビューと修正
 
 - Blocker は watcher が `fix --pr` で自動修正を試み、最大3回で停止します
-- レビューの Consider/Nit は `findings --pr` で `agent:proposed` に記録されます
+- マージ後の Consider は `findings --pr` で1つの `agent:proposed` Issue にまとまります（Nit/FYIはレビュー本文）
 - 週次 planner は毎週月曜09:00 に提案を作ります
 
 ## 制約
