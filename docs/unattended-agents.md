@@ -88,14 +88,14 @@ UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-planner.sh
 ### レビュー指摘の Issue 化
 
 ```sh
-./tools/agent.sh findings --pr 35           # Consider/Nit を agent:proposed の Issue に
+./tools/agent.sh findings --pr 35           # マージ済みPRのConsiderを1つのIssueに
 ./tools/agent.sh findings --pr 35 --dry-run # 作成内容の確認だけ
 ```
 
-- 直近の自分の AI レビュー（最新 head）から Consider / Nit を取り出します
-- 本文に `review-finding fp=<hash>` を埋め込み、同じ指摘は重複作成しません(クローズ済みも対象)
-- `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）で1回の作成数を制限します
-- watcher はレビュー後に自動で実行します（`UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効）
+- **マージ済みPRのみ**が対象です。Nit / FYI は PR コメントのままにします
+- Consider 指摘をチェックリストにした1つの Issue を作ります（既にIssueがあれば重複しません）
+- チェックリストの上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
+- watcher はマージ後に自動で実行します（`UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効）
 
 ### 止める・再開する
 

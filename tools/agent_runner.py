@@ -24,7 +24,6 @@
 
 import argparse
 import fcntl
-import hashlib
 import json
 import re
 import os
@@ -1277,89 +1276,92 @@ class Runner:
                 current = None
                 detail = []
         flush()
-        return [item for item in items if item["type"] in ("Consider", "Nit")]
-
-    def _finding_fingerprint(self, item: dict) -> str:
-        normalized = re.sub(r"\s+", " ", item["text"]).strip()
-        return hashlib.sha1((item["type"] + ":" + normalized).encode("utf-8")).hexdigest()[:12]
+        return [item for item in items if item["type"] == "Consider"]
 
     def findings(self, number: int, dry_run: bool = False) -> int:
         if self.paused():
             self.log("pause 中のため指摘を Issue 化しません")
             return 0
         result = self.gh("pr", "view", str(number), "--repo", self.cfg.repo,
-                         "--json", "number,title,headRefOid,url")
+                         "--json", "number,title,headRefOid,url,state")
         if not result.ok:
             raise TaskError("PR #%d を取得できません: %s" % (number, tail(result.stderr)))
         try:
             data = json.loads(result.stdout or "{}")
         except ValueError as exc:
             raise TaskError("PR の JSON を解釈できません: %s" % exc)
+        if (data.get("state") or "").upper() != "MERGED":
+            self.log("PR #%d: マージ済みPRのみ Issue 化します" % number)
+            return 0
         head = data.get("headRefOid") or ""
         review = self.latest_ai_review(number, head)
         if not review:
             self.log("PR #%d: 対象のAIレビューがありません" % number)
             return 0
         items = self.parse_findings(review.get("body") or "")
+        items = items[:max(0, self.cfg.findings_max)]
         if not items:
-            self.log("PR #%d: Issue 化する Consider/Nit はありません" % number)
+            self.log("PR #%d: Issue 化する Consider はありません" % number)
             return 0
 
-        if not dry_run:
-            self.ensure_labels()
-        existing = set()
         listed = self.gh("issue", "list", "--repo", self.cfg.repo, "--state", "all",
                          "--limit", "300", "--json", "number,body")
-        if listed.ok:
-            try:
-                for issue in json.loads(listed.stdout or "[]"):
-                    body = issue.get("body") or ""
-                    match = re.search(r"<!--\s*review-finding\s+fp=([0-9a-f]+)\s*-->", body)
-                    if match:
-                        existing.add(match.group(1))
-            except ValueError:
-                pass
+        if not listed.ok:
+            self.log("PR #%d: 既存Issueを確認できないため中止します" % number)
+            return 1
+        pr_url = data.get("url") or ""
+        existing = False
+        try:
+            for issue in json.loads(listed.stdout or "[]"):
+                body = issue.get("body") or ""
+                if re.search(r"<!--\s*review-findings\s+pr=%d(?:\s|-->)" % number, body):
+                    existing = True
+                    break
+                # 旧形式（1指摘1Issue）の重複も避ける
+                if "review-finding fp=" in body and ("/pull/%d" % number) in body:
+                    existing = True
+                    break
+        except ValueError:
+            existing = False
+        if existing:
+            self.log("PR #%d: 既にレビュー指摘の Issue があります" % number)
+            return 0
 
-        created = 0
-        created_any = 0
+        title = "repo: PR #%d のレビュー指摘（Consider %d件）" % (number, len(items))
+        lines = [
+            "## 背景",
+            "",
+            "PR #%d はマージ済みです。レビューの Consider 指摘をフォローアップとして残します。" % number,
+            "Nit / FYI は PR のコメントを参照してください。",
+            "",
+            "## 指摘",
+            "",
+        ]
         for item in items:
-            fingerprint = self._finding_fingerprint(item)
-            if fingerprint in existing:
-                continue
-            if created_any >= max(0, self.cfg.findings_max):
-                break
-            title = "repo: レビュー指摘 - %s" % item["text"][:50]
-            body = "\n".join([
-                "## 背景",
-                "",
-                "PR #%d のAIレビューで %s として指摘されました。" % (number, item["type"]),
-                "",
-                "## 指摘",
-                "",
-                item["text"],
-                "",
-                "## 出典",
-                "",
-                "- PR: %s" % (data.get("url") or ""),
-                "- レビュー: %s" % (review.get("url") or ""),
-                "- head: `%s`" % head,
-                "",
-                "<!-- review-finding fp=%s -->" % fingerprint,
-            ])
-            created_any += 1
-            if dry_run:
-                self.log("dry-run: Issue を作成します: %s" % title)
-                continue
-            created_issue = self.gh("issue", "create", "--repo", self.cfg.repo,
-                                    "--title", title, "--body", body,
-                                    "--label", "agent:proposed", timeout=120)
-            if not created_issue.ok:
-                self.log("Issue の作成に失敗: %s" % tail(created_issue.stderr))
-                continue
-            created += 1
-            self.log("PR #%d: %s を Issue 化しました" % (number, item["type"]))
-        if not dry_run:
-            self.log("PR #%d: 指摘を %d 件 Issue 化しました" % (number, created))
+            lines.append("- [ ] %s" % item["text"])
+        lines += [
+            "",
+            "## 出典",
+            "",
+            "- PR: %s" % pr_url,
+            "- レビュー: %s" % (review.get("url") or ""),
+            "- head: `%s`" % head,
+            "",
+            "<!-- review-findings pr=%d head=%s -->" % (number, head),
+        ]
+        body = "\n".join(lines)
+        if dry_run:
+            self.log("dry-run: Issue を作成します: %s" % title)
+            return 0
+
+        self.ensure_labels()
+        created = self.gh("issue", "create", "--repo", self.cfg.repo,
+                          "--title", title, "--body", body,
+                          "--label", "agent:proposed", timeout=120)
+        if not created.ok:
+            self.log("Issue の作成に失敗: %s" % tail(created.stderr))
+            return 1
+        self.log("PR #%d: Consider %d件を Issue 化しました" % (number, len(items)))
         return 0
 
     # ---- 提案 ----
