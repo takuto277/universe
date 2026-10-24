@@ -950,6 +950,13 @@ class RunnerTest(unittest.TestCase):
         self.assertEqual(0, self.runner.findings(33))
         self.assertFalse(self.fake.called("gh", "issue", "create"))
 
+    def test_findings_old_issue_for_other_pr_does_not_block(self):
+        old = ("<!-- review-finding fp=abc123 -->\n"
+               "- PR: https://github.com/takuto277/universe/pull/330")
+        self.findings_happy("### Consider\n- A", existing=[old])
+        self.assertEqual(0, self.runner.findings(33))
+        self.assertEqual(1, len(self.fake.find("gh", "issue", "create")))
+
     def test_findings_respects_limit(self):
         cfg = replace(self.cfg, findings_max=1)
         runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)

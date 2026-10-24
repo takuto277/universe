@@ -16,7 +16,7 @@ python3 tools/pr_merge.py --pr <n>  # 五点ゲート + squash merge
 ./tools/agent.sh enqueue "タイトル" --body "依頼内容"  # 無人実装キューに追加
 ./tools/agent.sh              # 引数なしで使い方を表示
 ./tools/agent.sh fix --pr <n> # PRのBlockerを自動修正して再レビュー
-./tools/agent.sh findings --pr <n>  # レビューのConsider/NitをIssue化
+./tools/agent.sh findings --pr <n>  # マージ後レビューのConsiderをIssue化
 ./tools/install-agent-planner.sh    # 週次提案のLaunchAgent登録
 ./tools/agent.sh status       # 無人実装キューの状態
 ./tools/automation-root.sh status  # LaunchAgent用main追従チェックアウト

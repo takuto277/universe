@@ -92,9 +92,9 @@ UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-planner.sh
 ./tools/agent.sh findings --pr 35 --dry-run # 作成内容の確認だけ
 ```
 
-- **マージ済みPRのみ**が対象です。Nit / FYI は PR コメントのままにします
+- **マージ済みPRのみ**が対象です。Nit / FYI はレビュー本文のままにします
 - Consider 指摘をチェックリストにした1つの Issue を作ります（既にIssueがあれば重複しません）
-- チェックリストの上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
+- 1つのIssueのチェックリストに載せる上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
 - watcher はマージ後に自動で実行します（`UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効）
 
 ### 止める・再開する
