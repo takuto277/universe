@@ -113,6 +113,19 @@ python3 -m http.server 8000
 | `test-audio.js` | BGM/効果音の生成・ミュート・停止のテスト（AudioContextスタブ） |
 | `test-smoke.js` | 1 回プレイして終了画面まで到達するスモークテスト |
 | `test-tutorial.js` | チュートリアルを開始し、3ステップ完了まで進めるテスト |
+| `evaluate-functions.js` | 各関数の軌道メトリクスを測る評価ツール |
+| `function-eval.md` | 関数評価シート・暫定レアリティ・ガチャ設計メモ |
+
+## 関数評価
+
+関数の軌道メトリクスを測る簡易ツールがあります。
+
+```sh
+cd graph-cross
+jsc evaluate-functions.js
+```
+
+評価軸・暫定レアリティ・ガチャ設計メモは [function-eval.md](function-eval.md) を参照してください。
 
 ## テスト
 
