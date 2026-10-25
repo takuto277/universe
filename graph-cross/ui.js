@@ -631,6 +631,13 @@
           : 'レア+ 天井 ' + gacha.pityRare + '/' + B.GACHA_RARE_PITY +
             ' · EPIC 天井 ' + gacha.pityEpic + '/' + B.GACHA_EPIC_PITY;
       }
+      if (els.gachaRates) {
+        var rates = G.rates(gacha);
+        els.gachaRates.textContent = rates.length
+          ? rates.map(function (r) { return C.RARITY_INFO[r.rarity].label + ' ' + r.percent + '%'; }).join(' / ')
+          : 'コンプリート';
+      }
+      if (els.gachaReward) els.gachaReward.textContent = 'ステージクリアで関数ポイント +' + B.GACHA_STAGE_REWARD;
     }
 
     function renderGachaResult() {
@@ -1037,6 +1044,8 @@
       els.gachaResult = $('gacha-result');
       els.btnGachaRoll = $('btn-gacha-roll');
       els.gachaPity = $('gacha-pity');
+      els.gachaRates = $('gacha-rates');
+      els.gachaReward = $('gacha-reward');
       els.gachaCollection = $('gacha-collection');
       els.btnGachaClose = $('btn-gacha-close');
       els.clearTitle = $('clear-title');

@@ -62,20 +62,57 @@
     return out;
   }
 
+  function unownedPool(state, rarity) {
+    var out = [];
+    var pool = poolFor(rarity);
+    for (var i = 0; i < pool.length; i++) {
+      if (state.unlocked.indexOf(pool[i]) < 0) out.push(pool[i]);
+    }
+    return out;
+  }
+
+  function availableRarities(state) {
+    var out = [];
+    for (var i = 0; i < POOL_RARITIES.length; i++) {
+      if (unownedPool(state, POOL_RARITIES[i]).length) out.push(POOL_RARITIES[i]);
+    }
+    return out;
+  }
+
   function pickRarity(state, random) {
-    if (state.pityEpic >= B.GACHA_EPIC_PITY - 1) return 'epic';
-    var forceRare = state.pityRare >= B.GACHA_RARE_PITY - 1;
-    var rarities = forceRare ? ['rare', 'epic'] : POOL_RARITIES;
+    var available = availableRarities(state);
+    if (!available.length) return null;
+    var forceEpic = state.pityEpic >= B.GACHA_EPIC_PITY - 1 && available.indexOf('epic') >= 0;
+    var canRare = available.indexOf('rare') >= 0 || available.indexOf('epic') >= 0;
+    var forceRare = !forceEpic && state.pityRare >= B.GACHA_RARE_PITY - 1 && canRare;
+    var rarities = forceEpic ? ['epic'] : (forceRare
+      ? available.filter(function (r) { return r === 'rare' || r === 'epic'; })
+      : available);
     var total = 0;
     var i;
     for (i = 0; i < rarities.length; i++) total += C.RARITY_INFO[rarities[i]].weight;
-    if (total <= 0) return 'common';
+    if (total <= 0) return rarities[0];
     var target = random() * total;
     for (i = 0; i < rarities.length; i++) {
       target -= C.RARITY_INFO[rarities[i]].weight;
       if (target < 0) return rarities[i];
     }
     return rarities[rarities.length - 1];
+  }
+
+  function rates(state) {
+    var available = availableRarities(state);
+    var total = 0;
+    var i;
+    for (i = 0; i < available.length; i++) total += C.RARITY_INFO[available[i]].weight;
+    var out = [];
+    for (i = 0; i < available.length; i++) {
+      out.push({
+        rarity: available[i],
+        percent: Math.round(C.RARITY_INFO[available[i]].weight / total * 1000) / 10
+      });
+    }
+    return out;
   }
 
   function roll(state, random) {
@@ -85,16 +122,10 @@
     var rand = typeof random === 'function' ? random : Math.random;
     state.points -= B.GACHA_COST;
     var rarity = pickRarity(state, rand);
-    var pool = poolFor(rarity);
-    if (!pool.length) {
-      rarity = 'common';
-      pool = poolFor(rarity);
-    }
+    if (!rarity) return { ok: false, reason: 'complete', state: state };
+    var pool = unownedPool(state, rarity);
     var key = pool[Math.floor(rand() * pool.length) % pool.length];
-    var isNew = state.unlocked.indexOf(key) < 0;
-    if (isNew) state.unlocked.push(key);
-    var duplicatePoints = isNew ? 0 : C.RARITY_INFO[rarity].duplicate;
-    if (duplicatePoints) state.points += duplicatePoints;
+    state.unlocked.push(key);
     state.rolls++;
     if (rarity === 'epic') {
       state.pityRare = 0;
@@ -110,8 +141,8 @@
       ok: true,
       key: key,
       rarity: rarity,
-      isNew: isNew,
-      duplicatePoints: duplicatePoints,
+      isNew: true,
+      duplicatePoints: 0,
       points: state.points,
       rolls: state.rolls
     };
@@ -132,6 +163,7 @@
     allUnlocked: allUnlocked,
     roll: roll,
     grant: grant,
+    rates: rates,
     poolFor: poolFor
   };
 });
