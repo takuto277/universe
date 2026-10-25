@@ -103,11 +103,14 @@ if command -v gh >/dev/null 2>&1; then
   ok "gh $(gh --version | head -1 | awk '{print $3}')"
   if gh auth status >/dev/null 2>&1; then
     ok "gh 認証済み"
-    perm="$(gh repo view "$REPO" --json viewerPermission -q .viewerPermission 2>/dev/null || true)"
-    case "$perm" in
-      READ|TRIAGE|WRITE|MAINTAIN|ADMIN) ok "リポジトリ権限: $perm" ;;
-      *) bad "リポジトリ $REPO にアクセスできません (gh repo view)" ;;
-    esac
+    for repo in "$REPO" ${UNIVERSE_AUTO_PR_REPO:+"$UNIVERSE_AUTO_PR_REPO"}; do
+      [ -n "$repo" ] || continue
+      perm="$(gh repo view "$repo" --json viewerPermission -q .viewerPermission 2>/dev/null || true)"
+      case "$perm" in
+        READ|TRIAGE|WRITE|MAINTAIN|ADMIN) ok "リポジトリ権限 ($repo): $perm" ;;
+        *) bad "リポジトリ $repo にアクセスできません (gh repo view)" ;;
+      esac
+    done
   else
     bad "gh が未認証です (gh auth login)"
   fi

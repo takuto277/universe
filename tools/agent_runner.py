@@ -1281,7 +1281,7 @@ class Runner:
     def findings(self, number: int, dry_run: bool = False) -> int:
         if self.paused():
             self.log("pause 中のため指摘を Issue 化しません")
-            return 0
+            return 2
         result = self.gh("pr", "view", str(number), "--repo", self.cfg.repo,
                          "--json", "number,title,headRefOid,url,state")
         if not result.ok:

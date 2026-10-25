@@ -325,8 +325,8 @@ record_findings() {
     return 0
   fi
   if [ "$DRY_RUN" = "1" ]; then
-    "$PYTHON" "$ROOT/tools/agent_runner.py" findings --pr "$number" --dry-run \
-      >>"$LOG_FILE" 2>&1 || true
+    UNIVERSE_AGENT_REPO="$REPO" "$PYTHON" "$ROOT/tools/agent_runner.py" \
+      findings --pr "$number" --dry-run >>"$LOG_FILE" 2>&1 || true
     return 0
   fi
   local pending="$STATE_DIR/findings-pending/$number"
@@ -343,10 +343,14 @@ record_findings() {
 
 retry_pending_findings() {
   [ -d "$STATE_DIR/findings-pending" ] || return 0
+  if [ "$DRY_RUN" = "1" ] || [ "${UNIVERSE_AUTO_PR_CREATE_ISSUES:-1}" != "1" ]; then
+    return 0
+  fi
   for pending in "$STATE_DIR"/findings-pending/*; do
     [ -f "$pending" ] || continue
     number="$(basename "$pending")"
     if [ -n "$(find "$pending" -mtime +7 2>/dev/null)" ]; then
+      log "PR #$number: pending findings expired; dropped"
       rm -f "$pending"
       continue
     fi

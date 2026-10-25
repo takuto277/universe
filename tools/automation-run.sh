@@ -22,6 +22,9 @@ fi
 {
   if mkdir "$LOCK" 2>/dev/null; then
     trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
+    if [ ! -f "$ROOT/.universe-automation-root" ]; then
+      printf '%s unmanaged worktree; skip update\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+    else
     printf '%s update start\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
     if git -C "$ROOT" fetch --quiet origin "$BASE"; then
       if git -C "$ROOT" reset --hard --quiet "origin/$BASE"; then
@@ -32,6 +35,7 @@ fi
       fi
     else
       printf '%s fetch failed; continue with current checkout\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+    fi
     fi
     rmdir "$LOCK" 2>/dev/null || true
     trap - EXIT

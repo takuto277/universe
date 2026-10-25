@@ -55,7 +55,7 @@ LaunchAgent は、人間が作業しているチェックアウトとは別の *
 | sandbox-exec | 実行の隔離 | macOS 標準 |
 | gh | Issue/PR 操作 | https://cli.github.com/ または `brew install gh` |
 | opencode | AI レビュー・実装 | https://opencode.ai/docs/ |
-| gh 認証 | PR・Issue 操作 | `gh auth login` |
+| gh 認証 / リポジトリ権限 | PR・Issue 操作 | `gh auth login`（`UNIVERSE_AGENT_REPO` / `UNIVERSE_AUTO_PR_REPO` の権限も確認） |
 | opencode 認証 | モデル利用 | `opencode` の初回セットアップ（setup は存在のみ確認） |
 
 Homebrew がある場合、`--install` で不足している `gh` だけを導入します。opencode は公式手順で入れてください（`curl | bash` を勝手に実行しないため）。
