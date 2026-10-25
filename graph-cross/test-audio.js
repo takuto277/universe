@@ -74,6 +74,13 @@ var reviveBefore = oscStarts;
 audio.play('revive');
 assert(oscStarts > reviveBefore, 'リバイブ音が鳴る');
 
+var warnBefore = oscStarts;
+audio.play('warn');
+assert(oscStarts > warnBefore, '警告音が鳴る');
+audio.play('laser');
+audio.play('shot');
+audio.play('phase');
+
 var guardBefore = oscStarts;
 audio.play('guard');
 assert(oscStarts > guardBefore, 'コンボガード音が鳴る');

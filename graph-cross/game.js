@@ -188,6 +188,38 @@
         addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.9)', 70, 0.45);
         addLabel(ev.x + 24, ev.y - 20, 'COMBO GUARD', '#ffd166', 16);
         if (audio) audio.play('guard');
+      } else if (ev.type === 'bossWarning') {
+        addRing(ev.x, ev.y, 'rgba(255, 77, 141, 0.8)', 52, 0.4);
+        addLabel(ev.x - 50, ev.y - 34, ev.kind === 'laser' ? 'LASER WARNING' : (ev.kind === 'fan' ? 'FAN WARNING' : 'SHOT WARNING'), '#ff8f9f', 15);
+        if (audio) audio.play('warn');
+      } else if (ev.type === 'bossLaser') {
+        spawnParticles(ev.x, ev.y, 24, ['#ff4d8d', '#ffd166', '#ffffff'], 260, 0.6);
+        shake = Math.max(shake, 0.6);
+        flash = Math.max(flash, 0.22);
+        flashColor = '255, 77, 141';
+        if (audio) audio.play('laser');
+      } else if (ev.type === 'bossShots') {
+        addLabel(ev.x - 30, ev.y - 30, ev.kind === 'fan' ? 'FAN SHOT' : 'SHOT', '#ffd166', 14);
+        if (audio) audio.play('shot');
+      } else if (ev.type === 'bossPhase') {
+        addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.95)', 150, 0.8);
+        addLabel(ev.x - 60, ev.y - 50, 'PHASE ' + ev.phase, '#ffd166', 26);
+        addLabel(ev.x - 30, ev.y + 20, '弱点が変化', '#9ffaff', 14);
+        shake = 0.9;
+        flash = 0.45;
+        flashColor = '255, 209, 102';
+        if (audio) audio.play('phase');
+      } else if (ev.type === 'playerHit') {
+        spawnParticles(ev.x, ev.y, 26, ['#ff4d8d', '#ff8f9a', '#ffffff'], 280, 0.65);
+        addLabel(ev.x - 40, ev.y - 24, 'DAMAGE -1', '#ff6b7a', 20);
+        shake = 1;
+        flash = 0.45;
+        flashColor = '255, 77, 141';
+        if (audio) audio.play('miss');
+      } else if (ev.type === 'shotBlocked') {
+        spawnParticles(ev.x, ev.y, 12, ['#5ff0ff', '#ffffff'], 180, 0.45);
+        addLabel(ev.x - 20, ev.y - 18, '+' + ev.gain, '#9ffaff', 13);
+        if (audio) audio.play('ui');
       } else if (ev.type === 'bossEscape') {
         addLabel(viewW * 0.5 - 80, viewH * 0.4, 'BOSS ESCAPED', '#ff6b5e', 24);
         spawnParticles(40, ev.y || viewH * 0.5, 24, ['#ff4d8d', '#ff8f6b'], 240, 0.8);

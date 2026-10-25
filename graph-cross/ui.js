@@ -300,7 +300,7 @@
           if (els.stageFill) els.stageFill.style.width = '100%';
           if (els.stageNote) els.stageNote.textContent = 'クリア!';
         } else if (snap && snap.boss) {
-          els.stageLabel.textContent = 'STAGE ' + stage + ' · BOSS';
+          els.stageLabel.textContent = 'STAGE ' + stage + ' · BOSS P' + (snap.boss.phase || 1);
           if (els.stageFill) els.stageFill.style.width = Math.round(snap.boss.hp / snap.boss.maxHp * 100) + '%';
           if (els.stageNote) els.stageNote.textContent = '弱点: ' + snap.boss.familyLabel + ' / HP ' + snap.boss.hp + '/' + snap.boss.maxHp;
         } else {

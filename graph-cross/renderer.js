@@ -252,7 +252,77 @@
       ctx.font = '900 13px ui-monospace, Menlo, monospace';
       var labelY = E.rivalY(boss, 0) - 18;
       if (labelY < state.top + 12) labelY = E.rivalY(boss, 0) + 24;
-      ctx.fillText('BOSS / 弱点:' + (C.FAMILY_LABELS[boss.family] || '—'), boss.x + 8, labelY);
+      ctx.fillText('BOSS P' + (boss.phase || 1) + ' / 弱点:' + (C.FAMILY_LABELS[boss.family] || '—'), boss.x + 8, labelY);
+    }
+
+    function drawBossAttacks(state, time) {
+      if (!state) return;
+      var boss = state.boss;
+      if (boss && boss.warning) {
+        var w = boss.warning;
+        var pulse = 0.45 + 0.4 * Math.sin(time * 18);
+        ctx.save();
+        if (w.kind === 'laser') {
+          ctx.globalAlpha = pulse;
+          ctx.strokeStyle = '#ff4d8d';
+          ctx.lineWidth = 2;
+          ctx.setLineDash([10, 8]);
+          ctx.beginPath();
+          ctx.moveTo(0, w.y);
+          ctx.lineTo(viewW, w.y);
+          ctx.stroke();
+          ctx.setLineDash([]);
+          ctx.fillStyle = '#ff8f9f';
+          ctx.font = '900 10px ui-monospace, Menlo, monospace';
+          ctx.fillText('LASER', viewW - 48, w.y - 7);
+        } else {
+          ctx.globalAlpha = pulse;
+          ctx.strokeStyle = '#ffd166';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(boss.x + Math.min(boss.len, 500) / 2, boss.baseY, 28 + Math.sin(time * 12) * 5, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.fillStyle = '#ffd166';
+          ctx.font = '900 10px ui-monospace, Menlo, monospace';
+          ctx.fillText(w.kind === 'fan' ? 'FAN' : 'SHOT', boss.x + 8, boss.baseY - 34);
+        }
+        ctx.restore();
+      }
+      if (boss && boss.beamTimer > 0) {
+        var alpha = Math.min(1, boss.beamTimer / 0.26);
+        ctx.save();
+        ctx.globalCompositeOperation = 'lighter';
+        ctx.globalAlpha = alpha;
+        ctx.strokeStyle = 'rgba(255, 77, 141, 0.95)';
+        ctx.shadowColor = '#ff4d8d';
+        ctx.shadowBlur = 24;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, boss.beamY);
+        ctx.lineTo(viewW, boss.beamY);
+        ctx.stroke();
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 1.2;
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (state.bossShots) {
+        for (var i = 0; i < state.bossShots.length; i++) {
+          var shot = state.bossShots[i];
+          ctx.save();
+          ctx.shadowColor = '#ff4d8d';
+          ctx.shadowBlur = 16;
+          ctx.fillStyle = '#ff7a9f';
+          ctx.beginPath();
+          ctx.arc(shot.x, shot.y, shot.r, 0, Math.PI * 2);
+          ctx.fill();
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.beginPath();
+          ctx.arc(shot.x - 1, shot.y - 1, Math.max(2, shot.r * 0.35), 0, Math.PI * 2);
+          ctx.fill();
+          ctx.restore();
+        }
+      }
     }
 
     function drawPlayer(state, time) {
@@ -312,6 +382,18 @@
       ctx.fill();
       ctx.globalAlpha = 1;
       ctx.restore();
+
+      if (state.playerInvuln > 0) {
+        var blink = 0.55 + 0.35 * Math.sin(time * 24);
+        ctx.save();
+        ctx.globalAlpha = blink;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.9)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(hx, hy, 18, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.restore();
+      }
 
       ctx.fillStyle = headColor;
       ctx.font = '11px ui-monospace, Menlo, monospace';
@@ -393,6 +475,7 @@
       drawRivals(state, time);
       drawAllies(state, time);
       drawBoss(state, time);
+      drawBossAttacks(state, time);
       drawPlayer(state, time);
       drawItems(state, time);
       drawEffects(effects);

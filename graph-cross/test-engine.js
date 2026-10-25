@@ -371,6 +371,68 @@ assert(g.trail.length === 0 && g.boss === null, '次ステージで曲線とボ�
 assert(g.score === scoreAfterClear, 'スコアは持ち越す');
 assert(E.nextStage(g) === false, 'クリア前は次ステージへ進めない');
 
+/* 9b2) ボスの攻撃・フェーズ */
+g = makeGame(9010, ['hold', 'up', 'wave']);
+g.stageHits = g.stageTarget;
+g.bossCooldown = 0;
+g.rivals = [];
+E.update(g, 1 / 60);
+assert(g.boss && g.boss.phase === 1, 'ボスはフェーズ1から');
+g.hp = 3;
+g.boss.attackTimer = 0;
+g.boss.warning = null;
+E.update(g, 1 / 60);
+assert(g.boss.warning && g.boss.warning.kind === 'laser', 'レーザー予告が出る');
+var laserY = g.boss.warning.y;
+g.y = laserY;
+g.playerInvuln = 0;
+g.boss.warning.timer = 0;
+E.update(g, 1 / 60);
+assert(g.hp === 2 && g.playerInvuln > 0, 'レーザー被弾でライフ-1と無敵');
+var bossAttackEvents = E.consumeEvents(g);
+assert(bossAttackEvents.some(function (e) { return e.type === 'bossLaser'; }), 'bossLaserイベント');
+assert(bossAttackEvents.some(function (e) { return e.type === 'playerHit'; }), 'playerHitイベント');
+
+g.hp = 3;
+g.playerInvuln = 0;
+g.boss.attackTimer = 0;
+g.boss.warning = null;
+E.update(g, 1 / 60);
+g.y = g.bottom - 20;
+g.boss.warning.y = g.top + 20;
+g.boss.warning.timer = 0;
+E.update(g, 1 / 60);
+assert(g.hp === 3, 'レーザーを高さで避けられる');
+
+g.boss.warning = { kind: 'shots', y: g.y, timer: 0 };
+g.boss.attackTimer = 999;
+E.update(g, 1 / 60);
+assert(g.bossShots.length >= 2, 'ボスが弾を撃つ');
+
+g = makeGame(9011, ['hold', 'up', 'wave']);
+g.stageHits = g.stageTarget;
+g.bossCooldown = 0;
+g.rivals = [];
+E.update(g, 1 / 60);
+g.boss.maxHp = 20;
+g.boss.hp = 14;
+g.boss.x = g.headX - 5;
+g.boss.len = 100;
+g.boss.shape = 'line';
+g.boss.slope = 0;
+g.boss.baseY = g.y;
+g.boss.centerY = g.y;
+g.boss.family = 'linear';
+g.boss.attackTimer = 999;
+g.boss.invuln = 0;
+g.trail = [
+  { x: g.headX - 5, y: g.y, mode: 'up' },
+  { x: g.headX, y: g.y, mode: 'up' }
+];
+E.update(g, 1 / 60);
+assert(g.boss.hp <= 13 && g.boss.phase >= 2, 'HPが減るとフェーズが上がる');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'bossPhase'; }), 'bossPhaseイベント');
+
 /* 9c) ボスを逃がすとライフが減り、再出現待ちになる */
 g = makeGame(901, ['hold', 'up', 'wave']);
 g.stageHits = g.stageTarget;

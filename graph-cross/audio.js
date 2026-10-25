@@ -181,6 +181,20 @@
       tone(1320, now, 0.05, 'sawtooth', 0.09, sfxGain);
       tone(1760, now + 0.025, 0.12, 'sine', 0.09, sfxGain);
       tone(2640, now + 0.055, 0.16, 'triangle', 0.07, sfxGain);
+    } else if (name === 'warn') {
+      tone(1046, now, 0.06, 'square', 0.08, sfxGain);
+      tone(784, now + 0.09, 0.10, 'square', 0.08, sfxGain);
+    } else if (name === 'laser') {
+      tone(1600, now, 0.05, 'sawtooth', 0.12, sfxGain);
+      tone(820, now + 0.04, 0.18, 'sawtooth', 0.11, sfxGain);
+      tone(420, now + 0.12, 0.24, 'triangle', 0.10, sfxGain);
+    } else if (name === 'shot') {
+      tone(740, now, 0.05, 'square', 0.09, sfxGain);
+      tone(980, now + 0.04, 0.10, 'triangle', 0.08, sfxGain);
+    } else if (name === 'phase') {
+      tone(196, now, 0.2, 'sawtooth', 0.12, sfxGain);
+      tone(294, now + 0.12, 0.28, 'sawtooth', 0.11, sfxGain);
+      tone(392, now + 0.24, 0.45, 'triangle', 0.10, sfxGain);
     } else if (name === 'revive') {
       tone(392, now, 0.12, 'triangle', 0.11, sfxGain);
       tone(523, now + 0.08, 0.14, 'triangle', 0.11, sfxGain);
