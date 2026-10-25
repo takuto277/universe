@@ -80,7 +80,8 @@ launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -E 'stat
 | 症状 | 対処 |
 | --- | --- |
 | `jsc` が見つからない | `xcode-select --install` を実行し、`/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc` があるか確認 |
-| `gh` が未認証 | `gh auth login` |
+| `JSC` を指定したのに MISS | 指定先が実行可能か確認（無効な `JSC` は自動検出にフォールバックしません） |
+| `gh` が未認証 / リポジトリにアクセスできない | `gh auth login` と対象リポジトリの権限を確認 |
 | opencode が動かない | 公式手順でインストールし、認証とモデル設定を確認（setup は認証を確認しません） |
 | 「未解決の項目があるため…中止します」と出る | 上の MISS を解消してから `--with-agents --verify` を再実行する（新規 Mac は上の最短手順の順番で入れる） |
 | LaunchAgent が動かない | Mac にログイン中か、スリープしていないか確認。`launchctl print` で状態を見る |

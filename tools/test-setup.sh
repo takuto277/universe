@@ -21,6 +21,7 @@ if [ "\$1" = "install" ] && [ "\$2" = "gh" ]; then
 case "\$1" in
   --version) echo "gh version 9.9.9" ;;
   auth) exit 0 ;;
+  repo) echo READ ;;
 esac
 GH
   chmod +x "$TMP/bin/gh"

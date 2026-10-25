@@ -14,6 +14,7 @@ ADR 0006 で Blocker は自動修正できるようになったが、レビュ�
   - 1 PR 1 Issue（チェックリスト）。`review-findings pr=<n>` marker で重複を防ぐ
   - チェックリストの上限を `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）で制限する
   - `UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効化できる
+  - 失敗時は pending に残し、watcher の次回実行で再試行する
 - 週次で planner を実行する LaunchAgent（`install-agent-planner.sh`、月曜09:00）を追加する
 - 提案は既定で `agent:proposed` に留め、人間の `promote` を待つ。`UNIVERSE_AGENT_AUTO_READY_PROPOSALS=1` のときだけ自動で実装キューに入れる
 

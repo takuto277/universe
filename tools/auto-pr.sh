@@ -329,11 +329,35 @@ record_findings() {
       >>"$LOG_FILE" 2>&1 || true
     return 0
   fi
-  if "$PYTHON" "$ROOT/tools/agent_runner.py" findings --pr "$number" >>"$LOG_FILE" 2>&1; then
+  local pending="$STATE_DIR/findings-pending/$number"
+  mkdir -p "$STATE_DIR/findings-pending"
+  if UNIVERSE_AGENT_REPO="$REPO" "$PYTHON" "$ROOT/tools/agent_runner.py" \
+      findings --pr "$number" >>"$LOG_FILE" 2>&1; then
+    rm -f "$pending"
     log "PR #$number: review findings recorded"
   else
-    log "PR #$number: failed to record review findings"
+    touch "$pending"
+    log "PR #$number: failed to record review findings; will retry"
   fi
+}
+
+retry_pending_findings() {
+  [ -d "$STATE_DIR/findings-pending" ] || return 0
+  for pending in "$STATE_DIR"/findings-pending/*; do
+    [ -f "$pending" ] || continue
+    number="$(basename "$pending")"
+    if [ -n "$(find "$pending" -mtime +7 2>/dev/null)" ]; then
+      rm -f "$pending"
+      continue
+    fi
+    if UNIVERSE_AGENT_REPO="$REPO" "$PYTHON" "$ROOT/tools/agent_runner.py" \
+        findings --pr "$number" >>"$LOG_FILE" 2>&1; then
+      rm -f "$pending"
+      log "PR #$number: pending review findings recorded"
+    else
+      log "PR #$number: pending review findings retry failed"
+    fi
+  done
 }
 
 autofix() {
@@ -363,7 +387,8 @@ autofix() {
     return 0
   fi
   local rc=0
-  "$PYTHON" "$ROOT/tools/agent_runner.py" fix --pr "$number" >>"$LOG_FILE" 2>&1 || rc=$?
+  UNIVERSE_AGENT_REPO="$REPO" UNIVERSE_AGENT_BASE="$BASE" \
+    "$PYTHON" "$ROOT/tools/agent_runner.py" fix --pr "$number" >>"$LOG_FILE" 2>&1 || rc=$?
   if [ "$rc" = "0" ]; then
     log "PR #$number: autofix completed; re-review next cycle"
     return 0
@@ -380,6 +405,8 @@ autofix() {
   log "PR #$number: autofix failed"
   return 1
 }
+
+retry_pending_findings
 
 prs="$("$GH" pr list \
   --repo "$REPO" \

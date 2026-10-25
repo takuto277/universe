@@ -3,8 +3,10 @@
 set -euo pipefail
 
 SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST="${UNIVERSE_AUTOMATION_ROOT:-$HOME/.local/share/universe-automation}"
+DEFAULT_DEST="$HOME/.local/share/universe-automation"
+DEST="${UNIVERSE_AUTOMATION_ROOT:-$DEFAULT_DEST}"
 BASE="${UNIVERSE_AGENT_BASE:-main}"
+MARKER="$DEST/.universe-automation-root"
 
 usage() {
   cat <<'USAGE'
@@ -42,6 +44,14 @@ if [ -e "$DEST/.git" ]; then
     printf 'UNIVERSE_AUTOMATION_ROOT は detached HEAD の worktree にしてください（ブランチのチェックアウトは更新しません）: %s\n' "$DEST" >&2
     exit 1
   fi
+  if [ ! -f "$MARKER" ]; then
+    if [ "$(cd "$DEST" && pwd -P)" = "$(cd "$DEFAULT_DEST" 2>/dev/null && pwd -P)" ]; then
+      printf 'managed\n' >"$MARKER"
+    else
+      printf '管理対象外の worktree です。別のパスを指定するか、automation-root.sh remove で削除してください: %s\n' "$DEST" >&2
+      exit 1
+    fi
+  fi
 fi
 
 case "$cmd" in
@@ -69,8 +79,10 @@ case "$cmd" in
       git -C "$DEST" fetch --quiet origin "$BASE"
       git -C "$DEST" reset --hard --quiet "origin/$BASE"
     else
+      git -C "$SOURCE_ROOT" worktree prune
       git -C "$SOURCE_ROOT" fetch --quiet origin "$BASE"
       git -C "$SOURCE_ROOT" worktree add --detach "$DEST" "origin/$BASE"
+      printf 'managed\n' >"$MARKER"
     fi
     printf '%s\n' "$DEST"
     ;;

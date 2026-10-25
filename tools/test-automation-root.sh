@@ -22,6 +22,13 @@ AUTO="$TMP/auto"
 UNIVERSE_AUTOMATION_ROOT="$AUTO" UNIVERSE_AGENT_BASE=main \
   bash "$TMP/work/tools/automation-root.sh" ensure >/dev/null
 [ "$(cat "$AUTO/value.txt")" = "one" ]
+[ -f "$AUTO/.universe-automation-root" ]
+
+# 手動で消しても worktree 登録を prune して再作成できる
+rm -rf "$AUTO"
+UNIVERSE_AUTOMATION_ROOT="$AUTO" UNIVERSE_AGENT_BASE=main \
+  bash "$TMP/work/tools/automation-root.sh" ensure >/dev/null
+[ "$(cat "$AUTO/value.txt")" = "one" ]
 
 printf 'two\n' >"$TMP/work/value.txt"
 git -C "$TMP/work" commit -qam two
