@@ -80,7 +80,7 @@ git -C "$TMP/work" push -q origin main
 DEFAULT_HOME="$TMP/default-home"
 DEFAULT_AUTO="$DEFAULT_HOME/.local/share/universe-automation"
 mkdir -p "$(dirname "$DEFAULT_AUTO")"
-git -C "$TMP/work" worktree add -q --detach "$DEFAULT_AUTO" main
+git -C "$TMP/work" worktree add -q --detach "$DEFAULT_AUTO" main~1
 mkdir -p "$DEFAULT_AUTO/tools"
 cp "$ROOT/tools/automation-run.sh" "$DEFAULT_AUTO/tools/"
 cat >"$DEFAULT_AUTO/tools/hello.sh" <<'SH'
@@ -91,6 +91,9 @@ chmod +x "$DEFAULT_AUTO/tools/hello.sh"
 out="$(HOME="$DEFAULT_HOME" bash "$DEFAULT_AUTO/tools/automation-run.sh" hello.sh)"
 [ "$out" = "hello" ]
 [ "$(cat "$DEFAULT_AUTO/value.txt")" = "three" ]
+[ -f "$DEFAULT_AUTO/.universe-automation-root" ]
+rm -f "$DEFAULT_AUTO/.universe-automation-root"
+HOME="$DEFAULT_HOME" bash "$TMP/work/tools/automation-root.sh" ensure >/dev/null
 [ -f "$DEFAULT_AUTO/.universe-automation-root" ]
 HOME="$DEFAULT_HOME" bash "$TMP/work/tools/automation-root.sh" remove >/dev/null
 

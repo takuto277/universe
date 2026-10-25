@@ -69,6 +69,7 @@ reset_log
 run_arg
 if called; then printf 'recent attempt must wait 5 minutes\n' >&2; exit 1; fi
 [ -f "$pending" ]
+if attempt_called; then printf 'attempt files must not be treated as pending\n' >&2; exit 1; fi
 
 # attempt が古ければ再試行して成功する
 touch -t "$(date -v-6M '+%Y%m%d%H%M')" "$attempt"
