@@ -33,7 +33,7 @@ SH
 chmod +x "$TMP/bin/opencode" "$TMP/bin/brew"
 
 set +e
-output="$(PATH="$TMP/bin:/usr/bin:/bin" HOME="$TMP/home" /bin/bash "$ROOT/tools/setup.sh" --install 2>&1)"
+output="$(GH_FAKE_FAIL= PATH="$TMP/bin:/usr/bin:/bin" HOME="$TMP/home" /bin/bash "$ROOT/tools/setup.sh" --install 2>&1)"
 code=$?
 set -e
 if [ "$code" != "0" ]; then

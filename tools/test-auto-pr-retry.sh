@@ -32,33 +32,51 @@ base_env=(
 run_arg() { env "${base_env[@]}" /bin/bash "$ROOT/tools/auto-pr.sh" "$@"; }
 run_env() { env "${base_env[@]}" "$@" /bin/bash "$ROOT/tools/auto-pr.sh"; }
 reset_log() { rm -f "$TMP/python.log"; }
-called() { [ -f "$TMP/python.log" ] && grep -q "findings --pr 42" "$TMP/python.log"; }
+called() { [ -f "$TMP/python.log" ] && grep -q "findings --pr 42$" "$TMP/python.log"; }
 
 pending="$TMP/state/findings-pending/42"
+attempt="$pending.attempt"
 touch "$pending"
 
 reset_log
 run_arg --dry-run
 if called; then printf 'dry-run must not retry findings\n' >&2; exit 1; fi
+[ -f "$pending" ]
 
 reset_log
 run_env UNIVERSE_AUTO_PR_CREATE_ISSUES=0
 if called; then printf 'disabled findings must not retry\n' >&2; exit 1; fi
+[ -f "$pending" ]
+
+reset_log
+run_env UNIVERSE_AGENT_DISABLE=1
+if called; then printf 'disabled runner must not retry findings\n' >&2; exit 1; fi
+[ -f "$pending" ]
 
 touch "$TMP/runner/pause"
 reset_log
 run_arg
 if called; then printf 'paused runner must not retry findings\n' >&2; exit 1; fi
+[ -f "$pending" ]
 rm -f "$TMP/runner/pause"
 
+touch "$attempt"
 reset_log
 run_arg
-if called; then printf 'recent pending must wait 5 minutes\n' >&2; exit 1; fi
+if called; then printf 'recent attempt must wait 5 minutes\n' >&2; exit 1; fi
+[ -f "$pending" ]
+rm -f "$attempt"
 
 touch -t "$(date -v-10M '+%Y%m%d%H%M')" "$pending"
 reset_log
 run_arg
 if ! called; then printf 'old pending should be retried\n' >&2; exit 1; fi
+[ ! -f "$pending" ]
+
+touch -t "$(date -v-8d '+%Y%m%d%H%M')" "$pending"
+reset_log
+run_arg
+if called; then printf 'expired pending must not be retried\n' >&2; exit 1; fi
 [ ! -f "$pending" ]
 
 printf 'auto pr retry tests OK\n'
