@@ -1,4 +1,4 @@
-/* ui.js : 未知語de交渉 v3 のスマホ向け画面 */
+/* ui.js : 未知語de交渉 v4 のスマホ向け画面 */
 (function (root) {
   'use strict';
 
@@ -10,16 +10,16 @@
 
   var TUTORIAL = [
     {
-      title: 'わからない語を読む',
-      text: '商人の文には、知らない語が1つ。まわりの語としぐさから、どの品のことを言っているか推理する。'
+      title: '品物は見えている',
+      text: '読むのは、商人が誰に何をしてほしいか。差し出す / 受け取る / 断る の3つから選ぶ。'
     },
     {
-      title: '3つの品から選ぶ',
-      text: '当たれば+10硬貨、外れれば+3硬貨。覚えた語は品物カードに表示されるので、消去法でも絞れる。'
+      title: 'しぐさもヒント',
+      text: 'わからない文法語は、しぐさと前後の語から推理。迷ったら2硬貨で意味を確認できる。'
     },
     {
       title: '最後は契約書',
-      text: '条文を読んで、署名するか断るか選ぶ。署名すると、条文の内容が硬貨に反映される。'
+      text: '契約の主語を読んで、署名するか断るか選ぶ。読み切れば+5硬貨。'
     }
   ];
 
@@ -76,11 +76,13 @@
       portrait: $('portrait'),
       speechLine: $('speech-line'),
       gesture: $('gesture'),
-      twist: $('twist'),
+      actionCard: $('action-card'),
+      itemIcon: $('item-icon'),
+      itemLabel: $('item-label'),
+      itemWord: $('item-word'),
       prompt: $('prompt'),
-      itemChoices: $('item-choices'),
-      unknownWord: $('unknown-word'),
-      choiceCard: $('choice-card'),
+      actionButtons: $('action-buttons'),
+      btnConfirm: $('btn-confirm'),
       resultCard: $('result-card'),
       resultTitle: $('result-title'),
       resultDetail: $('result-detail'),
@@ -168,31 +170,40 @@
         els.speechLine.appendChild(chip);
       }
       setText(els.gesture, s.gesture);
-      setText(els.twist, s.twist || '');
-      isHidden(els.twist, !s.twist);
     }
 
-    function renderChoices(s) {
+    function renderItem(s) {
+      if (!s.item) return;
+      if (els.itemIcon) els.itemIcon.innerHTML = ICONS[s.item.id] || '';
+      setText(els.itemLabel, s.item.label);
+      setText(els.itemWord, '『' + s.item.word + '』');
+    }
+
+    function renderActions(s) {
       setText(els.prompt, s.prompt);
-      setText(els.unknownWord, s.unknownWord);
-      clear(els.itemChoices);
-      for (var i = 0; i < s.choices.length; i++) {
-        (function (item) {
-          var card = button('', 'item-card' + (item.learned ? ' learned' : ''), function () {
-            var ok = game.chooseItem(item.id);
+      clear(els.actionButtons);
+      for (var i = 0; i < s.actions.length; i++) {
+        (function (action) {
+          var btn = button('', 'action-btn', function () {
+            var ok = game.chooseAction(action.id);
             sfx(ok ? 'success' : 'fail');
           });
-          var icon = make('span', 'item-icon');
-          icon.innerHTML = ICONS[item.id];
-          card.appendChild(icon);
-          card.appendChild(make('span', 'item-label', item.label));
-          var word = make('span', 'item-word' + (item.learned ? '' : ' unknown-word'), item.learned ? item.word : '???');
-          card.appendChild(word);
-          card.disabled = !s.canChoose;
-          els.itemChoices.appendChild(card);
-        })(s.choices[i]);
+          btn.appendChild(make('span', 'label', action.label));
+          btn.appendChild(make('span', 'sub', action.sub));
+          btn.disabled = !s.canAct;
+          els.actionButtons.appendChild(btn);
+        })(s.actions[i]);
       }
-      isHidden(els.choiceCard, !s.canChoose);
+
+      if (s.canConfirm) {
+        isHidden(els.btnConfirm, false);
+        setText(els.btnConfirm, '『' + s.unknownWord + '』の意味を確認（-' + s.confirmCost + '硬貨）');
+        if (els.btnConfirm) els.btnConfirm.disabled = false;
+      } else {
+        isHidden(els.btnConfirm, true);
+      }
+
+      isHidden(els.actionCard, !s.canAct);
     }
 
     function renderResult(s) {
@@ -277,7 +288,7 @@
         S: { title: '伝説の通訳者', text: '3人の商人を読み切った。' },
         A: { title: '腕利きの交渉人', text: '十分な利益を上げた。あと一歩で完璧だった。' },
         B: { title: '旅の見習い', text: 'いくつか読み違えたが、旅を続ける力はある。' },
-        C: { title: 'ことばに飲まれた者', text: '次はしぐさと消去法を頼りにしよう。' }
+        C: { title: 'ことばに飲まれた者', text: '次はしぐさと文法語を頼りにしよう。' }
       };
       var info = ranks[s.rank] || ranks.C;
       setText(els.rank, s.rank || 'C');
@@ -332,7 +343,8 @@
       renderHeader(s);
       renderMerchant(s);
       renderSpeech(s);
-      renderChoices(s);
+      renderItem(s);
+      renderActions(s);
       renderResult(s);
       renderStart(s);
       renderTutorial();
@@ -346,6 +358,12 @@
       bestCacheValue = null;
       bestCacheNew = false;
       bestCacheAvailable = true;
+    }
+
+    function resetUiForNewRun() {
+      tutorialOpen = false;
+      tutorialSlide = 0;
+      resetBestCache();
     }
 
     /* ---------- events ---------- */
@@ -389,6 +407,12 @@
       render(snapshot());
     });
 
+    if (els.btnConfirm) els.btnConfirm.addEventListener('click', function () {
+      if (!snapshot().canConfirm) return;
+      sfx('note');
+      game.confirmWord();
+    });
+
     if (els.btnNext) els.btnNext.addEventListener('click', function () {
       sfx('open');
       game.nextScene();
@@ -421,8 +445,7 @@
     });
 
     if (els.btnStartOver) els.btnStartOver.addEventListener('click', function () {
-      tutorialOpen = false;
-      resetBestCache();
+      resetUiForNewRun();
       sfx('click');
       game.backToStart();
       if (root.scrollTo) root.scrollTo(0, 0);
