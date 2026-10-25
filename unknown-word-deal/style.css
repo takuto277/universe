@@ -255,67 +255,88 @@ h1, h2, p { margin: 0; }
   margin-bottom: 9px;
 }
 
-.item-choices {
+.item-display {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px;
+  border: 1px solid var(--line-soft);
+  border-radius: 13px;
+  background: rgba(255, 255, 255, 0.02);
+  margin-bottom: 10px;
+}
+
+.item-display .item-icon { width: 52px; height: 52px; flex: 0 0 auto; }
+.item-icon svg { width: 100%; height: 100%; }
+.item-meta { min-width: 0; }
+.item-eyebrow { font-size: 8px; letter-spacing: 0.14em; color: var(--faint); }
+.item-label { font-size: 17px; font-weight: 700; line-height: 1.2; }
+.item-word {
+  font-family: ui-monospace, Menlo, monospace;
+  font-size: 14px;
+  letter-spacing: 0.08em;
+  color: var(--gold);
+}
+
+.prompt {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  margin-bottom: 8px;
+}
+
+.action-buttons {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
 }
 
-.item-card {
+.action-btn {
+  min-height: 68px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 10px 6px 9px;
+  justify-content: center;
+  gap: 2px;
+  padding: 7px 4px;
   border: 1px solid #33455f;
-  border-radius: 13px;
+  border-radius: 12px;
   background: linear-gradient(180deg, #1d2a3f, #172235);
+  font-size: 14px;
+  font-weight: 700;
   transition: transform 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
 
-.item-card:hover:not(:disabled) {
+.action-btn .sub { font-size: 9px; font-weight: 400; color: var(--muted); }
+.action-btn:hover:not(:disabled) {
   transform: translateY(-2px);
   border-color: var(--gold);
   background: linear-gradient(180deg, #233349, #1a273c);
 }
+.action-btn:active:not(:disabled) { transform: scale(0.98); }
 
-.item-card:active:not(:disabled) { transform: scale(0.98); }
-
-.item-icon { width: 42px; height: 42px; }
-.item-icon svg { width: 100%; height: 100%; }
-.item-label { font-size: 13px; font-weight: 700; }
-.item-word {
-  font-family: ui-monospace, Menlo, monospace;
-  font-size: 13px;
-  letter-spacing: 0.08em;
-  color: var(--gold);
-  min-height: 16px;
-}
-
-.item-word.unknown-word { color: var(--faint); }
-.item-card.learned { border-color: rgba(111, 214, 195, 0.32); }
-
-.choice-note {
+.confirm-btn {
+  width: 100%;
+  min-height: 38px;
   margin-top: 8px;
-  font-size: 10px;
-  color: var(--faint);
-  text-align: center;
+  padding: 7px 10px;
+  border: 1px dashed rgba(244, 201, 107, 0.4);
+  border-radius: 9px;
+  background: rgba(244, 201, 107, 0.04);
+  color: var(--gold-soft);
+  font-size: 11px;
 }
 
-.choice-note span {
-  font-family: ui-monospace, Menlo, monospace;
-  color: var(--gold);
-  font-size: 12px;
-}
+.confirm-btn:hover { border-color: var(--gold); background: rgba(244, 201, 107, 0.08); }
 
 /* ---------- result ---------- */
 
-.result-card { text-align: center; }
-.result-title { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; color: var(--ok); }
+.result-card { text-align: left; }
+.result-title { font-size: 14px; font-weight: 700; letter-spacing: 0.06em; color: var(--ok); text-align: center; }
 .result-title.ng { color: var(--danger); }
-.result-detail { margin-top: 5px; font-size: 13px; color: #dbe6f8; }
+.result-detail { margin-top: 6px; font-size: 12.5px; line-height: 1.65; color: #dbe6f8; }
 .result-message { margin-top: 5px; font-size: 12px; color: var(--muted); }
-.result-coins { margin-top: 7px; font-size: 24px; font-weight: 800; color: var(--gold); }
+.result-coins { margin-top: 7px; font-size: 24px; font-weight: 800; color: var(--gold); text-align: center; }
 
 /* ---------- buttons ---------- */
 
@@ -605,10 +626,11 @@ h1, h2, p { margin: 0; }
   .tagline { font-size: 9px; }
   .card { padding: 10px; }
   .portrait { width: 56px; height: 56px; }
-  .item-card { padding: 8px 4px 7px; }
-  .item-icon { width: 36px; height: 36px; }
-  .item-label { font-size: 12px; }
-  .item-word { font-size: 11px; }
+  .item-display { padding: 8px; }
+  .item-display .item-icon { width: 44px; height: 44px; }
+  .item-label { font-size: 15px; }
+  .item-word { font-size: 12px; }
+  .action-btn { min-height: 62px; font-size: 13px; }
   .overlay-card { padding: 16px 13px; }
   .start-card h1 { font-size: 32px; }
 }

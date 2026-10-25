@@ -1,9 +1,8 @@
-/* engine.js : 未知語de交渉 v3（スマホ向け・1画面1判断）
+/* engine.js : 未知語de交渉 v4（文法と意図を読むスマホゲーム）
  *
- * 1ラン = 3人の商人 + 最後の契約書。
- * 各商人は短い文で品物を求める。文の中の未知語がどの品かを
- * 3つの品物カードから選ぶ。当たれば+10硬貨、外れれば+3硬貨。
- * 最後に契約書を読んで、署名するか断るかを選ぶ。
+ * 品物は最初から見えている。未知語は「私 / あなた / 否定」などの文法語。
+ * 商人の短い文としぐさを読み、差し出す / 受け取る / 断る を選ぶ。
+ * 迷ったら2硬貨で未知語の意味を確認できる。3人のあと契約書を読む。
  */
 (function (root, factory) {
   'use strict';
@@ -17,17 +16,22 @@
   'use strict';
 
   var CONCEPTS = {
-    bread: { label: 'パン', kind: 'noun', group: '品物' },
-    fish: { label: '魚', kind: 'noun', group: '品物' },
-    gem: { label: '宝石', kind: 'noun', group: '品物' },
-    me: { label: '私', kind: 'pronoun', group: '人' },
-    you: { label: 'あなた', kind: 'pronoun', group: '人' },
-    want: { label: '欲しい', kind: 'verb', group: '動き' },
-    not: { label: '否定', kind: 'particle', group: '文法' }
+    bread: { label: 'パン', kind: 'noun' },
+    fish: { label: '魚', kind: 'noun' },
+    gem: { label: '宝石', kind: 'noun' },
+    me: { label: '私', kind: 'pronoun' },
+    you: { label: 'あなた', kind: 'pronoun' },
+    want: { label: '欲しい', kind: 'verb' },
+    not: { label: '否定', kind: 'particle' }
   };
   var CONCEPT_ORDER = ['bread', 'fish', 'gem', 'me', 'you', 'want', 'not'];
   var GOODS = ['bread', 'fish', 'gem'];
-  var KNOWN_CONCEPTS = ['me', 'you', 'want', 'not'];
+  var ACTIONS = {
+    give: { label: '差し出す', sub: '品を渡す' },
+    take: { label: '受け取る', sub: '品をもらう' },
+    refuse: { label: '断る', sub: '取引しない' }
+  };
+  var CONFIRM_COST = 2;
   var ONSETS = ['k', 'm', 't', 'r', 'p', 'n', 's', 'g', 'z', 'h', 'b', 'd', 'v', 'l'];
   var VOWELS = ['a', 'i', 'u', 'e', 'o'];
 
@@ -83,9 +87,6 @@
     if (c.length === 2 && isPronoun(c[0]) && isGood(c[1])) {
       return { type: 'want', subject: c[0], object: c[1], negated: negated };
     }
-    if (c.length === 1 && isGood(c[0])) {
-      return { type: 'want', subject: null, object: c[0], negated: negated };
-    }
     return null;
   }
 
@@ -101,7 +102,7 @@
 
   function toJapanese(meaning) {
     if (!meaning) return '';
-    var subject = meaning.subject === 'me' ? '私は' : (meaning.subject === 'you' ? 'あなたは' : '');
+    var subject = meaning.subject === 'me' ? '私は' : 'あなたは';
     return subject + CONCEPTS[meaning.object].label + 'が' + (meaning.negated ? '欲しくない' : '欲しい');
   }
 
@@ -109,36 +110,42 @@
     return [
       {
         id: 'bread',
-        target: 'bread',
+        item: 'bread',
+        unknown: 'me',
+        correctAction: 'give',
         merchant: { name: 'ムウ', title: '市場の顔役', accent: 'amber' },
         line: ['me', 'bread', 'want'],
-        gesture: 'ムウはパンのほうを一瞬見た。',
-        prompt: 'ムウが欲しいのはどれ?',
-        twist: '',
+        gesture: '商人は自分を指さして、パンを見つめた。',
+        prompt: 'どうする?',
+        explain: '「? パン 欲しい」なら、欲しがっているのは商人自身。パンを差し出すのが正解。',
         revealCorrect: 'ムウはパンを受け取り、満足そうにうなずいた。',
-        revealWrong: 'ムウは代わりの品を受け取り、硬貨を3枚だけ置いた。'
+        revealWrong: 'ムウはあなたの返事を聞いて、首をかしげた。'
       },
       {
         id: 'fish',
-        target: 'fish',
+        item: 'fish',
+        unknown: 'not',
+        correctAction: 'refuse',
         merchant: { name: 'リサ', title: '新顔の商人', accent: 'teal' },
-        line: ['me', 'fish', 'want'],
-        gesture: 'リサは魚のにおいを確かめるように笑った。',
-        prompt: 'リサが欲しいのはどれ?',
-        twist: '',
-        revealCorrect: 'リサは魚を受け取り、うれしそうに袋へ入れた。',
-        revealWrong: 'リサは代わりの品を渋々受け取った。'
+        line: ['me', 'fish', 'want', 'not'],
+        gesture: 'リサは魚を押し返し、首を横に振った。',
+        prompt: 'どうする?',
+        explain: '「私 魚 欲しい ?」の ? が否定なら、魚は欲しくない。断るのが正解。',
+        revealCorrect: 'リサは魚を引っ込め、安堵したように笑った。',
+        revealWrong: 'リサは魚を押しつけられて、困った顔をした。'
       },
       {
         id: 'gem',
-        target: 'gem',
+        item: 'gem',
+        unknown: null,
+        correctAction: 'take',
         merchant: { name: 'ゼン', title: '老練な商人', accent: 'violet' },
         line: ['me', 'gem', 'want', 'not'],
-        gesture: 'ゼンは宝石を布の下からのぞかせた。',
-        prompt: 'ゼンが本当に欲しいのはどれ?',
-        twist: '「いらない」と言っているが、しぐさは宝石を見ている。',
-        revealCorrect: 'ゼンは「いらない」と言いながら、宝石を大事そうに包んだ。',
-        revealWrong: 'ゼンは代わりの品を一瞥して、肩をすくめた。'
+        gesture: 'ゼンは「いらない」と言いながら、宝石をあなたのほうへ押し出した。',
+        prompt: 'どうする?',
+        explain: '「私 宝石 欲しい 否定」= 欲しくない。でも、押し出すしぐさは「持っていけ」。だから受け取るのが正解。',
+        revealCorrect: 'ゼンは宝石をあなたに押し出し、したり顔で硬貨を数えた。',
+        revealWrong: 'ゼンは宝石を引っ込め、つまらなそうにあくびをした。'
       }
     ];
   }
@@ -173,7 +180,7 @@
       sceneIndex: 0,
       scenePhase: 'guess',
       coins: 0,
-      learned: { bread: false, fish: false, gem: false },
+      learned: {},
       sceneResult: null,
       history: [],
       contract: null,
@@ -201,6 +208,15 @@
     function currentScene() { return scenes[state.sceneIndex]; }
     function wordOf(conceptId) { return lang.words[conceptId]; }
 
+    function initialLearned() {
+      var learned = {};
+      for (var i = 0; i < CONCEPT_ORDER.length; i++) {
+        var id = CONCEPT_ORDER[i];
+        learned[id] = isGood(id) || id === 'want' || id === 'you';
+      }
+      return learned;
+    }
+
     function initRun(seed) {
       state.seed = seed >>> 0;
       lang = generateLanguage(state.seed);
@@ -213,7 +229,7 @@
       state.sceneIndex = 0;
       state.scenePhase = 'guess';
       state.coins = 0;
-      state.learned = { bread: false, fish: false, gem: false };
+      state.learned = initialLearned();
       state.sceneResult = null;
       state.history = [];
       state.contract = null;
@@ -248,39 +264,54 @@
       return true;
     }
 
-    function chooseItem(item) {
+    function canConfirm() {
       if (state.phase !== 'scene' || state.scenePhase !== 'guess') return false;
-      if (GOODS.indexOf(item) < 0) return false;
       var scene = currentScene();
-      var correct = item === scene.target;
+      return !!(scene && scene.unknown && !state.learned[scene.unknown]);
+    }
+
+    function confirmWord() {
+      if (!canConfirm()) return false;
+      var scene = currentScene();
+      state.coins -= CONFIRM_COST;
+      state.learned[scene.unknown] = true;
+      state.sceneResult = null;
+      emit();
+      return true;
+    }
+
+    function chooseAction(action) {
+      if (state.phase !== 'scene' || state.scenePhase !== 'guess') return false;
+      if (!ACTIONS[action]) return false;
+      var scene = currentScene();
+      var correct = action === scene.correctAction;
       var delta = correct ? 10 : 3;
       state.coins += delta;
-      state.learned[scene.target] = true;
+      if (scene.unknown) state.learned[scene.unknown] = true;
 
-      var targetWord = lang.words[scene.target];
-      var targetLabel = CONCEPTS[scene.target].label;
-      var chosenLabel = CONCEPTS[item].label;
+      var unknownPart = scene.unknown
+        ? '『' + lang.words[scene.unknown] + '』は「' + CONCEPTS[scene.unknown].label + '」だった。 '
+        : '';
+      var actionPart = correct ? '' : '正解は「' + ACTIONS[scene.correctAction].label + '」。 ';
       var result = {
         correct: correct,
-        chosen: item,
-        chosenLabel: chosenLabel,
-        target: scene.target,
-        targetLabel: targetLabel,
-        targetWord: targetWord,
+        chosenAction: action,
+        chosenLabel: ACTIONS[action].label,
+        correctAction: scene.correctAction,
+        correctLabel: ACTIONS[scene.correctAction].label,
         coinsDelta: delta,
         title: correct ? '正解!' : '読み違えた',
-        message: correct ? scene.revealCorrect : scene.revealWrong,
-        detail: '『' + targetWord + '』は' + targetLabel + 'だった。' +
-          (correct ? '' : ' あなたは' + chosenLabel + 'を選んだ。')
+        detail: unknownPart + actionPart + scene.explain,
+        message: correct ? scene.revealCorrect : scene.revealWrong
       };
       state.sceneResult = result;
       state.history.push({
         sceneNumber: state.sceneIndex + 1,
         correct: correct,
-        chosenLabel: chosenLabel,
-        targetLabel: targetLabel,
-        targetWord: targetWord,
-        coinsDelta: delta
+        chosenLabel: result.chosenLabel,
+        correctLabel: result.correctLabel,
+        coinsDelta: delta,
+        unknown: scene.unknown
       });
       state.scenePhase = 'result';
       emit();
@@ -329,7 +360,7 @@
     function autoStep() {
       if (state.phase === 'start') { start(); return; }
       if (state.phase === 'scene') {
-        if (state.scenePhase === 'guess') { chooseItem(currentScene().target); return; }
+        if (state.scenePhase === 'guess') { chooseAction(currentScene().correctAction); return; }
         if (state.scenePhase === 'result') { nextScene(); return; }
       }
       if (state.phase === 'contract' && state.contract && !state.contract.decided) {
@@ -340,32 +371,20 @@
 
     function lineView(scene) {
       return scene.line.map(function (id) {
-        var known = KNOWN_CONCEPTS.indexOf(id) >= 0 || state.learned[id];
+        var known = !!state.learned[id];
         return {
           word: lang.words[id],
           concept: id,
           label: known ? CONCEPTS[id].label : null,
           known: known,
-          unknown: !known,
-          isItem: GOODS.indexOf(id) >= 0
+          unknown: !known
         };
       });
     }
 
-    function choicesView() {
-      return GOODS.map(function (id) {
-        return {
-          id: id,
-          label: CONCEPTS[id].label,
-          word: state.learned[id] ? lang.words[id] : null,
-          learned: !!state.learned[id]
-        };
-      });
-    }
-
-    function knownWordsView() {
-      return KNOWN_CONCEPTS.map(function (id) {
-        return { id: id, word: lang.words[id], label: CONCEPTS[id].label };
+    function actionsView() {
+      return ['give', 'take', 'refuse'].map(function (id) {
+        return { id: id, label: ACTIONS[id].label, sub: ACTIONS[id].sub };
       });
     }
 
@@ -415,22 +434,31 @@
         scenePhase: state.scenePhase,
         phaseLabel: phaseLabel,
         merchant: scene ? scene.merchant : null,
+        item: scene ? {
+          id: scene.item,
+          label: CONCEPTS[scene.item].label,
+          word: lang.words[scene.item]
+        } : null,
         line: scene ? lineView(scene) : [],
         gesture: scene ? scene.gesture : '',
         prompt: scene ? scene.prompt : '',
-        twist: scene ? scene.twist : '',
-        unknownWord: scene ? lang.words[scene.target] : '',
-        choices: choicesView(),
-        knownWords: knownWordsView(),
+        unknownWord: scene && scene.unknown ? lang.words[scene.unknown] : '',
+        canConfirm: canConfirm(),
+        confirmCost: CONFIRM_COST,
+        actions: actionsView(),
         learned: {
           bread: !!state.learned.bread,
           fish: !!state.learned.fish,
-          gem: !!state.learned.gem
+          gem: !!state.learned.gem,
+          me: !!state.learned.me,
+          you: !!state.learned.you,
+          want: !!state.learned.want,
+          not: !!state.learned.not
         },
         coins: state.coins,
         sceneResult: state.sceneResult,
         history: state.history.slice(),
-        canChoose: state.phase === 'scene' && state.scenePhase === 'guess',
+        canAct: state.phase === 'scene' && state.scenePhase === 'guess',
         canNext: state.phase === 'scene' && state.scenePhase === 'result',
         nextLabel: state.sceneIndex >= scenes.length - 1 ? '契約書へ' : '次の商人へ',
         contract: contractView(),
@@ -453,7 +481,8 @@
       start: start,
       restart: restart,
       backToStart: backToStart,
-      chooseItem: chooseItem,
+      confirmWord: confirmWord,
+      chooseAction: chooseAction,
       nextScene: nextScene,
       signContract: signContract,
       refuseContract: refuseContract,
@@ -475,6 +504,7 @@
     CONCEPTS: CONCEPTS,
     CONCEPT_ORDER: CONCEPT_ORDER,
     GOODS: GOODS,
-    KNOWN_CONCEPTS: KNOWN_CONCEPTS
+    ACTIONS: ACTIONS,
+    CONFIRM_COST: CONFIRM_COST
   };
 });
