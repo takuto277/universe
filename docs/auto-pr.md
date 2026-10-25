@@ -28,7 +28,7 @@ PR を Ready にするだけで、レビューとマージまで自動で進め�
 ./tools/install-auto-pr.sh
 ```
 
-watcher は main 追従の専用チェックアウト（`~/.local/share/universe-automation`）から動き、起動時に自動更新します（管理マーカー `.universe-automation-root` がある場合）。既存のインストールでマーカーがないときは、一度 `./tools/automation-root.sh ensure`（既定パスなら `update` でも可）を実行してマーカーを付与してください。
+watcher は main 追従の専用チェックアウト（`~/.local/share/universe-automation`）から動き、起動時に自動更新します。既定パスは初回起動時に管理マーカーを自動付与します。カスタムパスは一度 `./tools/automation-root.sh ensure` でマーカーを作成してください。
 
 状態確認と停止:
 
