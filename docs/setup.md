@@ -25,7 +25,7 @@ gh auth login
 
 `--install` は不足している `gh` だけを Homebrew で導入し、opencode は自動では入れません。Homebrew が無い場合は https://cli.github.com/ から `gh` を入れてください。
 
-`--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、builder と verify を sandbox で実行します。
+`--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、エージェントが実行する builder と verify を sandbox で実行します。
 
 LaunchAgent は、人間が作業しているチェックアウトとは別の **main 追従の専用チェックアウト** から動きます。既定は `~/.local/share/universe-automation` です。
 
