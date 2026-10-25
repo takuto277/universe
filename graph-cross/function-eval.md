@@ -70,27 +70,29 @@
 
 「勝率は高いのに選ばれない」なら不人気、「勝率も使用率も高い」なら要調整です。
 
-## ガチャに入れる場合のルール案
+## 実装済みローカルガチャ
 
 - 最初から `y=0 / x/2 / -x/2` のスターターを配る
 - チュートリアルは固定デッキ
 - レア関数は「強い」ではなく「別解」にする
-- 重複は欠片/通貨に変換
-- 天井（ピティ）を入れる
+- 重複はレアリティに応じたポイントに変換
+- レア+天井10回、EPIC天井20回
 - ステージクリアの3択は **解放済み関数の中から出す**
   - ガチャと3択で二重にランダムにしない
-- 通貨・所持・天井・履歴はまず `localStorage`
+- ポイント・所持・天井・直近の結果は `localStorage`
   - 端末間共有・課金・ランキングが必要になったらサーバー/DBへ
 
 ## ローカル保存の例
 
 ```js
-localStorage.setItem('graph-cross-save', JSON.stringify({
+localStorage.setItem('graph-cross-gacha', JSON.stringify({
   version: 1,
   unlocked: ['hold', 'up', 'down'],
-  currency: 300,
-  pity: 0,
-  history: []
+  points: 300,
+  pityRare: 0,
+  pityEpic: 0,
+  rolls: 0,
+  lastResult: null
 }));
 ```
 

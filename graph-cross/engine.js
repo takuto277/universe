@@ -180,13 +180,29 @@
     return points;
   }
 
-  function normalizeDeck(deck) {
+  function normalizeUnlocked(unlocked) {
+    var out = [];
+    if (Array.isArray(unlocked)) {
+      for (var i = 0; i < unlocked.length; i++) {
+        var key = unlocked[i];
+        if (MODES[key] && key !== 'fusion' && out.indexOf(key) < 0) out.push(key);
+      }
+    }
+    if (!out.length) {
+      for (var j = 0; j < MODE_KEYS.length; j++) out.push(MODE_KEYS[j]);
+    }
+    return out;
+  }
+
+  function normalizeDeck(deck, unlocked) {
     if (!Array.isArray(deck) || deck.length !== DECK_SIZE) return DEFAULT_DECK.slice();
+    var allowed = normalizeUnlocked(unlocked);
     var out = [];
     var seen = {};
     for (var i = 0; i < deck.length; i++) {
       var key = deck[i];
       if (!MODES[key] || seen[key]) return DEFAULT_DECK.slice();
+      if (key !== 'fusion' && allowed.indexOf(key) < 0) return DEFAULT_DECK.slice();
       seen[key] = true;
       out.push(key);
     }
@@ -322,7 +338,8 @@
 
   function createGame(options) {
     options = options || {};
-    var deck = normalizeDeck(options.deck);
+    var unlocked = normalizeUnlocked(options.unlocked);
+    var deck = normalizeDeck(options.deck, unlocked);
     var fusion = normalizeFusion(options.fusion);
     var allParams = normalizeParams(options.deckParams);
     var deckParams = normalizeDeckParams(options.deckParams, deck);
@@ -336,6 +353,7 @@
       fusion: fusion,
       deck: deck,
       deckParams: deckParams,
+      unlocked: unlocked,
       width: 0,
       height: 0,
       top: 0,
@@ -1120,8 +1138,9 @@
       if (!groups[genre]) groups[genre] = { slots: [], candidates: [] };
       groups[genre].slots.push(i);
     }
-    for (var m = 0; m < MODE_KEYS.length; m++) {
-      var modeKey = MODE_KEYS[m];
+    var unlocked = normalizeUnlocked(state.unlocked);
+    for (var m = 0; m < unlocked.length; m++) {
+      var modeKey = unlocked[m];
       if (state.deck.indexOf(modeKey) >= 0) continue;
       var modeGenre = MODES[modeKey] ? MODES[modeKey].genre : 'other';
       if (groups[modeGenre]) groups[modeGenre].candidates.push(modeKey);
@@ -1199,8 +1218,9 @@
   function slotCandidates(state) {
     var out = [];
     if (!state || state.deck.length >= 4 || state.deck.length >= MODE_KEYS.length) return out;
-    for (var i = 0; i < MODE_KEYS.length; i++) {
-      if (state.deck.indexOf(MODE_KEYS[i]) < 0) out.push(MODE_KEYS[i]);
+    var unlocked = normalizeUnlocked(state.unlocked);
+    for (var i = 0; i < unlocked.length; i++) {
+      if (state.deck.indexOf(unlocked[i]) < 0) out.push(unlocked[i]);
     }
     return out;
   }
@@ -1275,7 +1295,7 @@
     if (!state.upgrades.revive) pool.push('revive');
     if (!state.upgrades.comboGuard) pool.push('comboGuard');
     if (!state.upgrades.bossBreaker) pool.push('bossBreaker');
-    if (state.deck.length < 4 && state.deck.length < MODE_KEYS.length) pool.push('slot');
+    if (state.deck.length < 4 && slotCandidates(state).length > 0) pool.push('slot');
     var picks = [];
     while (picks.length < 3 && pool.length) {
       var index = Math.floor(rand(state.rng) * pool.length) % pool.length;
@@ -1289,6 +1309,7 @@
     if (!state) return null;
     return {
       gameMode: state.gameMode,
+      unlocked: state.unlocked.slice(),
       deck: state.deck.slice(),
       deckParams: clone(state.deckParams),
       fusion: state.fusion ? { primary: state.fusion.primary, secondary: state.fusion.secondary } : null,
@@ -1317,6 +1338,7 @@
     var g = createGame({
       width: options.width || 960,
       height: options.height || 560,
+      unlocked: checkpoint.unlocked,
       deck: checkpoint.deck,
       deckParams: checkpoint.deckParams,
       fusion: checkpoint.fusion,

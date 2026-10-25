@@ -4,10 +4,11 @@
   var C = (typeof module !== 'undefined' && module.exports) ? require('./content.js') : root.GraphContent;
   var E = (typeof module !== 'undefined' && module.exports) ? require('./engine.js') : root.GraphCrossEngine;
   var B = (typeof module !== 'undefined' && module.exports) ? require('./balance.js') : root.GraphBalance;
-  var api = factory(C, E, B);
+  var G = (typeof module !== 'undefined' && module.exports) ? require('./gacha.js') : root.GraphGacha;
+  var api = factory(C, E, B, G);
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
   else root.GraphUI = api;
-})(typeof globalThis !== 'undefined' ? globalThis : this, function (C, E, B) {
+})(typeof globalThis !== 'undefined' ? globalThis : this, function (C, E, B, G) {
   'use strict';
 
   function tutorialSvg(body) {
@@ -94,6 +95,7 @@
     var els = {};
     var slotButtons = [];
     var deckCards = {};
+    var gacha = loadGacha();
     var selectedFusion = loadFusion();
     var selectedDeck = loadDeck();
     var selectedParams = loadParams();
@@ -118,6 +120,47 @@
       try {
         if (typeof localStorage !== 'undefined') localStorage.setItem('graph-cross-muted', value ? '1' : '0');
       } catch (e) { }
+    }
+    function loadGacha() {
+      var key = 'graph-cross-gacha';
+      var raw = null;
+      try {
+        if (typeof localStorage !== 'undefined') raw = localStorage.getItem(key);
+      } catch (e) { raw = null; }
+      var existed = !!raw;
+      var state = null;
+      if (raw) {
+        try { state = JSON.parse(raw); } catch (e) { state = null; }
+      }
+      state = G.normalize(state || G.createDefault());
+      if (!existed && typeof localStorage !== 'undefined') {
+        try {
+          var savedDeck = JSON.parse(localStorage.getItem('graph-cross-deck') || 'null');
+          if (Array.isArray(savedDeck)) {
+            for (var i = 0; i < savedDeck.length; i++) {
+              var deckKey = savedDeck[i];
+              if (C.MODES[deckKey] && deckKey !== 'fusion' && state.unlocked.indexOf(deckKey) < 0) state.unlocked.push(deckKey);
+            }
+          }
+          var savedFusion = JSON.parse(localStorage.getItem('graph-cross-fusion') || 'null');
+          if (savedFusion) {
+            ['primary', 'secondary'].forEach(function (slot) {
+              var fkey = savedFusion[slot];
+              if (C.MODES[fkey] && fkey !== 'fusion' && state.unlocked.indexOf(fkey) < 0) state.unlocked.push(fkey);
+            });
+          }
+        } catch (e) { }
+      }
+      writeGacha(state);
+      return state;
+    }
+    function writeGacha(state) {
+      try {
+        if (typeof localStorage !== 'undefined') localStorage.setItem('graph-cross-gacha', JSON.stringify(state));
+      } catch (e) { }
+    }
+    function saveGacha() {
+      writeGacha(gacha);
     }
     function loadTutorialDone() {
       try {
@@ -162,7 +205,8 @@
         if (!raw) return null;
         var f = JSON.parse(raw);
         if (f && C.MODES[f.primary] && C.MODES[f.secondary] &&
-          f.primary !== 'fusion' && f.secondary !== 'fusion' && f.primary !== f.secondary) {
+          f.primary !== 'fusion' && f.secondary !== 'fusion' && f.primary !== f.secondary &&
+          gacha.unlocked.indexOf(f.primary) >= 0 && gacha.unlocked.indexOf(f.secondary) >= 0) {
           return { primary: f.primary, secondary: f.secondary };
         }
       } catch (e) { }
@@ -181,13 +225,21 @@
       if (deck.indexOf('fusion') >= 0 && !selectedFusion) return false;
       var seen = {};
       for (var i = 0; i < deck.length; i++) {
-        if (!C.MODES[deck[i]] || seen[deck[i]]) return false;
-        seen[deck[i]] = true;
+        var key = deck[i];
+        if (!C.MODES[key] || seen[key]) return false;
+        if (key === 'fusion') {
+          if (!selectedFusion ||
+            gacha.unlocked.indexOf(selectedFusion.primary) < 0 ||
+            gacha.unlocked.indexOf(selectedFusion.secondary) < 0) return false;
+        } else if (gacha.unlocked.indexOf(key) < 0) {
+          return false;
+        }
+        seen[key] = true;
       }
       return true;
     }
     function loadDeck() {
-      var fallback = ['hold', 'up', 'wave'];
+      var fallback = C.DEFAULT_DECK.slice();
       try {
         if (typeof localStorage === 'undefined') return fallback;
         var raw = localStorage.getItem('graph-cross-deck');
@@ -386,16 +438,20 @@
     }
 
     function buildFusionSelects() {
-      var options = C.MODE_KEYS.map(function (key) {
+      var keys = [];
+      for (var i = 0; i < C.MODE_KEYS.length; i++) {
+        if (gacha.unlocked.indexOf(C.MODE_KEYS[i]) >= 0) keys.push(C.MODE_KEYS[i]);
+      }
+      var options = keys.map(function (key) {
         return '<option value="' + key + '">' + C.MODES[key].label + '</option>';
       }).join('');
       if (els.fusionPrimary) {
         els.fusionPrimary.innerHTML = options;
-        els.fusionPrimary.value = selectedFusion ? selectedFusion.primary : 'quad';
+        els.fusionPrimary.value = selectedFusion ? selectedFusion.primary : (keys[0] || '');
       }
       if (els.fusionSecondary) {
         els.fusionSecondary.innerHTML = options;
-        els.fusionSecondary.value = selectedFusion ? selectedFusion.secondary : 'wave';
+        els.fusionSecondary.value = selectedFusion ? selectedFusion.secondary : (keys[1] || keys[0] || '');
       }
     }
 
@@ -410,6 +466,8 @@
             '</b><span>2関数の合成</span>';
           card.style.setProperty('--mode-color', C.modeColor('fusion'));
           card.setAttribute('data-genre', C.GENRE_LABELS.other);
+          card.classList.add('rarity-legendary');
+          card.setAttribute('data-rarity', C.RARITY_INFO.legendary.label);
         }
       }
       if (selectedFusion && els.fusionPrimary) els.fusionPrimary.value = selectedFusion.primary;
@@ -434,6 +492,10 @@
         if (els.fusionNote) els.fusionNote.textContent = '別の関数を2つ選んでください。';
         return;
       }
+      if (gacha.unlocked.indexOf(primary) < 0 || gacha.unlocked.indexOf(secondary) < 0) {
+        if (els.fusionNote) els.fusionNote.textContent = '未解放の関数は合成できません。';
+        return;
+      }
       selectedFusion = { primary: primary, secondary: secondary };
       saveFusion();
       var canAdd = selectedDeck.length < C.DECK_SIZE && selectedDeck.indexOf('fusion') < 0;
@@ -446,7 +508,36 @@
       playUi();
     }
 
+    function updateDeckLocks() {
+      for (var key in deckCards) {
+        if (!Object.prototype.hasOwnProperty.call(deckCards, key) || key === 'fusion') continue;
+        var card = deckCards[key];
+        var mode = C.MODES[key];
+        if (!card || !mode) continue;
+        var info = C.RARITY_INFO[mode.rarity] || C.RARITY_INFO.common;
+        var unlocked = gacha.unlocked.indexOf(key) >= 0;
+        card.classList.remove('rarity-common', 'rarity-uncommon', 'rarity-rare', 'rarity-epic', 'rarity-legendary');
+        card.classList.add('rarity-' + mode.rarity);
+        card.classList.toggle('locked', !unlocked);
+        card.disabled = !unlocked;
+        card.setAttribute('data-rarity', info.label);
+        card.style.setProperty('--mode-color', C.modeColor(key));
+        if (unlocked) {
+          var fam = mode.family;
+          card.setAttribute('data-genre', C.GENRE_LABELS[mode.genre] || '');
+          card.innerHTML = '<b>' + mode.label + '</b><span>' + mode.note +
+            (fam !== 'none' ? ' / ' + C.FAMILY_LABELS[fam] : '') + ' / ' + info.label + '</span>';
+        } else {
+          if (card.removeAttribute) card.removeAttribute('data-genre');
+          else card.setAttribute('data-genre', '');
+          card.classList.remove('selected');
+          card.innerHTML = '<b>???</b><span>' + info.label + ' / 未解放</span>';
+        }
+      }
+    }
+
     function updateDeckUi() {
+      updateDeckLocks();
       if (els.deckCount) els.deckCount.textContent = selectedDeck.length + '/' + C.DECK_SIZE;
       if (els.deckSummary) {
         var chips = [];
@@ -460,10 +551,12 @@
       }
       for (var key in deckCards) {
         if (!Object.prototype.hasOwnProperty.call(deckCards, key)) continue;
-        deckCards[key].classList.toggle('selected', selectedDeck.indexOf(key) >= 0);
+        var selected = selectedDeck.indexOf(key) >= 0;
+        if (key !== 'fusion' && gacha.unlocked.indexOf(key) < 0) selected = false;
+        deckCards[key].classList.toggle('selected', selected);
       }
       if (els.btnStart) {
-        var ready = selectedDeck.length === C.DECK_SIZE;
+        var ready = selectedDeck.length === C.DECK_SIZE && deckIsValid(selectedDeck);
         els.btnStart.disabled = !ready;
         els.btnStart.classList.toggle('disabled', !ready);
         if (els.btnStress) {
@@ -513,8 +606,111 @@
       playUi();
     }
 
+    function randomUnit() {
+      try {
+        if (typeof crypto !== 'undefined' && crypto.getRandomValues) {
+          var buf = new Uint32Array(1);
+          crypto.getRandomValues(buf);
+          return buf[0] / 4294967296;
+        }
+      } catch (e) { }
+      return Math.random();
+    }
+
+    function updateGachaLabels() {
+      if (els.gachaPoints) els.gachaPoints.textContent = String(gacha.points);
+      if (els.gachaPointsLarge) els.gachaPointsLarge.textContent = String(gacha.points);
+      var complete = G.allUnlocked(gacha);
+      if (els.btnGachaRoll) {
+        els.btnGachaRoll.disabled = complete || gacha.points < B.GACHA_COST;
+        els.btnGachaRoll.textContent = complete ? 'コンプリート' : '1回まわす (' + B.GACHA_COST + ')';
+      }
+      if (els.gachaPity) {
+        els.gachaPity.textContent = complete
+          ? '全関数解放済み'
+          : 'レア+ 天井 ' + gacha.pityRare + '/' + B.GACHA_RARE_PITY +
+            ' · EPIC 天井 ' + gacha.pityEpic + '/' + B.GACHA_EPIC_PITY;
+      }
+    }
+
+    function renderGachaResult() {
+      if (!els.gachaResult) return;
+      var r = gacha.lastResult;
+      if (!r || !C.MODES[r.key]) {
+        els.gachaResult.innerHTML = '<div class="gacha-empty">1回まわすと関数が解放されます</div>';
+        return;
+      }
+      var info = C.RARITY_INFO[r.rarity] || C.RARITY_INFO.common;
+      var label = C.formatModeLabel(r.key, selectedParams, selectedFusion);
+      var note = C.MODES[r.key].note;
+      var status = r.isNew
+        ? '<span class="gacha-new">NEW! 関数を解放</span>'
+        : '<span class="gacha-dup">重複 +' + r.duplicatePoints + ' pt</span>';
+      els.gachaResult.innerHTML = '<div class="gacha-result-card rarity-' + r.rarity + '">' +
+        modePreviewSvg(r.key, selectedParams, selectedFusion) +
+        '<div class="gacha-result-info">' +
+          '<em>' + info.label + '</em>' +
+          '<b>' + label + '</b>' +
+          '<span>' + note + '</span>' +
+          status +
+        '</div>' +
+      '</div>';
+    }
+
+    function renderGachaCollection() {
+      if (!els.gachaCollection) return;
+      var html = '';
+      for (var i = 0; i < C.MODE_KEYS.length; i++) {
+        var key = C.MODE_KEYS[i];
+        var mode = C.MODES[key];
+        var info = C.RARITY_INFO[mode.rarity] || C.RARITY_INFO.common;
+        var unlocked = gacha.unlocked.indexOf(key) >= 0;
+        html += '<div class="gacha-item rarity-' + mode.rarity + (unlocked ? '' : ' locked') + '">' +
+          '<span class="gacha-rarity-label">' + info.label + '</span>' +
+          (unlocked ? modePreviewSvg(key, selectedParams, selectedFusion) : '') +
+          '<b>' + (unlocked ? C.formatModeLabel(key, selectedParams, selectedFusion) : '???') + '</b>' +
+          '<span>' + (unlocked ? mode.note : '未解放') + '</span>' +
+        '</div>';
+      }
+      els.gachaCollection.innerHTML = html;
+    }
+
+    function renderGacha() {
+      updateGachaLabels();
+      renderGachaResult();
+      renderGachaCollection();
+    }
+
+    function openGacha() {
+      tutorialMode = false;
+      hideTutorial();
+      closeDeckBuilder();
+      showScreen('gacha');
+      renderGacha();
+    }
+
+    function rollGacha() {
+      var result = G.roll(gacha, randomUnit);
+      if (!result.ok) {
+        updateGachaLabels();
+        return;
+      }
+      saveGacha();
+      if (result.value.isNew) buildFusionSelects();
+      updateDeckUi();
+      renderGacha();
+    }
+
+    function grantGachaPoints(amount) {
+      var n = G.grant(gacha, amount);
+      saveGacha();
+      updateGachaLabels();
+      return n;
+    }
+
     function toggleDeck(key) {
       if (!C.MODES[key]) return;
+      if (key !== 'fusion' && gacha.unlocked.indexOf(key) < 0) return;
       var idx = selectedDeck.indexOf(key);
       if (idx >= 0) selectedDeck.splice(idx, 1);
       else if (selectedDeck.length < C.DECK_SIZE) selectedDeck.push(key);
@@ -541,7 +737,7 @@
     }
 
     function showScreen(name) {
-      var screens = { start: els.screenStart, end: els.screenEnd, clear: els.screenClear };
+      var screens = { start: els.screenStart, end: els.screenEnd, clear: els.screenClear, gacha: els.screenGacha };
       for (var key in screens) {
         if (Object.prototype.hasOwnProperty.call(screens, key) && screens[key]) {
           screens[key].classList.toggle('visible', key === name);
@@ -628,6 +824,7 @@
       showScreen('start');
       closeDeckBuilder();
       updateTutorialButton();
+      updateGachaLabels();
       updateDeckUi();
       updateHud(null);
     }
@@ -776,6 +973,7 @@
       hideTutorial();
       var snap = E.snapshot(state);
       if (els.clearTitle) els.clearTitle.textContent = 'STAGE CLEAR';
+      if (els.clearGacha) els.clearGacha.textContent = 'ステージクリア報酬: 関数ポイント +' + B.GACHA_STAGE_REWARD;
       if (els.clearHint) els.clearHint.textContent = '1〜3 / クリックで強化を選んで次のステージへ';
       recordBest(snap.score);
       if (els.clearStage) els.clearStage.textContent = 'STAGE ' + snap.stage;
@@ -815,6 +1013,7 @@
       els.screenStart = $('screen-start');
       els.screenEnd = $('screen-end');
       els.screenClear = $('screen-clear');
+      els.screenGacha = $('screen-gacha');
       els.btnStart = $('btn-start');
       els.btnStress = $('btn-stress');
       els.btnExit = $('btn-exit');
@@ -832,6 +1031,14 @@
       els.btnTutorialSkip = $('btn-tutorial-skip');
       els.btnTutorialStart = $('btn-tutorial-start');
       els.btnTutorialBack = $('btn-tutorial-back');
+      els.btnGacha = $('btn-gacha');
+      els.gachaPoints = $('gacha-points');
+      els.gachaPointsLarge = $('gacha-points-large');
+      els.gachaResult = $('gacha-result');
+      els.btnGachaRoll = $('btn-gacha-roll');
+      els.gachaPity = $('gacha-pity');
+      els.gachaCollection = $('gacha-collection');
+      els.btnGachaClose = $('btn-gacha-close');
       els.clearTitle = $('clear-title');
       els.clearHint = $('clear-hint');
       els.clearStage = $('clear-stage');
@@ -839,6 +1046,7 @@
       els.clearBonus = $('clear-bonus');
       els.clearLife = $('clear-life');
       els.runUpgrades = $('run-upgrades');
+      els.clearGacha = $('clear-gacha');
       els.deckSwap = $('deck-swap');
       els.endScore = $('end-score');
       els.endBest = $('end-best');
@@ -956,6 +1164,9 @@
       if (els.btnTutorialSkip) els.btnTutorialSkip.addEventListener('click', function () { if (typeof actions.onTutorialSkip === 'function') actions.onTutorialSkip(); });
       if (els.btnTutorialStart) els.btnTutorialStart.addEventListener('click', function () { if (typeof actions.onTutorialStart === 'function') actions.onTutorialStart(); });
       if (els.btnTutorialBack) els.btnTutorialBack.addEventListener('click', function () { if (typeof actions.onTutorialSkip === 'function') actions.onTutorialSkip(); });
+      if (els.btnGacha) els.btnGacha.addEventListener('click', openGacha);
+      if (els.btnGachaRoll) els.btnGachaRoll.addEventListener('click', rollGacha);
+      if (els.btnGachaClose) els.btnGachaClose.addEventListener('click', showStart);
       for (i = 0; i < 3; i++) {
         (function (index) {
           var btn = $('upgrade-' + index);
@@ -963,8 +1174,19 @@
         })(i);
       }
 
+      if (typeof window !== 'undefined' && window.addEventListener) {
+        window.addEventListener('keydown', function (e) {
+          var key = e && (e.key || '');
+          if ((key === 'Escape' || key === 'Esc') && els.screenGacha &&
+            els.screenGacha.classList.contains('visible')) {
+            if (e.preventDefault) e.preventDefault();
+            showStart();
+          }
+        });
+      }
       updateSoundButton();
       updateTutorialButton();
+      updateGachaLabels();
       updateDeckUi();
       showStart();
     }
@@ -974,6 +1196,8 @@
       getDeck: function () { return selectedDeck.slice(); },
       getParams: function () { return selectedParams; },
       getFusion: function () { return selectedFusion ? { primary: selectedFusion.primary, secondary: selectedFusion.secondary } : null; },
+      getUnlocked: function () { return gacha.unlocked.slice(); },
+      grantGachaPoints: grantGachaPoints,
       getBest: function () { return best; },
       isMuted: function () { return muted; },
       setRuntime: setRuntime,

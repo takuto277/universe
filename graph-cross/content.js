@@ -11,20 +11,20 @@
   'use strict';
 
   var MODES = {
-    hold: { key: 'hold', label: 'y = 0', note: 'キープ', family: 'none', genre: 'other' },
-    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', family: 'linear', genre: 'up' },
-    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', family: 'linear', genre: 'down' },
-    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', family: 'linear', genre: 'up' },
-    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', family: 'linear', genre: 'down' },
-    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', family: 'quad', genre: 'up' },
-    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', family: 'quad', genre: 'down' },
-    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', family: 'wave', genre: 'other' },
-    expo: { key: 'expo', label: 'y = e^x - 1', note: '指数カーブ', family: 'quad', genre: 'up' },
-    log: { key: 'log', label: 'y = ln(x+1)', note: '対数カーブ', family: 'quad', genre: 'up' },
-    sigmoid: { key: 'sigmoid', label: 'y = sigmoid(x)', note: 'Sカーブ', family: 'wave', genre: 'up' },
-    gauss: { key: 'gauss', label: 'y = e^{-x²}', note: '山カーブ', family: 'wave', genre: 'other' },
-    easeDown: { key: 'easeDown', label: 'y = -1 + e^{-x}', note: '減速下降', family: 'quad', genre: 'down' },
-    fusion: { key: 'fusion', label: 'y = fusion', note: '2関数の合成', family: 'none', genre: 'other', color: '#b48cff' }
+    hold: { key: 'hold', label: 'y = 0', note: 'キープ', family: 'none', rarity: 'common', genre: 'other' },
+    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', family: 'linear', rarity: 'common', genre: 'up' },
+    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', family: 'linear', rarity: 'common', genre: 'down' },
+    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', family: 'linear', rarity: 'uncommon', genre: 'up' },
+    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', family: 'linear', rarity: 'uncommon', genre: 'down' },
+    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', family: 'quad', rarity: 'uncommon', genre: 'up' },
+    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', family: 'quad', rarity: 'uncommon', genre: 'down' },
+    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', family: 'wave', rarity: 'rare', genre: 'other' },
+    expo: { key: 'expo', label: 'y = e^x - 1', note: '指数カーブ', family: 'quad', rarity: 'rare', genre: 'up' },
+    log: { key: 'log', label: 'y = ln(x+1)', note: '対数カーブ', family: 'quad', rarity: 'rare', genre: 'up' },
+    sigmoid: { key: 'sigmoid', label: 'y = sigmoid(x)', note: 'Sカーブ', family: 'wave', rarity: 'epic', genre: 'up' },
+    gauss: { key: 'gauss', label: 'y = e^{-x²}', note: '山カーブ', family: 'wave', rarity: 'epic', genre: 'other' },
+    easeDown: { key: 'easeDown', label: 'y = -1 + e^{-x}', note: '減速下降', family: 'quad', rarity: 'rare', genre: 'down' },
+    fusion: { key: 'fusion', label: 'y = fusion', note: '2関数の合成', family: 'none', rarity: 'legendary', genre: 'other', color: '#b48cff' }
   };
   var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave', 'expo', 'log', 'sigmoid', 'gauss', 'easeDown'];
   var DEFAULT_DECK = ['hold', 'up', 'down'];
@@ -33,6 +33,16 @@
   var FAMILY_LABELS = { linear: '直線', quad: '累乗', wave: '波', none: '—' };
   var GENRE_LABELS = { up: '上昇', down: '下降', other: 'その他' };
   var FAMILY_COLORS = { linear: '#5ff0ff', quad: '#ffd166', wave: '#ff7ad9', none: '#a8bad8' };
+
+  var STARTER_FUNCTIONS = ['hold', 'up', 'down'];
+  var RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+  var RARITY_INFO = {
+    common: { label: 'COMMON', color: '#8fa1bd', weight: 55, duplicate: 20 },
+    uncommon: { label: 'UNCOMMON', color: '#57e08a', weight: 30, duplicate: 45 },
+    rare: { label: 'RARE', color: '#ffd166', weight: 12, duplicate: 100 },
+    epic: { label: 'EPIC', color: '#ff7ad9', weight: 3, duplicate: 220 },
+    legendary: { label: 'LEGENDARY', color: '#b48cff', weight: 0, duplicate: 0 }
+  };
 
   var PARAM_SPECS = {
     quad: {
@@ -155,6 +165,9 @@
     DECK_SIZE: DECK_SIZE,
     FAMILY_LABELS: FAMILY_LABELS,
     GENRE_LABELS: GENRE_LABELS,
+    STARTER_FUNCTIONS: STARTER_FUNCTIONS,
+    RARITY_ORDER: RARITY_ORDER,
+    RARITY_INFO: RARITY_INFO,
     FAMILY_COLORS: FAMILY_COLORS,
     PARAM_SPECS: PARAM_SPECS,
     WAVE_SHAPES: WAVE_SHAPES,
