@@ -44,7 +44,7 @@ Harness.run({
     } else {
       h.assert(state.over === true, 'ライフが尽きていない');
       h.assert(state.phase === 'over', '終了画面待ちのまま: phase=' + state.phase);
-      h.assert(state.deathCause === 'miss' || state.deathCause === 'bossEscape', '終了理由が不正: ' + state.deathCause);
+      h.assert(state.deathCause === 'miss' || state.deathCause === 'bossEscape' || state.deathCause === 'bossAttack', '終了理由が不正: ' + state.deathCause);
       h.assert(state.hp === 0, 'HPが0でない: ' + state.hp);
       h.assert(els['screen-end'] && els['screen-end'].classList.contains('visible'), '終了画面が出ていない');
       h.assert(els['btn-retry'] && !els['btn-retry'].classList.contains('hidden'), 'ステージやり直しボタンが出ていない');

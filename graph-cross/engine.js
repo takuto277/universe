@@ -282,6 +282,8 @@
     state.comboTimer = 0;
     state.beamCooldown = 0;
     state.guardUsed = false;
+    state.playerInvuln = 0;
+    state.bossShots = [];
     state.y = (state.top + state.bottom) / 2;
     state.mode = state.deck[0];
     state.modeTime = 0;
@@ -534,11 +536,19 @@
       maxHp: hp,
       invuln: 0,
       flash: 0,
-      hits: 0
+      hits: 0,
+      phase: 1,
+      attackTimer: B.BOSS_ATTACK_FIRST,
+      attackIndex: 0,
+      warning: null,
+      beamTimer: 0,
+      beamY: 0
     };
     applyBossShape(boss, family, state.stage);
     state.boss = boss;
     state.rivals = [];
+    state.bossShots = [];
+    state.playerInvuln = 0;
     pushEvent(state, {
       type: 'bossSpawn',
       x: boss.x,
@@ -558,6 +568,8 @@
     state.score += bonus;
     state.boss = null;
     state.rivals = [];
+    state.bossShots = [];
+    state.playerInvuln = 0;
     state.combo = 0;
     state.comboTimer = 0;
     state.multi = 0;
@@ -574,6 +586,136 @@
       score: state.score,
       weakness: boss ? boss.family : null
     });
+  }
+
+  function bossPhaseFor(boss) {
+    var ratio = boss && boss.maxHp > 0 ? boss.hp / boss.maxHp : 0;
+    if (ratio > 0.66) return 1;
+    if (ratio > 0.33) return 2;
+    return 3;
+  }
+
+  function bossCooldownFor(phase) {
+    if (phase >= 3) return B.BOSS_COOLDOWN_P3;
+    if (phase === 2) return B.BOSS_COOLDOWN_P2;
+    return B.BOSS_COOLDOWN_P1;
+  }
+
+  function damagePlayer(state, x, y, cause) {
+    if (!state || state.over || state.stageCleared) return false;
+    if ((state.playerInvuln || 0) > 0) return false;
+    state.hp--;
+    state.playerInvuln = B.BOSS_PLAYER_INVULN;
+    state.combo = 0;
+    state.comboTimer = 0;
+    state.multi = 0;
+    state.multiTimer = 0;
+    pushEvent(state, { type: 'playerHit', x: x, y: y, hp: state.hp, cause: cause });
+    if (state.hp <= 0) {
+      if (tryRevive(state, x, y)) return true;
+      state.hp = 0;
+      state.over = true;
+      state.deathCause = 'bossAttack';
+      pushEvent(state, { type: 'over' });
+    }
+    return true;
+  }
+
+  function startBossAttack(state, boss) {
+    var phase = boss.phase || 1;
+    var sequence = phase === 1 ? ['laser'] : (phase === 2 ? ['laser', 'shots'] : ['laser', 'shots', 'fan']);
+    var kind = sequence[boss.attackIndex % sequence.length];
+    boss.attackIndex++;
+    boss.warning = {
+      kind: kind,
+      y: clamp(state.y, state.top + 10, state.bottom - 10),
+      timer: B.BOSS_WARNING
+    };
+    pushEvent(state, {
+      type: 'bossWarning',
+      kind: kind,
+      x: boss.x,
+      y: boss.warning.y,
+      phase: phase
+    });
+  }
+
+  function executeBossAttack(state, boss) {
+    var warning = boss.warning;
+    if (!warning) return;
+    boss.warning = null;
+    if (warning.kind === 'laser') {
+      boss.beamTimer = B.BOSS_LASER_TIME;
+      boss.beamY = warning.y;
+      pushEvent(state, { type: 'bossLaser', x: boss.x, y: warning.y });
+      if (Math.abs(state.y - warning.y) <= B.BOSS_LASER_HALF) {
+        damagePlayer(state, state.headX, warning.y, 'bossLaser');
+      }
+    } else {
+      var dx = state.headX - boss.x;
+      var dy = state.y - boss.baseY;
+      var base = Math.atan2(dy, dx);
+      var offsets = warning.kind === 'fan' ? [-0.22, 0, 0.22] : [-0.1, 0.1];
+      var speed = B.BOSS_SHOT_SPEED + Math.max(0, state.stage - 1) * 6;
+      for (var i = 0; i < offsets.length; i++) {
+        var angle = base + offsets[i];
+        state.bossShots.push({
+          x: boss.x,
+          y: boss.baseY,
+          vx: Math.cos(angle) * speed,
+          vy: Math.sin(angle) * speed,
+          life: B.BOSS_SHOT_LIFE,
+          r: B.BOSS_SHOT_RADIUS,
+          kind: warning.kind
+        });
+      }
+      pushEvent(state, { type: 'bossShots', kind: warning.kind, x: boss.x, y: boss.baseY, count: offsets.length });
+    }
+    boss.attackTimer = bossCooldownFor(boss.phase || 1);
+  }
+
+  function updateBossShots(state, dt) {
+    if (!state.bossShots) return;
+    for (var i = state.bossShots.length - 1; i >= 0; i--) {
+      var shot = state.bossShots[i];
+      shot.life -= dt;
+      if (shot.life <= 0) {
+        state.bossShots.splice(i, 1);
+        continue;
+      }
+      shot.x += shot.vx * dt;
+      shot.y += shot.vy * dt;
+      if (shot.x < -40 || shot.x > state.width + 80 || shot.y < -50 || shot.y > state.height + 50) {
+        state.bossShots.splice(i, 1);
+        continue;
+      }
+      var hx = shot.x - state.headX;
+      var hy = shot.y - state.y;
+      var reach = shot.r + PLAYER_HALF;
+      if (hx * hx + hy * hy <= reach * reach) {
+        state.bossShots.splice(i, 1);
+        damagePlayer(state, shot.x, shot.y, 'bossShot');
+        if (state.over) return;
+        continue;
+      }
+      var blocked = false;
+      for (var ti = 0; ti < state.trail.length; ti++) {
+        var p = state.trail[ti];
+        var sx = shot.x - p.x;
+        var sy = shot.y - p.y;
+        var blockReach = shot.r + 7;
+        if (sx * sx + sy * sy <= blockReach * blockReach) {
+          blocked = true;
+          break;
+        }
+      }
+      if (blocked) {
+        state.bossShots.splice(i, 1);
+        var gain = Math.round(40 * (state.scoreMult || 1));
+        state.score += gain;
+        pushEvent(state, { type: 'shotBlocked', x: shot.x, y: shot.y, gain: gain });
+      }
+    }
   }
 
   function checkBossHits(state) {
@@ -637,6 +779,26 @@
           family: boss.family,
           familyLabel: FAMILY_LABELS[boss.family]
         });
+      }
+      if (boss.hp > 0) {
+        var nextPhase = bossPhaseFor(boss);
+        if (nextPhase > boss.phase) {
+          boss.phase = nextPhase;
+          boss.invuln = Math.max(boss.invuln, B.BOSS_PHASE_INVULN);
+          boss.warning = null;
+          boss.beamTimer = 0;
+          boss.attackTimer = 1.2;
+          state.bossShots = [];
+          boss.flash = 0.6;
+          pushEvent(state, {
+            type: 'bossPhase',
+            phase: nextPhase,
+            x: p.x,
+            y: (p.y + by) / 2,
+            hp: boss.hp,
+            maxHp: boss.maxHp
+          });
+        }
       }
       if (boss.hp <= 0) clearStage(state, boss, p.x, (p.y + by) / 2);
       return true;
@@ -961,6 +1123,12 @@
     state.multi = 0;
     state.multiTimer = 0;
     state.rivals = [];
+    state.bossShots = [];
+    state.playerInvuln = 0;
+    if (state.boss) {
+      state.boss.warning = null;
+      state.boss.attackTimer = Math.max(1.0, state.boss.attackTimer || 0);
+    }
     pushEvent(state, { type: 'revive', x: x, y: y, hp: 1 });
     return true;
   }
@@ -1011,6 +1179,7 @@
     if (!state || state.over || state.stageCleared) return state;
     dt = clamp(Number(dt) || 0, 0, MAX_DT);
     state.time += dt;
+    state.playerInvuln = Math.max(0, (state.playerInvuln || 0) - dt);
     state.speed = speedFor(state);
     var dx = state.speed * dt;
     state.worldX += dx;
@@ -1077,11 +1246,24 @@
       var boss = state.boss;
       boss.invuln = Math.max(0, boss.invuln - dt);
       boss.flash = Math.max(0, boss.flash - dt);
-      boss.x -= state.speed * 0.30 * dt;
+      boss.beamTimer = Math.max(0, (boss.beamTimer || 0) - dt);
+      boss.x -= state.speed * B.BOSS_MOVE_RATE * dt;
       boss.baseY = boss.centerY + Math.sin(state.time * 1.2) * 26;
+      if (boss.warning) {
+        boss.warning.timer -= dt;
+        if (boss.warning.timer <= 0) {
+          executeBossAttack(state, boss);
+          if (state.over) return state;
+        }
+      } else {
+        boss.attackTimer -= dt;
+        if (boss.attackTimer <= 0) startBossAttack(state, boss);
+      }
       if (boss.x + boss.len < -40) {
         state.boss = null;
+        state.bossShots = [];
         state.bossCooldown = 2.0;
+        state.playerInvuln = 0;
         state.hp--;
         state.combo = 0;
         state.comboTimer = 0;
@@ -1098,6 +1280,8 @@
         }
       }
     }
+    updateBossShots(state, dt);
+    if (state.over) return state;
 
     state.beamCooldown = Math.max(0, (state.beamCooldown || 0) - dt);
     pickupItems(state);
@@ -1431,6 +1615,7 @@
       boss: state.boss ? {
         hp: state.boss.hp,
         maxHp: state.boss.maxHp,
+        phase: state.boss.phase || 1,
         family: state.boss.family,
         familyLabel: FAMILY_LABELS[state.boss.family],
         x: Math.round(state.boss.x)
