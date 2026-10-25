@@ -28,7 +28,7 @@ PR を Ready にするだけで、レビューとマージまで自動で進め�
 ./tools/install-auto-pr.sh
 ```
 
-watcher は main 追従の専用チェックアウト（`~/.local/share/universe-automation`）から動き、起動時に自動更新します。
+watcher は main 追従の専用チェックアウト（`~/.local/share/universe-automation`）から動き、起動時に自動更新します。既定パスは初回起動時に管理マーカーを自動付与します。カスタムパスは一度 `./tools/automation-root.sh ensure` でマーカーを作成してください。
 
 状態確認と停止:
 
@@ -59,6 +59,7 @@ PR 単位で止める:
 - 対象は Consider のみ。FYI/Nit は対象外
 - チェックリストの上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
 - `UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効化できます（plist に反映するには再インストール）
+- Issue化に失敗した場合は pending に残し、次回のwatcher実行で再試行します（dry-run / 無効時は再試行しません）
 - 提案は自動実装されません。`./tools/agent.sh promote <n>` で実装キューに移します
 
 週次で新しい提案を作るには `./tools/install-agent-planner.sh` を使います。

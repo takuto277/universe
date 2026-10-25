@@ -3,6 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+REPO="${UNIVERSE_AGENT_REPO:-takuto277/universe}"
 MODE="check"
 WITH_AGENTS=0
 RUN_VERIFY=0
@@ -62,19 +63,25 @@ else
 fi
 
 JSC="${JSC:-}"
-if [ -n "$JSC" ] && [ -x "$JSC" ]; then
-  :
-elif command -v jsc >/dev/null 2>&1; then
-  JSC="$(command -v jsc)"
-elif [ -x /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc ]; then
-  JSC=/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc
-elif [ -x /Applications/Xcode.app/Contents/Developer/usr/bin/jsc ]; then
-  JSC=/Applications/Xcode.app/Contents/Developer/usr/bin/jsc
-fi
 if [ -n "$JSC" ]; then
-  ok "jsc ($JSC)"
+  if [ -x "$JSC" ]; then
+    ok "jsc ($JSC)"
+  else
+    bad "JSC が実行できません: $JSC"
+  fi
 else
-  bad "jsc が見つかりません (Xcode Command Line Tools を入れてください)"
+  if command -v jsc >/dev/null 2>&1; then
+    JSC="$(command -v jsc)"
+  elif [ -x /System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc ]; then
+    JSC=/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc
+  elif [ -x /Applications/Xcode.app/Contents/Developer/usr/bin/jsc ]; then
+    JSC=/Applications/Xcode.app/Contents/Developer/usr/bin/jsc
+  fi
+  if [ -n "$JSC" ]; then
+    ok "jsc ($JSC)"
+  else
+    bad "jsc が見つかりません (Xcode Command Line Tools を入れてください)"
+  fi
 fi
 
 if command -v sandbox-exec >/dev/null 2>&1; then
@@ -96,6 +103,14 @@ if command -v gh >/dev/null 2>&1; then
   ok "gh $(gh --version | head -1 | awk '{print $3}')"
   if gh auth status >/dev/null 2>&1; then
     ok "gh 認証済み"
+    for repo in "$REPO" ${UNIVERSE_AUTO_PR_REPO:+"$UNIVERSE_AUTO_PR_REPO"}; do
+      [ -n "$repo" ] || continue
+      perm="$(gh repo view "$repo" --json viewerPermission -q .viewerPermission 2>/dev/null || true)"
+      case "$perm" in
+        READ|TRIAGE|WRITE|MAINTAIN|ADMIN) ok "リポジトリ権限 ($repo): $perm" ;;
+        *) bad "リポジトリ $repo にアクセスできません (gh repo view)" ;;
+      esac
+    done
   else
     bad "gh が未認証です (gh auth login)"
   fi

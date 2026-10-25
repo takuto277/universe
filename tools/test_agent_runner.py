@@ -974,6 +974,11 @@ class RunnerTest(unittest.TestCase):
         self.assertFalse(self.fake.called("gh", "issue", "create"))
         self.assertFalse(self.fake.called("gh", "label", "create"))
 
+    def test_findings_paused_returns_skip(self):
+        (self.cfg.state_dir / "pause").touch()
+        self.assertEqual(2, self.runner.findings(33))
+        self.assertFalse(self.fake.called("gh", "pr", "view"))
+
     def test_findings_without_review_is_noop(self):
         self.fake.on(["gh", "pr", "view"], ar.Result(0, json.dumps({
             "number": 33, "title": "demo", "headRefOid": "abc123",

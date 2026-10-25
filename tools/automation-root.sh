@@ -3,8 +3,10 @@
 set -euo pipefail
 
 SOURCE_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-DEST="${UNIVERSE_AUTOMATION_ROOT:-$HOME/.local/share/universe-automation}"
+DEFAULT_DEST="$HOME/.local/share/universe-automation"
+DEST="${UNIVERSE_AUTOMATION_ROOT:-$DEFAULT_DEST}"
 BASE="${UNIVERSE_AGENT_BASE:-main}"
+MARKER="$DEST/.universe-automation-root"
 
 usage() {
   cat <<'USAGE'
@@ -31,19 +33,6 @@ if [ -e "$DEST" ] && [ ! -e "$DEST/.git" ]; then
   exit 1
 fi
 
-if [ -e "$DEST/.git" ]; then
-  source_common="$(git -C "$SOURCE_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
-  dest_common="$(git -C "$DEST" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
-  if [ -z "$dest_common" ] || [ "$dest_common" != "$source_common" ]; then
-    printf 'UNIVERSE_AUTOMATION_ROOT はこのリポジトリの worktree ではありません: %s\n' "$DEST" >&2
-    exit 1
-  fi
-  if git -C "$DEST" symbolic-ref -q HEAD >/dev/null 2>&1; then
-    printf 'UNIVERSE_AUTOMATION_ROOT は detached HEAD の worktree にしてください（ブランチのチェックアウトは更新しません）: %s\n' "$DEST" >&2
-    exit 1
-  fi
-fi
-
 case "$cmd" in
   status)
     printf 'path: %s\n' "$DEST"
@@ -56,6 +45,12 @@ case "$cmd" in
     ;;
   remove)
     if [ -e "$DEST/.git" ]; then
+      source_common="$(git -C "$SOURCE_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+      dest_common="$(git -C "$DEST" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+      if [ -z "$dest_common" ] || [ "$dest_common" != "$source_common" ]; then
+        printf 'UNIVERSE_AUTOMATION_ROOT はこのリポジトリの worktree ではありません: %s\n' "$DEST" >&2
+        exit 1
+      fi
       common="$(git -C "$DEST" rev-parse --path-format=absolute --git-common-dir)"
       git --git-dir="$common" worktree remove --force "$DEST"
       printf 'removed: %s\n' "$DEST"
@@ -64,13 +59,35 @@ case "$cmd" in
     fi
     ;;
   ensure|update)
+    if [ -e "$DEST/.git" ]; then
+      source_common="$(git -C "$SOURCE_ROOT" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+      dest_common="$(git -C "$DEST" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true)"
+      if [ -z "$dest_common" ] || [ "$dest_common" != "$source_common" ]; then
+        printf 'UNIVERSE_AUTOMATION_ROOT はこのリポジトリの worktree ではありません: %s\n' "$DEST" >&2
+        exit 1
+      fi
+      if git -C "$DEST" symbolic-ref -q HEAD >/dev/null 2>&1; then
+        printf 'UNIVERSE_AUTOMATION_ROOT は detached HEAD の worktree にしてください（ブランチのチェックアウトは更新しません）: %s\n' "$DEST" >&2
+        exit 1
+      fi
+      if [ ! -f "$MARKER" ]; then
+        if [ "$(cd "$DEST" && pwd -P)" = "$(cd "$DEFAULT_DEST" 2>/dev/null && pwd -P)" ]; then
+          printf 'managed\n' >"$MARKER"
+        else
+          printf '管理対象外の worktree です。別のパスを指定するか、automation-root.sh remove で削除してください: %s\n' "$DEST" >&2
+          exit 1
+        fi
+      fi
+    fi
     mkdir -p "$(dirname "$DEST")"
     if [ -e "$DEST/.git" ]; then
       git -C "$DEST" fetch --quiet origin "$BASE"
       git -C "$DEST" reset --hard --quiet "origin/$BASE"
     else
+      git -C "$SOURCE_ROOT" worktree prune
       git -C "$SOURCE_ROOT" fetch --quiet origin "$BASE"
       git -C "$SOURCE_ROOT" worktree add --detach "$DEST" "origin/$BASE"
+      printf 'managed\n' >"$MARKER"
     fi
     printf '%s\n' "$DEST"
     ;;

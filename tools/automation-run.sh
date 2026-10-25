@@ -22,16 +22,30 @@ fi
 {
   if mkdir "$LOCK" 2>/dev/null; then
     trap 'rmdir "$LOCK" 2>/dev/null || true' EXIT
-    printf '%s update start\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
-    if git -C "$ROOT" fetch --quiet origin "$BASE"; then
-      if git -C "$ROOT" reset --hard --quiet "origin/$BASE"; then
-        printf '%s updated to %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
-          "$(git -C "$ROOT" rev-parse --short HEAD)"
-      else
-        printf '%s reset failed; continue with current checkout\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
-      fi
+    managed=0
+    if [ -f "$ROOT/.universe-automation-root" ]; then
+      managed=1
     else
-      printf '%s fetch failed; continue with current checkout\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+      default_root="$HOME/.local/share/universe-automation"
+      if [ "$(cd "$ROOT" && pwd -P)" = "$(cd "$default_root" 2>/dev/null && pwd -P)" ]; then
+        printf 'managed\n' >"$ROOT/.universe-automation-root"
+        managed=1
+      fi
+    fi
+    if [ "$managed" != "1" ]; then
+      printf '%s unmanaged worktree; skip update\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+    else
+      printf '%s update start\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+      if git -C "$ROOT" fetch --quiet origin "$BASE"; then
+        if git -C "$ROOT" reset --hard --quiet "origin/$BASE"; then
+          printf '%s updated to %s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" \
+            "$(git -C "$ROOT" rev-parse --short HEAD)"
+        else
+          printf '%s reset failed; continue with current checkout\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+        fi
+      else
+        printf '%s fetch failed; continue with current checkout\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+      fi
     fi
     rmdir "$LOCK" 2>/dev/null || true
     trap - EXIT

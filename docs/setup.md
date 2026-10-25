@@ -29,7 +29,8 @@ gh auth login
 
 LaunchAgent は、人間が作業しているチェックアウトとは別の **main 追従の専用チェックアウト** から動きます。既定は `~/.local/share/universe-automation` です。
 
-- 起動のたびに `origin/main` へ自動更新します（失敗時は現在の版で続行し、ログに残します）
+- 既定パス（`~/.local/share/universe-automation`）はマーカーがなくても、初回起動時に管理マーカーを付与して `origin/main` へ自動更新します
+- カスタムパスは管理マーカーが必要です。`automation-root.sh ensure` で作成してください（失敗時は現在の版で続行し、ログに残します）
 - 手動確認・更新・削除:
 
 ```sh
@@ -38,6 +39,7 @@ LaunchAgent は、人間が作業しているチェックアウトとは別の *
 ./tools/automation-root.sh remove
 ```
 
+- 既定パスの既存インストールは、次回起動時に自動で移行されます。カスタムパスの場合は一度 `./tools/automation-root.sh ensure` を実行してください
 - パスを変える場合: `UNIVERSE_AUTOMATION_ROOT=/path ./tools/setup.sh --with-agents`
 - 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除は `./tools/automation-root.sh remove` を使ってください
 - ブランチをチェックアウトした worktree は指定できません（detached HEAD のみ）
@@ -55,7 +57,7 @@ LaunchAgent は、人間が作業しているチェックアウトとは別の *
 | sandbox-exec | 実行の隔離 | macOS 標準 |
 | gh | Issue/PR 操作 | https://cli.github.com/ または `brew install gh` |
 | opencode | AI レビュー・実装 | https://opencode.ai/docs/ |
-| gh 認証 | PR・Issue 操作 | `gh auth login` |
+| gh 認証 / リポジトリ権限 | PR・Issue 操作 | `gh auth login`（`UNIVERSE_AGENT_REPO` / `UNIVERSE_AUTO_PR_REPO` の権限も確認） |
 | opencode 認証 | モデル利用 | `opencode` の初回セットアップ（setup は存在のみ確認） |
 
 Homebrew がある場合、`--install` で不足している `gh` だけを導入します。opencode は公式手順で入れてください（`curl | bash` を勝手に実行しないため）。
@@ -80,7 +82,8 @@ launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -E 'stat
 | 症状 | 対処 |
 | --- | --- |
 | `jsc` が見つからない | `xcode-select --install` を実行し、`/System/Library/Frameworks/JavaScriptCore.framework/Versions/A/Helpers/jsc` があるか確認 |
-| `gh` が未認証 | `gh auth login` |
+| `JSC` を指定したのに MISS | 指定先が実行可能か確認（無効な `JSC` は自動検出にフォールバックしません） |
+| `gh` が未認証 / リポジトリにアクセスできない | `gh auth login` と対象リポジトリの権限を確認 |
 | opencode が動かない | 公式手順でインストールし、認証とモデル設定を確認（setup は認証を確認しません） |
 | 「未解決の項目があるため…中止します」と出る | 上の MISS を解消してから `--with-agents --verify` を再実行する（新規 Mac は上の最短手順の順番で入れる） |
 | LaunchAgent が動かない | Mac にログイン中か、スリープしていないか確認。`launchctl print` で状態を見る |
