@@ -3,6 +3,7 @@
   'use strict';
 
   var C = (typeof window !== 'undefined' && window.GraphContent) ? window.GraphContent : null;
+  var B = (typeof window !== 'undefined' && window.GraphBalance) ? window.GraphBalance : null;
   var E = (typeof window !== 'undefined' && window.GraphCrossEngine) ? window.GraphCrossEngine : null;
   var AU = (typeof window !== 'undefined' && window.GraphCrossAudio) ? window.GraphCrossAudio : null;
   var R = (typeof window !== 'undefined' && window.GraphRenderer) ? window.GraphRenderer : null;
@@ -349,7 +350,8 @@
     state = E.createGame({
       width: viewW,
       height: viewH,
-      deck: ['hold', 'up', 'wave'],
+      unlocked: ui.getUnlocked(),
+      deck: ['hold', 'up', 'down'],
       deckParams: null,
       fusion: null,
       mode: 'normal'
@@ -391,6 +393,7 @@
     state = E.createGame({
       width: viewW,
       height: viewH,
+      unlocked: ui.getUnlocked(),
       deck: ui.getDeck(),
       deckParams: ui.getParams(),
       fusion: ui.getFusion(),
@@ -444,6 +447,9 @@
       view.upgradeIds = [];
       ui.showDeckSwapChoices(state, state.pendingDeckSwap);
       return;
+    }
+    if (B && ui && typeof ui.grantGachaPoints === 'function') {
+      ui.grantGachaPoints(B.GACHA_STAGE_REWARD);
     }
     view.upgradeIds = E.upgradeChoices(state);
     ui.showClear(state, view.upgradeIds);

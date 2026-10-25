@@ -256,6 +256,29 @@ for (i = 0; i < 60 * 12; i++) {
 assert(spawned >= 3, '敵カーブが生成され続ける: max=' + spawned);
 assert(g.hits + g.misses > 0, '交差かミスが発生している');
 
+/* 9a0) 未解放関数の扱い */
+g = E.createGame({
+  width: 1000, height: 620,
+  deck: ['wave', 'quad', 'hold'],
+  unlocked: ['hold', 'up', 'down'],
+  rng: mulberry32(9010)
+});
+assert(g.unlocked.length === 3, '未解放リストを保持');
+assert(g.deck.indexOf('wave') < 0 && g.deck.indexOf('quad') < 0, '未解放関数はデッキに入らない');
+assert(g.deck.indexOf('hold') >= 0 && g.deck.indexOf('up') >= 0 && g.deck.indexOf('down') >= 0, '未解放時はスターターに戻る');
+
+var starterOnly = E.createGame({
+  width: 1000, height: 620,
+  deck: ['hold', 'up', 'down'],
+  unlocked: ['hold', 'up', 'down'],
+  rng: mulberry32(9011)
+});
+assert(E.rotateDeck(starterOnly) === null, '未解放候補がない場合は入れ替えない');
+
+var starterCheckpoint = E.makeCheckpoint(starterOnly);
+var starterRestored = E.restoreCheckpoint(starterCheckpoint, { width: 1000, height: 620, rng: mulberry32(9012) });
+assert(starterRestored.unlocked.length === 3 && starterRestored.deck.length === 3, 'チェックポイントに未解放リストを保存');
+
 /* 9a1) 関数プレビュー */
 var upPreview = E.modePreview('up', null, null, 10, 1);
 assert(upPreview.length === 10 && upPreview[0].y === 0 && upPreview[9].y < upPreview[0].y, '上昇関数のプレビュー');

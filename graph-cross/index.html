@@ -41,6 +41,7 @@
           <div class="start-sub-actions">
             <button id="btn-build" class="secondary build-btn" type="button">デッキを組む</button>
             <button id="btn-tutorial" class="secondary tutorial-btn" type="button">はじめての遊び方</button>
+            <button id="btn-gacha" class="secondary gacha-btn" type="button">関数ガチャ <b id="gacha-points">300</b></button>
           </div>
           <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦 / ストレス解消: ライフ∞・敵大量</p>
           <div id="deck-builder" class="hidden">
@@ -125,7 +126,20 @@
           </div>
           <div id="deck-swap" class="hidden"></div>
           <div id="run-upgrades">このランの強化: なし</div>
+          <p id="clear-gacha" class="tiny"></p>
           <p class="tiny" id="clear-hint">1〜3 / クリックで強化を選んで次のステージへ</p>
+        </section>
+
+        <section id="screen-gacha" class="screen gacha-screen">
+          <h2 class="clear-title">FUNCTION GACHA</h2>
+          <p class="tiny">ステージクリアで関数ポイント +80</p>
+          <div class="gacha-balance"><span>FUNCTION POINTS</span><b id="gacha-points-large">300</b></div>
+          <div id="gacha-result" class="gacha-result"></div>
+          <button id="btn-gacha-roll" class="primary" type="button">1回まわす (100)</button>
+          <p id="gacha-pity" class="tiny"></p>
+          <div class="gacha-rates">COMMON 55% / UNCOMMON 30% / RARE 12% / EPIC 3%</div>
+          <div id="gacha-collection" class="gacha-collection"></div>
+          <button id="btn-gacha-close" class="secondary" type="button">スタートへ</button>
         </section>
 
         <section id="screen-end" class="screen">
@@ -182,6 +196,7 @@
 
   <script src="content.js"></script>
   <script src="balance.js"></script>
+  <script src="gacha.js"></script>
   <script src="engine.js"></script>
   <script src="audio.js"></script>
   <script src="renderer.js"></script>
