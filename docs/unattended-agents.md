@@ -96,6 +96,7 @@ UNIVERSE_AGENT_SANDBOX=seatbelt ./tools/install-agent-planner.sh
 - Consider 指摘をチェックリストにした1つの Issue を作ります（既にIssueがあれば重複しません）
 - 1つのIssueのチェックリストに載せる上限は `UNIVERSE_AGENT_FINDINGS_MAX`（既定5）
 - watcher はマージ後に自動で実行します（`UNIVERSE_AUTO_PR_CREATE_ISSUES=0` で無効）。失敗時は pending に残して次回再試行します
+- pause 中の `findings` は exit 2（skip）で、pending は保持されます
 
 ### 止める・再開する
 
@@ -214,8 +215,8 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 - 同時起動時は更新ロックで片方だけが更新し、もう片方は現在の版で実行する
 - 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除するときは `automation-root.sh remove` を使う
 - ブランチをチェックアウトした worktree は指定できません（detached HEAD の専用 worktree のみ）
-- カスタムパスで管理マーカーのない worktree は自動更新の対象外です。`automation-root.sh ensure` でマーカーを作成してください
-- 既定パス以外の既存 worktree にマーカーがない場合は ensure が拒否します。新しく作る worktree には ensure がマーカーを付与するため、作り直すか既定パスを使ってください
+- カスタムパスの新規作成では `automation-root.sh ensure` がマーカーを付与します
+- 既存のカスタム worktree にマーカーがない場合は ensure が拒否します。`automation-root.sh remove` してから同じパスへ ensure で作り直してください
 - 手動操作: `./tools/automation-root.sh status|update|remove`（`UNIVERSE_AUTOMATION_ROOT` でパス変更）
 - LaunchAgent は 120 秒ごとに起動する。Mac がスリープ中は遅延する
 - 実行ログは `~/.local/state/universe-agent-runner/logs/issue-<n>-<ts>.log` に残し、14日より古いものを削除する

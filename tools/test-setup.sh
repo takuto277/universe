@@ -22,7 +22,7 @@ case "\$1" in
   --version) echo "gh version 9.9.9" ;;
   auth) exit 0 ;;
   repo)
-    if [ "${GH_FAKE_FAIL:-}" = "repo" ]; then exit 1; fi
+    if [ "\${GH_FAKE_FAIL:-}" = "repo" ]; then exit 1; fi
     echo READ
     ;;
 esac

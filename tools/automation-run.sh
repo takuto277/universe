@@ -33,7 +33,7 @@ fi
       fi
     fi
     if [ "$managed" != "1" ]; then
-      printf '%s unmanaged worktree; skip update\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
+      printf '%s unmanaged worktree; skip update (run automation-root.sh ensure for a new path, or remove and recreate an existing one)\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
     else
       printf '%s update start\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')"
       if git -C "$ROOT" fetch --quiet origin "$BASE"; then

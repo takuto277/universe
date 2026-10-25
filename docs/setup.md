@@ -39,7 +39,8 @@ LaunchAgent は、人間が作業しているチェックアウトとは別の *
 ./tools/automation-root.sh remove
 ```
 
-- 既定パスの既存インストールは、次回起動時に自動で移行されます。カスタムパスの場合は一度 `./tools/automation-root.sh ensure` を実行してください
+- 既定パスの既存インストールは、次回起動時に自動で移行されます
+- カスタムパスを新規に使う場合は `./tools/automation-root.sh ensure` でマーカーを作成します。既存のカスタム worktree にマーカーがない場合は ensure が拒否するため、`remove` してから同じパスへ ensure で作り直してください
 - パスを変える場合: `UNIVERSE_AUTOMATION_ROOT=/path ./tools/setup.sh --with-agents`
 - 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除は `./tools/automation-root.sh remove` を使ってください
 - ブランチをチェックアウトした worktree は指定できません（detached HEAD のみ）

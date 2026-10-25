@@ -346,9 +346,16 @@ retry_pending_findings() {
   if [ "$DRY_RUN" = "1" ] || [ "${UNIVERSE_AUTO_PR_CREATE_ISSUES:-1}" != "1" ]; then
     return 0
   fi
+  runner_state="${UNIVERSE_AGENT_STATE_DIR:-$HOME/.local/state/universe-agent-runner}"
+  if [ -f "$runner_state/pause" ]; then
+    return 0
+  fi
   for pending in "$STATE_DIR"/findings-pending/*; do
     [ -f "$pending" ] || continue
     number="$(basename "$pending")"
+    if [ -n "$(find "$pending" -mmin -5 2>/dev/null)" ]; then
+      continue
+    fi
     if [ -n "$(find "$pending" -mtime +7 2>/dev/null)" ]; then
       log "PR #$number: pending findings expired; dropped"
       rm -f "$pending"
