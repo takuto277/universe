@@ -333,10 +333,11 @@ record_findings() {
   mkdir -p "$STATE_DIR/findings-pending"
   if UNIVERSE_AGENT_REPO="$REPO" "$PYTHON" "$ROOT/tools/agent_runner.py" \
       findings --pr "$number" >>"$LOG_FILE" 2>&1; then
-    rm -f "$pending"
+    rm -f "$pending" "$pending.attempt"
     log "PR #$number: review findings recorded"
   else
     touch "$pending"
+    rm -f "$pending.attempt"
     log "PR #$number: failed to record review findings; will retry"
   fi
 }
@@ -346,19 +347,29 @@ retry_pending_findings() {
   if [ "$DRY_RUN" = "1" ] || [ "${UNIVERSE_AUTO_PR_CREATE_ISSUES:-1}" != "1" ]; then
     return 0
   fi
+  runner_state="${UNIVERSE_AGENT_STATE_DIR:-$HOME/.local/state/universe-agent-runner}"
+  if [ "${UNIVERSE_AGENT_DISABLE:-0}" = "1" ] || [ -f "$runner_state/pause" ]; then
+    return 0
+  fi
   for pending in "$STATE_DIR"/findings-pending/*; do
     [ -f "$pending" ] || continue
+    case "$pending" in *.attempt) continue ;; esac
     number="$(basename "$pending")"
+    attempt="$pending.attempt"
+    if [ -f "$attempt" ] && [ -n "$(find "$attempt" -mmin -5 2>/dev/null)" ]; then
+      continue
+    fi
     if [ -n "$(find "$pending" -mtime +7 2>/dev/null)" ]; then
       log "PR #$number: pending findings expired; dropped"
-      rm -f "$pending"
+      rm -f "$pending" "$attempt"
       continue
     fi
     if UNIVERSE_AGENT_REPO="$REPO" "$PYTHON" "$ROOT/tools/agent_runner.py" \
         findings --pr "$number" >>"$LOG_FILE" 2>&1; then
-      rm -f "$pending"
+      rm -f "$pending" "$attempt"
       log "PR #$number: pending review findings recorded"
     else
+      touch "$attempt"
       log "PR #$number: pending review findings retry failed"
     fi
   done

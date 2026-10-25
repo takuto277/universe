@@ -30,7 +30,7 @@ gh auth login
 LaunchAgent は、人間が作業しているチェックアウトとは別の **main 追従の専用チェックアウト** から動きます。既定は `~/.local/share/universe-automation` です。
 
 - 既定パス（`~/.local/share/universe-automation`）はマーカーがなくても、初回起動時に管理マーカーを付与して `origin/main` へ自動更新します
-- カスタムパスは管理マーカーが必要です。`automation-root.sh ensure` で作成してください（失敗時は現在の版で続行し、ログに残します）
+- カスタムパスは管理マーカーが必要です。新規作成は `automation-root.sh ensure` で作成します。既存の未マーカーworktreeは `remove` してから ensure で作り直してください（失敗時は現在の版で続行し、ログに残します）
 - 手動確認・更新・削除:
 
 ```sh
@@ -39,7 +39,8 @@ LaunchAgent は、人間が作業しているチェックアウトとは別の *
 ./tools/automation-root.sh remove
 ```
 
-- 既定パスの既存インストールは、次回起動時に自動で移行されます。カスタムパスの場合は一度 `./tools/automation-root.sh ensure` を実行してください
+- 既定パスの既存インストールは、次回起動時に自動で移行されます
+- カスタムパスを新規に使う場合は `./tools/automation-root.sh ensure` でマーカーを作成します。既存のカスタム worktree にマーカーがない場合は ensure が拒否するため、`remove` してから同じパスへ ensure で作り直してください
 - パスを変える場合: `UNIVERSE_AUTOMATION_ROOT=/path ./tools/setup.sh --with-agents`
 - 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除は `./tools/automation-root.sh remove` を使ってください
 - ブランチをチェックアウトした worktree は指定できません（detached HEAD のみ）

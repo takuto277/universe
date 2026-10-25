@@ -45,5 +45,5 @@ watcher 全体は `~/.local/state/universe-auto-pr/pause`、PR 単位は Draft /
 - `tools/` と `.github/workflows/` は保護対象で、無人 builder からは変更できません
 - builder は編集のみ、コミットは runner が行います
 - sandbox は完全ではありません（ネットワーク・keychain など）。信頼できる Issue だけをキューに入れてください
-- LaunchAgent は専用チェックアウト（既定 `~/.local/share/universe-automation`）から動き、起動時に main へ更新されます
+- LaunchAgent は専用チェックアウト（既定 `~/.local/share/universe-automation`）から動き、起動時に main へ更新されます（既定パスは管理マーカーを自動付与。カスタムパスの新規作成は ensure、既存の未マーカーは remove→ensure。詳細は docs/setup.md）
 - 元の作業チェックアウトを移動・削除すると専用チェックアウトも壊れます

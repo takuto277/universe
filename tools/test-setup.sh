@@ -22,7 +22,7 @@ case "\$1" in
   --version) echo "gh version 9.9.9" ;;
   auth) exit 0 ;;
   repo)
-    if [ "${GH_FAKE_FAIL:-}" = "repo" ]; then exit 1; fi
+    if [ "\${GH_FAKE_FAIL:-}" = "repo" ]; then exit 1; fi
     echo READ
     ;;
 esac
@@ -33,7 +33,7 @@ SH
 chmod +x "$TMP/bin/opencode" "$TMP/bin/brew"
 
 set +e
-output="$(PATH="$TMP/bin:/usr/bin:/bin" HOME="$TMP/home" /bin/bash "$ROOT/tools/setup.sh" --install 2>&1)"
+output="$(GH_FAKE_FAIL= PATH="$TMP/bin:/usr/bin:/bin" HOME="$TMP/home" /bin/bash "$ROOT/tools/setup.sh" --install 2>&1)"
 code=$?
 set -e
 if [ "$code" != "0" ]; then
@@ -44,4 +44,18 @@ case "$output" in
   *"gh 認証済み"*) ;;
   *) printf 'gh の導入/認証が確認できません\n%s\n' "$output" >&2; exit 1 ;;
 esac
+if HOME="$TMP/home-jsc" PATH="$TMP/bin:/usr/bin:/bin" JSC=/nonexistent \
+  /bin/bash "$ROOT/tools/setup.sh" >"$TMP/jsc.log" 2>&1; then
+  printf 'invalid JSC should fail\n' >&2
+  exit 1
+fi
+grep -q "JSC が実行できません" "$TMP/jsc.log"
+
+if HOME="$TMP/home-repo" PATH="$TMP/bin:/usr/bin:/bin" GH_FAKE_FAIL=repo \
+  /bin/bash "$ROOT/tools/setup.sh" >"$TMP/repo.log" 2>&1; then
+  printf 'repo permission failure should fail\n' >&2
+  exit 1
+fi
+grep -q "アクセスできません" "$TMP/repo.log"
+
 printf 'setup tests OK\n'

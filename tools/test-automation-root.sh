@@ -56,4 +56,45 @@ fi
 
 UNIVERSE_AUTOMATION_ROOT="$AUTO" bash "$TMP/work/tools/automation-root.sh" remove >/dev/null
 [ ! -e "$AUTO" ]
+git -C "$TMP/work" worktree add -q -b other "$TMP/other" main
+printf 'managed\n' >"$TMP/other/.universe-automation-root"
+err="$(UNIVERSE_AUTOMATION_ROOT="$TMP/other" bash "$TMP/work/tools/automation-root.sh" ensure 2>&1)" && {
+  printf 'branch checkout should be rejected\n' >&2; exit 1;
+}
+case "$err" in *"detached HEAD"*) ;; *) printf 'branch rejection should mention detached HEAD: %s\n' "$err" >&2; exit 1 ;; esac
+git -C "$TMP/work" worktree remove --force "$TMP/other"
+
+git -C "$TMP/work" worktree add -q --detach "$TMP/other-detached" main
+if UNIVERSE_AUTOMATION_ROOT="$TMP/other-detached" bash "$TMP/work/tools/automation-root.sh" ensure >/dev/null 2>&1; then
+  printf 'unmanaged detached worktree should be rejected\n' >&2
+  exit 1
+fi
+status_out="$(UNIVERSE_AUTOMATION_ROOT="$TMP/other-detached" bash "$TMP/work/tools/automation-root.sh" status)"
+case "$status_out" in *"path: $TMP/other-detached"*) ;; *) printf 'status should work for unmanaged worktree\n' >&2; exit 1 ;; esac
+UNIVERSE_AUTOMATION_ROOT="$TMP/other-detached" bash "$TMP/work/tools/automation-root.sh" remove >/dev/null
+[ ! -e "$TMP/other-detached" ]
+
+printf 'three\n' >"$TMP/work/value.txt"
+git -C "$TMP/work" commit -qam three
+git -C "$TMP/work" push -q origin main
+DEFAULT_HOME="$TMP/default-home"
+DEFAULT_AUTO="$DEFAULT_HOME/.local/share/universe-automation"
+mkdir -p "$(dirname "$DEFAULT_AUTO")"
+git -C "$TMP/work" worktree add -q --detach "$DEFAULT_AUTO" main~1
+mkdir -p "$DEFAULT_AUTO/tools"
+cp "$ROOT/tools/automation-run.sh" "$DEFAULT_AUTO/tools/"
+cat >"$DEFAULT_AUTO/tools/hello.sh" <<'SH'
+#!/bin/sh
+echo hello
+SH
+chmod +x "$DEFAULT_AUTO/tools/hello.sh"
+out="$(HOME="$DEFAULT_HOME" bash "$DEFAULT_AUTO/tools/automation-run.sh" hello.sh)"
+[ "$out" = "hello" ]
+[ "$(cat "$DEFAULT_AUTO/value.txt")" = "three" ]
+[ -f "$DEFAULT_AUTO/.universe-automation-root" ]
+rm -f "$DEFAULT_AUTO/.universe-automation-root"
+HOME="$DEFAULT_HOME" bash "$TMP/work/tools/automation-root.sh" ensure >/dev/null
+[ -f "$DEFAULT_AUTO/.universe-automation-root" ]
+HOME="$DEFAULT_HOME" bash "$TMP/work/tools/automation-root.sh" remove >/dev/null
+
 printf 'automation root tests OK\n'
