@@ -347,7 +347,7 @@ retry_pending_findings() {
     return 0
   fi
   runner_state="${UNIVERSE_AGENT_STATE_DIR:-$HOME/.local/state/universe-agent-runner}"
-  if [ -f "$runner_state/pause" ]; then
+  if [ "${UNIVERSE_AGENT_DISABLE:-0}" = "1" ] || [ -f "$runner_state/pause" ]; then
     return 0
   fi
   for pending in "$STATE_DIR"/findings-pending/*; do
@@ -366,6 +366,7 @@ retry_pending_findings() {
       rm -f "$pending"
       log "PR #$number: pending review findings recorded"
     else
+      touch "$pending"
       log "PR #$number: pending review findings retry failed"
     fi
   done
