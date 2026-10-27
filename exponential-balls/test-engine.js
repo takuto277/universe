@@ -38,6 +38,8 @@ s = game.update(2.1);
 assert(s.split === false && s.count === 2, '同じ小節でsplitが残る');
 
 var expected = [1, 2, 4, 8, 16, 32, 64, 128, 256, 512, 1024, 2048];
+game = E.createGame();
+game.start();
 for (var bar = 0; bar < 12; bar++) {
   s = game.update(bar * E.BAR_SECONDS + 0.2);
   assert(s.bar === bar, 'barが' + bar + 'でない: ' + s.bar);
@@ -68,6 +70,8 @@ game = E.createGame();
 game.start();
 s = game.update(10);
 assert(s.bar === 5 && s.count === 32 && s.split === true, '時間が飛んだときの補正が不正');
+s = game.update(5);
+assert(s.time === 10 && s.bar === 5 && s.count === 32, '時計が巻き戻っている');
 
 game.reset();
 assert(game.state.phase === 'start' && game.state.count === 1 && game.state.time === 0, 'resetでstartへ戻らない');

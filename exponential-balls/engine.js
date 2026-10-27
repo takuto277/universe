@@ -106,6 +106,7 @@
     function update(t) {
       if (state.phase !== 'playing') return getState();
       if (!isFinite(t) || t < 0) t = 0;
+      if (t < state.time) t = state.time;
       var prevCycle = state.cycle;
       var prevBar = state.bar;
       var cycle = Math.floor(t / CYCLE_SECONDS);

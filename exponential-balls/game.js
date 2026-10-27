@@ -22,17 +22,11 @@
   function loop(now) {
     var state = game.state;
     if (state.phase === 'playing') {
-      var t;
-      var audio = root.ExpAudio;
-      var audioNow = (audio && audio.ready && audio.ready()) ? audio.now() : null;
-      if (audioNow != null) {
-        t = audioNow;
-      } else {
-        if (perfStart == null) perfStart = now;
-        t = (now - perfStart) / 1000;
-      }
+      if (perfStart == null) perfStart = now;
+      var t = (now - perfStart) / 1000;
       if (!isFinite(t) || t < 0) t = 0;
       game.update(t);
+      var audio = root.ExpAudio;
       if (audio && audio.tick) audio.tick(t);
       if (renderer) {
         renderer.sync(game.state);

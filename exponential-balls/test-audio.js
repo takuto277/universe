@@ -98,16 +98,31 @@ assert(oscStarts > before, '10秒時点で音が増えない');
 ExpAudio.tick(22);
 assert(oscStarts > before, 'ピーク付近で音が増えない');
 
+var beforeGap = createdOsc;
+ExpAudio.tick(60);
+assert(createdOsc - beforeGap < 50, '長時間の不在後に音が一気に生成される: ' + (createdOsc - beforeGap));
+
+fakeCtx.state = 'suspended';
+assert(ExpAudio.now() === null, '停止中のAudioContextでnowが返る');
+var beforeSuspend = createdOsc;
+ExpAudio.tick(61);
+assert(createdOsc === beforeSuspend, '停止中に音が生成される');
+fakeCtx.state = 'running';
+var beforeResume = createdOsc;
+ExpAudio.tick(61.1);
+assert(createdOsc > beforeResume, '復帰後に音が再開しない');
+assert(createdOsc - beforeResume < 50, '復帰時に音が一気に生成される: ' + (createdOsc - beforeResume));
+
 before = oscStarts;
 ExpAudio.tap();
 assert(oscStarts > before, 'タップ音が鳴らない');
 
 before = oscStarts;
 assert(ExpAudio.toggleMute() === true, 'ミュートにできない');
-ExpAudio.tick(23);
+ExpAudio.tick(62);
 assert(oscStarts === before, 'ミュート中に音が鳴っている');
 assert(ExpAudio.toggleMute() === false, 'ミュート解除できない');
-ExpAudio.tick(23.2);
+ExpAudio.tick(62.2);
 assert(oscStarts > before, 'ミュート解除後に音が鳴らない');
 
 assert(noiseSources > 0, 'ノイズ系の音が鳴っていない');

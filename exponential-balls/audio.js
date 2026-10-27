@@ -58,7 +58,7 @@
       delaySend.connect(delay);
       delay.connect(master);
 
-      noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 1.2), ctx.sampleRate);
+      noiseBuffer = ctx.createBuffer(1, Math.floor(ctx.sampleRate * 2.4), ctx.sampleRate);
       var data = noiseBuffer.getChannelData(0);
       for (var i = 0; i < data.length; i++) data[i] = Math.random() * 2 - 1;
     } catch (e) {
@@ -271,6 +271,7 @@
       return;
     }
     if (scheduledStep < 0) scheduledStep = step;
+    if (step - scheduledStep > 4) scheduledStep = step;
     while (scheduledStep <= step + 2) {
       scheduleStep(scheduledStep, t);
       scheduledStep += 1;

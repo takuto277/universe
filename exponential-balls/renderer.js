@@ -25,8 +25,8 @@
       var w = (rect && rect.width) || canvas.clientWidth || 390;
       var h = (rect && rect.height) || canvas.clientHeight || 844;
       dpr = Math.min(2, (root.devicePixelRatio || 1));
-      width = Math.max(240, w);
-      height = Math.max(400, h);
+      width = Math.max(1, w);
+      height = Math.max(1, h);
       canvas.width = Math.round(width * dpr);
       canvas.height = Math.round(height * dpr);
       if (ctx && ctx.setTransform) ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
