@@ -12,7 +12,7 @@ OPENCODE="${OPENCODE_BIN:-$(command -v opencode || true)}"
 PYTHON="${PYTHON_BIN:-$(command -v python3 || true)}"
 GIT="${GIT_BIN:-$(command -v git || true)}"
 GATE_WAIT="${UNIVERSE_AUTO_PR_GATE_WAIT:-90}"
-OPENCODE_TIMEOUT="${UNIVERSE_AUTO_PR_TIMEOUT:-1800}"
+OPENCODE_TIMEOUT="${UNIVERSE_AUTO_PR_TIMEOUT:-1200}"
 OPENCODE_MODEL="${UNIVERSE_AUTO_PR_MODEL:-opencode/deepseek-v4.1-flash-free}"
 LOCK_STALE="${UNIVERSE_AUTO_PR_LOCK_STALE:-7200}"
 
@@ -24,7 +24,7 @@ VERBOSE=0
 
 usage() {
   cat <<'EOF'
-Usage: tools/auto-pr.sh [--dry-run] [--force] [--verbose]
+Usage: tools/auto-pr.sh [--dry-run] [--force] [--verbose] [--status]
 
 Checks open, non-draft pull requests authored by the current GitHub user.
 A PR with no current AI review is reviewed headlessly. A PR whose five-point
@@ -35,6 +35,7 @@ Options:
   --dry-run  Show what would happen without reviewing or merging.
   --force    Ignore recent-failure cooldowns and re-send notifications.
   --verbose  Log runs even when there are no matching pull requests.
+  --status   Show the last successful merge time and exit.
 
 Pause the watcher:
   touch ~/.local/state/universe-auto-pr/pause
@@ -50,6 +51,11 @@ while [ $# -gt 0 ]; do
     --dry-run) DRY_RUN=1 ;;
     --force) FORCE=1 ;;
     --verbose) VERBOSE=1 ;;
+    --status)
+      last="$(cat "$STATE_DIR/last-success" 2>/dev/null || true)"
+      printf 'watcher last success: %s\n' "${last:-never}"
+      exit 0
+      ;;
     -h|--help) usage; exit 0 ;;
     *) printf 'unknown option: %s\n' "$1" >&2; usage >&2; exit 2 ;;
   esac
@@ -165,7 +171,7 @@ if [ -n "$old_pid" ] && kill -0 "$old_pid" 2>/dev/null; then
   esac
 fi
 
-find "$STATE_DIR" -type f -mtime +14 -delete 2>/dev/null || true
+find "$STATE_DIR" -type f -mtime +14 ! -name last-success -delete 2>/dev/null || true
 
 if [ -f "$LOG_FILE" ] && [ "$(wc -c <"$LOG_FILE" | tr -d ' ')" -gt 1048576 ]; then
   mv "$LOG_FILE" "$LOG_FILE.1"
@@ -239,19 +245,38 @@ run_review() {
     return 0
   fi
 
+  local current
+  current="$("$GH" pr view "$number" --repo "$REPO" --json state,headRefOid \
+    --jq '[.state, .headRefOid] | @tsv' 2>/dev/null || true)"
+  if [ -n "$current" ]; then
+    local pr_state pr_head
+    IFS=$'\t' read -r pr_state pr_head <<<"$current"
+    if [ "$pr_state" != "OPEN" ] || [ "$pr_head" != "$head" ]; then
+      log "PR #$number: state/head changed before review ($pr_state ${pr_head:0:7}); skip"
+      return 1
+    fi
+  fi
+
   if ! "$GIT" -C "$ROOT" fetch --quiet origin "+refs/pull/$number/head:refs/remotes/origin/pr/$number" >>"$LOG_FILE" 2>&1; then
     log "PR #$number: failed to fetch the pull request head; continuing with the local objects"
   fi
 
   local status=0
-  if command -v perl >/dev/null 2>&1; then
-    perl -e 'alarm shift; exec @ARGV' "$OPENCODE_TIMEOUT" \
-      "$OPENCODE" run --model "$OPENCODE_MODEL" --dir "$ROOT" --auto --command pr-review "$number" >>"$LOG_FILE" 2>&1 || status=$?
-  else
-    "$OPENCODE" run --model "$OPENCODE_MODEL" --dir "$ROOT" --auto --command pr-review "$number" >>"$LOG_FILE" 2>&1 || status=$?
-  fi
+  run_with_timeout "$OPENCODE_TIMEOUT" \
+    "$OPENCODE" run --model "$OPENCODE_MODEL" --dir "$ROOT" --auto --command pr-review "$number" \
+    >>"$LOG_FILE" 2>&1 || status=$?
 
   if [ "$status" = "0" ]; then
+    current="$("$GH" pr view "$number" --repo "$REPO" --json state,headRefOid \
+      --jq '[.state, .headRefOid] | @tsv' 2>/dev/null || true)"
+    if [ -n "$current" ]; then
+      local pr_state pr_head
+      IFS=$'\t' read -r pr_state pr_head <<<"$current"
+      if [ "$pr_state" != "OPEN" ] || [ "$pr_head" != "$head" ]; then
+        log "PR #$number: state/head changed during review ($pr_state ${pr_head:0:7}); skip"
+        return 1
+      fi
+    fi
     rm -f "$failed"
     log "PR #$number: review command completed"
     return 0
@@ -299,6 +324,7 @@ merge_pr() {
   if output="$("$PYTHON" "$ROOT/tools/pr_merge.py" --pr "$number" --repo "$REPO" --base "$BASE" --no-ready 2>&1)"; then
     printf '%s\n' "$output" >>"$LOG_FILE"
     rm -f "$STATE_DIR/${number}-"*
+    printf '%s\n' "$(date '+%Y-%m-%dT%H:%M:%S%z')" >"$STATE_DIR/last-success"
     log "PR #$number: merged"
     record_findings "$number"
     notify "PR #$number をマージしました"

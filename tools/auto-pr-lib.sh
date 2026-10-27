@@ -29,3 +29,42 @@ print(
 )
 '
 }
+
+run_with_timeout() {
+  local seconds="$1"
+  shift
+  "${PYTHON:-python3}" - "$seconds" "$@" <<'PY'
+import os
+import signal
+import subprocess
+import sys
+
+try:
+    limit = float(sys.argv[1])
+    argv = sys.argv[2:]
+    proc = subprocess.Popen(argv, start_new_session=True)
+except (FileNotFoundError, OSError, ValueError) as exc:
+    print(str(exc), file=sys.stderr)
+    raise SystemExit(127)
+try:
+    code = proc.wait(timeout=limit)
+except subprocess.TimeoutExpired:
+    try:
+        os.killpg(proc.pid, signal.SIGTERM)
+    except OSError:
+        pass
+    try:
+        code = proc.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        try:
+            os.killpg(proc.pid, signal.SIGKILL)
+        except OSError:
+            pass
+        try:
+            code = proc.wait(timeout=5)
+        except subprocess.TimeoutExpired:
+            code = 124
+    raise SystemExit(124)
+raise SystemExit(code if code >= 0 else 128 - code)
+PY
+}
