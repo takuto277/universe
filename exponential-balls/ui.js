@@ -1,4 +1,4 @@
-/* ui.js : 倍々のHUD・スタート画面・タップ入力 */
+/* ui.js : BLOOM のHUD・モード選択・スタート画面 */
 (function (root) {
   'use strict';
 
@@ -15,49 +15,69 @@
       hud: $('hud'),
       count: $('count'),
       cycle: $('cycle'),
-      bar: $('bar'),
+      stat: $('stat'),
       bpm: $('bpm'),
       barFill: $('bar-fill'),
+      modeName: $('mode-name'),
+      hint: $('hint'),
+      btnModes: $('btn-modes'),
       btnMute: $('btn-mute'),
       startOverlay: $('start-overlay'),
       btnStart: $('btn-start'),
       btnSound: $('btn-sound'),
+      modeAuto: $('mode-auto'),
+      modeFrame: $('mode-frame'),
       canvas: $('canvas')
     };
 
+    var selectedMode = 'auto';
     var lastCount = -1;
     var lastCycle = -1;
-    var lastBar = -1;
+    var lastStat = '';
+    var lastMode = '';
     var bumpTimer = null;
 
-    function soundLabel() {
-      var enabled = root.ExpAudio ? root.ExpAudio.isEnabled() : true;
-      return enabled ? '音 ON' : '音 OFF';
+    function soundOn() {
+      return root.ExpAudio ? root.ExpAudio.isEnabled() : true;
     }
 
     function updateSound() {
-      setText(els.btnMute, soundLabel());
-      setText(els.btnSound, '音: ' + (root.ExpAudio && root.ExpAudio.isEnabled() ? 'ON' : 'OFF'));
+      var on = soundOn();
+      setText(els.btnMute, on ? 'SOUND ON' : 'SOUND OFF');
+      setText(els.btnSound, 'SOUND: ' + (on ? 'ON' : 'OFF'));
+    }
+
+    function updateStart() {
+      setText(els.btnStart, selectedMode === 'frame' ? 'BEGIN FRAME' : 'BEGIN AUTO');
+      var autoOn = selectedMode === 'auto';
+      toggleClass(els.modeAuto, 'selected', autoOn);
+      toggleClass(els.modeFrame, 'selected', !autoOn);
+      if (els.modeAuto) els.modeAuto.setAttribute('aria-pressed', autoOn ? 'true' : 'false');
+      if (els.modeFrame) els.modeFrame.setAttribute('aria-pressed', autoOn ? 'false' : 'true');
     }
 
     function render(state) {
       var playing = state.phase === 'playing';
       toggleClass(els.startOverlay, 'visible', !playing);
       toggleClass(els.hud, 'is-hidden', !playing);
-      if (playing) update(state);
+      if (playing) {
+        update(state);
+      } else {
+        lastCount = -1;
+        lastCycle = -1;
+        lastStat = '';
+        lastMode = '';
+      }
     }
 
     function update(state) {
       if (!state || state.phase !== 'playing') return;
       if (state.count !== lastCount) {
         setText(els.count, formatCount(state.count));
-        if (els.count) {
+        if (els.count && els.count.classList) {
           els.count.classList.remove('bump');
           if (bumpTimer) clearTimeout(bumpTimer);
-          if (els.count.offsetWidth != null) {
-            // クラスを付け直してアニメーションを再生する
-            els.count.classList.add('bump');
-          }
+          if (els.count.offsetWidth != null) els.count.classList.add('bump');
           bumpTimer = setTimeout(function () {
             if (els.count) els.count.classList.remove('bump');
           }, 190);
@@ -68,20 +88,36 @@
         setText(els.cycle, 'CYCLE ' + (state.cycle + 1));
         lastCycle = state.cycle;
       }
-      if (state.bar !== lastBar) {
-        setText(els.bar, 'BAR ' + (state.bar + 1) + ' / ' + state.barsPerCycle);
-        lastBar = state.bar;
+      var stat = state.mode === 'frame'
+        ? 'CAPTURES ' + (state.captures || 0)
+        : 'BAR ' + (state.bar + 1) + ' / ' + state.barsPerCycle;
+      if (stat !== lastStat) {
+        setText(els.stat, stat);
+        lastStat = stat;
+      }
+      if (state.mode !== lastMode) {
+        setText(els.modeName, state.mode === 'frame' ? 'FRAME' : 'AUTO');
+        setText(els.hint, state.mode === 'frame' ? 'CATCH IN THE FRAME' : 'DOUBLE ON EVERY BAR');
+        lastMode = state.mode;
       }
       setText(els.bpm, state.bpm + ' BPM');
       var progress = ((state.time % state.cycleSeconds) / state.cycleSeconds) * 100;
       if (els.barFill && els.barFill.style) els.barFill.style.width = Math.max(0, Math.min(100, progress)).toFixed(2) + '%';
     }
 
+    function selectMode(mode) {
+      selectedMode = mode === 'frame' ? 'frame' : 'auto';
+      updateStart();
+    }
+
+    if (els.modeAuto) els.modeAuto.addEventListener('click', function () { selectMode('auto'); });
+    if (els.modeFrame) els.modeFrame.addEventListener('click', function () { selectMode('frame'); });
+
     if (els.btnStart) els.btnStart.addEventListener('click', function () {
       if (game.state.phase === 'playing') return;
       if (root.ExpAudio) root.ExpAudio.start();
       updateSound();
-      game.start();
+      game.start(selectedMode);
     });
 
     function toggleSound() {
@@ -92,18 +128,13 @@
     if (els.btnMute) els.btnMute.addEventListener('click', toggleSound);
     if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
 
-    if (els.canvas) {
-      els.canvas.addEventListener('pointerdown', function (event) {
-        if (game.state.phase !== 'playing') return;
-        if (event && event.preventDefault) event.preventDefault();
-        var rect = els.canvas.getBoundingClientRect ? els.canvas.getBoundingClientRect() : { left: 0, top: 0 };
-        var x = (event ? event.clientX : 0) - rect.left;
-        var y = (event ? event.clientY : 0) - rect.top;
-        renderer.tap(x, y);
-        game.tap(x, y);
-        if (root.ExpAudio) root.ExpAudio.tap();
-      });
-    }
+    if (els.btnModes) els.btnModes.addEventListener('click', function () {
+      if (root.ExpAudio) root.ExpAudio.stop();
+      if (renderer && renderer.clear) renderer.clear();
+      game.reset();
+      updateStart();
+      updateSound();
+    });
 
     if (root.addEventListener) {
       root.addEventListener('resize', function () {
@@ -112,13 +143,15 @@
     }
 
     game.onChange(render);
+    updateStart();
     updateSound();
     render(game.getState());
 
     return {
       render: render,
       update: update,
-      updateSound: updateSound
+      updateSound: updateSound,
+      selectMode: selectMode
     };
   }
 

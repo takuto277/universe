@@ -1,4 +1,4 @@
-/* audio.js : 倍々のプロシージャル音楽（WebAudio）
+/* audio.js : BLOOM のプロシージャル音楽（WebAudio）
  *
  * 120 BPM / 4/4。16分ステップを先読みして、
  * キック・ハット・ベース・アルペジオ・パッド・ライザーを鳴らす。
@@ -74,6 +74,7 @@
     } catch (e) { /* ユーザー操作で再開する */ }
     started = true;
     scheduledStep = -1;
+    lastCapture = -10;
     if (master) master.gain.setTargetAtTime(enabled ? 0.22 : 0, ctx.currentTime, 0.02);
     return true;
   }
@@ -271,18 +272,39 @@
     }
   }
 
-  function tap() {
-    if (!ctx || !started) return;
-    var when = ctx.currentTime + 0.01;
-    oscillator('sine', currentRoot * 2, when, when + 0.22, 0.12, master, true);
-    oscillator('sine', currentRoot * 3, when + 0.03, when + 0.3, 0.07, master, true);
+  var lastCapture = -10;
+
+  function capture(t, rootFreq) {
+    if (!ctx || !started || ctx.state !== 'running' || !enabled) return;
+    if (t - lastCapture < 0.06) return;
+    lastCapture = t;
+    var next = Math.ceil(t / STEP) * STEP;
+    var when = ctx.currentTime + Math.max(0.005, next - t);
+    var freq = rootFreq || currentRoot;
+    oscillator('sine', freq * 2, when, when + 0.16, 0.075, master, true);
+    oscillator('triangle', freq * 3, when + 0.018, when + 0.22, 0.038, master, true);
+  }
+
+  function impactNow() {
+    if (!ctx || !started || ctx.state !== 'running' || !enabled) return;
+    impact(ctx.currentTime + 0.01);
+  }
+
+  function stop() {
+    started = false;
+    scheduledStep = -1;
+    if (ctx && ctx.suspend) {
+      try { ctx.suspend(); } catch (e) { /* 停止できない環境では無視 */ }
+    }
   }
 
   root.ExpAudio = {
     start: start,
+    stop: stop,
     ready: ready,
     tick: tick,
-    tap: tap,
+    capture: capture,
+    impact: impactNow,
     toggleMute: toggleMute,
     setMuted: setMuted,
     isEnabled: isEnabled

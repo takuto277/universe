@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ja">
+<html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#05080e" />
-  <meta name="description" content="音楽の小節に合わせてボールが倍々に増える、縦画面のオーディオビジュアル体験。" />
-  <title>倍々</title>
+  <meta name="description" content="BLOOM is a vertical audiovisual game where balls double with the music. Choose AUTO or FRAME." />
+  <title>BLOOM</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
@@ -16,9 +16,13 @@
       <div class="hud-top">
         <div class="hud-title">
           <p class="eyebrow">EXPONENTIAL BLOOM</p>
-          <h1>倍々</h1>
+          <h1>BLOOM</h1>
+          <p id="mode-name" class="mode-name">AUTO</p>
         </div>
-        <button id="btn-mute" class="sound-btn" type="button">音 ON</button>
+        <div class="hud-actions">
+          <button id="btn-modes" class="sound-btn" type="button">MODES</button>
+          <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+        </div>
       </div>
 
       <div class="count-wrap">
@@ -28,19 +32,33 @@
 
       <div class="meta">
         <span id="cycle">CYCLE 1</span>
-        <span id="bar">BAR 1 / 12</span>
+        <span id="stat">BAR 1 / 12</span>
         <span id="bpm">120 BPM</span>
       </div>
       <div class="bar-track"><i id="bar-fill"></i></div>
-      <p class="tap-hint">タップで押し返す</p>
+      <p id="hint" class="hint">DOUBLE ON EVERY BAR</p>
     </div>
 
     <div id="start-overlay" class="overlay visible">
       <div class="start-content">
         <p class="eyebrow">EXPONENTIAL BLOOM</p>
-        <h1>倍々</h1>
-        <p class="lead">音楽の小節に合わせて、ボールが倍々に増える。1 → 2 → 4 → … → 2,048。タップで押し返せる。</p>
-        <svg class="start-art" viewBox="0 0 260 150" role="img" aria-label="1から2、4へ増えるボール">
+        <h1>BLOOM</h1>
+        <p class="lead">Every ball doubles. Pick how it grows.</p>
+
+        <div class="mode-grid" role="group" aria-label="Game mode">
+          <button id="mode-auto" class="mode-card selected" type="button" aria-pressed="true">
+            <span class="mode-tag">AUTO</span>
+            <span class="mode-title">BAR BY BAR</span>
+            <span class="mode-desc">A new ball every bar, locked to the beat. 1 to 2,048 in 12 bars.</span>
+          </button>
+          <button id="mode-frame" class="mode-card" type="button" aria-pressed="false">
+            <span class="mode-tag">FRAME</span>
+            <span class="mode-title">CATCH &amp; DOUBLE</span>
+            <span class="mode-desc">Balls drift in all directions. Anything crossing the top frame doubles. No two runs alike.</span>
+          </button>
+        </div>
+
+        <svg class="start-art" viewBox="0 0 260 150" role="img" aria-label="Balls doubling from one to many">
           <circle cx="54" cy="94" r="15" fill="#6fd6c3" opacity="0.9" />
           <circle cx="105" cy="76" r="11" fill="#f4c96b" opacity="0.9" />
           <circle cx="105" cy="112" r="11" fill="#f4c96b" opacity="0.9" />
@@ -52,9 +70,10 @@
           <circle cx="218" cy="82" r="22" fill="none" stroke="#f4c96b" stroke-width="1.5" opacity="0.5" />
           <circle cx="218" cy="82" r="30" fill="none" stroke="#6fd6c3" stroke-width="1" opacity="0.3" />
         </svg>
-        <button id="btn-start" class="primary big" type="button">はじめる</button>
-        <button id="btn-sound" class="link-btn" type="button">音: ON</button>
-        <p class="tiny">120 BPM / 24秒で1サイクル。音が出ます。</p>
+
+        <button id="btn-start" class="primary big" type="button">BEGIN AUTO</button>
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">120 BPM / 24 s cycle. Sound on.</p>
       </div>
     </div>
   </div>

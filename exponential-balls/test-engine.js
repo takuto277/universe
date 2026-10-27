@@ -1,4 +1,4 @@
-/* test-engine.js : 倍々の時間・小節・倍々スケジュール（jsc で実行）
+/* test-engine.js : BLOOM の時間・小節・AUTO/FRAME の検証（jsc で実行）
  * 実行例:
  *   cd exponential-balls && jsc test-engine.js
  */
@@ -16,16 +16,19 @@ function assert(cond, message) {
   passed++;
 }
 function log(message) { print(message); }
+function speed(b) { return Math.hypot(b.vx, b.vy); }
 
 assert(E.BPM === 120, 'BPMが120でない');
 assert(E.BAR_SECONDS === 2 && E.CYCLE_SECONDS === 24, '小節/サイクルの秒数が不正');
 assert(E.MAX_COUNT === 2048 && E.BARS_PER_CYCLE === 12, '最大数/小節数が不正');
+assert(E.FRAME_MAX === 2048 && E.FIELD.w === 390 && E.FIELD.h === 844, 'FRAMEの定数が不正');
 assert(E.ROOTS.length === 4, 'キーが4つでない');
 
+/* AUTO: 時間と小節で倍々 */
 var game = E.createGame();
 assert(game.state.phase === 'start', '初期状態がstartでない');
 game.start();
-assert(game.state.phase === 'playing' && game.state.count === 1, '開始状態が不正');
+assert(game.state.phase === 'playing' && game.state.mode === 'auto' && game.state.count === 1, 'AUTO開始状態が不正');
 
 var s = game.update(0);
 assert(s.bar === 0 && s.beat === 0 && s.count === 1, 't=0の状態が不正');
@@ -76,18 +79,47 @@ assert(s.time === 10 && s.bar === 5 && s.count === 32, '時計が巻き戻って
 game.reset();
 assert(game.state.phase === 'start' && game.state.count === 1 && game.state.time === 0, 'resetでstartへ戻らない');
 
-game.start();
-assert(game.tap(0.5, 0.6) === true, 'タップできない');
-assert(game.state.taps === 1 && game.state.lastTap.x === 0.5 && game.state.lastTap.y === 0.6, 'タップが記録されない');
-assert(game.state.count === 1, 'タップで数が変わる');
-game.reset();
-assert(game.tap(0.5, 0.5) === false, '停止中にタップできる');
-
 game = E.createGame();
 game.autoStep();
-assert(game.state.phase === 'playing', 'autoStepで開始できない');
-game.update(7);
-game.autoStep();
-assert(game.state.taps === 1, 'autoStepのタップが不正');
+assert(game.state.phase === 'playing' && game.state.mode === 'auto', 'autoStepでAUTO開始できない');
+
+/* FRAME: フレームに入ると2個に増え、全ボールが動き続ける */
+game = E.createGame();
+game.start('frame');
+assert(game.state.phase === 'playing' && game.state.mode === 'frame', 'FRAME開始状態が不正');
+assert(game.state.count === 1 && game.state.balls.length === 1, 'FRAMEの初期ボールが1個でない');
+assert(speed(game.state.balls[0]) > 0, '初期ボールが止まっている');
+var frameState = game.getState();
+assert(frameState.frame && frameState.field, 'フレーム/フィールドがない');
+
+game.state.balls[0].x = E.FRAME.x + E.FRAME.w / 2;
+game.state.balls[0].y = E.FRAME.y + E.FRAME.h / 2;
+game.state.balls[0].immune = 0;
+s = game.updateFrame(0.5, 1 / 60);
+assert(s.count === 2 && s.balls.length === 2, 'フレームで倍々にならない: ' + s.count);
+assert(s.captures === 1 && s.captureEvents.length === 1, 'キャプチャが記録されない');
+for (var i = 0; i < s.balls.length; i++) {
+  assert(speed(s.balls[i]) > 0, '増えたボールが止まっている');
+  assert(s.balls[i].x >= 0 && s.balls[i].x <= E.FIELD.w && s.balls[i].y >= 0 && s.balls[i].y <= E.FIELD.h, 'ボールがフィールド外');
+}
+
+var beforeX = s.balls[0].x;
+var beforeY = s.balls[0].y;
+s = game.updateFrame(0.6, 0.05);
+assert(s.balls.length === 2, '移動だけで数が変わる');
+assert(s.balls[0].x !== beforeX || s.balls[0].y !== beforeY, 'ボールが動いていない');
+
+var fresh = E.createGame();
+fresh.start('frame');
+var many = [];
+for (var m = 0; m < E.FRAME_MAX; m++) {
+  many.push({ x: 10, y: 400, vx: 10, vy: 10, hue: 188, immune: 0 });
+}
+many[0].x = E.FRAME.x + E.FRAME.w / 2;
+many[0].y = E.FRAME.y + E.FRAME.h / 2;
+fresh.state.balls = many;
+s = fresh.updateFrame(1, 1 / 60);
+assert(s.frameReset === true && s.count === 1, '上限で1個に戻らない');
+assert(s.maxCount >= E.FRAME_MAX, '上限の最大数が記録されない');
 
 log('engine tests OK (' + passed + ' assertions)');
