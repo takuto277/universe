@@ -31,6 +31,29 @@
   var FRAME_MAX = MAX_COUNT;
   var TAU = Math.PI * 2;
 
+  var RACE = {
+    duration: 60,
+    worldHeight: 4200,
+    finishY: 4200,
+    startY: 300,
+    trackLeft: 45,
+    trackRight: 345,
+    gapW: 110,
+    ballRadius: 10,
+    gravity: 150,
+    drag: 1.25,
+    sideDrag: 2.4,
+    maxSpeed: 200,
+    ghostSpeed: 180,
+    tapRadius: 140,
+    tapForce: 220,
+    gates: [
+      { y: 1150, gapX: 105 },
+      { y: 2450, gapX: 270 },
+      { y: 3550, gapX: 170 }
+    ]
+  };
+
   var ROOTS = [
     { name: 'C minor', freq: 130.81, hue: 188 },
     { name: 'E♭ minor', freq: 155.56, hue: 268 },
@@ -60,6 +83,7 @@
       frameReset: false,
       captureEvents: [],
       balls: [],
+      race: null,
       startedAt: 0
     };
 
@@ -117,7 +141,7 @@
     }
 
     function start(mode) {
-      var chosen = mode === 'frame' ? 'frame' : 'auto';
+      var chosen = mode === 'frame' ? 'frame' : mode === 'race' ? 'race' : 'auto';
       state.mode = chosen;
       state.phase = 'playing';
       state.time = 0;
@@ -134,6 +158,7 @@
       state.frameReset = false;
       state.captureEvents = [];
       state.balls = chosen === 'frame' ? [initialBall()] : [];
+      state.race = chosen === 'race' ? createRaceState() : null;
       state.startedAt = Date.now();
       emit();
       return true;
@@ -155,6 +180,7 @@
       state.frameReset = false;
       state.captureEvents = [];
       state.balls = [];
+      state.race = null;
       emit();
     }
 
@@ -264,6 +290,148 @@
       return getState();
     }
 
+    function createRaceState() {
+      var cx = (RACE.trackLeft + RACE.trackRight) / 2;
+      return {
+        duration: RACE.duration,
+        finishY: RACE.finishY,
+        worldHeight: RACE.worldHeight,
+        trackLeft: RACE.trackLeft,
+        trackRight: RACE.trackRight,
+        gapW: RACE.gapW,
+        player: { x: cx, y: RACE.startY, vx: 0, vy: 50, radius: RACE.ballRadius },
+        ghost: { x: cx, y: RACE.startY, time: null, finished: false },
+        gates: RACE.gates.map(function (g) {
+          return { y: g.y, gapX: g.gapX, gapW: RACE.gapW, passed: false };
+        }),
+        gateIndex: 0,
+        gatesPassed: 0,
+        result: null,
+        events: [],
+        beatHit: false,
+        tapCount: 0
+      };
+    }
+
+    function nearBeat(t) {
+      var phase = t % BEAT_SECONDS;
+      return phase < 0.1 || BEAT_SECONDS - phase < 0.1;
+    }
+
+    function finishRace(reason, t, r) {
+      var ghostTime = (RACE.finishY - RACE.startY) / RACE.ghostSpeed;
+      var playerTime = reason === 'timeup' ? RACE.duration : Math.min(t, RACE.duration);
+      var status = reason === 'timeup' ? 'dnf' : (playerTime < ghostTime ? 'win' : 'lose');
+      r.result = {
+        status: status,
+        time: playerTime,
+        ghostTime: ghostTime,
+        gatesPassed: r.gatesPassed,
+        gateCount: r.gates.length
+      };
+      r.events.push({ type: 'finish', x: r.player.x, y: r.player.y, hue: hueNow(), result: status });
+      state.phase = 'finished';
+      state.time = playerTime;
+    }
+
+    function updateRace(t, dt) {
+      if (state.phase !== 'playing' || state.mode !== 'race' || !state.race) return getState();
+      if (!isFinite(t) || t < 0) t = 0;
+      if (t < state.time) t = state.time;
+      if (!isFinite(dt) || dt <= 0) dt = 1 / 60;
+      dt = Math.min(0.05, dt);
+      clock(t);
+      var r = state.race;
+      var p = r.player;
+      var g = r.ghost;
+      r.events = [];
+      r.beatHit = false;
+
+      g.y = Math.min(r.finishY, RACE.startY + RACE.ghostSpeed * t);
+      g.finished = g.y >= r.finishY;
+      g.time = g.finished ? (r.finishY - RACE.startY) / RACE.ghostSpeed : null;
+      var ghostTargetX = (RACE.trackLeft + RACE.trackRight) / 2;
+      for (var gi = 0; gi < r.gates.length; gi++) {
+        if (g.y < r.gates[gi].y + 220) { ghostTargetX = r.gates[gi].gapX; break; }
+      }
+      g.x += (ghostTargetX - g.x) * Math.min(1, dt * 4.5);
+
+      if (t >= RACE.duration) {
+        finishRace('timeup', t, r);
+        return getState();
+      }
+
+      p.vy += RACE.gravity * dt;
+      p.vx *= Math.max(0, 1 - RACE.sideDrag * dt);
+      p.vy *= Math.max(0, 1 - RACE.drag * dt);
+      var speed = Math.hypot(p.vx, p.vy);
+      if (speed > RACE.maxSpeed) {
+        var k = RACE.maxSpeed / speed;
+        p.vx *= k;
+        p.vy *= k;
+      }
+
+      var prevY = p.y;
+      p.x += p.vx * dt;
+      p.y += p.vy * dt;
+      if (p.x < RACE.trackLeft + p.radius) { p.x = RACE.trackLeft + p.radius; p.vx = Math.abs(p.vx) * 0.45; }
+      if (p.x > RACE.trackRight - p.radius) { p.x = RACE.trackRight - p.radius; p.vx = -Math.abs(p.vx) * 0.45; }
+      if (p.y < RACE.startY) { p.y = RACE.startY; p.vy = Math.abs(p.vy) * 0.3; }
+
+      for (var i = 0; i < r.gates.length; i++) {
+        var gate = r.gates[i];
+        if (gate.passed) continue;
+        if (prevY < gate.y && p.y >= gate.y) {
+          var half = gate.gapW / 2 - p.radius;
+          if (p.x < gate.gapX - half || p.x > gate.gapX + half) {
+            p.y = gate.y - p.radius - 1;
+            p.vy = -Math.abs(p.vy) * 0.35 - 10;
+            p.vx += (p.x < gate.gapX ? -1 : 1) * 90;
+            r.events.push({ type: 'hit', x: p.x, y: gate.y, hue: hueNow() });
+            break;
+          }
+          gate.passed = true;
+          r.gatesPassed += 1;
+          r.gateIndex = Math.min(r.gates.length, r.gatesPassed);
+          r.events.push({ type: 'gate', x: p.x, y: gate.y, hue: hueNow() });
+        }
+      }
+
+      if (p.y >= r.finishY) {
+        p.y = r.finishY;
+        finishRace('finish', t, r);
+      }
+      return getState();
+    }
+
+    function raceSnapshot() {
+      var r = state.race;
+      if (!r) return null;
+      var p = r.player;
+      var g = r.ghost;
+      return {
+        duration: r.duration,
+        timeLeft: Math.max(0, r.duration - state.time),
+        elapsed: state.time,
+        finishY: r.finishY,
+        worldHeight: r.worldHeight,
+        trackLeft: r.trackLeft,
+        trackRight: r.trackRight,
+        gapW: r.gapW,
+        player: { x: p.x, y: p.y, vx: p.vx, vy: p.vy, radius: p.radius },
+        ghost: { x: g.x, y: g.y, time: g.time, finished: g.finished },
+        gates: r.gates.map(function (gate) {
+          return { y: gate.y, gapX: gate.gapX, gapW: gate.gapW, passed: gate.passed };
+        }),
+        gateIndex: r.gateIndex,
+        gatesPassed: r.gatesPassed,
+        result: r.result,
+        events: r.events.slice(),
+        beatHit: r.beatHit,
+        tapCount: r.tapCount
+      };
+    }
+
     function getState() {
       var balls = state.mode === 'frame' ? state.balls.map(function (b) {
         return { x: b.x, y: b.y, vx: b.vx, vy: b.vy, hue: b.hue, depth: b.depth || 0 };
@@ -272,6 +440,7 @@
         phase: state.phase,
         mode: state.mode,
         time: state.time,
+        race: state.mode === 'race' ? raceSnapshot() : null,
         cycle: state.cycle,
         bar: state.bar,
         beat: state.beat,
@@ -302,19 +471,35 @@
     }
 
     function tap(x, y) {
-      if (state.phase !== 'playing' || state.mode !== 'frame') return false;
-      var radiusSq = 120 * 120;
-      for (var i = 0; i < state.balls.length; i++) {
-        var b = state.balls[i];
-        var dx = b.x - x;
-        var dy = b.y - y;
-        var d2 = dx * dx + dy * dy;
-        if (d2 > radiusSq) continue;
-        var d = Math.sqrt(d2) || 1;
-        var force = 260 * (1 - d / 120);
-        b.vx += (dx / d) * force;
-        b.vy += (dy / d) * force;
+      if (state.phase !== 'playing') return false;
+      if (state.mode === 'frame') {
+        var radiusSq = 120 * 120;
+        for (var i = 0; i < state.balls.length; i++) {
+          var b = state.balls[i];
+          var dx = b.x - x;
+          var dy = b.y - y;
+          var d2 = dx * dx + dy * dy;
+          if (d2 > radiusSq) continue;
+          var d = Math.sqrt(d2) || 1;
+          var force = 260 * (1 - d / 120);
+          b.vx += (dx / d) * force;
+          b.vy += (dy / d) * force;
+        }
+        return true;
       }
+      if (state.mode !== 'race' || !state.race) return false;
+      var p = state.race.player;
+      var rdx = p.x - x;
+      var rdy = p.y - y;
+      var dist = Math.hypot(rdx, rdy);
+      if (dist > RACE.tapRadius) return false;
+      var strength = RACE.tapForce * (1 - dist / RACE.tapRadius);
+      var onBeat = nearBeat(state.time);
+      var mult = onBeat ? 1.35 : 1;
+      p.vx += (rdx / (dist || 1)) * strength * mult;
+      p.vy += (rdy / (dist || 1)) * strength * mult;
+      state.race.beatHit = onBeat;
+      state.race.tapCount += 1;
       return true;
     }
 
@@ -329,6 +514,7 @@
       reset: resetState,
       update: update,
       updateFrame: updateFrame,
+      updateRace: updateRace,
       tap: tap,
       autoStep: autoStep,
       getState: getState
@@ -351,6 +537,7 @@
     FIELD: FIELD,
     LINE: LINE,
     FRAME: LINE,
+    RACE: RACE,
     ROOTS: ROOTS
   };
 });

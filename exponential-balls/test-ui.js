@@ -25,6 +25,12 @@ function click(id) {
   var list = el.listeners.click || [];
   for (var i = 0; i < list.length; i++) list[i]({ preventDefault: function () { } });
 }
+function pointer(id, x, y) {
+  var el = document.getElementById(id);
+  var list = el.listeners.pointerdown || [];
+  var event = { clientX: x, clientY: y, preventDefault: function () { } };
+  for (var i = 0; i < list.length; i++) list[i](event);
+}
 function hasClass(id, name) {
   return document.getElementById(id).classList.contains(name);
 }
@@ -80,5 +86,43 @@ assert(text('stat') === 'BAR 1 / 12', 'AUTOのバー表示が不正: ' + text('s
 game.update(0.1);
 ui.update(game.getState());
 assert(text('count') === '1', 'AUTOの初期カウントが1でない: ' + text('count'));
+
+click('btn-home');
+click('mode-race');
+assert(text('btn-start') === 'START RACE' && hasClass('mode-race', 'selected'), 'RACEを選択できない');
+click('btn-start');
+assert(game.state.phase === 'playing' && game.state.mode === 'race', 'RACEで開始できない');
+assert(text('mode-name') === 'RACE', 'HUDのモードがRACEでない');
+assert(text('count-label') === 'LEFT', 'RACEのカウントラベルがLEFTでない');
+assert(text('cycle') === 'GATE 0 / 3', 'HUDのGATE表示が不正: ' + text('cycle'));
+assert(text('stat').indexOf('GHOST ') === 0, 'HUDのGHOST表示が不正: ' + text('stat'));
+assert(text('hint') === 'TAP BEHIND TO SURGE · TAP AHEAD TO BRAKE', 'RACEのヒントが不正');
+
+var racePlayer = game.state.race.player;
+var raceVy = racePlayer.vy;
+pointer('canvas', 450, 160);
+assert(racePlayer.vy > raceVy, 'RACEでタップしても加速しない');
+
+game.updateRace(0.5, 1 / 60);
+ui.update(game.getState());
+assert(text('count') !== '60.0', 'RACEの残り時間が減っていない');
+
+game.updateRace(61, 1 / 60);
+ui.render(game.getState());
+assert(hasClass('result-overlay', 'visible'), 'RACE結果画面が出ていない');
+assert(hasClass('start-overlay', 'visible') === false, '結果画面でスタート画面が残る');
+assert(text('result-title') === 'TIME UP', 'TIME UPのタイトルが不正');
+assert(text('result-time') === 'DNF', 'DNF表示が不正');
+assert(/s$/.test(text('result-ghost')), 'ゴーストタイム表示が不正');
+
+click('btn-race-again');
+assert(game.state.phase === 'playing' && game.state.mode === 'race', 'RACE AGAINで再開できない');
+assert(hasClass('result-overlay', 'visible') === false, '再開後も結果画面が残る');
+assert(!hasClass('hud', 'is-hidden'), '再開後もHUDが隠れている');
+
+click('btn-home');
+assert(game.state.phase === 'start', 'RACE HOMEで戻れない');
+assert(hasClass('start-overlay', 'visible'), 'RACE HOME後にスタート画面が出ない');
+assert(text('btn-start') === 'START RACE', 'RACE HOME後の選択が保持されない');
 
 print('ui tests OK (' + passed + ' assertions)');

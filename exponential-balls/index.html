@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#05080e" />
-  <meta name="description" content="BLOOM is a vertical audiovisual game where balls double with the music. Choose AUTO or FRAME." />
+  <meta name="description" content="BLOOM is a vertical audiovisual game where balls double with the music. Choose AUTO, FRAME, or RACE." />
   <title>BLOOM</title>
   <link rel="stylesheet" href="style.css" />
 </head>
@@ -27,7 +27,7 @@
 
       <div class="count-wrap">
         <span id="count" class="count">1</span>
-        <span class="count-label">BALLS</span>
+        <span id="count-label" class="count-label">BALLS</span>
       </div>
 
       <div class="meta">
@@ -43,7 +43,7 @@
       <div class="start-content">
         <p class="eyebrow">EXPONENTIAL BLOOM</p>
         <h1>BLOOM</h1>
-        <p class="lead">Every ball doubles. Pick a mode to start.</p>
+        <p class="lead">Double, catch, or race. Pick a mode to start.</p>
 
         <p class="mode-prompt">SELECT MODE</p>
         <div class="mode-grid" role="group" aria-label="Game mode">
@@ -56,6 +56,11 @@
             <span class="mode-head"><span class="mode-tag">FRAME</span><span id="mode-frame-state" class="mode-play">SELECT</span></span>
             <span class="mode-title">TOUCH &amp; DOUBLE</span>
             <span class="mode-desc">Balls drift in all directions. Touch the top line to split one into two. The copies dive back down and darken.</span>
+          </button>
+          <button id="mode-race" class="mode-card" type="button" aria-pressed="false">
+            <span class="mode-head"><span class="mode-tag">RACE</span><span id="mode-race-state" class="mode-play">SELECT</span></span>
+            <span class="mode-title">GHOST RUN</span>
+            <span class="mode-desc">Race a ghost down three gates. Tap behind to surge, ahead to brake, and to the sides to steer.</span>
           </button>
         </div>
 
@@ -75,7 +80,22 @@
         </svg>
 
         <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
-        <p class="tiny">120 BPM / 24 s cycle. Sound on.</p>
+        <p class="tiny">120 BPM · AUTO/FRAME 24 s cycle · RACE 60 s. Sound on.</p>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay result-overlay">
+      <div class="result-content">
+        <p class="eyebrow">BLOOM RUSH</p>
+        <h1 id="result-title">FINISH</h1>
+        <p id="result-sub" class="lead">You beat the ghost.</p>
+        <div class="result-times">
+          <div class="result-time"><span>YOU</span><strong id="result-time">0.0s</strong></div>
+          <div class="result-time"><span>GHOST</span><strong id="result-ghost">0.0s</strong></div>
+        </div>
+        <button id="btn-race-again" class="primary big" type="button">RACE AGAIN</button>
+        <button id="btn-result-home" class="link-btn" type="button">HOME</button>
+        <p class="tiny">60 s limit / 3 gates</p>
       </div>
     </div>
   </div>
