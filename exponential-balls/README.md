@@ -11,11 +11,11 @@
 
 ## 遊び方
 
-1. ホームで **AUTO** か **FRAME** を選び、**BEGIN** を押す。
+1. ホームで **AUTO** か **FRAME** のカードを選び、**START** を押す。
 2. 音が鳴り、1個のボールから始まる。
 3. AUTOでは小節ごとに、FRAMEではフレームに入るたびにボールが倍々に増える。
 4. 2,048個に達するとサイクルが切り替わり、1個に戻ってキーが変わる。
-5. **MODES** でホームに戻り、モードを選び直せる。**SOUND** でミュート。
+5. **HOME** でホームに戻り、モードを選び直せる。**SOUND** でミュート。
 
 タップでボールを押す操作はありません。観るための映像体験です。
 
@@ -56,7 +56,7 @@ exponential-balls/
 ├── game.js           # 起動・モード別描画ループ・window.__GAME__
 ├── test-engine.js    # AUTO/FRAMEの時間・回収・上限
 ├── test-audio.js     # WebAudioスケジューラの安全確認
-├── test-ui.js        # モード選択・MODES・HUD
+├── test-ui.js        # モード選択・HOME・HUD
 ├── test-renderer.js  # 分裂・リセット・FRAME描画
 ├── test-smoke.js     # AUTOの2サイクル自動再生
 └── test-frame-smoke.js # FRAMEの回収とHUD
@@ -82,12 +82,12 @@ jsc test-smoke.js
 jsc test-frame-smoke.js
 ```
 
-リポジトリ全体では `./tools/verify.sh` です。`test-engine.js` はAUTOの小節ごとの1→2,048、サイクル境界、時計の巻き戻り、時間ジャンプ、FRAMEの回収・上限を検証します。`test-audio.js` はダミーのAudioContextでスケジューラの安全（長時間不在・停止/復帰・ミュート）と回収音を確認します。`test-ui.js` はモード選択・MODES・HUDを確認します。`test-renderer.js` は分裂・リセット・FRAME描画を確認します。`test-smoke.js` はAUTOを2サイクル、`test-frame-smoke.js` はFRAMEを自動再生し、HUDとボールの運動を確認します。
+リポジトリ全体では `./tools/verify.sh` です。`test-engine.js` はAUTOの小節ごとの1→2,048、サイクル境界、時計の巻き戻り、時間ジャンプ、FRAMEの回収・上限を検証します。`test-audio.js` はダミーのAudioContextでスケジューラの安全（長時間不在・停止/復帰・ミュート）と回収音を確認します。`test-ui.js` はモード選択・START・HOME・HUDを確認します。`test-renderer.js` は分裂・リセット・FRAME描画を確認します。`test-smoke.js` はAUTOを2サイクル、`test-frame-smoke.js` はFRAMEを自動再生し、HUDとボールの運動を確認します。
 
 ## 既知の制限と次に試すこと
 
 - FRAMEの増加は拍に固定されない。回収音の16分量子化とフレームの拍パルスで補っているが、AUTOほどの音ハメはない。
-- 一時停止ボタンはない。止める場合はMODESでホームに戻るか、タブを閉じる。
+- 一時停止ボタンはない。止める場合はHOMEでホームに戻るか、タブを閉じる。
 - 2,048個の描画は端末によって負荷がある。必要なら最大数を下げる、軌跡を軽くする、描画を間引く。
 - AI生成の音源への差し替え、BPM変更、サイクルごとのテンポ変化は未実装。
 - スコアやゲームオーバーはない。観るための映像体験として作っている。
