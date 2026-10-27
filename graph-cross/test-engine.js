@@ -764,8 +764,8 @@ g.itemTimer = 999;
 g.y = g.top + 30;
 g.allies = [{
   x0: 0, x1: g.width, baseY: (g.top + g.bottom) / 2,
-  amp: 0, freq: 1, phase: 0, slope: 0,
-  life: 9, maxLife: 9, cooldown: 0
+  amp: 30, freq: 0.05, phase: 0, slope: 0,
+  life: 9, maxLife: 9, age: 0, cooldown: 0
 }];
 g.rivals.push(lineRival(g.headX - 100, (g.top + g.bottom) / 2, 200));
 E.update(g, 1 / 60);
@@ -774,6 +774,27 @@ assert(E.consumeEvents(g).some(function (e) { return e.type === 'allyHit'; }), '
 var allyMoveA = E.allyY(g.allies[0], 500, 0);
 var allyMoveB = E.allyY(g.allies[0], 500, 1);
 assert(Math.abs(allyMoveA - allyMoveB) > 1, '追加グラフが時間で動く');
+
+/* 9d5) 交差判定が ally.age に追従する（age=0では外れ、age=1では当たる） */
+g = makeGame(908, ['hold', 'up', 'wave']);
+g.rivals = [];
+g.items = [];
+g.itemTimer = 999;
+g.trail = [];
+g.y = g.top + 20;
+var ally = {
+  x0: 0, x1: g.width, baseY: (g.top + g.bottom) / 2,
+  amp: 0, freq: 1, phase: 0, slope: 0,
+  life: 9, maxLife: 9, age: 1, cooldown: 0
+};
+var hitX = 200;
+var hitY = E.allyY(ally, hitX, 1);
+assert(Math.abs(hitY - E.allyY(ally, hitX, 0)) > 12, 'ageで交差位置が変わる配置');
+g.allies = [ally];
+g.rivals.push(lineRival(hitX, hitY, 150));
+E.update(g, 1 / 60);
+assert(g.rivals.length === 0, 'ageを渡した交差判定が敵を迎撃する');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'allyHit'; }), 'age追従のallyHitイベント');
 
 /* 9e) デッキの強制ローテーション */
 g = makeGame(903, ['hold', 'up', 'wave']);
@@ -851,6 +872,8 @@ var restored = E.restoreCheckpoint(cp, { width: 1000, height: 620, rng: mulberry
 assert(restored, 'チェックポイントから復元できる');
 assert(restored.deck.length === 4 && restored.deck[3] === 'down', '4枠デッキも復元');
 assert(restored.fusion && restored.fusion.primary === 'quad', '合成設定も復元');
+assert(JSON.stringify(restored.deckParams.quad) === JSON.stringify(E.normalizeParams({}).quad), '合成元の係数も既定値で補完');
+assert(JSON.stringify(restored.deckParams.wave) === JSON.stringify(cp.deckParams.wave), '保存済みの係数を維持');
 assert(restored.stage === 3 && restored.stageTarget === 12 && restored.stageHits === 0, 'ステージ進行を復元');
 assert(restored.score === 1234 && restored.hp === 2 && restored.maxHp === 4, 'スコアとライフを復元');
 assert(restored.hitBonus === 2 && restored.comboWindow === 3.4 && restored.scoreMult === 1.2, '強化値を復元');

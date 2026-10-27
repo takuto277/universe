@@ -106,6 +106,18 @@
     return subject + CONCEPTS[meaning.object].label + 'が' + (meaning.negated ? '欲しくない' : '欲しい');
   }
 
+  function shuffleScenes(scenes, seed) {
+    var rng = mulberry32((seed ^ 0x85ebca6b) >>> 0);
+    var out = scenes.slice();
+    for (var i = out.length - 1; i > 0; i--) {
+      var j = Math.floor(rng() * (i + 1));
+      var tmp = out[i];
+      out[i] = out[j];
+      out[j] = tmp;
+    }
+    return out;
+  }
+
   function buildScenes(lang) {
     return [
       {
@@ -115,7 +127,7 @@
         correctAction: 'give',
         merchant: { name: 'ムウ', title: '市場の顔役', accent: 'amber' },
         line: ['me', 'bread', 'want'],
-        gesture: '商人は自分を指さして、パンを見つめた。',
+        gesture: '商人は自分の胸に手を当て、目の前の品をそっと差し出した。',
         prompt: 'どうする?',
         explain: '「? パン 欲しい」なら、欲しがっているのは商人自身。パンを差し出すのが正解。',
         revealCorrect: 'ムウはパンを受け取り、満足そうにうなずいた。',
@@ -128,7 +140,7 @@
         correctAction: 'refuse',
         merchant: { name: 'リサ', title: '新顔の商人', accent: 'teal' },
         line: ['me', 'fish', 'want', 'not'],
-        gesture: 'リサは魚を押し返し、首を横に振った。',
+        gesture: '商人は品を押し返し、首を横に振った。',
         prompt: 'どうする?',
         explain: '「私 魚 欲しい ?」の ? が否定なら、魚は欲しくない。断るのが正解。',
         revealCorrect: 'リサは魚を引っ込め、安堵したように笑った。',
@@ -141,7 +153,7 @@
         correctAction: 'take',
         merchant: { name: 'ゼン', title: '老練な商人', accent: 'violet' },
         line: ['me', 'gem', 'want', 'not'],
-        gesture: 'ゼンは「いらない」と言いながら、宝石をあなたのほうへ押し出した。',
+        gesture: '商人は「いらない」と言いながら、品をあなたのほうへ押し出した。',
         prompt: 'どうする?',
         explain: '「私 宝石 欲しい 否定」= 欲しくない。でも、押し出すしぐさは「持っていけ」。だから受け取るのが正解。',
         revealCorrect: 'ゼンは宝石をあなたに押し出し、したり顔で硬貨を数えた。',
@@ -170,7 +182,7 @@
     var initialSeed = (typeof options === 'number') ? options :
       (options.seed != null ? (options.seed >>> 0) : 12345);
     var lang = generateLanguage(initialSeed);
-    var scenes = buildScenes(lang);
+    var scenes = shuffleScenes(buildScenes(lang), initialSeed);
     var gameApi = null;
     var listeners = [];
     var state = {
@@ -220,7 +232,7 @@
     function initRun(seed) {
       state.seed = seed >>> 0;
       lang = generateLanguage(state.seed);
-      scenes = buildScenes(lang);
+      scenes = shuffleScenes(buildScenes(lang), state.seed);
       if (gameApi) {
         gameApi.lang = lang;
         gameApi.scenes = scenes;
@@ -389,7 +401,7 @@
     }
 
     function contractMemoView() {
-      return ['me', 'you', 'want'].map(function (id) {
+      return ['me', 'you', 'want', 'fish'].map(function (id) {
         return { id: id, word: lang.words[id], label: CONCEPTS[id].label };
       });
     }
