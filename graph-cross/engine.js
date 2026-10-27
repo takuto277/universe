@@ -108,12 +108,15 @@
     if (shape === 2) return (2 / Math.PI) * Math.asin(Math.sin(theta));
     if (shape === 3) return Math.tanh(2.6 * Math.sin(theta));
     if (shape === 4) return Math.exp(-1.1 * Math.max(0, t)) * Math.sin(theta);
+    if (shape === 5) return (2 / Math.PI) * Math.atan(Math.tan(theta / 2));
+    if (shape === 6) return Math.sin(theta) >= 0 ? 1 : -1;
+    if (shape === 7) return Math.sign(Math.sin(theta)) * Math.pow(Math.abs(Math.sin(theta)), 0.35);
     return Math.sin(theta);
   }
 
   function waveOffset(state, t) {
     var wp = state.deckParams.wave || { a: 1, b: 1, c: 0, shape: 0 };
-    var shape = Math.max(0, Math.min(4, Math.round(wp.shape || 0)));
+    var shape = Math.max(0, Math.min(7, Math.round(wp.shape || 0)));
     var theta = t * 4.2 * (wp.b || 1) + (wp.c || 0);
     return WAVE_AMPLITUDE * (wp.a || 1) * waveShapeValue(shape, theta, t);
   }

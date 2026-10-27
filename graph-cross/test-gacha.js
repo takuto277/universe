@@ -29,7 +29,7 @@ function sequence(values) {
 
 var s = G.createDefault();
 assert(s.points === B.GACHA_START_POINTS, '初期ポイント');
-assert(s.unlocked.length === 3 && s.unlocked.indexOf('hold') >= 0 && s.unlocked.indexOf('up') >= 0 && s.unlocked.indexOf('down') >= 0, 'スターター3種');
+assert(s.unlocked.length === 4 && s.unlocked.indexOf('hold') >= 0 && s.unlocked.indexOf('up') >= 0 && s.unlocked.indexOf('down') >= 0 && s.unlocked.indexOf('quad') >= 0, 'スターター4種');
 
 var normalized = G.normalize({ unlocked: ['wave', 'wave', 'up'], points: -5, pityRare: -2 });
 assert(normalized.unlocked.indexOf('wave') >= 0 && normalized.unlocked.indexOf('hold') >= 0, '保存データを正規化');

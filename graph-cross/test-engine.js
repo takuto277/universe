@@ -115,7 +115,7 @@ var pClamp = E.createGame({
   width: 1000, height: 620, deck: ['quad', 'wave', 'hold'],
   deckParams: { quad: { a: 1, b: 0, p: 99 } }
 });
-assert(pClamp.deckParams.quad.p === 4, '累乗pの上限');
+assert(pClamp.deckParams.quad.p === 6, '累乗pの上限');
 var quadB = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 1, b: 1 } }, rng: mulberry32(23) });
 assert(quadB.vy === 120, '累乗のbが初速になる');
 var power2 = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 1, b: 0, p: 2 } }, rng: mulberry32(25) });
@@ -136,7 +136,7 @@ for (i = 0; i < 25; i++) {
   E.update(triWave, 1 / 60); E.update(sinWave, 1 / 60);
 }
 assert(Math.abs(triWave.y - sinWave.y) > 1, '波の形の違いが軌道に反映される');
-assert(E.WAVE_SHAPES.length === 5, '波の形が5種類ある');
+assert(E.WAVE_SHAPES.length === 8, '波の形が8種類ある');
 
 var slowQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 0.4 } }, rng: mulberry32(21) });
 var fastQuad = E.createGame({ width: 1000, height: 620, deck: ['quad', 'hold', 'up'], deckParams: { quad: { a: 2 } }, rng: mulberry32(21) });

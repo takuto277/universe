@@ -75,6 +75,7 @@
               <select id="fusion-secondary" class="tune-select"></select>
               <button id="btn-fuse" class="secondary fusion-btn" type="button">合成</button>
             </div>
+            <div id="fusion-preview" class="fusion-preview hidden"></div>
             <div id="fusion-note" class="hud-note">2つの関数を選んで合成できます。</div>
           </div>
           <div id="tune-panel">
@@ -85,7 +86,7 @@
                 <div class="tune-sliders">
                   <label class="tune-slider"><span>a</span><input id="tune-quad-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-quad-a-val">1</b></label>
                   <label class="tune-slider"><span>b</span><input id="tune-quad-b" type="range" min="-1.5" max="1.5" step="0.1" value="0" /><b id="tune-quad-b-val">0</b></label>
-                  <label class="tune-slider"><span>p</span><input id="tune-quad-p" type="range" min="2" max="4" step="1" value="2" /><b id="tune-quad-p-val">2</b></label>
+                  <label class="tune-slider"><span>p</span><input id="tune-quad-p" type="range" min="2" max="6" step="1" value="2" /><b id="tune-quad-p-val">2</b></label>
                 </div>
               </div>
               <div class="tune-row" id="tune-row-quadDown">
@@ -93,11 +94,11 @@
                 <div class="tune-sliders">
                   <label class="tune-slider"><span>a</span><input id="tune-quadDown-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-quadDown-a-val">1</b></label>
                   <label class="tune-slider"><span>b</span><input id="tune-quadDown-b" type="range" min="-1.5" max="1.5" step="0.1" value="0" /><b id="tune-quadDown-b-val">0</b></label>
-                  <label class="tune-slider"><span>p</span><input id="tune-quadDown-p" type="range" min="2" max="4" step="1" value="2" /><b id="tune-quadDown-p-val">2</b></label>
+                  <label class="tune-slider"><span>p</span><input id="tune-quadDown-p" type="range" min="2" max="6" step="1" value="2" /><b id="tune-quadDown-p-val">2</b></label>
                 </div>
               </div>
               <div class="tune-row" id="tune-row-wave">
-                <div class="tune-head"><span class="tune-tag">波</span><span class="tune-formula" id="tune-wave-formula">y = sin(x)</span><select id="tune-wave-shape" class="tune-select" title="波の形"><option value="0">sin</option><option value="1">cos</option><option value="2">三角</option><option value="3">角丸</option><option value="4">減衰</option></select></div>
+                <div class="tune-head"><span class="tune-tag">波</span><span class="tune-formula" id="tune-wave-formula">y = sin(x)</span><select id="tune-wave-shape" class="tune-select" title="波の形"><option value="0">sin</option><option value="1">cos</option><option value="2">三角</option><option value="3">角丸</option><option value="4">減衰</option><option value="5">のこぎり</option><option value="6">矩形</option><option value="7">スパイク</option></select></div>
                 <div class="tune-sliders">
                   <label class="tune-slider"><span>a</span><input id="tune-wave-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-wave-a-val">1</b></label>
                   <label class="tune-slider"><span>b</span><input id="tune-wave-b" type="range" min="0.5" max="2.5" step="0.25" value="1" /><b id="tune-wave-b-val">1</b></label>

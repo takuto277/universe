@@ -36,7 +36,7 @@
   var GENRE_LABELS_EN = { up: 'UP', down: 'DOWN', other: 'OTHER' };
   var FAMILY_COLORS = { linear: '#5ff0ff', quad: '#ffd166', wave: '#ff7ad9', none: '#a8bad8' };
 
-  var STARTER_FUNCTIONS = ['hold', 'up', 'down'];
+  var STARTER_FUNCTIONS = ['hold', 'up', 'down', 'quad'];
   var RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
   var RARITY_INFO = {
     common: { label: 'COMMON', color: '#8fa1bd', weight: 55, duplicate: 20 },
@@ -50,24 +50,24 @@
     quad: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
       b: { min: -1.5, max: 1.5, step: 0.1, default: 0 },
-      p: { min: 2, max: 4, step: 1, default: 2 }
+      p: { min: 2, max: 6, step: 1, default: 2 }
     },
     quadDown: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
       b: { min: -1.5, max: 1.5, step: 0.1, default: 0 },
-      p: { min: 2, max: 4, step: 1, default: 2 }
+      p: { min: 2, max: 6, step: 1, default: 2 }
     },
     wave: {
       a: { min: 0.4, max: 2.0, step: 0.2, default: 1 },
       b: { min: 0.5, max: 2.5, step: 0.25, default: 1 },
       c: { min: -3, max: 3, step: 0.2, default: 0 },
-      shape: { min: 0, max: 4, step: 1, default: 0 }
+      shape: { min: 0, max: 7, step: 1, default: 0 }
     }
   };
 
-  var WAVE_SHAPES = ['sin', 'cos', 'tri', 'soft', 'damp'];
-  var WAVE_SHAPE_LABELS = ['サイン', 'コサイン', '三角波', '角丸スクエア', '減衰サイン'];
-  var WAVE_SHAPE_DESCS = ['滑らかな上下', 'sinを位相ずらし', '折れ線で上下', '角を丸くした方形波', '時間とともに小さくなる'];
+  var WAVE_SHAPES = ['sin', 'cos', 'tri', 'soft', 'damp', 'saw', 'square', 'spike'];
+  var WAVE_SHAPE_LABELS = ['サイン', 'コサイン', '三角波', '角丸スクエア', '減衰サイン', 'のこぎり波', '矩形波', 'スパイク'];
+  var WAVE_SHAPE_DESCS = ['滑らかな上下', 'sinを位相ずらし', '折れ線で上下', '角を丸くした方形波', '時間とともに小さくなる', 'のこぎり状の往復', '矩形のオンオフ', '尖った山の連続'];
 
   var ITEM_INFO = {
     graph: { label: '非対称グラフ +1', labelEn: 'ALLY GRAPH +1', short: 'G', color: '#b48cff' },
@@ -160,7 +160,7 @@
       var wa = wp.a || 1;
       var wb = wp.b || 1;
       var wc = wp.c || 0;
-      var wshape = Math.max(0, Math.min(4, Math.round(wp.shape || 0)));
+      var wshape = Math.max(0, Math.min(7, Math.round(wp.shape || 0)));
       var acoef = wa === 1 ? '' : fmtNum(wa) + ' ';
       var inner = wb === 1 ? 'x' : fmtNum(wb) + 'x';
       if (wc !== 0) inner += (wc > 0 ? ' + ' : ' - ') + fmtNum(Math.abs(wc));
