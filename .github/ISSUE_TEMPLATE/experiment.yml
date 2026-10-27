@@ -1,0 +1,44 @@
+name: 実験提案
+description: 試作してプレビューで触ってから採用を決める実験
+title: "[experiment] "
+labels:
+  - "experiment:proposed"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        実験は本番へ直接マージしません。`experiment/<slug>` ブランチのプレビューを確認し、
+        `experiment:keep` または `experiment:discard` で判断します。
+        詳細は [実験の運用](https://github.com/takuto277/universe/blob/main/docs/experiments.md) を参照してください。
+  - type: textarea
+    id: hypothesis
+    attributes:
+      label: 仮説
+      description: 何を試し、どうなれば成功とみなすか
+      placeholder: "例: 制限時間を短くすると、1プレイの集中度が上がる"
+    validations:
+      required: true
+  - type: textarea
+    id: change
+    attributes:
+      label: 試す変更
+      description: 対象アプリと変更内容
+    validations:
+      required: true
+  - type: textarea
+    id: success
+    attributes:
+      label: 成功条件
+      description: 触ったときの観察ポイントや数値
+    validations:
+      required: true
+  - type: textarea
+    id: risk
+    attributes:
+      label: リスクと戻し方
+      description: 壊れやすい箇所、外部サービス、戻し方
+  - type: input
+    id: period
+    attributes:
+      label: 試用期間
+      placeholder: "例: 3日 / 次回の週末まで"

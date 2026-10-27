@@ -63,6 +63,11 @@ LABELS = {
     "agent:proposed": ("5319E7", "改善提案(promote で実装キューへ)"),
     "agent-generated": ("BFD4F2", "無人エージェントが作成した PR"),
     "agent-autofix": ("F9D0C4", "無人エージェントがレビュー指摘を自動修正"),
+    "experiment:proposed": ("0E8A16", "実験の提案"),
+    "experiment:ready": ("1D76DB", "実験を実装する"),
+    "experiment:preview": ("5319E7", "プレビュー確認待ち"),
+    "experiment:keep": ("0E8A16", "実験を採用"),
+    "experiment:discard": ("B60205", "実験を破棄"),
 }
 
 
@@ -914,10 +919,15 @@ class Runner:
             "`tools/agent_runner.py` による自動実行です。実行ログ: `%s`" % issue_log,
             "",
         ])
-        result = self.gh("pr", "create", "--repo", self.cfg.repo,
-                         "--base", self.cfg.base, "--head", branch,
-                         "--title", title, "--body", body,
-                         "--label", "agent-generated", timeout=180)
+        labels = ["agent-generated"]
+        if branch.startswith("experiment/"):
+            labels += ["experiment:preview", "do-not-merge"]
+        args = ["pr", "create", "--repo", self.cfg.repo,
+                "--base", self.cfg.base, "--head", branch,
+                "--title", title, "--body", body]
+        for label in labels:
+            args += ["--label", label]
+        result = self.gh(*args, timeout=180)
         if result.ok:
             lines = [line.strip() for line in (result.stdout or "").splitlines() if line.strip()]
             return lines[-1] if lines else "(URL 不明)"
@@ -1397,6 +1407,7 @@ class Runner:
                 "- 各 Issue は「背景 / 提案 / 受け入れ条件 / 対象範囲」を含める",
                 "- 1 Issue = 1 つの完結した変更にする",
                 "- ラベルは `%s` を付ける" % label,
+                "- ゲームの新しい遊びの実験案は `experiment:proposed` を付ける（実装は experiment:ready に昇格後）",
                 "- コード変更、PR 作成、マージ、既存 Issue のクローズはしない",
                 "- 最後に作成した Issue の番号と URL を列挙する",
             ])

@@ -8,6 +8,7 @@ universe は、**ゲームを題材に無人開発基盤を育てるモノレポ
 
 - **本体（platform）**: `tools/` の無人開発基盤。Issue → 実装 → PR → レビュー → マージを回す
 - **題材・公開物（projects）**: `projects/` のゲーム。`_labs` は実験・検証、`_samples` は教材・最小実装。分類は [projects/README.md](projects/README.md)
+- **実験**: 新機能は隔離ブランチのプレビューで試し、`experiment:keep` / `discard` で判断。手順は [docs/experiments.md](docs/experiments.md)
 - **横断知識（docs）**: `docs/` の運用手順・ADR・学習ログ
 - **移行中**: `graph-cross/` と `exponential-balls/` は進行中ブランチ/直後の変更を優先してルートに残しています。`tools/` はLaunchAgentとの互換性を確認してから `projects/universe-agent/` へ移します
 

@@ -1,0 +1,98 @@
+name: Experiment preview
+
+on:
+  push:
+    branches:
+      - "experiment/**"
+  pull_request:
+    types: [opened, synchronize, reopened]
+    branches:
+      - main
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: experiment-preview-${{ github.event.pull_request.head.ref || github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: github.event_name == 'push' || (startsWith(github.head_ref, 'experiment/') && github.event.pull_request.head.repo.full_name == github.repository)
+    runs-on: ubuntu-latest
+    env:
+      BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      PR_NUMBER: ${{ github.event.pull_request.number }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Validate site
+        run: python3 tools/check_site.py
+
+      - name: Build static preview
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/site"
+          rsync -a \
+            --exclude='.git/' \
+            --exclude='.github/' \
+            --exclude='tools/' \
+            --exclude='docs/' \
+            --exclude='*.md' \
+            ./ "$RUNNER_TEMP/site/"
+          printf 'User-agent: *\nDisallow: /\n' >"$RUNNER_TEMP/site/robots.txt"
+
+      - name: Deploy to preview site
+        env:
+          PREVIEW_DEPLOY_KEY: ${{ secrets.PREVIEW_DEPLOY_KEY }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_DEPLOY_KEY:-}" ]; then
+            echo "::error::PREVIEW_DEPLOY_KEY is not set"
+            exit 1
+          fi
+          slug="${BRANCH#experiment/}"
+          slug="$(printf '%s' "$slug" | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+          [ -n "$slug" ] || slug="preview"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$PREVIEW_DEPLOY_KEY" >"$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan github.com >>"$HOME/.ssh/known_hosts" 2>/dev/null
+
+          rm -rf "$RUNNER_TEMP/preview"
+          git clone --depth 1 git@github.com:takuto277/universe-preview.git "$RUNNER_TEMP/preview"
+          rm -rf "$RUNNER_TEMP/preview/experiments/$slug"
+          mkdir -p "$RUNNER_TEMP/preview/experiments/$slug"
+          rsync -a "$RUNNER_TEMP/site/" "$RUNNER_TEMP/preview/experiments/$slug/"
+
+          cd "$RUNNER_TEMP/preview"
+          git config user.name "takuto277"
+          git config user.email "takuto277@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            echo "preview is unchanged"
+          else
+            git commit -m "preview: $slug ($GITHUB_SHA)"
+            pushed=0
+            for attempt in 1 2 3; do
+              git pull --rebase --quiet origin main || true
+              if git push origin main; then
+                pushed=1
+                break
+              fi
+              sleep 3
+            done
+            [ "$pushed" = 1 ]
+          fi
+          echo "PREVIEW_URL=https://takuto277.github.io/universe-preview/experiments/$slug/" >>"$GITHUB_ENV"
+
+      - name: Comment preview URL
+        if: env.PR_NUMBER != ''
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
+            --body "実験プレビュー: $PREVIEW_URL"

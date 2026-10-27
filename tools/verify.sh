@@ -9,6 +9,7 @@ python3 "$ROOT/tools/check_site.py"
 python3 "$ROOT/tools/check_skills.py"
 for script in \
   "$ROOT/tools/agent.sh" \
+  "$ROOT/tools/experiment.sh" \
   "$ROOT/tools/setup.sh" \
   "$ROOT/tools/automation-root.sh" \
   "$ROOT/tools/automation-run.sh" \

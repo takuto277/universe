@@ -1,0 +1,87 @@
+name: Experiment decision
+
+on:
+  pull_request:
+    types: [labeled]
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  keep:
+    if: github.event.label.name == 'experiment:keep' && startsWith(github.head_ref, 'experiment/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Promote experiment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr edit "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --remove-label "do-not-merge"
+          gh pr ready "${{ github.event.pull_request.number }}" --repo "$GITHUB_REPOSITORY"
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "実験を採用します。通常のレビューと五点ゲートに進みます。"
+
+  discard:
+    if: github.event.label.name == 'experiment:discard' && startsWith(github.head_ref, 'experiment/') && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment discard
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr comment "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --body "実験を破棄します。ブランチとプレビューを削除します。"
+
+      - name: Remove preview
+        env:
+          PREVIEW_DEPLOY_KEY: ${{ secrets.PREVIEW_DEPLOY_KEY }}
+          BRANCH: ${{ github.head_ref }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_DEPLOY_KEY:-}" ]; then
+            echo "::error::PREVIEW_DEPLOY_KEY is not set"
+            exit 1
+          fi
+          slug="${BRANCH#experiment/}"
+          slug="$(printf '%s' "$slug" | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+          [ -n "$slug" ] || slug="preview"
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$PREVIEW_DEPLOY_KEY" >"$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan github.com >>"$HOME/.ssh/known_hosts" 2>/dev/null
+
+          git clone --depth 1 git@github.com:takuto277/universe-preview.git "$RUNNER_TEMP/preview"
+          cd "$RUNNER_TEMP/preview"
+          rm -rf "experiments/$slug"
+          git config user.name "takuto277"
+          git config user.email "takuto277@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "cleanup: $slug"
+          pushed=0
+          for attempt in 1 2 3; do
+            git pull --rebase --quiet origin main || true
+            if git push origin main; then
+              pushed=1
+              break
+            fi
+            sleep 3
+          done
+          [ "$pushed" = 1 ]
+
+      - name: Close pull request
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh pr close "${{ github.event.pull_request.number }}" \
+            --repo "$GITHUB_REPOSITORY" \
+            --delete-branch
