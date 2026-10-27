@@ -17,6 +17,7 @@
   var checkpoint = null;
   var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [], pendingSlot: false, slotChoices: [], pendingDeckSwap: false };
   var tutorial = { active: false, step: 0, total: 3, completed: false, targetTimer: 0, itemTimer: 0 };
+  var paused = false;
   var viewW = 960;
   var viewH = 560;
   var dpr = 1;
@@ -332,7 +333,9 @@
     lastCombo = 0;
     clearEffects();
     lastTs = 0;
+    paused = false;
     ui.hideScreens();
+    ui.setPauseVisible(true);
     ui.setRuntime(state, 'run');
     ui.showStageBanner(banner);
     if (audio && !ui.isMuted()) {
@@ -394,6 +397,35 @@
         }
       }
     }
+  }
+
+  function pauseGame() {
+    if (paused || view.phase !== 'run' || !state || state.over || state.stageCleared) return;
+    paused = true;
+    if (audio) audio.stopBgm();
+    ui.showPause(!!checkpoint);
+  }
+
+  function resumeGame() {
+    if (!paused) return;
+    paused = false;
+    ui.hideScreens();
+    ui.setPauseVisible(true);
+    lastTs = 0;
+    if (audio && !ui.isMuted()) {
+      audio.unlock();
+      audio.startBgm();
+    }
+  }
+
+  function pauseRetry() {
+    if (!checkpoint) {
+      resumeGame();
+      return;
+    }
+    paused = false;
+    ui.hideScreens();
+    retryStage();
   }
 
   function beginTutorial() {
@@ -458,11 +490,13 @@
   function showStart() {
     if (audio) audio.stopBgm();
     state = null;
+    paused = false;
     tutorial.active = false;
     tutorial.step = 0;
     tutorial.completed = false;
     ui.hideTutorial();
     ui.setTutorialMode(false);
+    ui.setPauseVisible(false);
     view.phase = 'idle';
     view.upgradeIds = [];
     view.pendingSlot = false;
@@ -473,9 +507,11 @@
   }
 
   function showEnd() {
+    paused = false;
     tutorial.active = false;
     ui.hideTutorial();
     ui.setTutorialMode(false);
+    ui.setPauseVisible(false);
     view.phase = 'over';
     if (audio) {
       audio.setIntensity(0);
@@ -486,9 +522,11 @@
   }
 
   function showClear() {
+    paused = false;
     tutorial.active = false;
     ui.hideTutorial();
     ui.setTutorialMode(false);
+    ui.setPauseVisible(false);
     view.phase = 'clear';
     view.pendingSlot = false;
     view.slotChoices = [];
@@ -515,6 +553,7 @@
 
   function retryStage() {
     if (!checkpoint) return;
+    paused = false;
     state = E.restoreCheckpoint(checkpoint, { width: viewW, height: viewH });
     enterStageView(state.stage);
   }
@@ -578,6 +617,14 @@
   function onKey(e) {
     if (!e) return;
     var k = e.key || '';
+    if (paused && (k === 'p' || k === 'P' || k === 'Escape' || k === 'Esc')) {
+      resumeGame();
+      return;
+    }
+    if (view.phase === 'run' && !paused && (k === 'p' || k === 'P')) {
+      pauseGame();
+      return;
+    }
     if (tutorial.active && (k === 'Escape' || k === 'Esc')) {
       showStart();
       return;
@@ -642,7 +689,7 @@
     lastTs = ts;
     dt = clamp(dt, 0, 0.05);
 
-    if (view.phase === 'run' && state && !state.over && !state.stageCleared) {
+    if (!paused && view.phase === 'run' && state && !state.over && !state.stageCleared) {
       E.update(state, dt);
       processEvents();
       if (state.combo !== lastCombo) {
@@ -666,10 +713,10 @@
       if (ts - view.clearAt > 900) showClear();
     }
 
-    if (tutorial.active && !tutorial.completed && view.phase === 'run') {
+    if (!paused && tutorial.active && !tutorial.completed && view.phase === 'run') {
       tutorialTick(dt);
     }
-    updateEffects(dt);
+    if (!paused) updateEffects(dt);
     if (renderer) {
       renderer.draw(state, ts / 1000, {
         particles: particles,
@@ -697,6 +744,10 @@
         onTutorial: beginTutorial,
         onTutorialStart: function () { finishTutorial(true); },
         onTutorialSkip: showStart,
+        onPause: pauseGame,
+        onResume: resumeGame,
+        onPauseRetry: pauseRetry,
+        onPauseExit: showStart,
         onExit: showStart,
         onRetry: retryStage,
         onBackToDeck: showStart,

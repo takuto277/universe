@@ -17,7 +17,10 @@
 
     <main id="stage">
       <canvas id="arena" width="960" height="560"></canvas>
-      <button id="btn-exit" class="exit-btn hidden" type="button">やめる (Esc)</button>
+      <div id="stage-actions">
+        <button id="btn-pause" class="pause-btn hidden" type="button">PAUSE</button>
+        <button id="btn-exit" class="exit-btn hidden" type="button">やめる (Esc)</button>
+      </div>
       <div id="stage-info">
         <span id="stage-label">STAGE 1</span>
         <div class="stage-bar"><i id="stage-fill"></i></div>
@@ -161,6 +164,18 @@
             <footer class="gacha-footer">
               <button id="btn-gacha-close" class="secondary gacha-close" type="button">スタートへ</button>
             </footer>
+          </div>
+        </section>
+
+        <section id="screen-pause" class="screen pause-screen">
+          <div class="pause-card">
+            <span class="pause-kicker">GAME PAUSED</span>
+            <h2 class="pause-title">PAUSED</h2>
+            <p class="pause-desc">ひと休み。再開すると、止めた場所から続きます。</p>
+            <button id="btn-resume" class="primary" type="button">再開</button>
+            <button id="btn-pause-retry" class="secondary hidden" type="button">このステージからやり直す</button>
+            <button id="btn-pause-exit" class="secondary" type="button">スタートへ</button>
+            <p class="tiny">P / Esc: 再開</p>
           </div>
         </section>
 

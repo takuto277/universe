@@ -715,6 +715,7 @@
     function openGacha() {
       tutorialMode = false;
       hideTutorial();
+      setPauseVisible(false);
       closeDeckBuilder();
       if (els.stageInfo) els.stageInfo.classList.add('hidden');
       showScreen('gacha');
@@ -768,8 +769,18 @@
       els.stageBanner.classList.add('show');
     }
 
+    function setPauseVisible(visible) {
+      if (els.btnPause) els.btnPause.classList.toggle('hidden', !visible);
+    }
+
+    function showPause(canRetry) {
+      if (els.btnPauseRetry) els.btnPauseRetry.classList.toggle('hidden', !canRetry);
+      setPauseVisible(false);
+      showScreen('pause');
+    }
+
     function showScreen(name) {
-      var screens = { start: els.screenStart, end: els.screenEnd, clear: els.screenClear, gacha: els.screenGacha };
+      var screens = { start: els.screenStart, end: els.screenEnd, clear: els.screenClear, gacha: els.screenGacha, pause: els.screenPause };
       for (var key in screens) {
         if (Object.prototype.hasOwnProperty.call(screens, key) && screens[key]) {
           screens[key].classList.toggle('visible', key === name);
@@ -854,6 +865,7 @@
       tutorialMode = false;
       hideTutorial();
       clearSwapHighlight();
+      setPauseVisible(false);
       showScreen('start');
       closeDeckBuilder();
       if (els.stageInfo) els.stageInfo.classList.remove('hidden');
@@ -901,6 +913,7 @@
       tutorialMode = false;
       hideTutorial();
       clearSwapHighlight();
+      setPauseVisible(false);
       var snap = E.snapshot(state);
       recordBest(snap.score);
       if (els.endScore) els.endScore.textContent = String(snap.score);
@@ -1007,6 +1020,7 @@
     function showClear(state, upgradeIds) {
       tutorialMode = false;
       hideTutorial();
+      setPauseVisible(false);
       var snap = E.snapshot(state);
       if (els.clearTitle) els.clearTitle.textContent = 'STAGE CLEAR';
       if (els.clearGacha) els.clearGacha.textContent = 'ステージクリア報酬: 関数ポイント +' + B.GACHA_STAGE_REWARD;
@@ -1057,6 +1071,11 @@
       els.btnStart = $('btn-start');
       els.btnStress = $('btn-stress');
       els.btnExit = $('btn-exit');
+      els.btnPause = $('btn-pause');
+      els.screenPause = $('screen-pause');
+      els.btnResume = $('btn-resume');
+      els.btnPauseRetry = $('btn-pause-retry');
+      els.btnPauseExit = $('btn-pause-exit');
       els.btnAgain = $('btn-again');
       els.btnRetry = $('btn-retry');
       els.btnDeck = $('btn-deck');
@@ -1198,6 +1217,10 @@
       if (els.btnStart) els.btnStart.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
       if (els.btnStress) els.btnStress.addEventListener('click', function () { if (typeof actions.onStressStart === 'function') actions.onStressStart(); });
       if (els.btnExit) els.btnExit.addEventListener('click', function () { if (typeof actions.onExit === 'function') actions.onExit(); });
+      if (els.btnPause) els.btnPause.addEventListener('click', function () { if (typeof actions.onPause === 'function') actions.onPause(); });
+      if (els.btnResume) els.btnResume.addEventListener('click', function () { if (typeof actions.onResume === 'function') actions.onResume(); });
+      if (els.btnPauseRetry) els.btnPauseRetry.addEventListener('click', function () { if (typeof actions.onPauseRetry === 'function') actions.onPauseRetry(); });
+      if (els.btnPauseExit) els.btnPauseExit.addEventListener('click', function () { if (typeof actions.onPauseExit === 'function') actions.onPauseExit(); });
       if (els.btnRetry) els.btnRetry.addEventListener('click', function () { if (typeof actions.onRetry === 'function') actions.onRetry(); });
       if (els.btnBuild) els.btnBuild.addEventListener('click', toggleDeckBuilder);
       if (els.btnAgain) els.btnAgain.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
@@ -1244,6 +1267,8 @@
       getBest: function () { return best; },
       isMuted: function () { return muted; },
       setRuntime: setRuntime,
+      setPauseVisible: setPauseVisible,
+      showPause: showPause,
       updateHud: updateHud,
       updateSlots: updateSlots,
       updateUpgradeCards: updateUpgradeCards,
