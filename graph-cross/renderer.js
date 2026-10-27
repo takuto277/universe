@@ -160,7 +160,7 @@
         var labelY = E.rivalY(r, 0) - 8;
         if (labelY < state.top + 10) labelY = E.rivalY(r, 0) + 16;
         var special = r.armor ? ' / ARMOR' : (r.splitter ? ' / SPLIT' : (r.jammer ? ' / JAM' : ''));
-        ctx.fillText(r.label + ' / 弱点:' + (C.FAMILY_LABELS[family] || '—') + special, r.x + 4, labelY);
+        ctx.fillText(r.label + ' / WEAK:' + (C.FAMILY_LABELS_EN[family] || '—') + special, r.x + 4, labelY);
         ctx.globalAlpha = 1;
       }
     }
@@ -281,7 +281,7 @@
       ctx.font = '900 13px ui-monospace, Menlo, monospace';
       var labelY = E.rivalY(boss, 0) - 18;
       if (labelY < state.top + 12) labelY = E.rivalY(boss, 0) + 24;
-      ctx.fillText('BOSS P' + (boss.phase || 1) + ' / 弱点:' + (C.FAMILY_LABELS[boss.family] || '—'), boss.x + 8, labelY);
+      ctx.fillText('BOSS P' + (boss.phase || 1) + ' / WEAK:' + (C.FAMILY_LABELS_EN[boss.family] || '—'), boss.x + 8, labelY);
     }
 
     function drawBossAttacks(state, time) {

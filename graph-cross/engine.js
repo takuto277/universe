@@ -499,7 +499,7 @@
       len: 260,
       shape: 'line',
       family: 'linear',
-      baseY: state.y,
+      baseY: state.top + 70,
       amp: 0,
       waves: 1,
       phase: 0,
@@ -1311,8 +1311,10 @@
       if (state.rivals[i].invuln > 0) state.rivals[i].invuln = Math.max(0, state.rivals[i].invuln - dt);
     }
     for (i = state.items.length - 1; i >= 0; i--) {
-      state.items[i].x -= dx;
-      if (state.items[i].x < -30) state.items.splice(i, 1);
+      if (!state.items[i].stationary) {
+        state.items[i].x -= dx;
+        if (state.items[i].x < -30) state.items.splice(i, 1);
+      }
     }
     pullItems(state, dt);
 

@@ -264,7 +264,8 @@
 
     function updateSoundButton() {
       if (!els.btnSound) return;
-      els.btnSound.textContent = muted ? '音 OFF' : '音 ON';
+      var english = !!lastState;
+      els.btnSound.textContent = english ? (muted ? 'SOUND OFF' : 'SOUND ON') : (muted ? '音 OFF' : '音 ON');
       els.btnSound.classList.toggle('muted', muted);
     }
 
@@ -290,25 +291,25 @@
         if (tutorial) {
           els.stageLabel.textContent = 'TUTORIAL';
           if (els.stageFill) els.stageFill.style.width = '100%';
-          if (els.stageNote) els.stageNote.textContent = '操作を練習中';
+          if (els.stageNote) els.stageNote.textContent = 'TRAINING';
         } else if (stress) {
           els.stageLabel.textContent = 'STRESS MODE';
           if (els.stageFill) els.stageFill.style.width = '100%';
-          if (els.stageNote) els.stageNote.textContent = '倒した敵 ' + (snap.hits || 0) + ' / COMBO x' + (snap.combo || 0);
+          if (els.stageNote) els.stageNote.textContent = 'DEFEATED ' + (snap.hits || 0) + ' / COMBO x' + (snap.combo || 0);
         } else if (snap && snap.stageCleared) {
           els.stageLabel.textContent = 'STAGE ' + stage + ' CLEAR';
           if (els.stageFill) els.stageFill.style.width = '100%';
-          if (els.stageNote) els.stageNote.textContent = 'クリア!';
+          if (els.stageNote) els.stageNote.textContent = 'CLEAR!';
         } else if (snap && snap.boss) {
           els.stageLabel.textContent = 'STAGE ' + stage + ' · BOSS P' + (snap.boss.phase || 1);
           if (els.stageFill) els.stageFill.style.width = Math.round(snap.boss.hp / snap.boss.maxHp * 100) + '%';
-          if (els.stageNote) els.stageNote.textContent = '弱点: ' + snap.boss.familyLabel + ' / HP ' + snap.boss.hp + '/' + snap.boss.maxHp;
+          if (els.stageNote) els.stageNote.textContent = 'WEAK: ' + (C.FAMILY_LABELS_EN[snap.boss.family] || snap.boss.familyLabel) + ' / HP ' + snap.boss.hp + '/' + snap.boss.maxHp;
         } else {
           els.stageLabel.textContent = 'STAGE ' + stage;
           var hits = snap ? snap.stageHits : 0;
           var target = snap ? snap.stageTarget : E.stageTargetFor(1);
           if (els.stageFill) els.stageFill.style.width = Math.round(hits / target * 100) + '%';
-          if (els.stageNote) els.stageNote.textContent = '敵 ' + hits + '/' + target;
+          if (els.stageNote) els.stageNote.textContent = 'ENEMIES ' + hits + '/' + target;
         }
         if (els.stageInfo) {
           els.stageInfo.classList.toggle('stress', stress);
@@ -318,6 +319,7 @@
         }
       }
       if (els.btnExit) els.btnExit.classList.toggle('hidden', !(stress || tutorial));
+      updateSoundButton();
     }
 
     function clearSwapHighlight() {
@@ -341,8 +343,9 @@
         var btn = slotButtons[i];
         if (!btn) continue;
         var key = deck[i];
+        var english = !!state;
         if (!key) {
-          btn.innerHTML = '<b>-</b><span>空き</span><em>' + (i + 1) + '</em>';
+          btn.innerHTML = '<b>-</b><span>' + (english ? 'EMPTY' : '空き') + '</span><em>' + (i + 1) + '</em>';
           btn.disabled = true;
           btn.classList.remove('active');
           btn.classList.add('hidden');
@@ -352,9 +355,15 @@
         }
         btn.classList.remove('hidden');
         var mode = C.MODES[key];
-        btn.setAttribute('data-genre', C.GENRE_LABELS[mode.genre] || '');
-        var familyNote = mode.family !== 'none' ? ' · ' + C.FAMILY_LABELS[mode.family] : '';
-        btn.innerHTML = '<b>' + C.formatModeLabel(key, params, fusion) + '</b><span>' + mode.note + familyNote + '</span><em>' + (i + 1) + '</em>';
+        var genreLabel = english
+          ? (C.GENRE_LABELS_EN[mode.genre] || '')
+          : (C.GENRE_LABELS[mode.genre] || '');
+        btn.setAttribute('data-genre', genreLabel);
+        if (english) btn.setAttribute('data-genre-en', genreLabel);
+        var familyLabel = english ? C.FAMILY_LABELS_EN[mode.family] : C.FAMILY_LABELS[mode.family];
+        var familyNote = mode.family !== 'none' ? ' · ' + familyLabel : '';
+        var modeNote = english ? (mode.noteEn || mode.note) : mode.note;
+        btn.innerHTML = '<b>' + C.formatModeLabel(key, params, fusion) + '</b><span>' + modeNote + familyNote + '</span><em>' + (i + 1) + '</em>';
         btn.style.setProperty('--mode-color', C.modeColor(key));
         var jammed = !!(state && state.jamTimers && state.jamTimers[i] > 0);
         btn.disabled = !(state && phase === 'run' && !state.over) || jammed;
@@ -362,7 +371,11 @@
         btn.classList.toggle('jammed', jammed);
       }
       if (els.modeButtons) els.modeButtons.classList.toggle('four', deck.length > 3);
-      if (els.tip) els.tip.textContent = '画面タップ / 1〜' + deck.length + ' で関数切替 · 曲線で敵を迎え撃て';
+      if (els.tip) {
+        els.tip.textContent = state
+          ? 'TAP / 1-' + deck.length + ' SWITCH FUNCTIONS · CROSS THE CURVES'
+          : '画面タップ / 1〜' + deck.length + ' で関数切替 · 曲線で敵を迎え撃て';
+      }
     }
 
     function updateTuneRow(key) {
@@ -885,27 +898,27 @@
           continue;
         }
         btn.classList.remove('hidden');
-        var info = C.UPGRADE_INFO[id] || { title: id, desc: '' };
+        var info = C.UPGRADE_INFO_EN[id] || C.UPGRADE_INFO[id] || { title: id, desc: '' };
         btn.innerHTML = '<em>' + (i + 1) + '</em><b>' + info.title + '</b><span>' + info.desc + '</span>';
       }
       if (els.runUpgrades) {
         var parts = [];
         var upgrades = snap && snap.upgrades ? snap.upgrades : {};
-        for (var key in C.UPGRADE_INFO) {
-          if (!Object.prototype.hasOwnProperty.call(C.UPGRADE_INFO, key)) continue;
+        for (var key in C.UPGRADE_INFO_EN) {
+          if (!Object.prototype.hasOwnProperty.call(C.UPGRADE_INFO_EN, key)) continue;
           var count = upgrades[key] || 0;
           if (count > 0) {
-            var title = C.UPGRADE_INFO[key].title;
-            var base = key === 'bonus' ? 'スコア +' + C.fmtNum(B.UPGRADE_BONUS_SCORE) : title;
-            if (key === 'life') base = 'ライフ +' + count;
-            else if (key === 'hit') base = '判定 +' + count * B.UPGRADE_HIT_STEP;
-            else if (key === 'combo') base = 'コンボ +' + C.fmtNum(count * B.UPGRADE_COMBO_STEP) + '秒';
-            else if (key === 'score') base = 'スコア +' + Math.round(count * B.UPGRADE_SCORE_STEP * 100) + '%';
-            else if (key === 'boss') base = 'ボス HP -' + count * B.UPGRADE_BOSS_STEP;
+            var title = C.UPGRADE_INFO_EN[key].title;
+            var base = key === 'bonus' ? 'SCORE +' + C.fmtNum(B.UPGRADE_BONUS_SCORE) : title;
+            if (key === 'life') base = 'LIFE +' + count;
+            else if (key === 'hit') base = 'HITBOX +' + count * B.UPGRADE_HIT_STEP;
+            else if (key === 'combo') base = 'COMBO +' + C.fmtNum(count * B.UPGRADE_COMBO_STEP) + 's';
+            else if (key === 'score') base = 'SCORE +' + Math.round(count * B.UPGRADE_SCORE_STEP * 100) + '%';
+            else if (key === 'boss') base = 'BOSS HP -' + count * B.UPGRADE_BOSS_STEP;
             parts.push(base);
           }
         }
-        els.runUpgrades.textContent = parts.length ? 'このランの強化: ' + parts.join(' / ') : 'このランの強化: なし';
+        els.runUpgrades.textContent = parts.length ? 'RUN UPGRADES: ' + parts.join(' / ') : 'RUN UPGRADES: NONE';
       }
     }
 
@@ -964,7 +977,7 @@
 
     function showFunctionChoices(state, choices) {
       if (els.clearTitle) els.clearTitle.textContent = 'FUNCTION +1';
-      if (els.clearHint) els.clearHint.textContent = '1〜3 / クリックで追加する関数を選ぶ';
+      if (els.clearHint) els.clearHint.textContent = '1–3 / CHOOSE A FUNCTION TO ADD';
       for (var i = 0; i < 3; i++) {
         var btn = $('upgrade-' + i);
         if (!btn) continue;
@@ -980,7 +993,9 @@
         btn.innerHTML = '<em>' + (i + 1) + '</em>' +
           modePreviewSvg(key, params, fusion) + '<b>' +
           C.formatModeLabel(key, params, fusion) +
-          '</b><span>' + C.MODES[key].note + ' / ' + (C.GENRE_LABELS[C.MODES[key].genre] || '') + '</span>';
+          '</b><span>' + (C.MODES[key].noteEn || C.MODES[key].note) + ' / ' +
+          (C.GENRE_LABELS_EN[C.MODES[key].genre] || '') +
+          (C.MODES[key].family !== 'none' ? ' / ' + C.FAMILY_LABELS_EN[C.MODES[key].family] : '') + '</span>';
       }
     }
 
@@ -989,12 +1004,12 @@
       showClear(state, []);
       var snap = E.snapshot(state);
       if (els.clearTitle) els.clearTitle.textContent = 'DECK CHANGE';
-      if (els.clearHint) els.clearHint.textContent = '1〜3 / 交換する関数を選ぶ';
+      if (els.clearHint) els.clearHint.textContent = '1–3 / CHOOSE A FUNCTION';
       if (els.deckSwap) {
-        var genreText = offer.genre ? ' [' + (C.GENRE_LABELS[offer.genre] || '') + ']' : '';
-        els.deckSwap.innerHTML = '入れ替え スロット ' + (offer.slot + 1) + genreText + ': ' +
+        var genreText = offer.genre ? ' [' + (C.GENRE_LABELS_EN[offer.genre] || '') + ']' : '';
+        els.deckSwap.innerHTML = 'REPLACE SLOT ' + (offer.slot + 1) + genreText + ': ' +
           C.formatModeLabel(offer.oldKey, snap.deckParams, snap.fusion) +
-          ' <span>→</span> 3択から選択';
+          ' <span>→</span> CHOOSE 1 OF 3';
         els.deckSwap.classList.remove('hidden');
       }
       for (var i = 0; i < 3; i++) {
@@ -1011,8 +1026,8 @@
         btn.innerHTML = '<em>' + (i + 1) + '</em>' +
           modePreviewSvg(key, snap.deckParams, snap.fusion) + '<b>' +
           C.formatModeLabel(key, snap.deckParams, snap.fusion) + '</b><span>' +
-          mode.note + ' / ' + (C.GENRE_LABELS[mode.genre] || '') +
-          (mode.family !== 'none' ? ' / ' + C.FAMILY_LABELS[mode.family] : '') + '</span>';
+          (mode.noteEn || mode.note) + ' / ' + (C.GENRE_LABELS_EN[mode.genre] || '') +
+          (mode.family !== 'none' ? ' / ' + C.FAMILY_LABELS_EN[mode.family] : '') + '</span>';
       }
       markSwapSlot(offer.slot, false);
     }
@@ -1023,8 +1038,8 @@
       setPauseVisible(false);
       var snap = E.snapshot(state);
       if (els.clearTitle) els.clearTitle.textContent = 'STAGE CLEAR';
-      if (els.clearGacha) els.clearGacha.textContent = 'ステージクリア報酬: 関数ポイント +' + B.GACHA_STAGE_REWARD;
-      if (els.clearHint) els.clearHint.textContent = '1〜3 / クリックで強化を選んで次のステージへ';
+      if (els.clearGacha) els.clearGacha.textContent = 'STAGE CLEAR: FUNCTION POINTS +' + B.GACHA_STAGE_REWARD;
+      if (els.clearHint) els.clearHint.textContent = '1–3 / CHOOSE AN UPGRADE AND CONTINUE';
       recordBest(snap.score);
       if (els.clearStage) els.clearStage.textContent = 'STAGE ' + snap.stage;
       if (els.clearScore) els.clearScore.textContent = String(snap.score);
@@ -1033,8 +1048,8 @@
       if (els.deckSwap) {
         var swap = snap.lastDeckSwap;
         if (swap) {
-          var genreText = swap.genre ? ' [' + (C.GENRE_LABELS[swap.genre] || '') + ']' : '';
-          els.deckSwap.innerHTML = 'デッキ変動 スロット ' + (swap.slot + 1) + genreText + ': ' +
+          var genreText = swap.genre ? ' [' + (C.GENRE_LABELS_EN[swap.genre] || '') + ']' : '';
+          els.deckSwap.innerHTML = 'DECK CHANGE SLOT ' + (swap.slot + 1) + genreText + ': ' +
             C.formatModeLabel(swap.oldKey, snap.deckParams) +
             ' <span>→</span> ' + C.formatModeLabel(swap.newKey, snap.deckParams);
           els.deckSwap.classList.remove('hidden');

@@ -11,27 +11,29 @@
   'use strict';
 
   var MODES = {
-    hold: { key: 'hold', label: 'y = 0', note: 'キープ', family: 'none', rarity: 'common', genre: 'other' },
-    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', family: 'linear', rarity: 'common', genre: 'up' },
-    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', family: 'linear', rarity: 'common', genre: 'down' },
-    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', family: 'linear', rarity: 'uncommon', genre: 'up' },
-    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', family: 'linear', rarity: 'uncommon', genre: 'down' },
-    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', family: 'quad', rarity: 'uncommon', genre: 'up' },
-    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', family: 'quad', rarity: 'uncommon', genre: 'down' },
-    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', family: 'wave', rarity: 'rare', genre: 'other' },
-    expo: { key: 'expo', label: 'y = e^x - 1', note: '指数カーブ', family: 'quad', rarity: 'rare', genre: 'up' },
-    log: { key: 'log', label: 'y = ln(x+1)', note: '対数カーブ', family: 'quad', rarity: 'rare', genre: 'up' },
-    sigmoid: { key: 'sigmoid', label: 'y = sigmoid(x)', note: 'Sカーブ', family: 'wave', rarity: 'epic', genre: 'up' },
-    gauss: { key: 'gauss', label: 'y = e^{-x²}', note: '山カーブ', family: 'wave', rarity: 'epic', genre: 'other' },
-    easeDown: { key: 'easeDown', label: 'y = -1 + e^{-x}', note: '減速下降', family: 'quad', rarity: 'rare', genre: 'down' },
-    fusion: { key: 'fusion', label: 'y = fusion', note: '2関数の合成', family: 'none', rarity: 'legendary', genre: 'other', color: '#b48cff' }
+    hold: { key: 'hold', label: 'y = 0', note: 'キープ', noteEn: 'Keep', family: 'none', rarity: 'common', genre: 'other' },
+    up: { key: 'up', label: 'y = x/2', note: 'ゆるく上へ', noteEn: 'Drift Up', family: 'linear', rarity: 'common', genre: 'up' },
+    down: { key: 'down', label: 'y = -x/2', note: 'ゆるく下へ', noteEn: 'Drift Down', family: 'linear', rarity: 'common', genre: 'down' },
+    steepUp: { key: 'steepUp', label: 'y = 2x', note: '急上昇', noteEn: 'Fast Up', family: 'linear', rarity: 'uncommon', genre: 'up' },
+    steepDown: { key: 'steepDown', label: 'y = -2x', note: '急下降', noteEn: 'Fast Down', family: 'linear', rarity: 'uncommon', genre: 'down' },
+    quad: { key: 'quad', label: 'y = x²', note: '上カーブ', noteEn: 'Curve Up', family: 'quad', rarity: 'uncommon', genre: 'up' },
+    quadDown: { key: 'quadDown', label: 'y = -x²', note: '下カーブ', noteEn: 'Curve Down', family: 'quad', rarity: 'uncommon', genre: 'down' },
+    wave: { key: 'wave', label: 'y = sin x', note: 'ウェーブ', noteEn: 'Wave', family: 'wave', rarity: 'rare', genre: 'other' },
+    expo: { key: 'expo', label: 'y = e^x - 1', note: '指数カーブ', noteEn: 'Exponential', family: 'quad', rarity: 'rare', genre: 'up' },
+    log: { key: 'log', label: 'y = ln(x+1)', note: '対数カーブ', noteEn: 'Logarithm', family: 'quad', rarity: 'rare', genre: 'up' },
+    sigmoid: { key: 'sigmoid', label: 'y = sigmoid(x)', note: 'Sカーブ', noteEn: 'S-Curve', family: 'wave', rarity: 'epic', genre: 'up' },
+    gauss: { key: 'gauss', label: 'y = e^{-x²}', note: '山カーブ', noteEn: 'Peak', family: 'wave', rarity: 'epic', genre: 'other' },
+    easeDown: { key: 'easeDown', label: 'y = -1 + e^{-x}', note: '減速下降', noteEn: 'Ease Down', family: 'quad', rarity: 'rare', genre: 'down' },
+    fusion: { key: 'fusion', label: 'y = fusion', note: '2関数の合成', noteEn: 'Fusion', family: 'none', rarity: 'legendary', genre: 'other', color: '#b48cff' }
   };
   var MODE_KEYS = ['hold', 'up', 'down', 'steepUp', 'steepDown', 'quad', 'quadDown', 'wave', 'expo', 'log', 'sigmoid', 'gauss', 'easeDown'];
   var DEFAULT_DECK = ['hold', 'up', 'down'];
   var DECK_SIZE = 3;
 
   var FAMILY_LABELS = { linear: '直線', quad: '累乗', wave: '波', none: '—' };
+  var FAMILY_LABELS_EN = { linear: 'LINEAR', quad: 'QUAD', wave: 'WAVE', none: '—' };
   var GENRE_LABELS = { up: '上昇', down: '下降', other: 'その他' };
+  var GENRE_LABELS_EN = { up: 'UP', down: 'DOWN', other: 'OTHER' };
   var FAMILY_COLORS = { linear: '#5ff0ff', quad: '#ffd166', wave: '#ff7ad9', none: '#a8bad8' };
 
   var STARTER_FUNCTIONS = ['hold', 'up', 'down'];
@@ -68,9 +70,9 @@
   var WAVE_SHAPE_DESCS = ['滑らかな上下', 'sinを位相ずらし', '折れ線で上下', '角を丸くした方形波', '時間とともに小さくなる'];
 
   var ITEM_INFO = {
-    graph: { label: '非対称グラフ +1', short: 'G', color: '#b48cff' },
-    life: { label: 'ライフ +1', short: '+', color: '#57e08a' },
-    score: { label: 'スコア +500', short: 'S', color: '#ffd166' }
+    graph: { label: '非対称グラフ +1', labelEn: 'ALLY GRAPH +1', short: 'G', color: '#b48cff' },
+    life: { label: 'ライフ +1', labelEn: 'LIFE +1', short: '+', color: '#57e08a' },
+    score: { label: 'スコア +500', labelEn: 'SCORE +500', short: 'S', color: '#ffd166' }
   };
 
   var UPGRADE_INFO = {
@@ -101,7 +103,7 @@
     },
     {
       title: 'アイテムを拾おう',
-      desc: 'G / + / S のアイテムが流れてくる。曲線で触れると取得できる。拾うまで何度でも出てくるよ。',
+      desc: '下の方にアイテムを出したよ。曲線を動かして触れてみよう。拾うまで消えない。',
       tip: 'G: 追加グラフ / +: ライフ / S: スコア'
     }
   ];
@@ -109,6 +111,21 @@
     title: '準備完了',
     desc: 'あとはステージを進んでボスを倒すだけ。クリアしたら強化を選んで、自分だけのビルドを作ろう。',
     tip: 'ゲームオーバーになっても、ステージ開始時点からやり直せる'
+  };
+
+  var UPGRADE_INFO_EN = {
+    life: { title: 'LIFE +1', desc: 'Max HP +1 / heal 1' },
+    hit: { title: 'HITBOX +2', desc: 'Wider crossing hitbox' },
+    combo: { title: 'COMBO +0.8s', desc: 'Longer combo window' },
+    score: { title: 'SCORE +20%', desc: 'More score from hits' },
+    boss: { title: 'BOSS HP -3', desc: 'Weakens future bosses' },
+    slot: { title: 'FUNCTION SLOT +1', desc: 'Choose a new function' },
+    beam: { title: 'PRISM CROSS', desc: 'Defeat enemies with a vertical beam' },
+    magnet: { title: 'ITEM MAGNET', desc: 'Pull nearby items to your curve' },
+    revive: { title: 'REVIVE', desc: 'Once per run, revive at 1 HP' },
+    comboGuard: { title: 'COMBO GUARD', desc: 'Once per stage, keep combo on a miss' },
+    bossBreaker: { title: 'BOSS BREAKER', desc: 'Boss damage +1' },
+    bonus: { title: 'SCORE +3000', desc: 'Instant score bonus' }
   };
 
   function fmtNum(value) {
@@ -164,7 +181,9 @@
     DEFAULT_DECK: DEFAULT_DECK,
     DECK_SIZE: DECK_SIZE,
     FAMILY_LABELS: FAMILY_LABELS,
+    FAMILY_LABELS_EN: FAMILY_LABELS_EN,
     GENRE_LABELS: GENRE_LABELS,
+    GENRE_LABELS_EN: GENRE_LABELS_EN,
     STARTER_FUNCTIONS: STARTER_FUNCTIONS,
     RARITY_ORDER: RARITY_ORDER,
     RARITY_INFO: RARITY_INFO,
@@ -174,6 +193,7 @@
     WAVE_SHAPE_LABELS: WAVE_SHAPE_LABELS,
     WAVE_SHAPE_DESCS: WAVE_SHAPE_DESCS,
     UPGRADE_INFO: UPGRADE_INFO,
+    UPGRADE_INFO_EN: UPGRADE_INFO_EN,
     TUTORIAL_STEPS: TUTORIAL_STEPS,
     TUTORIAL_COMPLETE: TUTORIAL_COMPLETE,
     ITEM_INFO: ITEM_INFO,
