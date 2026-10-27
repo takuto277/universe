@@ -13,7 +13,6 @@ function assert(cond, m) {
 /* AudioContext がない環境では開始できない */
 assert(ExpAudio.start() === false, 'AudioContextなしで開始できてしまう');
 assert(ExpAudio.ready() === false, 'AudioContextなしでreadyになる');
-assert(ExpAudio.now() === null, 'AudioContextなしでnowが返る');
 ExpAudio.tick(1);
 ExpAudio.tap();
 assert(ExpAudio.toggleMute() === true, 'ミュートにできない');
@@ -88,7 +87,6 @@ globalThis.AudioContext = function () { return fakeCtx; };
 
 assert(ExpAudio.start() === true, 'AudioContextありで開始できない');
 assert(ExpAudio.ready() === true, '開始後にreadyでない');
-assert(ExpAudio.now() === 0, '開始直後のnowが0でない');
 
 ExpAudio.tick(0);
 assert(createdOsc > 0 && oscStarts > 0, '最初のステップで音が鳴らない');
@@ -103,7 +101,6 @@ ExpAudio.tick(60);
 assert(createdOsc - beforeGap < 50, '長時間の不在後に音が一気に生成される: ' + (createdOsc - beforeGap));
 
 fakeCtx.state = 'suspended';
-assert(ExpAudio.now() === null, '停止中のAudioContextでnowが返る');
 var beforeSuspend = createdOsc;
 ExpAudio.tick(61);
 assert(createdOsc === beforeSuspend, '停止中に音が生成される');

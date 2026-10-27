@@ -61,6 +61,7 @@ exponential-balls/
 cd exponential-balls
 jsc test-engine.js
 jsc test-audio.js
+jsc test-renderer.js
 jsc test-smoke.js
 ```
 

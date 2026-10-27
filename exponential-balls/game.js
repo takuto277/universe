@@ -25,16 +25,16 @@
       if (perfStart == null) perfStart = now;
       var t = (now - perfStart) / 1000;
       if (!isFinite(t) || t < 0) t = 0;
-      game.update(t);
+      var frame = game.update(t);
       var audio = root.ExpAudio;
       if (audio && audio.tick) audio.tick(t);
       if (renderer) {
-        renderer.sync(game.state);
+        renderer.sync(frame);
         var dt = lastNow == null ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
-        renderer.update(dt, game.state);
-        renderer.draw(game.state, t);
+        renderer.update(dt, frame);
+        renderer.draw(frame, t);
       }
-      if (ui) ui.update(game.getState());
+      if (ui) ui.update(frame);
     } else {
       perfStart = null;
     }

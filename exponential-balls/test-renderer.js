@@ -37,7 +37,11 @@ renderer.update(1 / 60, state);
 renderer.draw(state, 4);
 assert(renderer.state().length === 4, '同数のsyncでボール数が変わる');
 
-renderer.tap(100, 100);
+var tapped = renderer.state()[0];
+var tapVx = tapped.vx;
+var tapVy = tapped.vy;
+renderer.tap(tapped.x + 20, tapped.y + 20);
+assert(renderer.state()[0].vx !== tapVx || renderer.state()[0].vy !== tapVy, 'タップで近くのボールが押し返されない');
 renderer.update(1 / 60, state);
 renderer.draw(state, 4.1);
 assert(renderer.state().length === 4, 'タップでボール数が変わる');

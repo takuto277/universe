@@ -24,7 +24,6 @@
   var delaySend = null;
   var noiseBuffer = null;
   var started = false;
-  var startCtx = 0;
   var scheduledStep = -1;
   var enabled = true;
   var currentRoot = ROOTS[0];
@@ -74,7 +73,6 @@
       if (ctx.state === 'suspended' && ctx.resume) ctx.resume();
     } catch (e) { /* ユーザー操作で再開する */ }
     started = true;
-    startCtx = ctx.currentTime;
     scheduledStep = -1;
     if (master) master.gain.setTargetAtTime(enabled ? 0.22 : 0, ctx.currentTime, 0.02);
     return true;
@@ -82,11 +80,6 @@
 
   function ready() {
     return !!(ctx && started);
-  }
-
-  function now() {
-    if (!ctx || !started || ctx.state !== 'running') return null;
-    return Math.max(0, ctx.currentTime - startCtx);
   }
 
   function setMuted(muted) {
@@ -288,7 +281,6 @@
   root.ExpAudio = {
     start: start,
     ready: ready,
-    now: now,
     tick: tick,
     tap: tap,
     toggleMute: toggleMute,
