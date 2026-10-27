@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 from contextlib import redirect_stdout
@@ -257,6 +258,15 @@ class RunnerTest(unittest.TestCase):
         self.assertIn("12.3s", text)
         self.assertIn("3 files", text)
         self.assertIn("deepseek-v4.1-flash-free", text)
+        self.assertIn("planner last success: -", text)
+
+    def test_status_shows_last_planner_success(self):
+        self.runner.record_history({"kind": "propose", "result": "success",
+                                    "ts": "2026-10-28T09:00:00+0900"})
+        out = io.StringIO()
+        with redirect_stdout(out):
+            self.runner.status()
+        self.assertIn("planner last success: 2026-10-28T09:00:00+0900", out.getvalue())
 
     def test_recent_history_skips_non_objects(self):
         path = self.runner.history_path()
@@ -1016,6 +1026,27 @@ class RunnerTest(unittest.TestCase):
             [sys.executable, "-c", "import time; time.sleep(5)"], timeout=1)
         self.assertTrue(result.timed_out)
         self.assertEqual(124, result.code)
+
+    def test_commands_timeout_kills_child_process_group(self):
+        marker = Path(self.tmp.name) / "child-alive"
+        commands = ar.Commands()
+        result = commands.run(
+            ["/bin/sh", "-c", '(sleep 2; echo alive > "$1") & wait', "sh", str(marker)],
+            timeout=1)
+        self.assertTrue(result.timed_out)
+        time.sleep(2.5)
+        self.assertFalse(marker.exists(), "子プロセスがタイムアウト後も生存しています")
+
+    def test_propose_timeout_marks_failed(self):
+        self.fake.on(["gh", "label", "list"], ar.Result(0, "[]"))
+        self.fake.on(["gh", "label", "create"], ar.Result(0))
+        self.fake.on(["git", "worktree", "add"], ar.Result(0), effect=make_worktree)
+        self.fake.on(["git", "worktree", "remove"], ar.Result(0))
+        self.fake.on(["opencode", "run"], ar.Result(124, "", "", timed_out=True))
+        self.assertEqual(1, self.runner.propose(dry_run=False))
+        item = self.history()[-1]
+        self.assertEqual("failed", item["result"])
+        self.assertIn("タイムアウト", item["reason"])
 
     def test_propose_dry_run_does_not_start_agent(self):
         self.fake.on(["gh", "label", "list"], ar.Result(0, "[]"))

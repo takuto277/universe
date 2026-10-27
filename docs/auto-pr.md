@@ -97,7 +97,7 @@ tail -f ~/Library/Logs/universe-auto-pr.log
 - `gh` と `opencode` の認証が必要です
 - AI レビューは `opencode run --auto` で実行します。既定モデルは `opencode/deepseek-v4.1-flash-free` です
 - `tests` / `site` の完了を最大90秒待ってからゲートを判定します
-- AI レビューは30分で打ち切ります（perl の alarm を使用）
+- AI レビューは20分で打ち切ります（プロセスグループごと終了）
 - ロックが120分以上残った場合は次回に回収します。回収時は稼働中のプロセスを強制終了することがあります
 - Blocker は自動修正を試みます（上限・保護パス・失敗時は人へ）。詳しくは「Blocker の自動修正」を参照してください
 - 五点ゲートはローカル手順なので、マージ権限を持つ人が迂回できます
@@ -117,5 +117,6 @@ LaunchAgent の plist に反映されるもの:
 手動実行時だけ有効なもの:
 
 - `UNIVERSE_AUTO_PR_GATE_WAIT`: ゲートが checks を待つ秒数。既定は `90`
-- `UNIVERSE_AUTO_PR_TIMEOUT`: AI レビューの上限秒数。既定は `1800`
+- `UNIVERSE_AUTO_PR_TIMEOUT`: AI レビューの上限秒数。既定は `1200`（プロセスグループごと終了）
+- `./tools/auto-pr.sh --status`: 最後にマージへ成功した時刻を表示
 - `UNIVERSE_AUTO_PR_LOCK_STALE`: ロックを回収するまでの秒数。既定は `7200`

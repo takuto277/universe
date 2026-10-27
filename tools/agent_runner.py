@@ -1475,6 +1475,19 @@ class Runner:
         print("model:   %s / agent: %s / planner: %s" %
               (self.cfg.model, self.cfg.agent, self.cfg.planner_agent))
         print("planner model: %s" % (self.cfg.planner_model or self.cfg.model))
+        last_planner = "-"
+        try:
+            for line in self.history_path().read_text(encoding="utf-8").splitlines():
+                try:
+                    item = json.loads(line)
+                except ValueError:
+                    continue
+                if (isinstance(item, dict) and item.get("kind") == "propose"
+                        and item.get("result") == "success"):
+                    last_planner = item.get("ts") or "-"
+        except OSError:
+            pass
+        print("planner last success: %s" % last_planner)
         print("state:   %s" % self.cfg.state_dir)
         print("log:     %s" % self.cfg.log_file)
         pause = self.cfg.state_dir / "pause"

@@ -75,4 +75,26 @@ expect_gate \
   "$(printf 'none\tinvalid gate output\t0\t')" \
   "invalid extraction"
 
+state_dir="$(mktemp -d "${TMPDIR:-/tmp}/auto-pr-status.XXXXXX")"
+out="$(UNIVERSE_AUTO_PR_STATE_DIR="$state_dir" bash "$ROOT/tools/auto-pr.sh" --status)"
+[ "$out" = "watcher last success: never" ] || fail "status before success: $out"
+printf '2026-10-28T09:00:00+0900\n' >"$state_dir/last-success"
+out="$(UNIVERSE_AUTO_PR_STATE_DIR="$state_dir" bash "$ROOT/tools/auto-pr.sh" --status)"
+[ "$out" = "watcher last success: 2026-10-28T09:00:00+0900" ] || fail "status after success: $out"
+rm -rf "$state_dir"
+
+# レビュー用タイムアウトが子プロセスごと止めることを確認する
+marker="$(mktemp "${TMPDIR:-/tmp}/auto-pr-timeout.XXXXXX")"
+rm -f "$marker"
+start="$(date +%s)"
+set +e
+run_with_timeout 1 /bin/sh -c '(sleep 2; echo alive > "$1") & wait' sh "$marker"
+rc=$?
+set -e
+[ "$rc" -eq 124 ] || fail "timeout should return 124 (got $rc)"
+[ "$(( $(date +%s) - start ))" -lt 5 ] || fail "timeout took too long"
+sleep 2.5
+[ ! -e "$marker" ] || fail "child process survived timeout"
+rm -f "$marker"
+
 printf 'auto pr tests OK\n'
