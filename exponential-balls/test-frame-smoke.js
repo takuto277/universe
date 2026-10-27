@@ -40,8 +40,8 @@ Harness.run({
     h.assert(els['start-overlay'] && !els['start-overlay'].classList.contains('visible'), 'スタート画面が残っている');
     h.assert(els['hud'] && !els['hud'].classList.contains('is-hidden'), 'HUDが表示されていない');
     h.assert(els['mode-name'] && els['mode-name'].textContent === 'FRAME', 'HUDのモードがFRAMEでない');
-    h.assert(els['stat'] && els['stat'].textContent.indexOf('CAPTURES ') === 0, 'HUDのキャプチャ表示が不正: ' + (els['stat'] ? els['stat'].textContent : 'null'));
-    h.assert(els['hint'] && els['hint'].textContent === 'CATCH IN THE FRAME', 'ヒントがFRAME用でない');
+    h.assert(els['stat'] && els['stat'].textContent.indexOf('DOUBLES ') === 0, 'HUDのダブル表示が不正: ' + (els['stat'] ? els['stat'].textContent : 'null'));
+    h.assert(els['hint'] && els['hint'].textContent === 'TOUCH THE LINE · TAP TO PUSH', 'ヒントがFRAME用でない');
     h.assert(els['bpm'] && els['bpm'].textContent === '120 BPM', 'HUDのBPMが120でない');
   },
   summary: function (state) {

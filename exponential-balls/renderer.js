@@ -201,6 +201,29 @@
       ctx.globalCompositeOperation = 'lighter';
     }
 
+    function ballColor(b) {
+      var depth = Math.min(8, b.depth || 0);
+      var light = Math.max(30, 64 - depth * 4.5);
+      var sat = Math.min(100, 82 + depth * 4);
+      return 'hsla(' + (b.hue % 360) + ', ' + sat + '%, ' + light + '%, 0.82)';
+    }
+
+    function tap(x, y) {
+      var radiusSq = 120 * 120;
+      for (var i = 0; i < balls.length; i++) {
+        var b = balls[i];
+        var dx = b.x - x;
+        var dy = b.y - y;
+        var d2 = dx * dx + dy * dy;
+        if (d2 > radiusSq) continue;
+        var d = Math.sqrt(d2) || 1;
+        var force = 260 * (1 - d / 120);
+        b.vx += (dx / d) * force;
+        b.vy += (dy / d) * force;
+      }
+      waves.push({ x: x, y: y, r: 6, speed: 260, life: 1, hue: hueBase, width: 2 });
+    }
+
     function draw(state, t) {
       if (!ctx) return;
       var hue = (state && state.root ? state.root.hue : 188) + (state ? state.bar * 7 : 0);
@@ -208,7 +231,7 @@
       var r = radiusFor(state ? state.count : balls.length);
       for (var i = 0; i < balls.length; i++) {
         var b = balls[i];
-        ctx.fillStyle = 'hsla(' + (b.hue % 360) + ', 86%, 62%, 0.78)';
+        ctx.fillStyle = ballColor(b);
         ctx.beginPath();
         ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
         ctx.fill();
@@ -217,39 +240,37 @@
     }
 
     function drawFrame(state, t) {
-      if (!ctx || !state || !state.frame || !state.field) return;
+      if (!ctx || !state || !state.line || !state.field) return;
       var sx = width / state.field.w;
       var sy = height / state.field.h;
       var hue = state.root ? state.root.hue : 188;
       background(hue);
 
-      var fx = state.frame.x * sx;
-      var fy = state.frame.y * sy;
-      var fw = state.frame.w * sx;
-      var fh = state.frame.h * sy;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = 'rgba(4, 7, 12, 0.55)';
-      roundRect(ctx, fx, fy, fw, fh, 14);
-      ctx.fill();
-      ctx.globalCompositeOperation = 'lighter';
-      ctx.strokeStyle = 'hsla(' + hue + ', 90%, 70%, ' + (0.5 + beatPulse * 0.4).toFixed(3) + ')';
-      ctx.lineWidth = 1.5 + beatPulse * 2.5;
-      roundRect(ctx, fx, fy, fw, fh, 14);
-      ctx.stroke();
-      ctx.fillStyle = 'hsla(' + hue + ', 90%, 76%, 0.8)';
-      ctx.font = '700 ' + Math.max(12, Math.round(fh * 0.36)) + 'px ui-monospace, Menlo, monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('×2', fx + fw / 2, fy + fh / 2);
-
       var r = Math.max(1.2, radiusFor(state.count) * Math.min(sx, sy));
       for (var i = 0; i < state.balls.length; i++) {
         var b = state.balls[i];
-        ctx.fillStyle = 'hsla(' + (b.hue % 360) + ', 86%, 62%, 0.78)';
+        ctx.fillStyle = ballColor(b);
         ctx.beginPath();
         ctx.arc(b.x * sx, b.y * sy, r, 0, Math.PI * 2);
         ctx.fill();
       }
+
+      var lx = state.line.x * sx;
+      var ly = state.line.y * sy;
+      var lw = state.line.w * sx;
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'hsla(' + hue + ', 90%, 70%, ' + (0.12 + beatPulse * 0.1).toFixed(3) + ')';
+      ctx.lineWidth = 10 + beatPulse * 8;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx + lw, ly);
+      ctx.stroke();
+      ctx.strokeStyle = 'hsla(' + hue + ', 90%, 74%, ' + (0.55 + beatPulse * 0.35).toFixed(3) + ')';
+      ctx.lineWidth = 2 + beatPulse * 2;
+      ctx.beginPath();
+      ctx.moveTo(lx, ly);
+      ctx.lineTo(lx + lw, ly);
+      ctx.stroke();
 
       for (var e = 0; e < state.captureEvents.length; e++) {
         var event = state.captureEvents[e];
@@ -270,6 +291,7 @@
       update: update,
       draw: draw,
       drawFrame: drawFrame,
+      tap: tap,
       clear: clear,
       state: function () { return balls; }
     };
