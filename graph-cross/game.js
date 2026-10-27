@@ -132,7 +132,7 @@
         var itemInfo = C.ITEM_INFO[ev.itemType] || C.ITEM_INFO.score;
         spawnParticles(ev.x, ev.y, 22, [itemInfo.color, '#ffffff'], 220, 0.7);
         addRing(ev.x, ev.y, itemInfo.color, 58, 0.45);
-        addLabel(ev.x - 30, ev.y - 22, itemInfo.label, itemInfo.color, 18);
+        addLabel(ev.x - 30, ev.y - 22, itemInfo.labelEn || itemInfo.label, itemInfo.color, 18);
         if (audio) audio.play('item');
       } else if (ev.type === 'allySpawn') {
         spawnParticles(ev.x, ev.y, 30, [C.ITEM_INFO.graph.color, '#ffffff'], 260, 0.8);
@@ -176,7 +176,7 @@
         if (audio) audio.play('boss');
       } else if (ev.type === 'bossShift') {
         addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.9)', 80, 0.5);
-        addLabel(ev.x - 20, ev.y - 62, 'WEAK SHIFT: ' + ev.familyLabel, '#ffd166', 15);
+        addLabel(ev.x - 20, ev.y - 62, 'WEAK SHIFT: ' + (C.FAMILY_LABELS_EN[ev.family] || ev.familyLabel), '#ffd166', 15);
         if (audio) audio.play('weak');
       } else if (ev.type === 'beam') {
         addBeam(ev.x, ev.y, 0.22);
@@ -224,7 +224,7 @@
       } else if (ev.type === 'bossPhase') {
         addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.95)', 150, 0.8);
         addLabel(ev.x - 60, ev.y - 50, 'PHASE ' + ev.phase, '#ffd166', 26);
-        addLabel(ev.x - 30, ev.y + 20, '弱点が変化', '#9ffaff', 14);
+        addLabel(ev.x - 30, ev.y + 20, 'WEAK SHIFT', '#9ffaff', 14);
         shake = 0.9;
         flash = 0.45;
         flashColor = '255, 209, 102';
@@ -348,7 +348,7 @@
 
   function spawnTutorialItem() {
     if (!state) return;
-    state.items.push({ x: state.headX + 60, y: state.y, type: 'score', r: 12, phase: 0 });
+    state.items.push({ x: state.headX + 10, y: state.bottom - 70, type: 'score', r: 12, phase: 0, stationary: true });
   }
 
   function advanceTutorial(step) {

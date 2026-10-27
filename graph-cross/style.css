@@ -1153,9 +1153,9 @@ body {
   font-weight: 700;
   color: var(--muted);
 }
-.mode-btn[data-genre="上昇"]::after { color: #57e08a; }
-.mode-btn[data-genre="下降"]::after { color: #ff9f6b; }
-.mode-btn[data-genre="その他"]::after { color: #8fa1bd; }
+.mode-btn[data-genre="上昇"]::after, .mode-btn[data-genre="UP"]::after { color: #57e08a; }
+.mode-btn[data-genre="下降"]::after, .mode-btn[data-genre="DOWN"]::after { color: #ff9f6b; }
+.mode-btn[data-genre="その他"]::after, .mode-btn[data-genre="OTHER"]::after { color: #8fa1bd; }
 .mode-btn em {
   position: absolute;
   top: 3px;

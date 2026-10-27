@@ -34,6 +34,8 @@ GAME.autoPlayStep = function () {
     sawCross = html.indexOf('CROSS!') >= 0;
   } else if (state && state.tutorial && state.tutorial.step === 2) {
     sawItem = html.indexOf('GET') >= 0;
+    var down = document.getElementById('slot-2');
+    if (down && down.listeners.click && down.listeners.click[0]) down.listeners.click[0]();
   }
 };
 GAME.isDone = function () {
