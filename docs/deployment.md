@@ -16,13 +16,24 @@ universe は GitHub Pages で静的サイトとして公開します。
 
 ```text
 https://takuto277.github.io/universe/
-https://takuto277.github.io/universe/baseball-game/
-https://takuto277.github.io/universe/janken-game/
-https://takuto277.github.io/universe/gravity-flip/
+https://takuto277.github.io/universe/projects/_labs/baseball-game/
+https://takuto277.github.io/universe/projects/_samples/janken-game/
+https://takuto277.github.io/universe/projects/_labs/gravity-flip/
+https://takuto277.github.io/universe/projects/_labs/unknown-word-deal/
+https://takuto277.github.io/universe/projects/_labs/observer-game/
 https://takuto277.github.io/universe/graph-cross/
+https://takuto277.github.io/universe/exponential-balls/
 ```
 
-アプリのディレクトリ名は公開 URL の一部です。名前を変えるとブックマークや外部リンクが壊れるため、変更する場合は旧パスからのリダイレクトを用意します。
+アプリのディレクトリ名は公開 URL の一部です。名前を変えるとブックマークや外部リンクが壊れるため、旧パスにはリダイレクトを置いています。
+
+```text
+/universe/baseball-game/     -> /universe/projects/_labs/baseball-game/
+/universe/janken-game/       -> /universe/projects/_samples/janken-game/
+/universe/gravity-flip/      -> /universe/projects/_labs/gravity-flip/
+/universe/unknown-word-deal/ -> /universe/projects/_labs/unknown-word-deal/
+/universe/observer-game/     -> /universe/projects/_labs/observer-game/
+```
 
 ## ローカル確認
 

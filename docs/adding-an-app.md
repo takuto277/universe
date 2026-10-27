@@ -2,13 +2,15 @@
 
 新しいアプリは、実装だけでなく一覧・テスト・説明を同じ変更で追加します。
 
-## 1. ディレクトリを作る
+## 1. 配置先を決めてディレクトリを作る
+
+[`projects/` の分類ルール](../projects/README.md)に従い、公開・継続保守なら `projects/`、実験なら `projects/_labs/`、教材・検証なら `projects/_samples/` に置きます。
 
 ```sh
-mkdir my-app
+mkdir -p projects/_labs/my-app
 ```
 
-`my-app/index.html` を入口にします。公開 URL は `https://takuto277.github.io/universe/my-app/` になるため、ディレクトリ名は URL の一部として扱います。
+`projects/_labs/my-app/index.html` を入口にします。公開 URL は `https://takuto277.github.io/universe/projects/_labs/my-app/` になるため、配置パスは URL の一部として扱います。
 
 ## 2. 実装する
 
@@ -28,14 +30,14 @@ window.__GAME__ = {
 ## 3. テストを書く
 
 - ロジックがある場合は `test-engine.js` に純粋な関数のテストを書く
-- 画面操作を含む場合は `test-smoke.js` から `tools/harness.js` の `Harness.run` を呼ぶ
+- 画面操作を含む場合は `test-smoke.js` から `tools/harness.js` の `Harness.run` を呼ぶ（`projects/_labs/` / `_samples/` からは `../../../tools/harness.js`）
 - 乱数を使う処理は、テスト時に固定できるようにする
 
 詳しくは [テスト](testing.md) を参照してください。
 
 ## 4. README を書く
 
-`my-app/README.md` に次を書きます。
+`projects/_labs/my-app/README.md` に次を書きます。
 
 - 何をするアプリか
 - 遊び方・使い方
@@ -50,7 +52,7 @@ window.__GAME__ = {
 ```json
 {
   "id": "my-app",
-  "path": "my-app/",
+  "path": "projects/_labs/my-app/",
   "tag": "APP",
   "title": "My App",
   "description": "一覧に表示する短い説明"
@@ -71,4 +73,4 @@ python3 -m http.server 8000
 
 ## 7. コミットする
 
-作業ブランチでコミットし、CI が通ることを確認してから main にマージします。コミットメッセージは `my-app: ...` のようにアプリ名で始めます。
+作業ブランチでコミットし、CI が通ることを確認してから main にマージします。コミットメッセージは `my-app: ...` のようにアプリ名で始めます。既存アプリを移動した場合は、旧URLからのリダイレクトも同じPRで追加します。

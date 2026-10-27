@@ -1,7 +1,7 @@
 /* test-smoke.js : 1回プレイして終了画面まで到達するスモークテスト（jsc で実行）
  * 実行例:
  *   cd universe && jsc gravity-flip/test-smoke.js
- *   cd universe/gravity-flip && jsc test-smoke.js
+ *   cd projects/_labs/gravity-flip && jsc test-smoke.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -10,9 +10,9 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['engine.js', 'gravity-flip/engine.js']);
-tryLoad(['game.js', 'gravity-flip/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_labs/gravity-flip/engine.js']);
+tryLoad(['game.js', 'projects/_labs/gravity-flip/game.js']);
 
 Harness.run({
   name: 'gravity-flip',

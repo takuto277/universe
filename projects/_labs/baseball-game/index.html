@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>9球種を読め! 3回勝負の野球ゲーム</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div id="scoreboard">
+        <table id="score-table">
+          <thead>
+            <tr>
+              <th class="team"></th>
+              <th>1</th><th>2</th><th>3</th>
+              <th class="sum">R</th><th class="sum">H</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr id="row-away"><th class="team away">CPU</th></tr>
+            <tr id="row-home"><th class="team home">あなた</th></tr>
+          </tbody>
+        </table>
+      </div>
+      <div id="statusbar">
+        <span id="inning-label">1回表</span>
+        <span id="phase-label">あなたの守備</span>
+        <span id="ball-wrap">ボール <span id="ball-dots" class="dots">○○○○</span></span>
+        <span>ストライク <span id="strike-dots" class="dots">○○○</span></span>
+        <button id="sound-btn" class="ghost" type="button">サウンド: ON</button>
+      </div>
+    </header>
+
+    <main id="stage">
+      <canvas id="field" width="900" height="780"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <h1>9球種を読め!</h1>
+          <p class="subtitle">カウント制・3回勝負のベースボールゲーム</p>
+          <ul class="rules">
+            <li>球種は全部で<b>9種類</b>。<b>3ストライクでチェンジ</b>、<b>4ボールで四球</b>のカウント制!</li>
+            <li>CPUピッチャーの<b>持ち球は5球種だけ</b>。試合開始と配球メモでわかる。持ち球以外のボタンは「×持ち球以外」!</li>
+            <li><b>攻撃</b>(<span class="you">あなた</span>): <b>配球メモ</b>(カウント別の球種集計)と<b>得意/苦手</b>でCPUのクセを読んで 1〜9 で予想、0 で見逃し!</li>
+            <li>「ゾーン26% / ボール74%」= その球が100球中26球はストライク、74球はボールになるという意味。ゾーン率が低い苦手球はボールになりやすい!</li>
+            <li>予想が当たったら、<b>ゾーン球</b>なら<b>タイミングバー</b>を止めろ! ど真ん中なら<b>ホームラン</b>、ズレると単打・二塁打! <b>ボール球</b>はすくい上げて<b>単打</b>! バーは <b>Space</b> かタップで止まる!</li>
+            <li>予想を外しても、<b>ゾーン率50%以下の明らかなボール球</b>なら空振りにならず<b>ボール</b>! <b>際どいボール球やゾーン球</b>で外すと空振りストライク!</li>
+            <li><b>守備</b>(<span class="you">あなた</span>): ボタンの<b>ゾーン%/ボール%</b>がそのまま当たる確率。ボール率が高い球は四球に注意! <span class="cpu">CPU</span>はボール球にはあまり手を出さない。同じ球の連投は読まれるので「<b>あなたの投球クセ</b>」を見て散らせ!</li>
+            <li>全3回。最終回でもつれればサヨナラのチャンス。得点の多いチームの勝ち!</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">プレイボール!</button>
+          <p class="tiny">ボタンまたは 1〜9 / 0 キーでも操作できます。タイミングバーは Space / タップ!</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <h2 id="end-title">試合終了!</h2>
+          <div id="end-score" class="end-score">あなた 0 - 0 CPU</div>
+          <div id="end-result" class="end-result"></div>
+          <div id="end-hits" class="end-hits"></div>
+          <button id="btn-again" class="primary" type="button">もう一度あそぶ</button>
+        </section>
+
+        <div id="banner" class="banner">
+          <span id="banner-main"></span>
+          <span id="banner-sub"></span>
+        </div>
+      </div>
+    </main>
+
+    <div id="msgbar">
+      <div id="message" class="message">「プレイボール!」を押して試合開始!</div>
+      <div id="hint" class="hint"></div>
+    </div>
+
+    <aside id="hud">
+      <div id="chart" class="hidden">
+        <div id="chart-style" class="chart-style"></div>
+        <div id="chart-rows"></div>
+      </div>
+      <div id="defense-panel" class="hidden">
+        <div class="def-head">
+          <span class="def-title">あなたの投球クセ</span>
+          <span id="def-warn" class="def-warn"></span>
+        </div>
+        <div class="def-body">
+          <div id="def-chips" class="def-chips"></div>
+          <div class="def-readwrap">
+            <span class="def-readlabel">CPUの読み</span>
+            <div class="read-bar"><span id="def-read-fill"></span></div>
+            <span id="def-read-pct" class="def-readpct">—</span>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <footer id="controlbar">
+      <div id="powerbar" class="hidden">
+        <span class="pb-band" style="left: 13%">1B</span>
+        <span class="pb-band" style="left: 33%">2B</span>
+        <span class="pb-band pb-hr" style="left: 50%">HR</span>
+        <span class="pb-band" style="left: 67%">2B</span>
+        <span class="pb-band" style="left: 87%">1B</span>
+        <div id="pb-marker" class="pb-marker"></div>
+      </div>
+      <div id="buttons"></div>
+      <button id="btn-take" class="take-btn disabled" type="button">見逃す (0)</button>
+    </footer>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

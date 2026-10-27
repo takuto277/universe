@@ -128,7 +128,9 @@ def check_registered_apps(apps):
     for child in sorted(ROOT.iterdir()):
         if not child.is_dir() or child.name.startswith(".") or child.name in reserved:
             continue
-        if (child / "index.html").is_file() and f"{child.name}/" not in registered:
+        # 旧パスのリダイレクトは index.html だけを持ち、README / test-*.js を持たない。
+        if ((child / "index.html").is_file() and (child / "README.md").is_file()
+                and f"{child.name}/" not in registered):
             error(f"apps.json に登録されていないアプリがあります: {child.name}/")
 
 

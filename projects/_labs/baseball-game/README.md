@@ -4,9 +4,9 @@
 
 ## 遊ぶ
 
-公開 URL: https://takuto277.github.io/universe/baseball-game/
+公開 URL: https://takuto277.github.io/universe/projects/_labs/baseball-game/
 
-ローカルで動かす場合は、universe のルートで次を実行し、http://localhost:8000/baseball-game/ を開きます。
+ローカルで動かす場合は、universe のルートで次を実行し、http://localhost:8000/projects/_labs/baseball-game/ を開きます。
 
 ```sh
 python3 -m http.server 8000
@@ -43,7 +43,7 @@ universe のルートで実行します。
 個別に実行する場合:
 
 ```sh
-cd baseball-game
+cd projects/_labs/baseball-game
 jsc test-engine.js
 jsc test-smoke.js
 ```

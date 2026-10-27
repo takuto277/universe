@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c111c" />
+  <meta name="description" content="品物は見えている。商人の文を読み、差し出す・受け取る・断るを選ぶスマホ向け言語交渉ゲーム。" />
+  <title>未知語de交渉</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <h1>未知語de交渉</h1>
+        <p class="tagline">品物は見えている。読むのは商人の意図</p>
+      </div>
+      <div class="hud">
+        <div class="hud-item">
+          <span class="hud-label">商人</span>
+          <span id="progress" class="hud-value">1 / 3</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">硬貨</span>
+          <span id="coins" class="hud-value">0</span>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage">
+      <section id="merchant-card" class="card merchant-card">
+        <div id="portrait" class="portrait accent-amber">
+          <svg viewBox="0 0 200 200" aria-hidden="true">
+            <defs>
+              <radialGradient id="portraitGlow" cx="50%" cy="42%" r="60%">
+                <stop offset="0%" stop-color="var(--accent)" stop-opacity="0.34" />
+                <stop offset="100%" stop-color="var(--accent)" stop-opacity="0" />
+              </radialGradient>
+            </defs>
+            <circle cx="100" cy="100" r="96" fill="url(#portraitGlow)" />
+            <path d="M32 178 C34 94 58 40 100 40 C142 40 166 94 168 178 C144 144 128 130 100 130 C72 130 56 144 32 178 Z" fill="#1e2739" stroke="#31415f" stroke-width="2" />
+            <path d="M54 78 C64 44 136 44 146 78 L146 108 C120 90 80 90 54 108 Z" fill="#2a3650" />
+            <ellipse cx="78" cy="120" rx="7" ry="9" fill="var(--accent)" />
+            <ellipse cx="122" cy="120" rx="7" ry="9" fill="var(--accent)" />
+            <path d="M86 146 Q100 154 114 146" stroke="#9fb3d8" stroke-width="4" fill="none" stroke-linecap="round" />
+            <path d="M66 60 Q100 28 134 60" stroke="var(--accent)" stroke-width="3" fill="none" opacity="0.55" />
+          </svg>
+        </div>
+        <div class="merchant-meta">
+          <p id="scene-label" class="scene-label">商人 1 / 3</p>
+          <h2 id="merchant-name">ムウ</h2>
+          <p id="merchant-title">市場の顔役</p>
+        </div>
+      </section>
+
+      <section id="speech-card" class="card speech-card">
+        <div id="speech-line" class="speech-line"></div>
+        <p id="gesture" class="gesture"></p>
+      </section>
+
+      <section id="action-card" class="card action-card">
+        <div id="item-display" class="item-display">
+          <span id="item-icon" class="item-icon"></span>
+          <div class="item-meta">
+            <p class="item-eyebrow">取引の品</p>
+            <p id="item-label" class="item-label"></p>
+            <p id="item-word" class="item-word"></p>
+          </div>
+        </div>
+        <p id="prompt" class="prompt"></p>
+        <div id="action-buttons" class="action-buttons"></div>
+        <button id="btn-confirm" class="confirm-btn is-hidden" type="button"></button>
+      </section>
+
+      <section id="result-card" class="card result-card is-hidden">
+        <p id="result-title" class="result-title"></p>
+        <p id="result-detail" class="result-detail"></p>
+        <p id="result-message" class="result-message"></p>
+        <p id="result-coins" class="result-coins"></p>
+        <button id="btn-next" class="primary" type="button">次の商人へ</button>
+      </section>
+    </main>
+  </div>
+
+  <div id="start-overlay" class="overlay visible">
+    <div class="overlay-card start-card">
+      <p class="eyebrow">ことばを推理する交渉ゲーム</p>
+      <h1>未知語de交渉</h1>
+      <p class="lead">品物は見えている。商人の文を読み、<b>差し出す / 受け取る / 断る</b>を選ぶ。迷ったら2硬貨で未知語を確認できる。</p>
+      <svg class="start-art" viewBox="0 0 260 116" role="img" aria-label="商人と品物">
+        <rect x="12" y="54" width="64" height="44" rx="9" fill="#1b2739" stroke="#f4c96b" />
+        <path d="M25 78 C25 70 32 65 44 65 C56 65 63 70 63 78 L63 86 C63 89 60 91 57 91 L31 91 C28 91 25 89 25 86 Z" fill="#d9a45b" />
+        <rect x="98" y="54" width="64" height="44" rx="9" fill="#1b2739" stroke="#3a4d6e" />
+        <path d="M108 76 C114 68 126 66 134 70 L141 64 L141 88 L134 82 C126 86 114 84 108 76 Z" fill="#6fb8d9" />
+        <rect x="184" y="54" width="64" height="44" rx="9" fill="#1b2739" stroke="#3a4d6e" />
+        <path d="M216 64 L232 76 L226 94 L206 94 L200 76 Z" fill="#a98bea" />
+        <circle cx="130" cy="28" r="22" fill="#202e45" stroke="#3a4d6e" />
+        <path d="M112 46 C114 28 122 18 130 18 C138 18 146 28 148 46 C142 38 138 35 130 35 C122 35 118 38 112 46 Z" fill="#2a3650" />
+        <ellipse cx="123" cy="31" rx="2.5" ry="3.5" fill="#f4c96b" />
+        <ellipse cx="137" cy="31" rx="2.5" ry="3.5" fill="#f4c96b" />
+        <path d="M164 18 H204 A8 8 0 0 1 212 26 V38 A8 8 0 0 1 204 46 H184 L176 53 V46 H164 A8 8 0 0 1 156 38 V26 A8 8 0 0 1 164 18 Z" fill="#202e45" stroke="#3a4d6e" />
+        <text x="188" y="37" text-anchor="middle" fill="#f4c96b" font-family="ui-monospace,monospace" font-size="13">?</text>
+      </svg>
+      <button id="btn-start" class="primary big" type="button">あそぶ</button>
+      <button id="btn-tutorial" class="link-btn" type="button">はじめての人へ（3枚のチュートリアル）</button>
+      <p id="best-label" class="best-label"></p>
+      <p class="tiny">1回3〜5分。同じことばで再挑戦できます。</p>
+    </div>
+  </div>
+
+  <div id="tutorial-overlay" class="overlay">
+    <div class="overlay-card tutorial-card">
+      <div id="tutorial-dots" class="dots"></div>
+      <div id="tutorial-visual" class="tutorial-visual">
+        <svg id="tut-visual-1" class="tut-visual" viewBox="0 0 280 150" role="img" aria-label="文を読んで3つの行動から選ぶ">
+          <rect x="20" y="12" width="240" height="52" rx="12" fill="#202e45" stroke="#3a4d6e" />
+          <text x="140" y="45" text-anchor="middle" fill="#f4c96b" font-family="ui-monospace,monospace" font-size="16">?  パン  欲しい</text>
+          <rect x="18" y="88" width="76" height="40" rx="9" fill="#1b2739" stroke="#f4c96b" />
+          <text x="56" y="113" text-anchor="middle" fill="#f4c96b" font-size="11">差し出す</text>
+          <rect x="102" y="88" width="76" height="40" rx="9" fill="#1b2739" stroke="#3a4d6e" />
+          <text x="140" y="113" text-anchor="middle" fill="#93a6c4" font-size="11">受け取る</text>
+          <rect x="186" y="88" width="76" height="40" rx="9" fill="#1b2739" stroke="#3a4d6e" />
+          <text x="224" y="113" text-anchor="middle" fill="#93a6c4" font-size="11">断る</text>
+        </svg>
+        <svg id="tut-visual-2" class="tut-visual" viewBox="0 0 280 150" role="img" aria-label="しぐさと確認">
+          <circle cx="74" cy="62" r="30" fill="#202e45" stroke="#3a4d6e" />
+          <path d="M52 88 C54 62 64 46 74 46 C84 46 94 62 96 88 C88 78 82 74 74 74 C66 74 60 78 52 88 Z" fill="#2a3650" />
+          <ellipse cx="65" cy="68" rx="3" ry="4" fill="#f4c96b" />
+          <ellipse cx="83" cy="68" rx="3" ry="4" fill="#f4c96b" />
+          <path d="M104 42 H214 A9 9 0 0 1 223 51 V73 A9 9 0 0 1 214 82 H164 L152 92 V82 H104 A9 9 0 0 1 95 73 V51 A9 9 0 0 1 104 42 Z" fill="#202e45" stroke="#3a4d6e" />
+          <text x="160" y="66" text-anchor="middle" fill="#93a6c4" font-size="11">? 魚 欲しい</text>
+          <path d="M112 112 C124 104 144 102 158 108 L168 100 L168 130 L158 122 C144 128 124 126 112 118 Z" fill="#6fb8d9" opacity="0.75" />
+          <path d="M176 118 L196 104" stroke="#ff8a8a" stroke-width="3" stroke-linecap="round" />
+          <path d="M196 118 L176 104" stroke="#ff8a8a" stroke-width="3" stroke-linecap="round" />
+          <circle cx="228" cy="116" r="16" fill="#f4c96b" />
+          <text x="228" y="120" text-anchor="middle" fill="#1a1408" font-size="10">-2</text>
+        </svg>
+        <svg id="tut-visual-3" class="tut-visual" viewBox="0 0 280 150" role="img" aria-label="契約書に署名するか断るか">
+          <rect x="67" y="8" width="146" height="132" rx="10" fill="#1b2739" stroke="#3a4d6e" />
+          <text x="140" y="30" text-anchor="middle" fill="#f4c96b" font-size="11">最後の契約書</text>
+          <line x1="86" y1="40" x2="194" y2="40" stroke="#2b3c58" />
+          <rect x="86" y="54" width="48" height="18" rx="9" fill="#202e45" stroke="#3a4d6e" />
+          <text x="110" y="67" text-anchor="middle" fill="#93a6c4" font-size="9">?</text>
+          <rect x="140" y="54" width="30" height="18" rx="9" fill="#202e45" stroke="#3a4d6e" />
+          <text x="155" y="67" text-anchor="middle" fill="#93a6c4" font-size="9">?</text>
+          <rect x="176" y="54" width="22" height="18" rx="9" fill="#202e45" stroke="#3a4d6e" />
+          <text x="187" y="67" text-anchor="middle" fill="#93a6c4" font-size="9">?</text>
+          <text x="140" y="92" text-anchor="middle" fill="#63779a" font-size="9">主語を読んで決める</text>
+          <rect x="86" y="104" width="50" height="22" rx="8" fill="#1b2739" stroke="#6fd6c3" />
+          <text x="111" y="119" text-anchor="middle" fill="#6fd6c3" font-size="9">断る</text>
+          <rect x="144" y="104" width="50" height="22" rx="8" fill="#f4c96b" />
+          <text x="169" y="119" text-anchor="middle" fill="#1a1408" font-size="9">署名する</text>
+        </svg>
+      </div>
+      <h2 id="tutorial-title"></h2>
+      <p id="tutorial-text" class="lead"></p>
+      <div class="tutorial-actions">
+        <button id="btn-tutorial-back" class="mini" type="button">閉じる</button>
+        <button id="btn-tutorial-next" class="primary" type="button">次へ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="contract-overlay" class="overlay">
+    <div class="overlay-card contract-card">
+      <p class="eyebrow">最後の契約書</p>
+      <h2>条文を読んで、署名するか決めよう</h2>
+      <div id="contract-line" class="contract-line"></div>
+      <p class="contract-hint">『私』が主語なら、あなたが品を渡す（-5硬貨）。『あなた』が主語なら、あなたが品を受け取る（+5硬貨）。断ると増減なし。</p>
+      <div id="contract-memo" class="contract-memo"></div>
+      <div class="contract-actions">
+        <button id="btn-refuse" class="mini" type="button">断る</button>
+        <button id="btn-sign" class="primary" type="button">署名する</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ending-overlay" class="overlay">
+    <div class="overlay-card ending-card">
+      <p class="eyebrow">契約完了</p>
+      <div id="rank" class="rank">S</div>
+      <h2 id="ending-title">伝説の通訳者</h2>
+      <p id="ending-text" class="lead"></p>
+      <div id="ending-stats" class="stats"></div>
+      <div id="ending-review" class="ending-review"></div>
+      <p id="best-label-end" class="best-label"></p>
+      <p id="seed-label" class="tiny"></p>
+      <div class="ending-actions">
+        <button id="btn-again" class="primary" type="button">同じことばで再挑戦</button>
+        <button id="btn-new" class="mini" type="button">新しいことば</button>
+        <button id="btn-start-over" class="mini" type="button">スタートに戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="audio.js"></script>
+  <script src="ui.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

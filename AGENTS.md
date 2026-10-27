@@ -28,7 +28,7 @@ python3 -m http.server 8000   # ローカル確認
 ## 構成
 
 - `apps.json` が公開アプリ一覧の正。`index.html` のカードと一致させる
-- 各アプリはトップレベルのディレクトリに置き、`index.html`、`README.md`、`test-*.js` を持つ
+- 各アプリは `projects/` 配下（分類は `projects/README.md`）に置き、`index.html`、`README.md`、`test-*.js` を持つ
 - ゲームは `window.__GAME__`（`id` / `title` / `start` / `autoPlayStep` / `isDone` / `getState`）を公開する
 - 共通のスモークテスト基盤は `tools/harness.js`
 

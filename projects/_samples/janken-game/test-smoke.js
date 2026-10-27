@@ -1,7 +1,7 @@
 /* test-smoke.js : 1試合を自動プレイで完走させるスモークテスト（jsc で実行）
  * 実行例:
  *   cd universe && jsc janken-game/test-smoke.js
- *   cd universe/janken-game && jsc test-smoke.js
+ *   cd projects/_samples/janken-game && jsc test-smoke.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -10,10 +10,10 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['engine.js', 'janken-game/engine.js']);
-tryLoad(['renderer.js', 'janken-game/renderer.js']);
-tryLoad(['game.js', 'janken-game/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_samples/janken-game/engine.js']);
+tryLoad(['renderer.js', 'projects/_samples/janken-game/renderer.js']);
+tryLoad(['game.js', 'projects/_samples/janken-game/game.js']);
 
 Harness.run({
   name: 'janken-game',

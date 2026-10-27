@@ -1,6 +1,6 @@
 /* test-smoke.js : 1ランを自動プレイで完走させるスモークテスト（jsc で実行）
  * 実行例:
- *   cd unknown-word-deal && jsc test-smoke.js
+ *   cd projects/_labs/unknown-word-deal && jsc test-smoke.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -9,11 +9,11 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['engine.js', 'unknown-word-deal/engine.js']);
-tryLoad(['audio.js', 'unknown-word-deal/audio.js']);
-tryLoad(['ui.js', 'unknown-word-deal/ui.js']);
-tryLoad(['game.js', 'unknown-word-deal/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_labs/unknown-word-deal/engine.js']);
+tryLoad(['audio.js', 'projects/_labs/unknown-word-deal/audio.js']);
+tryLoad(['ui.js', 'projects/_labs/unknown-word-deal/ui.js']);
+tryLoad(['game.js', 'projects/_labs/unknown-word-deal/game.js']);
 
 Harness.run({
   name: 'unknown-word-deal',

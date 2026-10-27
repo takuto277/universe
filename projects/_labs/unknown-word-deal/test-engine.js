@@ -1,6 +1,6 @@
 /* test-engine.js : 未知語de交渉 v4 の文法・行動・確認・契約の検証（jsc で実行）
  * 実行例:
- *   cd unknown-word-deal && jsc test-engine.js
+ *   cd projects/_labs/unknown-word-deal && jsc test-engine.js
  */
 var E;
 try {
