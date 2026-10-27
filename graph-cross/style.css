@@ -946,6 +946,24 @@ body {
   background: linear-gradient(180deg, rgba(95, 240, 255, 0.14), var(--panel));
 }
 .mode-btn.active b { text-shadow: 0 0 12px currentColor; }
+.mode-btn.swap-target {
+  border-color: #ffd166;
+  outline: 2px solid rgba(255, 209, 102, 0.75);
+  outline-offset: 2px;
+  box-shadow: 0 0 20px rgba(255, 209, 102, 0.25);
+  animation: swapTargetPulse 1.1s ease-in-out infinite;
+  z-index: 3;
+}
+.mode-btn.swap-changed {
+  border-color: #57e08a;
+  outline: 2px solid rgba(87, 224, 138, 0.8);
+  outline-offset: 2px;
+  box-shadow: 0 0 22px rgba(87, 224, 138, 0.22);
+}
+@keyframes swapTargetPulse {
+  0%, 100% { box-shadow: 0 0 12px rgba(255, 209, 102, 0.16); }
+  50% { box-shadow: 0 0 30px rgba(255, 209, 102, 0.42); }
+}
 .mode-btn.jammed {
   border-color: #ff4d8d;
   opacity: 0.62;
@@ -994,7 +1012,7 @@ body {
   50% { box-shadow: 0 0 0 6px rgba(255, 77, 94, 0.04), 0 0 26px rgba(255, 77, 94, 0.6); }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mode-btn.tutorial-target { animation: none; }
+  .mode-btn.tutorial-target, .mode-btn.swap-target { animation: none; }
 }
 
 #upgrade-choices {

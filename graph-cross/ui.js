@@ -320,6 +320,18 @@
       if (els.btnExit) els.btnExit.classList.toggle('hidden', !(stress || tutorial));
     }
 
+    function clearSwapHighlight() {
+      for (var i = 0; i < slotButtons.length; i++) {
+        slotButtons[i].classList.remove('swap-target', 'swap-changed');
+      }
+    }
+
+    function markSwapSlot(index, changed) {
+      clearSwapHighlight();
+      if (index < 0 || !slotButtons[index]) return;
+      slotButtons[index].classList.add(changed ? 'swap-changed' : 'swap-target');
+    }
+
     function updateSlots(state, phase) {
       lastPhase = phase || lastPhase;
       var deck = state ? state.deck : selectedDeck;
@@ -830,6 +842,7 @@
       lastPhase = 'idle';
       tutorialMode = false;
       hideTutorial();
+      clearSwapHighlight();
       showScreen('start');
       closeDeckBuilder();
       updateTutorialButton();
@@ -875,6 +888,7 @@
     function showEnd(state, canRetry) {
       tutorialMode = false;
       hideTutorial();
+      clearSwapHighlight();
       var snap = E.snapshot(state);
       recordBest(snap.score);
       if (els.endScore) els.endScore.textContent = String(snap.score);
@@ -953,7 +967,7 @@
       if (els.clearHint) els.clearHint.textContent = '1〜3 / 交換する関数を選ぶ';
       if (els.deckSwap) {
         var genreText = offer.genre ? ' [' + (C.GENRE_LABELS[offer.genre] || '') + ']' : '';
-        els.deckSwap.innerHTML = '入れ替え' + genreText + ': ' +
+        els.deckSwap.innerHTML = '入れ替え スロット ' + (offer.slot + 1) + genreText + ': ' +
           C.formatModeLabel(offer.oldKey, snap.deckParams, snap.fusion) +
           ' <span>→</span> 3択から選択';
         els.deckSwap.classList.remove('hidden');
@@ -975,6 +989,7 @@
           mode.note + ' / ' + (C.GENRE_LABELS[mode.genre] || '') +
           (mode.family !== 'none' ? ' / ' + C.FAMILY_LABELS[mode.family] : '') + '</span>';
       }
+      markSwapSlot(offer.slot, false);
     }
 
     function showClear(state, upgradeIds) {
@@ -993,7 +1008,8 @@
         var swap = snap.lastDeckSwap;
         if (swap) {
           var genreText = swap.genre ? ' [' + (C.GENRE_LABELS[swap.genre] || '') + ']' : '';
-          els.deckSwap.innerHTML = 'デッキ変動' + genreText + ': ' + C.formatModeLabel(swap.oldKey, snap.deckParams) +
+          els.deckSwap.innerHTML = 'デッキ変動 スロット ' + (swap.slot + 1) + genreText + ': ' +
+            C.formatModeLabel(swap.oldKey, snap.deckParams) +
             ' <span>→</span> ' + C.formatModeLabel(swap.newKey, snap.deckParams);
           els.deckSwap.classList.remove('hidden');
         } else {
@@ -1004,11 +1020,14 @@
       showScreen('clear');
       updateHud(state);
       updateSlots(state, 'clear');
+      if (snap.lastDeckSwap) markSwapSlot(snap.lastDeckSwap.slot, true);
+      else markSwapSlot(-1, false);
     }
 
     function setRuntime(state, phase) {
       lastState = state || null;
       lastPhase = phase || 'idle';
+      if (phase === 'run') clearSwapHighlight();
       updateHud(state);
       updateSlots(state, lastPhase);
     }
