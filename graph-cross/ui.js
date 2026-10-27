@@ -647,9 +647,15 @@
       }
       if (els.gachaRates) {
         var rates = G.rates(gacha);
-        els.gachaRates.textContent = rates.length
-          ? rates.map(function (r) { return C.RARITY_INFO[r.rarity].label + ' ' + r.percent + '%'; }).join(' / ')
-          : 'コンプリート';
+        els.gachaRates.innerHTML = rates.length
+          ? rates.map(function (r) {
+            return '<span class="gacha-rate rarity-' + r.rarity + '">' +
+              C.RARITY_INFO[r.rarity].label + ' <b>' + r.percent + '%</b></span>';
+          }).join('')
+          : '<span class="gacha-rate rarity-epic">COMPLETE</span>';
+      }
+      if (els.gachaCollectionCount) {
+        els.gachaCollectionCount.textContent = gacha.unlocked.length + ' / ' + C.MODE_KEYS.length;
       }
       if (els.gachaReward) els.gachaReward.textContent = 'ステージクリアで関数ポイント +' + B.GACHA_STAGE_REWARD;
     }
@@ -658,7 +664,11 @@
       if (!els.gachaResult) return;
       var r = gacha.lastResult;
       if (!r || !C.MODES[r.key]) {
-        els.gachaResult.innerHTML = '<div class="gacha-empty">1回まわすと関数が解放されます</div>';
+        els.gachaResult.innerHTML = '<div class="gacha-empty">' +
+          '<div class="gacha-sigil">?</div>' +
+          '<b>SUMMON</b>' +
+          '<span>1回まわすと関数が解放されます</span>' +
+        '</div>';
         return;
       }
       var info = C.RARITY_INFO[r.rarity] || C.RARITY_INFO.common;
@@ -688,7 +698,7 @@
         var unlocked = gacha.unlocked.indexOf(key) >= 0;
         html += '<div class="gacha-item rarity-' + mode.rarity + (unlocked ? '' : ' locked') + '">' +
           '<span class="gacha-rarity-label">' + info.label + '</span>' +
-          (unlocked ? modePreviewSvg(key, selectedParams, selectedFusion) : '') +
+          (unlocked ? modePreviewSvg(key, selectedParams, selectedFusion) : '<div class="gacha-locked-preview">?</div>') +
           '<b>' + (unlocked ? C.formatModeLabel(key, selectedParams, selectedFusion) : '???') + '</b>' +
           '<span>' + (unlocked ? mode.note : '未解放') + '</span>' +
         '</div>';
@@ -706,6 +716,7 @@
       tutorialMode = false;
       hideTutorial();
       closeDeckBuilder();
+      if (els.stageInfo) els.stageInfo.classList.add('hidden');
       showScreen('gacha');
       renderGacha();
     }
@@ -845,6 +856,7 @@
       clearSwapHighlight();
       showScreen('start');
       closeDeckBuilder();
+      if (els.stageInfo) els.stageInfo.classList.remove('hidden');
       updateTutorialButton();
       updateGachaLabels();
       updateDeckUi();
@@ -1068,6 +1080,7 @@
       els.gachaRates = $('gacha-rates');
       els.gachaReward = $('gacha-reward');
       els.gachaCollection = $('gacha-collection');
+      els.gachaCollectionCount = $('gacha-collection-count');
       els.btnGachaClose = $('btn-gacha-close');
       els.clearTitle = $('clear-title');
       els.clearHint = $('clear-hint');
