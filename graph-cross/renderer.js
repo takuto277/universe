@@ -124,14 +124,43 @@
         ctx.strokeStyle = 'rgba(255, 255, 255, 0.45)';
         ctx.lineWidth = 1;
         ctx.stroke();
+        if (r.armor) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.65)';
+          ctx.lineWidth = 4;
+          ctx.setLineDash([5, 4]);
+          ctx.stroke();
+          ctx.setLineDash([]);
+        }
         ctx.restore();
+
+        var cx = r.x + r.len / 2;
+        var cy = E.rivalY(r, r.len / 2);
+        if (r.splitter) {
+          ctx.save();
+          ctx.strokeStyle = '#d7b8ff';
+          ctx.lineWidth = 1.5;
+          ctx.beginPath();
+          ctx.arc(cx - 7, cy, 3, 0, Math.PI * 2);
+          ctx.arc(cx + 7, cy, 3, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        } else if (r.jammer) {
+          ctx.save();
+          ctx.strokeStyle = 'rgba(255, 77, 141, 0.9)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(cx, cy, 7 + Math.sin(time * 8) * 1.5, 0, Math.PI * 2);
+          ctx.stroke();
+          ctx.restore();
+        }
 
         ctx.fillStyle = color;
         ctx.globalAlpha = 0.8;
         ctx.font = '9.5px ui-monospace, Menlo, monospace';
         var labelY = E.rivalY(r, 0) - 8;
         if (labelY < state.top + 10) labelY = E.rivalY(r, 0) + 16;
-        ctx.fillText(r.label + ' / 弱点:' + (C.FAMILY_LABELS[family] || '—'), r.x + 4, labelY);
+        var special = r.armor ? ' / ARMOR' : (r.splitter ? ' / SPLIT' : (r.jammer ? ' / JAM' : ''));
+        ctx.fillText(r.label + ' / 弱点:' + (C.FAMILY_LABELS[family] || '—') + special, r.x + 4, labelY);
         ctx.globalAlpha = 1;
       }
     }

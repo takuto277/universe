@@ -284,6 +284,7 @@
     state.guardUsed = false;
     state.playerInvuln = 0;
     state.bossShots = [];
+    state.jamTimers = [0, 0, 0, 0];
     state.y = (state.top + state.bottom) / 2;
     state.mode = state.deck[0];
     state.modeTime = 0;
@@ -378,6 +379,8 @@
     if (!state || state.over || !MODES[key]) return false;
     if (state.deck.indexOf(key) < 0) return false;
     if (key === 'fusion' && !state.fusion) return false;
+    var slot = state.deck.indexOf(key);
+    if (state.jamTimers && state.jamTimers[slot] > 0) return false;
     if (state.mode === key) return true;
     state.mode = key;
     state.modeTime = 0;
@@ -426,7 +429,13 @@
       slope: 0,
       dir: 1,
       label: 'y = sin x',
-      hit: false
+      hit: false,
+      hp: 1,
+      maxHp: 1,
+      invuln: 0,
+      armor: false,
+      splitter: false,
+      jammer: false
     };
 
     if (kind === 0) {
@@ -448,6 +457,25 @@
       r.slope = (rng() < 0.5 ? -1 : 1) * (0.10 + rng() * 0.24);
       r.label = r.slope < 0 ? 'y = -x/2' : 'y = x/2';
     }
+
+    if (state.stage >= 2) {
+      var specialChance = Math.min(
+        B.ENEMY_SPECIAL_MAX,
+        B.ENEMY_SPECIAL_BASE + (state.stage - 1) * B.ENEMY_SPECIAL_PER_STAGE
+      );
+      if (rng() < specialChance) {
+        var pick = rng();
+        if (pick < 0.4) {
+          r.armor = true;
+          r.hp = B.ARMOR_HP;
+        } else if (pick < 0.72) {
+          r.splitter = true;
+        } else {
+          r.jammer = true;
+        }
+      }
+    }
+    r.maxHp = r.hp;
 
     var margin = maxOffsetFor(r) + 26;
     var low = state.top + margin;
@@ -1037,57 +1065,124 @@
     }
   }
 
+  function spawnSplitChildren(state, r, x, y) {
+    for (var i = 0; i < 2; i++) {
+      var child = {
+        x: x + (i === 0 ? -16 : 16),
+        len: r.len * B.SPLIT_CHILD_SCALE,
+        shape: r.shape,
+        family: r.family,
+        baseY: clamp(y + (i === 0 ? -26 : 26), state.top + 30, state.bottom - 30),
+        amp: r.amp * 0.7,
+        waves: r.waves,
+        phase: r.phase + i * 0.9,
+        slope: r.slope,
+        dir: r.dir,
+        label: r.label,
+        hit: false,
+        hp: 1,
+        maxHp: 1,
+        invuln: 0.2,
+        armor: false,
+        splitter: false,
+        jammer: false
+      };
+      state.rivals.push(child);
+    }
+    pushEvent(state, { type: 'split', x: x, y: y, count: 2 });
+  }
+
+  function jamSlot(state, x, y) {
+    if (!state.jamTimers) state.jamTimers = [0, 0, 0, 0];
+    var candidates = [];
+    for (var i = 0; i < state.deck.length; i++) {
+      if (state.deck[i] !== state.mode) candidates.push(i);
+    }
+    if (!candidates.length) {
+      for (i = 0; i < state.deck.length; i++) candidates.push(i);
+    }
+    var slot = candidates[Math.floor(rand(state.rng) * candidates.length) % candidates.length];
+    state.jamTimers[slot] = B.JAM_TIME;
+    pushEvent(state, {
+      type: 'jam',
+      x: x,
+      y: y,
+      slot: slot,
+      key: state.deck[slot],
+      time: B.JAM_TIME
+    });
+  }
+
   function checkHits(state) {
     var trail = state.trail;
     var beam = null;
     for (var ri = state.rivals.length - 1; ri >= 0; ri--) {
       var r = state.rivals[ri];
-      if (r.hit) continue;
+      if (r.hit || (r.invuln || 0) > 0) continue;
       for (var ti = trail.length - 1; ti >= 0; ti--) {
         var p = trail[ti];
         var local = p.x - r.x;
         if (local < 0 || local > r.len) continue;
         var ry = rivalY(r, local);
-        if (Math.abs(p.y - ry) <= HIT_DIST + (state.hitBonus || 0)) {
-          r.hit = true;
-          state.hits++;
-          registerStageProgress(state);
-          state.combo = state.comboTimer > 0 ? state.combo + 1 : 1;
-          state.comboTimer = state.comboWindow;
-          if (state.combo > state.maxCombo) state.maxCombo = state.combo;
-          var m = crossMetrics(state, trail, ti, r, local);
-          var multi = registerMulti(state);
-          var baseGain = 100 + (state.combo - 1) * 50;
-          var gain = Math.round(baseGain * m.mult * m.weakMult * multi.mult * (state.scoreMult || 1));
-          state.score += gain;
-          var event = {
-            type: 'hit',
+        if (Math.abs(p.y - ry) > HIT_DIST + (state.hitBonus || 0)) continue;
+
+        var m = crossMetrics(state, trail, ti, r, local);
+        var hp = typeof r.hp === 'number' ? r.hp : 1;
+        var damage = 1 + (m.weak ? 1 : 0);
+        if (r.armor && hp > damage) {
+          r.hp = hp - damage;
+          r.invuln = B.ARMOR_INVULN;
+          pushEvent(state, {
+            type: 'armorHit',
             x: p.x,
             y: (p.y + ry) / 2,
-            gain: gain,
-            combo: state.combo,
-            angle: Math.round(m.angle),
-            mult: Math.round(m.mult * 10) / 10,
-            perfect: m.angle >= 70,
-            weak: m.weak,
-            weakMult: m.weakMult,
-            playerFamily: m.playerFamily,
-            weakness: r.family,
-            multi: multi.count,
-            multiMult: Math.round(multi.mult * 100) / 100,
-            label: r.label
-          };
-          if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < state.maxHp) {
-            state.hp++;
-            event.heal = true;
-          }
-          pushEvent(state, event);
-          state.rivals.splice(ri, 1);
-          if (!beam && state.upgrades && state.upgrades.beam && (state.beamCooldown || 0) <= 0) {
-            beam = { x: p.x, y: (p.y + ry) / 2 };
-          }
-          break;
+            hp: r.hp,
+            maxHp: r.maxHp || B.ARMOR_HP
+          });
+          return true;
         }
+        r.hit = true;
+        state.hits++;
+        registerStageProgress(state);
+        state.combo = state.comboTimer > 0 ? state.combo + 1 : 1;
+        state.comboTimer = state.comboWindow;
+        if (state.combo > state.maxCombo) state.maxCombo = state.combo;
+        var multi = registerMulti(state);
+        var baseGain = 100 + (state.combo - 1) * 50;
+        var gain = Math.round(baseGain * m.mult * m.weakMult * multi.mult * (state.scoreMult || 1));
+        state.score += gain;
+        var event = {
+          type: 'hit',
+          x: p.x,
+          y: (p.y + ry) / 2,
+          gain: gain,
+          combo: state.combo,
+          angle: Math.round(m.angle),
+          mult: Math.round(m.mult * 10) / 10,
+          perfect: m.angle >= 70,
+          weak: m.weak,
+          weakMult: m.weakMult,
+          playerFamily: m.playerFamily,
+          weakness: r.family,
+          multi: multi.count,
+          multiMult: Math.round(multi.mult * 100) / 100,
+          label: r.label,
+          armor: !!r.armor,
+          splitter: !!r.splitter,
+          jammer: !!r.jammer
+        };
+        if (state.combo > 0 && state.combo % HEAL_COMBO === 0 && state.hp < state.maxHp) {
+          state.hp++;
+          event.heal = true;
+        }
+        pushEvent(state, event);
+        if (r.splitter) spawnSplitChildren(state, r, p.x, (p.y + ry) / 2);
+        if (r.jammer) jamSlot(state, p.x, (p.y + ry) / 2);
+        state.rivals.splice(ri, 1);
+        if (!beam && state.upgrades && state.upgrades.beam && (state.beamCooldown || 0) <= 0) {
+          beam = { x: p.x, y: (p.y + ry) / 2 };
+        }
+        break;
       }
     }
     return beam;
@@ -1180,6 +1275,14 @@
     dt = clamp(Number(dt) || 0, 0, MAX_DT);
     state.time += dt;
     state.playerInvuln = Math.max(0, (state.playerInvuln || 0) - dt);
+    if (state.jamTimers) {
+      for (var ji = 0; ji < state.jamTimers.length; ji++) {
+        if (state.jamTimers[ji] > 0) {
+          state.jamTimers[ji] = Math.max(0, state.jamTimers[ji] - dt);
+          if (state.jamTimers[ji] === 0) pushEvent(state, { type: 'jamEnd', slot: ji });
+        }
+      }
+    }
     state.speed = speedFor(state);
     var dx = state.speed * dt;
     state.worldX += dx;
@@ -1205,6 +1308,7 @@
 
     for (i = 0; i < state.rivals.length; i++) {
       if (!state.rivals[i].tutorial) state.rivals[i].x -= dx;
+      if (state.rivals[i].invuln > 0) state.rivals[i].invuln = Math.max(0, state.rivals[i].invuln - dt);
     }
     for (i = state.items.length - 1; i >= 0; i--) {
       state.items[i].x -= dx;
@@ -1596,6 +1700,7 @@
       multiTimer: state.multiTimer,
       allies: state.allies.length,
       items: state.items.length,
+      jamTimers: (state.jamTimers || []).slice(),
       hitBonus: state.hitBonus,
       comboWindow: state.comboWindow,
       scoreMult: state.scoreMult,

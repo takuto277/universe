@@ -80,6 +80,9 @@ assert(oscStarts > warnBefore, '警告音が鳴る');
 audio.play('laser');
 audio.play('shot');
 audio.play('phase');
+audio.play('armor');
+audio.play('split');
+audio.play('jam');
 
 var guardBefore = oscStarts;
 audio.play('guard');

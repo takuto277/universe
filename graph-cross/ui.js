@@ -344,8 +344,10 @@
         var familyNote = mode.family !== 'none' ? ' · ' + C.FAMILY_LABELS[mode.family] : '';
         btn.innerHTML = '<b>' + C.formatModeLabel(key, params, fusion) + '</b><span>' + mode.note + familyNote + '</span><em>' + (i + 1) + '</em>';
         btn.style.setProperty('--mode-color', C.modeColor(key));
-        btn.disabled = !(state && phase === 'run' && !state.over);
+        var jammed = !!(state && state.jamTimers && state.jamTimers[i] > 0);
+        btn.disabled = !(state && phase === 'run' && !state.over) || jammed;
         btn.classList.toggle('active', !!(state && state.mode === key));
+        btn.classList.toggle('jammed', jammed);
       }
       if (els.modeButtons) els.modeButtons.classList.toggle('four', deck.length > 3);
       if (els.tip) els.tip.textContent = '画面タップ / 1〜' + deck.length + ' で関数切替 · 曲線で敵を迎え撃て';

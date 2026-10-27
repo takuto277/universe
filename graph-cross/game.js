@@ -146,6 +146,25 @@
         spawnParticles(ev.x, ev.y, 20, [C.ITEM_INFO.graph.color, '#ffffff'], 220, 0.6);
         addLabel(ev.x - 20, ev.y - 48, 'ALLY -1', C.ITEM_INFO.graph.color, 15);
         if (audio) audio.play('ally');
+      } else if (ev.type === 'armorHit') {
+        spawnParticles(ev.x, ev.y, 14, ['#ffd166', '#ffffff'], 200, 0.5);
+        addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.8)', 48, 0.35);
+        addLabel(ev.x - 24, ev.y - 24, 'ARMOR', '#ffd166', 15);
+        if (audio) audio.play('armor');
+      } else if (ev.type === 'split') {
+        spawnParticles(ev.x, ev.y, 24, ['#b48cff', '#ff7ad9', '#ffffff'], 260, 0.65);
+        addRing(ev.x, ev.y, 'rgba(180, 140, 255, 0.85)', 76, 0.5);
+        addLabel(ev.x - 26, ev.y - 30, 'SPLIT', '#d7b8ff', 17);
+        if (audio) audio.play('split');
+      } else if (ev.type === 'jam') {
+        addRing(ev.x, ev.y, 'rgba(255, 77, 141, 0.9)', 62, 0.45);
+        addLabel(ev.x - 20, ev.y - 30, 'JAM', '#ff6b9f', 18);
+        flash = Math.max(flash, 0.2);
+        flashColor = '255, 77, 141';
+        if (ui && state) ui.updateSlots(state, view.phase);
+        if (audio) audio.play('jam');
+      } else if (ev.type === 'jamEnd') {
+        if (ui && state) ui.updateSlots(state, view.phase);
       } else if (ev.type === 'bossSpawn') {
         spawnParticles(ev.x, ev.y, 32, ['#ff4d8d', '#ffd166', '#ffffff'], 280, 0.9);
         addRing(ev.x, ev.y, 'rgba(255, 77, 141, 0.95)', 90, 0.6);
