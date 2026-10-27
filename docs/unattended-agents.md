@@ -152,7 +152,7 @@ PR の本文には `Closes #<n>` が入ります。マージされると Issue �
 
 ## 実行の隔離（sandbox-exec）
 
-`UNIVERSE_AGENT_SANDBOX=seatbelt` を設定すると、builder と `verify.sh` を macOS の `sandbox-exec` で包みます。既定は `none` です。
+`UNIVERSE_AGENT_SANDBOX=seatbelt` を設定すると、builder と `verify.sh` を macOS の `sandbox-exec` で包みます。既定は `none` です。sandbox 実行時は `TMPDIR` を実行ごとの作業ディレクトリに設定するため、テストの `mktemp` はその配下に作り、sandbox 外の `/tmp` へは書き込みません。
 
 - 書き込みは「その実行の worktree（ただし `worktree/.git` を除く）」「実行ごとの一時ディレクトリ」「`/dev`」「opencode のデータ/キャッシュ」だけに許可します。リポジトリの `.git`、state dir（lock・pause・history）、`~/.config/opencode` は書き込み禁止です
 - builder の後、runner は `git rev-parse --absolute-git-dir` が変わっていないことを確認してからコミットします
@@ -211,8 +211,9 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 - 滞留通知は runner 実行時に確認するため、`UNIVERSE_AGENT_TIMEOUT` を滞留時間より長くすると、固まった実行は検出できません（timeout を短くするか、別プロセスの監視が必要）
 
 - LaunchAgent は main 追従の専用チェックアウト（既定 `~/.local/share/universe-automation`）から動く。人間の作業ブランチには依存しない
+- runner / watcher / planner は同じ `UNIVERSE_AGENT_BASE` で登録する（auto-pr は `UNIVERSE_AUTO_PR_BASE`）。異なる base を同じ専用チェックアウトに混在させると更新先が競合する
 - 既定パスのチェックアウトは初回起動時に管理マーカーを自動付与し、以後の起動で `origin/main` へ更新する。更新ログは `~/Library/Logs/universe-automation-update.log` に残る
-- 同時起動時は更新ロックで片方だけが更新し、もう片方は現在の版で実行する
+- 更新ロックは更新処理だけを直列化します。実行中のエージェントがある間に別の起動が更新すると、チェックアウト上のファイルは差し替わります。更新が反映されるのは次回起動からです
 - 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除するときは `automation-root.sh remove` を使う
 - ブランチをチェックアウトした worktree は指定できません（detached HEAD の専用 worktree のみ）
 - カスタムパスの新規作成では `automation-root.sh ensure` がマーカーを付与します

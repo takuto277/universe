@@ -6,11 +6,14 @@ universe の開発・無人実行に必要な環境を確認し、LaunchAgent �
 
 新規の Mac では、前提ツールを入れてから setup を実行します。前提が欠けていると `--with-agents` / `--verify` は登録・実行の前に中止するため、先に MISS を解消してください。
 
+`git` がまだ無い場合は、先に `xcode-select --install` を実行してください。CLT 未導入の `/usr/bin/git` はインストール要求を出して終了するため、clone が最初のコマンドでは失敗します。
+
 ```sh
+xcode-select --install   # git が無い場合のみ。完了後に下へ進む
 git clone https://github.com/takuto277/universe.git
 cd universe
 
-# 1. git / python3 / jsc を入れる
+# 1. git / python3 / jsc を入れる（git は上の clone 前に導入済みなら不要）
 xcode-select --install
 
 # 2. opencode を公式手順でインストールする: https://opencode.ai/docs/
@@ -25,7 +28,7 @@ gh auth login
 
 `--install` は不足している `gh` だけを Homebrew で導入し、opencode は自動では入れません。Homebrew が無い場合は https://cli.github.com/ から `gh` を入れてください。
 
-`--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、エージェントが実行する builder と verify を sandbox で実行します。
+`--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、エージェントが実行する builder と verify を sandbox で実行します。setup 自身の `--verify` は sandbox の外で実行されます（sandbox はエージェントが起動する builder / verify に適用されます）。
 
 LaunchAgent は、人間が作業しているチェックアウトとは別の **main 追従の専用チェックアウト** から動きます。既定は `~/.local/share/universe-automation` です。
 

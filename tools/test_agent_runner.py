@@ -850,6 +850,19 @@ class RunnerTest(unittest.TestCase):
     @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
                      "already inside sandbox-exec")
     @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
+    def test_sandbox_runs_setup_test(self):
+        root = Path(__file__).resolve().parent.parent
+        cfg = replace(self.cfg, sandbox="seatbelt")
+        runner = ar.Runner(cfg, cmd=ar.Commands(), log=lambda line: None)
+        self.worktree.mkdir(parents=True, exist_ok=True)
+        result = runner._run_sandboxed(
+            ["/bin/bash", str(root / "tools" / "test-setup.sh")],
+            self.worktree, self.worktree, 120)
+        self.assertTrue(result.ok, result.stderr)
+
+    @unittest.skipIf(os.environ.get("UNIVERSE_AGENT_IN_SANDBOX") == "1",
+                     "already inside sandbox-exec")
+    @unittest.skipUnless(shutil.which("sandbox-exec"), "sandbox-exec is macOS only")
     def test_sandbox_denies_reading_ssh(self):
         fake_home = Path(tempfile.mkdtemp(prefix="sb-home-"))
         (fake_home / ".ssh").mkdir()
