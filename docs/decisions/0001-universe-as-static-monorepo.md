@@ -1,11 +1,13 @@
 # 0001 universe を静的モノレポとして維持する
 
-- Status: Accepted
+- Status: Amended by [0010](0010-monorepo-role.md)
 - Date: 2026-10-19
 
 ## Context
 
 universe は個人の学習と発表を兼ねたアプリ置き場です。アプリごとに目的や技術は変わりますが、どれも小規模で、GitHub Pages でそのまま配信できます。リポジトリをアプリごとに分けると、公開設定・共通テスト・一覧更新のコストが先に増えます。
+
+> 現在の配置は [0010](0010-monorepo-role.md) を参照してください。アプリは `projects/` 配下に置きます。
 
 ## Decision
 

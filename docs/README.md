@@ -13,7 +13,8 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | PR のレビューとマージを自動化する | [PR の自動レビューと自動マージ](auto-pr.md) |
 | テストの書き方と実行方法を知る | [テスト](testing.md) |
 | GitHub Pages への公開と URL の扱いを知る | [公開](deployment.md) |
-| なぜこの構成なのかを知る | [0001 universe を静的モノレポとして維持する](decisions/0001-universe-as-static-monorepo.md) |
+| リポジトリの役割と移行方針を知る | [0010 universe を「無人開発基盤のモノレポ」と定義する](decisions/0010-monorepo-role.md) |
+| 静的モノレポの原則を知る | [0001 universe を静的モノレポとして維持する](decisions/0001-universe-as-static-monorepo.md) |
 | AI に PR をレビュー・マージさせる仕組みを知る | [0003 PR のレビューとマージを分離した AI に任せる](decisions/0003-ai-review-and-merge.md) |
 | PR 作成から自動で動かす判断を知る | [0004 PR のレビューとマージをローカル watcher で自動起動する](decisions/0004-auto-pr-watcher.md) |
 | 実装まで無人で動かす判断を知る | [0005 Issue キューで実装まで無人実行する](decisions/0005-unattended-agent-runner.md) |
