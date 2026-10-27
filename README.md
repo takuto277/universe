@@ -2,7 +2,11 @@
 
 [![CI](https://github.com/takuto277/universe/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takuto277/universe/actions/workflows/ci.yml)
 
-自作ゲーム・アプリのハブです。依存ゼロの静的ファイルで作り、GitHub Pages で公開します。
+依存ゼロの静的ゲームを公開するモノレポです。ゲームは `projects/`、それらを無人で実装・レビュー・公開する開発基盤は `tools/` に置きます。
+
+- **本体**: `tools/` の無人開発基盤（Issue → 実装 → PR → レビュー → マージ）
+- **成果物**: `projects/` のゲーム（実験・サンプル・公開物）。分類は [projects/README.md](projects/README.md)
+- **移行中**: `graph-cross/` は進行中ブランチ、`exponential-balls/` はマージ直後のため、落ち着いてから `projects/_labs/` へ移動します
 
 ## 無人で実装する（これだけ）
 
@@ -46,18 +50,21 @@ gh auth login
 
 ```text
 universe/
-├── apps.json          # 公開するアプリの一覧（正）
-├── index.html         # ハブ画面
-├── baseball-game/     # アプリ本体・テスト・README
-├── janken-game/       # アプリ本体・テスト・README
-├── gravity-flip/      # アプリ本体・テスト・README
-├── graph-cross/       # アプリ本体・テスト・README
-├── unknown-word-deal/ # アプリ本体・テスト・README
-├── observer-game/     # アプリ本体・テスト・README
-├── exponential-balls/ # アプリ本体・テスト・README
-├── .opencode/         # エージェント・コマンド・スキル
-├── docs/              # 開発・学習ドキュメント
-└── tools/             # 共通テストハーネスと検査スクリプト
+├── apps.json                  # 公開するアプリの一覧（正）
+├── index.html                 # ハブ画面
+├── projects/
+│   ├── _labs/                 # 実験・検証・継続開発中のゲーム
+│   │   ├── baseball-game/
+│   │   ├── gravity-flip/
+│   │   ├── observer-game/
+│   │   └── unknown-word-deal/
+│   └── _samples/              # 教材・最小実装
+│       └── janken-game/
+├── graph-cross/               # 移行待ち（進行中ブランチを優先）
+├── exponential-balls/         # 移行待ち（PR #148 マージ済み）
+├── .opencode/                 # エージェント・コマンド・スキル
+├── docs/                      # 開発・学習ドキュメント
+└── tools/                     # 無人開発基盤・共通テストハーネス
 ```
 
 ## ローカルで動かす

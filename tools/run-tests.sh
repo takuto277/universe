@@ -18,7 +18,8 @@ fi
 
 count=0
 
-for dir in "$ROOT"/*/; do
+while IFS= read -r rel; do
+  dir="$ROOT/${rel%/}/"
   [[ -f "${dir}index.html" ]] || continue
   tests=("${dir}"test-*.js)
   [[ -e "${tests[0]}" ]] || continue
@@ -28,7 +29,12 @@ for dir in "$ROOT"/*/; do
     (cd "$dir" && "$JSC" "$(basename "$test")")
     count=$((count + 1))
   done
-done
+done < <(python3 - "$ROOT/apps.json" <<'PY'
+import json, sys
+for app in json.load(open(sys.argv[1], encoding="utf-8"))["apps"]:
+    print(app["path"])
+PY
+)
 
 if [[ "$count" -eq 0 ]]; then
   printf 'テストが見つかりません。\n' >&2

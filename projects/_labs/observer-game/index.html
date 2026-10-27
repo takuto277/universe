@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0c111c" />
+  <meta name="description" content="敵の動きの隠れた規則を観測し、次の一手を予測するスマホ向け推理ゲーム。" />
+  <title>観測者</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <h1>観測者</h1>
+        <p class="tagline">動きの規則を読み、次の一手を当てろ</p>
+      </div>
+      <div class="hud">
+        <div class="hud-item">
+          <span class="hud-label">ターン</span>
+          <span id="turn" class="hud-value">1 / 12</span>
+        </div>
+        <div class="hud-item">
+          <span class="hud-label">正解</span>
+          <span id="correct" class="hud-value">0</span>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage">
+      <section id="status-card" class="card status-card">
+        <div class="status-row">
+          <span class="status-label">ライフ</span>
+          <span id="lives" class="pips"></span>
+          <span class="status-label">灯</span>
+          <span id="probes" class="pips"></span>
+        </div>
+        <p id="feedback" class="feedback"></p>
+      </section>
+
+      <section id="board-card" class="card board-card">
+        <div id="board" class="board"></div>
+        <p id="board-hint" class="board-hint"></p>
+      </section>
+
+      <section id="actions-card" class="card actions-card">
+        <button id="btn-observe" class="primary" type="button">観測する</button>
+        <button id="btn-probe" class="mini" type="button">灯を動かす（残り2）</button>
+        <button id="btn-probe-cancel" class="mini is-hidden" type="button">やめる</button>
+        <button id="btn-memo" class="mini" type="button">ルール候補</button>
+      </section>
+    </main>
+  </div>
+
+  <div id="start-overlay" class="overlay visible">
+    <div class="overlay-card start-card">
+      <p class="eyebrow">動きを読む推理ゲーム</p>
+      <h1>観測者</h1>
+      <p class="lead">敵は隠れた規則で1マスずつ動く。動きを観測し、次の一手を予測しよう。外すとライフが減り、規則が変わる。</p>
+      <svg class="start-art" viewBox="0 0 260 162" role="img" aria-label="盤面を動く敵と灯">
+        <rect x="28" y="18" width="204" height="114" rx="14" fill="#101a2a" stroke="#2b3c58" />
+        <g stroke="#22324b" stroke-width="1">
+          <path d="M68 18 V132 M108 18 V132 M148 18 V132 M188 18 V132" />
+          <path d="M28 56 H232 M28 94 H232" />
+        </g>
+        <path d="M48 112 L48 76 L88 76 L88 40 L128 40" fill="none" stroke="#f4c96b" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round" />
+        <circle cx="48" cy="112" r="8" fill="#6fd6c3" opacity="0.8" />
+        <circle cx="128" cy="40" r="17" fill="#eef4ff" />
+        <circle cx="128" cy="40" r="8" fill="#202e45" />
+        <circle cx="125" cy="37" r="3" fill="#f4c96b" />
+        <path d="M198 34 L204 48 L220 48 L208 57 L212 72 L198 63 L184 72 L188 57 L176 48 L192 48 Z" fill="#f4c96b" opacity="0.9" />
+        <text x="130" y="152" text-anchor="middle" fill="#63779a" font-size="9">次の一手は、光る隣のタイル</text>
+      </svg>
+      <button id="btn-start" class="primary big" type="button">あそぶ</button>
+      <button id="btn-tutorial" class="link-btn" type="button">はじめての人へ（3枚のチュートリアル）</button>
+      <p id="best-label" class="best-label"></p>
+      <p class="tiny">1回5分。外すと規則が変わる。</p>
+    </div>
+  </div>
+
+  <div id="tutorial-overlay" class="overlay">
+    <div class="overlay-card tutorial-card">
+      <div id="tutorial-dots" class="dots"></div>
+      <div id="tutorial-visual" class="tutorial-visual">
+        <svg id="tut-visual-1" class="tut-visual" viewBox="0 0 280 150" role="img" aria-label="敵の動きを観測する">
+          <rect x="36" y="16" width="208" height="118" rx="12" fill="#101a2a" stroke="#2b3c58" />
+          <g stroke="#22324b" stroke-width="1">
+            <path d="M77 16 V134 M118 16 V134 M159 16 V134 M200 16 V134" />
+            <path d="M36 55 H244 M36 94 H244" />
+          </g>
+          <path d="M56 112 L56 73 L97 73 L97 34 L138 34" fill="none" stroke="#6fd6c3" stroke-width="3" stroke-dasharray="5 5" stroke-linecap="round" />
+          <circle cx="138" cy="34" r="14" fill="#eef4ff" />
+          <circle cx="138" cy="34" r="6" fill="#202e45" />
+          <circle cx="135" cy="31" r="2.5" fill="#f4c96b" />
+          <circle cx="183" cy="48" r="12" fill="none" stroke="#f4c96b" stroke-width="2" />
+          <circle cx="183" cy="48" r="4" fill="#f4c96b" />
+          <text x="183" y="80" text-anchor="middle" fill="#63779a" font-size="8">観測</text>
+        </svg>
+        <svg id="tut-visual-2" class="tut-visual" viewBox="0 0 280 150" role="img" aria-label="次の一手を予測する">
+          <rect x="36" y="12" width="208" height="126" rx="12" fill="#101a2a" stroke="#2b3c58" />
+          <g stroke="#22324b" stroke-width="1">
+            <path d="M77 12 V138 M118 12 V138 M159 12 V138 M200 12 V138" />
+            <path d="M36 52 H244 M36 92 H244" />
+          </g>
+          <circle cx="118" cy="72" r="14" fill="#eef4ff" />
+          <circle cx="118" cy="72" r="6" fill="#202e45" />
+          <rect x="139" y="53" width="38" height="38" rx="8" fill="rgba(244,201,107,0.10)" stroke="#f4c96b" stroke-width="2" />
+          <text x="158" y="77" text-anchor="middle" fill="#f4c96b" font-size="15">?</text>
+          <text x="158" y="120" text-anchor="middle" fill="#7ee0a8" font-size="9">当たり +10</text>
+          <text x="210" y="120" text-anchor="middle" fill="#ff8a8a" font-size="9">外れ -1</text>
+        </svg>
+        <svg id="tut-visual-3" class="tut-visual" viewBox="0 0 280 150" role="img" aria-label="灯を動かしてルール候補を絞る">
+          <rect x="18" y="18" width="120" height="114" rx="12" fill="#101a2a" stroke="#2b3c58" />
+          <g stroke="#22324b" stroke-width="1">
+            <path d="M48 18 V132 M78 18 V132 M108 18 V132" />
+            <path d="M18 56 H138 M18 94 H138" />
+          </g>
+          <path d="M108 38 L113 50 L126 50 L116 58 L120 71 L108 63 L96 71 L100 58 L90 50 L103 50 Z" fill="#f4c96b" />
+          <circle cx="78" cy="94" r="12" fill="#eef4ff" />
+          <circle cx="78" cy="94" r="5" fill="#202e45" />
+          <rect x="154" y="22" width="110" height="104" rx="10" fill="#1b2739" stroke="#3a4d6e" />
+          <text x="209" y="42" text-anchor="middle" fill="#f4c96b" font-size="9">ルール候補</text>
+          <rect x="166" y="54" width="86" height="16" rx="7" fill="#22314a" />
+          <text x="209" y="65" text-anchor="middle" fill="#93a6c4" font-size="8">まっすぐ</text>
+          <rect x="166" y="76" width="86" height="16" rx="7" fill="#22314a" />
+          <text x="209" y="87" text-anchor="middle" fill="#63779a" font-size="8">灯へ</text>
+          <path d="M172 84 L246 84" stroke="#ff8a8a" stroke-width="2" />
+          <rect x="166" y="98" width="86" height="16" rx="7" fill="#22314a" />
+          <text x="209" y="109" text-anchor="middle" fill="#63779a" font-size="8">ジグザグ</text>
+        </svg>
+      </div>
+      <h2 id="tutorial-title"></h2>
+      <p id="tutorial-text" class="lead"></p>
+      <div class="tutorial-actions">
+        <button id="btn-tutorial-back" class="mini" type="button">閉じる</button>
+        <button id="btn-tutorial-next" class="primary" type="button">次へ</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="memo-overlay" class="overlay">
+    <div class="overlay-card memo-card">
+      <div class="overlay-head">
+        <h2>ルール候補</h2>
+        <button id="btn-memo-close" class="icon-btn" type="button">閉じる</button>
+      </div>
+      <p class="tiny">現在のルールは教えてもらえない。動きを見て、違うと思う候補をタップして消そう。</p>
+      <div id="memo-list" class="memo-list"></div>
+      <button id="btn-memo-reset" class="mini" type="button">メモをリセット</button>
+    </div>
+  </div>
+
+  <div id="ending-overlay" class="overlay">
+    <div class="overlay-card ending-card">
+      <p class="eyebrow">観測終了</p>
+      <div id="rank" class="rank">S</div>
+      <h2 id="ending-title">観測の達人</h2>
+      <p id="ending-text" class="lead"></p>
+      <div id="ending-stats" class="stats"></div>
+      <div id="ending-rules" class="ending-rules"></div>
+      <p id="best-label-end" class="best-label"></p>
+      <p id="seed-label" class="tiny"></p>
+      <div class="ending-actions">
+        <button id="btn-again" class="primary" type="button">同じ盤面で再挑戦</button>
+        <button id="btn-new" class="mini" type="button">新しい盤面</button>
+        <button id="btn-start-over" class="mini" type="button">スタートに戻る</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="audio.js"></script>
+  <script src="ui.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

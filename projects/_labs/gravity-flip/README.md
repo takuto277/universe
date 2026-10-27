@@ -4,7 +4,7 @@
 
 ## 遊ぶ
 
-universe のルートで次を実行し、http://localhost:8000/gravity-flip/ を開きます。
+universe のルートで次を実行し、http://localhost:8000/projects/_labs/gravity-flip/ を開きます。
 
 ```sh
 python3 -m http.server 8000
@@ -49,7 +49,7 @@ universe のルートで実行します。
 個別に実行する場合:
 
 ```sh
-cd gravity-flip
+cd projects/_labs/gravity-flip
 jsc test-engine.js
 jsc test-smoke.js
 ```

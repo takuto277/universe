@@ -72,7 +72,7 @@ unknown-word-deal/
 ## テスト
 
 ```sh
-cd unknown-word-deal
+cd projects/_labs/unknown-word-deal
 jsc test-engine.js
 jsc test-smoke.js
 ```

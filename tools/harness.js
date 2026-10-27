@@ -12,8 +12,8 @@
  *
  * 使い方（各ゲームの test-smoke.js から）:
  *   tryLoad(['../../tools/harness.js', 'tools/harness.js']);
- *   tryLoad(['engine.js', 'baseball-game/engine.js']);
- *   tryLoad(['game.js', 'baseball-game/game.js']);
+ *   tryLoad(['engine.js', 'projects/_labs/baseball-game/engine.js']);
+ *   tryLoad(['game.js', 'projects/_labs/baseball-game/game.js']);
  *   Harness.run({ name: 'baseball-game', check: function (state, h) { h.assert(...); } });
  *
  * ハーネスが行うこと:

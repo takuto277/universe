@@ -1,6 +1,6 @@
 /* test-smoke.js : 観測者の1ラン自動プレイ（jsc で実行）
  * 実行例:
- *   cd observer-game && jsc test-smoke.js
+ *   cd projects/_labs/observer-game && jsc test-smoke.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -9,11 +9,11 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['engine.js', 'observer-game/engine.js']);
-tryLoad(['audio.js', 'observer-game/audio.js']);
-tryLoad(['ui.js', 'observer-game/ui.js']);
-tryLoad(['game.js', 'observer-game/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_labs/observer-game/engine.js']);
+tryLoad(['audio.js', 'projects/_labs/observer-game/audio.js']);
+tryLoad(['ui.js', 'projects/_labs/observer-game/ui.js']);
+tryLoad(['game.js', 'projects/_labs/observer-game/game.js']);
 
 Harness.run({
   name: 'observer-game',

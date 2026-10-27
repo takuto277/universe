@@ -62,7 +62,7 @@ observer-game/
 ## テスト
 
 ```sh
-cd observer-game
+cd projects/_labs/observer-game
 jsc test-engine.js
 jsc test-smoke.js
 ```

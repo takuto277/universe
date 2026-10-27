@@ -1,6 +1,6 @@
 /* test-engine.js : 重力フリップのルール・生成・バランスのテスト（jsc で実行）
  * 実行例:
- *   cd universe/gravity-flip && jsc test-engine.js
+ *   cd projects/_labs/gravity-flip && jsc test-engine.js
  */
 var E;
 try {

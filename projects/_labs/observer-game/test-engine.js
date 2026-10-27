@@ -1,6 +1,6 @@
 /* test-engine.js : 観測者（Observer）のルール・予測・ルール変更の検証（jsc で実行）
  * 実行例:
- *   cd observer-game && jsc test-engine.js
+ *   cd projects/_labs/observer-game && jsc test-engine.js
  */
 var E;
 try {

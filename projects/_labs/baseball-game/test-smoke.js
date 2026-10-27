@@ -1,7 +1,7 @@
 /* test-smoke.js : 1試合を自動プレイで完走させるスモークテスト（jsc で実行）
  * 実行例:
  *   cd universe && jsc baseball-game/test-smoke.js
- *   cd universe/baseball-game && jsc test-smoke.js
+ *   cd projects/_labs/baseball-game && jsc test-smoke.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -10,9 +10,9 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['engine.js', 'baseball-game/engine.js']);
-tryLoad(['game.js', 'baseball-game/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_labs/baseball-game/engine.js']);
+tryLoad(['game.js', 'projects/_labs/baseball-game/game.js']);
 
 Harness.run({
   name: 'baseball-game',

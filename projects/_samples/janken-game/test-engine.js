@@ -1,6 +1,6 @@
 /* test-engine.js : engine.js のルール検証とバランスシミュレーション（jsc で実行）
  * 実行例:
- *   cd universe/janken-game && jsc test-engine.js
+ *   cd projects/_samples/janken-game && jsc test-engine.js
  */
 var E;
 try {
