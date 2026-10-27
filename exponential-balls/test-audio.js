@@ -14,7 +14,8 @@ function assert(cond, m) {
 assert(ExpAudio.start() === false, 'AudioContextなしで開始できてしまう');
 assert(ExpAudio.ready() === false, 'AudioContextなしでreadyになる');
 ExpAudio.tick(1);
-ExpAudio.tap();
+ExpAudio.capture(1, 130.81);
+ExpAudio.impact();
 assert(ExpAudio.toggleMute() === true, 'ミュートにできない');
 assert(ExpAudio.toggleMute() === false, 'ミュート解除できない');
 
@@ -80,7 +81,8 @@ function FakeContext() {
     var data = new Float32Array(length);
     return { getChannelData: function () { return data; } };
   };
-  this.resume = function () { };
+  this.resume = function () { this.state = 'running'; };
+  this.suspend = function () { this.state = 'suspended'; };
 }
 var fakeCtx = new FakeContext();
 globalThis.AudioContext = function () { return fakeCtx; };
@@ -111,8 +113,11 @@ assert(createdOsc > beforeResume, '復帰後に音が再開しない');
 assert(createdOsc - beforeResume < 50, '復帰時に音が一気に生成される: ' + (createdOsc - beforeResume));
 
 before = oscStarts;
-ExpAudio.tap();
-assert(oscStarts > before, 'タップ音が鳴らない');
+ExpAudio.capture(62.3, 130.81);
+assert(oscStarts > before, 'キャプチャ音が鳴らない');
+before = oscStarts;
+ExpAudio.impact();
+assert(oscStarts > before, 'インパクト音が鳴らない');
 
 before = oscStarts;
 assert(ExpAudio.toggleMute() === true, 'ミュートにできない');
@@ -123,5 +128,13 @@ ExpAudio.tick(62.2);
 assert(oscStarts > before, 'ミュート解除後に音が鳴らない');
 
 assert(noiseSources > 0, 'ノイズ系の音が鳴っていない');
+
+ExpAudio.stop();
+assert(ExpAudio.ready() === false, '停止後もreadyのまま');
+assert(ExpAudio.start() === true, '停止後に再開できない');
+assert(ExpAudio.ready() === true, '再開後にreadyでない');
+var beforeRestart = createdOsc;
+ExpAudio.tick(0);
+assert(createdOsc > beforeRestart, '再開後の最初のステップで音が鳴らない');
 
 print('audio tests OK (' + passed + ' assertions, ' + createdOsc + ' oscillators, ' + noiseSources + ' noise sources)');

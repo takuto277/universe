@@ -1,4 +1,4 @@
-/* renderer.js : 倍々のCanvas描画（ボールの分裂・波紋・光の軌跡） */
+/* renderer.js : BLOOM のCanvas描画（AUTOの分裂・FRAMEのフレーム回収） */
 (function (root) {
   'use strict';
 
@@ -9,7 +9,6 @@
     var dpr = 1;
     var balls = [];
     var waves = [];
-    var ripples = [];
     var flash = 0;
     var beatPulse = 0;
     var radius = 30;
@@ -17,8 +16,6 @@
     var lastBar = 0;
     var lastBeat = 0;
     var hueBase = 188;
-
-    function rnd(a, b) { return a + Math.random() * (b - a); }
 
     function resize() {
       var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : null;
@@ -46,22 +43,15 @@
     }
 
     function newBall(x, y, vx, vy, hue) {
-      return {
-        x: x,
-        y: y,
-        vx: vx,
-        vy: vy,
-        hue: hue == null ? hueBase : hue
-      };
+      return { x: x, y: y, vx: vx, vy: vy, hue: hue == null ? hueBase : hue };
     }
 
     function reset(state) {
       var hue = state && state.root ? state.root.hue : 188;
       hueBase = hue;
       radius = radiusFor(1);
-      balls = [newBall(width / 2, height / 2, rnd(-70, 70), rnd(-70, 70), hue)];
+      balls = [newBall(width / 2, height / 2, -70 + Math.random() * 140, -70 + Math.random() * 140, hue)];
       waves = [];
-      ripples = [];
       flash = 1;
       beatPulse = 1;
       waves.push({ x: width / 2, y: height / 2, r: 10, speed: 280, life: 1, hue: hue, width: 3 });
@@ -77,10 +67,10 @@
       hueBase = hue + (state ? state.bar * 7 : 0);
       for (var i = 0; i < balls.length; i++) {
         var b = balls[i];
-        var angle = Math.atan2(b.vy, b.vx) + rnd(-0.7, 0.7);
+        var angle = Math.atan2(b.vy, b.vx) + (-0.7 + Math.random() * 1.4);
         var speed = Math.max(35, Math.hypot(b.vx, b.vy));
         var half = speed * 0.55;
-        var hue2 = (b.hue + rnd(-14, 14) + 360) % 360;
+        var hue2 = (b.hue + (-14 + Math.random() * 28) + 360) % 360;
         next.push(newBall(
           b.x + Math.cos(angle) * radius * 0.5,
           b.y + Math.sin(angle) * radius * 0.5,
@@ -104,29 +94,35 @@
       radius = radiusFor(state ? state.count : balls.length);
       if (state && state.reset) {
         reset(state);
-        lastCycle = state.cycle;
-        lastBar = state.bar;
-        lastBeat = state.beat;
         return;
       }
-      if (state && state.split) {
-        split(state);
-      }
+      if (state && state.split) split(state);
       var target = state ? state.count : balls.length;
       var guard = 0;
       while (balls.length < target && guard++ < 12) split(state);
       while (balls.length > target) balls.pop();
       if (!balls.length) reset(state);
-      if (state && state.cycle !== lastCycle) {
+    }
+
+    function clear() {
+      balls = [];
+      waves = [];
+      flash = 0;
+      beatPulse = 0;
+    }
+
+    function pulse(state) {
+      if (!state) return;
+      if (state.cycle !== lastCycle) {
         lastCycle = state.cycle;
         flash = 1;
-        waves.push({ x: width / 2, y: height / 2, r: 12, speed: 320, life: 1, hue: hueBase, width: 3 });
+        waves.push({ x: width / 2, y: height / 2, r: 12, speed: 320, life: 1, hue: state.root.hue, width: 3 });
       }
-      if (state && state.bar !== lastBar) {
+      if (state.bar !== lastBar) {
         lastBar = state.bar;
-        waves.push({ x: width / 2, y: height / 2, r: 8, speed: 220, life: 1, hue: hueBase, width: 2 });
+        waves.push({ x: width / 2, y: height / 2, r: 8, speed: 220, life: 1, hue: state.root.hue, width: 2 });
       }
-      if (state && state.beat !== lastBeat) {
+      if (state.beat !== lastBeat) {
         lastBeat = state.beat;
         beatPulse = 1;
       }
@@ -135,6 +131,7 @@
     function update(dt, state) {
       if (!isFinite(dt) || dt <= 0) dt = 1 / 60;
       dt = Math.min(0.05, dt);
+      pulse(state);
       radius = radiusFor(state ? state.count : balls.length);
       for (var i = 0; i < balls.length; i++) {
         var b = balls[i];
@@ -152,55 +149,25 @@
         wave.speed *= 0.985;
         if (wave.life <= 0) waves.splice(w, 1);
       }
-      for (var r = ripples.length - 1; r >= 0; r--) {
-        var ripple = ripples[r];
-        ripple.r += ripple.speed * dt;
-        ripple.life -= dt * 1.5;
-        if (ripple.life <= 0) ripples.splice(r, 1);
-      }
       flash = Math.max(0, flash - dt * 2.6);
       beatPulse = Math.max(0, beatPulse - dt * 2.4);
     }
 
-    function tap(x, y) {
-      var radiusSq = 120 * 120;
-      for (var i = 0; i < balls.length; i++) {
-        var b = balls[i];
-        var dx = b.x - x;
-        var dy = b.y - y;
-        var d2 = dx * dx + dy * dy;
-        if (d2 > radiusSq) continue;
-        var d = Math.sqrt(d2) || 1;
-        var force = 260 * (1 - d / 120);
-        b.vx += (dx / d) * force;
-        b.vy += (dy / d) * force;
-      }
-      ripples.push({ x: x, y: y, r: 6, speed: 260, life: 1, hue: hueBase });
+    function roundRect(c, x, y, w, h, r) {
+      c.beginPath();
+      c.moveTo(x + r, y);
+      c.lineTo(x + w - r, y);
+      c.quadraticCurveTo(x + w, y, x + w, y + r);
+      c.lineTo(x + w, y + h - r);
+      c.quadraticCurveTo(x + w, y + h, x + w - r, y + h);
+      c.lineTo(x + r, y + h);
+      c.quadraticCurveTo(x, y + h, x, y + h - r);
+      c.lineTo(x, y + r);
+      c.quadraticCurveTo(x, y, x + r, y);
+      c.closePath();
     }
 
-    function draw(state, t) {
-      if (!ctx) return;
-      ctx.globalCompositeOperation = 'source-over';
-      ctx.fillStyle = 'rgba(4, 7, 12, 0.32)';
-      ctx.fillRect(0, 0, width, height);
-
-      var hue = (state && state.root ? state.root.hue : 188) + (state ? state.bar * 7 : 0);
-      var glow = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) * 0.62);
-      glow.addColorStop(0, 'hsla(' + hue + ', 80%, 58%, ' + (0.012 + beatPulse * 0.018).toFixed(3) + ')');
-      glow.addColorStop(1, 'hsla(' + hue + ', 80%, 50%, 0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(0, 0, width, height);
-      ctx.globalCompositeOperation = 'lighter';
-
-      var r = radiusFor(state ? state.count : balls.length);
-      for (var i = 0; i < balls.length; i++) {
-        var b = balls[i];
-        ctx.fillStyle = 'hsla(' + (b.hue % 360) + ', 86%, 62%, 0.78)';
-        ctx.beginPath();
-        ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
+    function drawWaves(hue) {
       for (var w = 0; w < waves.length; w++) {
         var wave = waves[w];
         ctx.strokeStyle = 'hsla(' + wave.hue + ', 85%, 65%, ' + Math.max(0, wave.life * 0.5).toFixed(3) + ')';
@@ -209,15 +176,6 @@
         ctx.arc(wave.x, wave.y, wave.r, 0, Math.PI * 2);
         ctx.stroke();
       }
-      for (var p = 0; p < ripples.length; p++) {
-        var ripple = ripples[p];
-        ctx.strokeStyle = 'hsla(178, 90%, 72%, ' + Math.max(0, ripple.life * 0.7).toFixed(3) + ')';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(ripple.x, ripple.y, ripple.r, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-
       if (beatPulse > 0) {
         ctx.strokeStyle = 'hsla(' + hue + ', 90%, 72%, ' + (beatPulse * 0.22).toFixed(3) + ')';
         ctx.lineWidth = 1.5;
@@ -225,11 +183,84 @@
         ctx.arc(width / 2, height / 2, 35 + (1 - beatPulse) * 90, 0, Math.PI * 2);
         ctx.stroke();
       }
-
       if (flash > 0) {
         ctx.fillStyle = 'hsla(175, 90%, 78%, ' + (flash * 0.10).toFixed(3) + ')';
         ctx.fillRect(0, 0, width, height);
       }
+    }
+
+    function background(hue) {
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(4, 7, 12, 0.32)';
+      ctx.fillRect(0, 0, width, height);
+      var glow = ctx.createRadialGradient(width / 2, height / 2, 0, width / 2, height / 2, Math.max(width, height) * 0.62);
+      glow.addColorStop(0, 'hsla(' + hue + ', 80%, 58%, ' + (0.012 + beatPulse * 0.018).toFixed(3) + ')');
+      glow.addColorStop(1, 'hsla(' + hue + ', 80%, 50%, 0)');
+      ctx.fillStyle = glow;
+      ctx.fillRect(0, 0, width, height);
+      ctx.globalCompositeOperation = 'lighter';
+    }
+
+    function draw(state, t) {
+      if (!ctx) return;
+      var hue = (state && state.root ? state.root.hue : 188) + (state ? state.bar * 7 : 0);
+      background(hue);
+      var r = radiusFor(state ? state.count : balls.length);
+      for (var i = 0; i < balls.length; i++) {
+        var b = balls[i];
+        ctx.fillStyle = 'hsla(' + (b.hue % 360) + ', 86%, 62%, 0.78)';
+        ctx.beginPath();
+        ctx.arc(b.x, b.y, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      drawWaves(hue);
+    }
+
+    function drawFrame(state, t) {
+      if (!ctx || !state || !state.frame || !state.field) return;
+      var sx = width / state.field.w;
+      var sy = height / state.field.h;
+      var hue = state.root ? state.root.hue : 188;
+      background(hue);
+
+      var fx = state.frame.x * sx;
+      var fy = state.frame.y * sy;
+      var fw = state.frame.w * sx;
+      var fh = state.frame.h * sy;
+      ctx.globalCompositeOperation = 'source-over';
+      ctx.fillStyle = 'rgba(4, 7, 12, 0.55)';
+      roundRect(ctx, fx, fy, fw, fh, 14);
+      ctx.fill();
+      ctx.globalCompositeOperation = 'lighter';
+      ctx.strokeStyle = 'hsla(' + hue + ', 90%, 70%, ' + (0.5 + beatPulse * 0.4).toFixed(3) + ')';
+      ctx.lineWidth = 1.5 + beatPulse * 2.5;
+      roundRect(ctx, fx, fy, fw, fh, 14);
+      ctx.stroke();
+      ctx.fillStyle = 'hsla(' + hue + ', 90%, 76%, 0.8)';
+      ctx.font = '700 ' + Math.max(12, Math.round(fh * 0.36)) + 'px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('×2', fx + fw / 2, fy + fh / 2);
+
+      var r = Math.max(1.2, radiusFor(state.count) * Math.min(sx, sy));
+      for (var i = 0; i < state.balls.length; i++) {
+        var b = state.balls[i];
+        ctx.fillStyle = 'hsla(' + (b.hue % 360) + ', 86%, 62%, 0.78)';
+        ctx.beginPath();
+        ctx.arc(b.x * sx, b.y * sy, r, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (var e = 0; e < state.captureEvents.length; e++) {
+        var event = state.captureEvents[e];
+        if (event.reset) {
+          flash = 1;
+          waves.push({ x: event.x * sx, y: event.y * sy, r: 20, speed: 420, life: 1, hue: event.hue, width: 4 });
+        } else {
+          waves.push({ x: event.x * sx, y: event.y * sy, r: 6, speed: 200, life: 1, hue: event.hue, width: 2 });
+        }
+      }
+      drawWaves(hue);
     }
 
     resize();
@@ -238,7 +269,8 @@
       sync: sync,
       update: update,
       draw: draw,
-      tap: tap,
+      drawFrame: drawFrame,
+      clear: clear,
       state: function () { return balls; }
     };
   }
