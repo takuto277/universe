@@ -131,15 +131,37 @@
         </section>
 
         <section id="screen-gacha" class="screen gacha-screen">
-          <h2 class="clear-title">FUNCTION GACHA</h2>
-          <p class="tiny" id="gacha-reward">ステージクリアで関数ポイント +100</p>
-          <div class="gacha-balance"><span>FUNCTION POINTS</span><b id="gacha-points-large">300</b></div>
-          <div id="gacha-result" class="gacha-result"></div>
-          <button id="btn-gacha-roll" class="primary" type="button">1回まわす (100)</button>
-          <p id="gacha-pity" class="tiny"></p>
-          <div id="gacha-rates" class="gacha-rates"></div>
-          <div id="gacha-collection" class="gacha-collection"></div>
-          <button id="btn-gacha-close" class="secondary" type="button">スタートへ</button>
+          <div class="gacha-shell">
+            <header class="gacha-header">
+              <div class="gacha-heading">
+                <div class="gacha-kicker">FUNCTION ARCHIVE / LOCAL SUMMON</div>
+                <h2 class="gacha-title">GACHA</h2>
+                <p class="gacha-sub" id="gacha-reward">ステージクリアで関数ポイント +100</p>
+              </div>
+              <div class="gacha-wallet">
+                <span>FUNCTION POINTS</span>
+                <b id="gacha-points-large">300</b>
+                <small>1回 100pt</small>
+              </div>
+            </header>
+            <div class="gacha-dashboard">
+              <section class="gacha-controls">
+                <div id="gacha-rates" class="gacha-rates"></div>
+                <p id="gacha-pity" class="gacha-pity"></p>
+                <button id="btn-gacha-roll" class="gacha-roll" type="button">1回まわす (100)</button>
+                <p class="tiny gacha-note">全解放までは未所持の関数だけが出現します</p>
+              </section>
+              <section id="gacha-result" class="gacha-result"></section>
+            </div>
+            <div class="gacha-collection-head">
+              <span>COLLECTION</span>
+              <b id="gacha-collection-count">3 / 13</b>
+            </div>
+            <div id="gacha-collection" class="gacha-collection"></div>
+            <footer class="gacha-footer">
+              <button id="btn-gacha-close" class="secondary gacha-close" type="button">スタートへ</button>
+            </footer>
+          </div>
         </section>
 
         <section id="screen-end" class="screen">
