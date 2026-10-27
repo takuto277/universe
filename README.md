@@ -54,6 +54,7 @@ universe/
 ├── graph-cross/       # アプリ本体・テスト・README
 ├── unknown-word-deal/ # アプリ本体・テスト・README
 ├── observer-game/     # アプリ本体・テスト・README
+├── exponential-balls/ # アプリ本体・テスト・README
 ├── .opencode/         # エージェント・コマンド・スキル
 ├── docs/              # 開発・学習ドキュメント
 └── tools/             # 共通テストハーネスと検査スクリプト
