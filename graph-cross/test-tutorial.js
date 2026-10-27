@@ -20,6 +20,7 @@ var sawSwitch = false;
 var sawCross = false;
 var sawItem = false;
 var sawTarget = false;
+var sawPanelTop = false;
 GAME.start = GAME.startTutorial;
 GAME.autoPlayStep = function () {
   var state = GAME.getState();
@@ -34,6 +35,7 @@ GAME.autoPlayStep = function () {
     sawCross = html.indexOf('CROSS!') >= 0;
   } else if (state && state.tutorial && state.tutorial.step === 2) {
     sawItem = html.indexOf('GET') >= 0;
+    sawPanelTop = document.getElementById('tutorial-panel').classList.contains('tutorial-top');
     var down = document.getElementById('slot-2');
     if (down && down.listeners.click && down.listeners.click[0]) down.listeners.click[0]();
   }
@@ -59,6 +61,7 @@ Harness.run({
     h.assert(els['tutorial-title'] && els['tutorial-title'].textContent === '準備完了', '完了タイトルが不正');
     h.assert(els['tutorial-visual'] && els['tutorial-visual'].innerHTML.indexOf('READY') >= 0, '完了時の図解がない');
     h.assert(sawSwitch && sawCross && sawItem, '各ステップの図解が表示されない');
+    h.assert(sawPanelTop, 'アイテムステップでパネルが上部に移動していない');
     h.assert(sawTarget, '押すボタンが強調されていない');
     h.assert(!document.getElementById('slot-1').classList.contains('tutorial-target'), '完了後もボタン強調が残っている');
   },
