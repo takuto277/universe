@@ -1,0 +1,53 @@
+name: Experiment preview cleanup
+
+on:
+  delete:
+
+permissions:
+  contents: read
+
+jobs:
+  cleanup:
+    if: github.event.ref_type == 'branch' && startsWith(github.event.ref, 'experiment/')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove preview
+        env:
+          PREVIEW_DEPLOY_KEY: ${{ secrets.PREVIEW_DEPLOY_KEY }}
+          BRANCH: ${{ github.event.ref }}
+        run: |
+          set -euo pipefail
+          if [ -z "${PREVIEW_DEPLOY_KEY:-}" ]; then
+            echo "::error::PREVIEW_DEPLOY_KEY is not set"
+            exit 1
+          fi
+          slug="${BRANCH#experiment/}"
+          slug="$(printf '%s' "$slug" | tr '[:upper:]' '[:lower:]' \
+            | sed -E 's/[^a-z0-9._-]+/-/g; s/^-+//; s/-+$//')"
+          [ -n "$slug" ] || exit 0
+
+          install -d -m 700 "$HOME/.ssh"
+          printf '%s\n' "$PREVIEW_DEPLOY_KEY" >"$HOME/.ssh/id_ed25519"
+          chmod 600 "$HOME/.ssh/id_ed25519"
+          ssh-keyscan github.com >>"$HOME/.ssh/known_hosts" 2>/dev/null
+
+          git clone --depth 1 git@github.com:takuto277/universe-preview.git "$RUNNER_TEMP/preview"
+          cd "$RUNNER_TEMP/preview"
+          rm -rf "experiments/$slug"
+          git config user.name "takuto277"
+          git config user.email "takuto277@users.noreply.github.com"
+          git add -A
+          if git diff --cached --quiet; then
+            exit 0
+          fi
+          git commit -m "cleanup: $slug"
+          pushed=0
+          for attempt in 1 2 3; do
+            git pull --rebase --quiet origin main || true
+            if git push origin main; then
+              pushed=1
+              break
+            fi
+            sleep 3
+          done
+          [ "$pushed" = 1 ]

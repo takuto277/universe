@@ -357,6 +357,15 @@ class RunnerTest(unittest.TestCase):
         comments = [call["argv"][-1] for call in self.fake.find("gh", "issue", "comment")]
         self.assertTrue(any("pull/99" in body for body in comments))
 
+    def test_experiment_pr_gets_preview_and_guard_labels(self):
+        self.happy()
+        cfg = replace(self.cfg, branch_prefix="experiment/")
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        self.assertEqual(0, runner.run_once())
+        argv = self.fake.find("gh", "pr", "create")[0]["argv"]
+        self.assertIn("experiment:preview", argv)
+        self.assertIn("do-not-merge", argv)
+
     def test_verify_failure_marks_failed_without_pr(self):
         self.happy(verify=ar.Result(1, "NG: link", ""))
         self.assertEqual(1, self.runner.run_once())
