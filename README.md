@@ -2,11 +2,16 @@
 
 [![CI](https://github.com/takuto277/universe/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/takuto277/universe/actions/workflows/ci.yml)
 
-依存ゼロの静的ゲームを公開するモノレポです。ゲームは `projects/`、それらを無人で実装・レビュー・公開する開発基盤は `tools/` に置きます。
+universe は、**ゲームを題材に無人開発基盤を育てるモノレポ**です。
 
-- **本体**: `tools/` の無人開発基盤（Issue → 実装 → PR → レビュー → マージ）
-- **成果物**: `projects/` のゲーム（実験・サンプル・公開物）。分類は [projects/README.md](projects/README.md)
-- **移行中**: `graph-cross/` は進行中ブランチ、`exponential-balls/` はマージ直後のため、落ち着いてから `projects/_labs/` へ移動します
+## 役割
+
+- **本体（platform）**: `tools/` の無人開発基盤。Issue → 実装 → PR → レビュー → マージを回す
+- **題材・公開物（projects）**: `projects/` のゲーム。`_labs` は実験・検証、`_samples` は教材・最小実装。分類は [projects/README.md](projects/README.md)
+- **横断知識（docs）**: `docs/` の運用手順・ADR・学習ログ
+- **移行中**: `graph-cross/` と `exponential-balls/` は進行中ブランチ/直後の変更を優先してルートに残しています。`tools/` はLaunchAgentとの互換性を確認してから `projects/universe-agent/` へ移します
+
+役割の決定理由と移行方針は [ADR 0010](docs/decisions/0010-monorepo-role.md) に記録しています。
 
 ## 無人で実装する（これだけ）
 
