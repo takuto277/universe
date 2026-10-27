@@ -1,4 +1,4 @@
-/* ui.js : BLOOM のHUD・モード選択・スタート画面 */
+/* ui.js : BLOOM のHUD・モード選択・スタート画面・レース結果 */
 (function (root) {
   'use strict';
 
@@ -14,6 +14,7 @@
     var els = {
       hud: $('hud'),
       count: $('count'),
+      countLabel: $('count-label'),
       cycle: $('cycle'),
       stat: $('stat'),
       bpm: $('bpm'),
@@ -27,8 +28,17 @@
       btnSound: $('btn-sound'),
       modeAuto: $('mode-auto'),
       modeFrame: $('mode-frame'),
+      modeRace: $('mode-race'),
       modeAutoState: $('mode-auto-state'),
       modeFrameState: $('mode-frame-state'),
+      modeRaceState: $('mode-race-state'),
+      resultOverlay: $('result-overlay'),
+      resultTitle: $('result-title'),
+      resultSub: $('result-sub'),
+      resultTime: $('result-time'),
+      resultGhost: $('result-ghost'),
+      btnRaceAgain: $('btn-race-again'),
+      btnResultHome: $('btn-result-home'),
       canvas: $('canvas')
     };
 
@@ -51,21 +61,29 @@
 
     function updateStart() {
       var autoOn = selectedMode === 'auto';
-      setText(els.btnStart, autoOn ? 'START AUTO' : 'START FRAME');
+      var frameOn = selectedMode === 'frame';
+      var raceOn = selectedMode === 'race';
+      setText(els.btnStart, raceOn ? 'START RACE' : frameOn ? 'START FRAME' : 'START AUTO');
       setText(els.modeAutoState, autoOn ? 'SELECTED' : 'SELECT');
-      setText(els.modeFrameState, autoOn ? 'SELECT' : 'SELECTED');
+      setText(els.modeFrameState, frameOn ? 'SELECTED' : 'SELECT');
+      setText(els.modeRaceState, raceOn ? 'SELECTED' : 'SELECT');
       toggleClass(els.modeAuto, 'selected', autoOn);
-      toggleClass(els.modeFrame, 'selected', !autoOn);
+      toggleClass(els.modeFrame, 'selected', frameOn);
+      toggleClass(els.modeRace, 'selected', raceOn);
       if (els.modeAuto) els.modeAuto.setAttribute('aria-pressed', autoOn ? 'true' : 'false');
-      if (els.modeFrame) els.modeFrame.setAttribute('aria-pressed', autoOn ? 'false' : 'true');
+      if (els.modeFrame) els.modeFrame.setAttribute('aria-pressed', frameOn ? 'true' : 'false');
+      if (els.modeRace) els.modeRace.setAttribute('aria-pressed', raceOn ? 'true' : 'false');
     }
 
     function render(state) {
-      var playing = state.phase === 'playing';
-      toggleClass(els.startOverlay, 'visible', !playing);
-      toggleClass(els.hud, 'is-hidden', !playing);
-      if (playing) {
+      var phase = state.phase;
+      toggleClass(els.startOverlay, 'visible', phase === 'start');
+      toggleClass(els.hud, 'is-hidden', phase !== 'playing');
+      toggleClass(els.resultOverlay, 'visible', phase === 'finished');
+      if (phase === 'playing') {
         update(state);
+      } else if (phase === 'finished') {
+        updateResult(state);
       } else {
         lastCount = -1;
         lastCycle = -1;
@@ -76,6 +94,11 @@
 
     function update(state) {
       if (!state || state.phase !== 'playing') return;
+      if (state.mode === 'race') {
+        updateRace(state);
+        return;
+      }
+      setText(els.countLabel, 'BALLS');
       if (state.count !== lastCount) {
         setText(els.count, formatCount(state.count));
         if (els.count && els.count.classList) {
@@ -109,8 +132,35 @@
       if (els.barFill && els.barFill.style) els.barFill.style.width = Math.max(0, Math.min(100, progress)).toFixed(2) + '%';
     }
 
+    function updateRace(state) {
+      var race = state.race;
+      if (!race) return;
+      setText(els.count, Math.max(0, race.timeLeft).toFixed(1));
+      setText(els.countLabel, 'LEFT');
+      setText(els.cycle, 'GATE ' + race.gateIndex + ' / ' + race.gates.length);
+      setText(els.stat, 'GHOST ' + Math.min(100, Math.round((race.ghost.y / race.finishY) * 100)) + '%');
+      setText(els.bpm, state.bpm + ' BPM');
+      setText(els.modeName, 'RACE');
+      setText(els.hint, 'TAP BEHIND TO SURGE · TAP AHEAD TO BRAKE');
+      if (els.barFill && els.barFill.style) {
+        var progress = Math.max(0, Math.min(100, (race.player.y / race.finishY) * 100));
+        els.barFill.style.width = progress.toFixed(2) + '%';
+      }
+    }
+
+    function updateResult(state) {
+      var result = state.race && state.race.result;
+      if (!result) return;
+      var title = result.status === 'win' ? 'YOU WIN' : result.status === 'lose' ? 'GHOST WINS' : 'TIME UP';
+      var sub = result.status === 'win' ? 'You beat the ghost.' : result.status === 'lose' ? 'The ghost got there first.' : 'The 60 seconds ran out.';
+      setText(els.resultTitle, title);
+      setText(els.resultSub, sub);
+      setText(els.resultTime, result.status === 'dnf' ? 'DNF' : result.time.toFixed(1) + 's');
+      setText(els.resultGhost, result.ghostTime.toFixed(1) + 's');
+    }
+
     function selectMode(mode) {
-      selectedMode = mode === 'frame' ? 'frame' : 'auto';
+      selectedMode = mode === 'frame' ? 'frame' : mode === 'race' ? 'race' : 'auto';
       updateStart();
     }
 
@@ -118,11 +168,21 @@
       if (game.state.phase === 'playing') return;
       if (root.ExpAudio) root.ExpAudio.start();
       updateSound();
+      if (renderer && renderer.clear) renderer.clear();
       game.start(selectedMode);
+    }
+
+    function goHome() {
+      if (root.ExpAudio) root.ExpAudio.stop();
+      if (renderer && renderer.clear) renderer.clear();
+      game.reset();
+      updateStart();
+      updateSound();
     }
 
     if (els.modeAuto) els.modeAuto.addEventListener('click', function () { selectMode('auto'); });
     if (els.modeFrame) els.modeFrame.addEventListener('click', function () { selectMode('frame'); });
+    if (els.modeRace) els.modeRace.addEventListener('click', function () { selectMode('race'); });
     if (els.btnStart) els.btnStart.addEventListener('click', startGame);
 
     function toggleSound() {
@@ -132,6 +192,12 @@
 
     if (els.btnMute) els.btnMute.addEventListener('click', toggleSound);
     if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
+    if (els.btnHome) els.btnHome.addEventListener('click', goHome);
+    if (els.btnResultHome) els.btnResultHome.addEventListener('click', goHome);
+    if (els.btnRaceAgain) els.btnRaceAgain.addEventListener('click', function () {
+      selectMode('race');
+      startGame();
+    });
 
     if (els.canvas) {
       els.canvas.addEventListener('pointerdown', function (event) {
@@ -143,21 +209,13 @@
         var x = ((event ? event.clientX : 0) - (rect.left || 0));
         var y = ((event ? event.clientY : 0) - (rect.top || 0));
         var state = game.getState();
-        if (state.mode === 'frame' && game.tap) {
+        if ((state.mode === 'frame' || state.mode === 'race') && game.tap) {
           game.tap(x * state.field.w / w, y * state.field.h / h);
         }
         if (renderer && renderer.tap) renderer.tap(x, y);
         if (root.ExpAudio && root.ExpAudio.tap) root.ExpAudio.tap();
       });
     }
-
-    if (els.btnHome) els.btnHome.addEventListener('click', function () {
-      if (root.ExpAudio) root.ExpAudio.stop();
-      if (renderer && renderer.clear) renderer.clear();
-      game.reset();
-      updateStart();
-      updateSound();
-    });
 
     if (root.addEventListener) {
       root.addEventListener('resize', function () {

@@ -138,4 +138,81 @@ game.reset();
 game.start('auto');
 assert(game.tap(10, 10) === false, 'AUTOでエンジン側のタップが有効になっている');
 
+
+/* RACE: 縦下り、タップの前後、ゲート、ゴースト、結果 */
+assert(E.RACE && E.RACE.gates.length === 3, 'RACEの定数が不正');
+game = E.createGame();
+game.start('race');
+assert(game.state.phase === 'playing' && game.state.mode === 'race', 'RACE開始状態が不正');
+s = game.getState();
+assert(s.race && s.race.timeLeft === 60, 'RACEの初期時間が不正');
+assert(s.race.gates.length === 3 && s.race.gateIndex === 0, 'RACEのゲートが不正');
+assert(s.race.player && s.race.ghost, 'RACEのプレイヤー/ゴーストがない');
+var racePlayer = game.state.race.player;
+var startY = racePlayer.y;
+var ghostStart = game.state.race.ghost.y;
+s = game.updateRace(0.5, 1 / 60);
+assert(s.race.player.y > startY, 'プレイヤーが下へ進まない');
+assert(s.race.ghost.y > ghostStart, 'ゴーストが進まない');
+assert(s.race.timeLeft < 60, 'RACEの残り時間が減らない');
+
+game = E.createGame();
+game.start('race');
+racePlayer = game.state.race.player;
+var oldVy = racePlayer.vy;
+assert(game.tap(racePlayer.x, racePlayer.y - 60) === true, 'RACEで後ろをタップできない');
+assert(racePlayer.vy > oldVy, '後ろタップで加速しない');
+var boostedVy = racePlayer.vy;
+game.tap(racePlayer.x, racePlayer.y + 60);
+assert(racePlayer.vy < boostedVy, '前タップで減速しない');
+var oldVx = racePlayer.vx;
+game.tap(racePlayer.x - 70, racePlayer.y);
+assert(racePlayer.vx > oldVx, '横タップでステアしない');
+assert(game.tap(racePlayer.x + 300, racePlayer.y) === false, '遠いタップが効いてしまう');
+
+game = E.createGame();
+game.start('race');
+var race = game.state.race;
+var gate = race.gates[0];
+race.player.x = gate.gapX;
+race.player.y = gate.y - 1;
+race.player.vy = 100;
+s = game.updateRace(0.1, 0.02);
+assert(s.race.gatesPassed === 1, 'ゲートを通過できない');
+assert(s.race.events.length > 0 && s.race.events[0].type === 'gate', 'ゲート通過イベントがない');
+
+game = E.createGame();
+game.start('race');
+race = game.state.race;
+gate = race.gates[0];
+race.player.x = gate.gapX + gate.gapW;
+race.player.y = gate.y - 1;
+race.player.vy = 100;
+s = game.updateRace(0.1, 0.02);
+assert(s.race.gatesPassed === 0, 'ゲート外で通過してしまう');
+assert(s.race.events.length > 0 && s.race.events[0].type === 'hit', 'ゲート衝突イベントがない');
+assert(s.race.player.y < gate.y, 'ゲート衝突で押し戻されない');
+
+game = E.createGame();
+game.start('race');
+race = game.state.race;
+race.player.x = (race.trackLeft + race.trackRight) / 2;
+race.player.y = race.finishY - 1;
+race.player.vy = 200;
+s = game.updateRace(20, 1 / 60);
+assert(s.phase === 'finished' && s.race.result, 'ゴールで終了しない');
+assert(s.race.result.status === 'win' && s.race.result.time < s.race.result.ghostTime, 'ゴール結果が不正');
+assert(s.race.result.gatesPassed === 0, '未通過ゲート数が不正');
+
+game = E.createGame();
+game.start('race');
+s = game.updateRace(61, 1 / 60);
+assert(s.phase === 'finished' && s.race.result.status === 'dnf', '60秒でDNFにならない');
+assert(s.race.result.time === 60, 'DNFの記録時間が60秒でない');
+
+game = E.createGame();
+game.start('race');
+s = game.updateRace(30, 1 / 60);
+assert(s.race.ghost.finished === true && s.race.ghost.time > 0, 'ゴーストがゴールしない');
+
 log('engine tests OK (' + passed + ' assertions)');

@@ -11,6 +11,7 @@
   var ui = null;
   var perfStart = null;
   var lastNow = null;
+  var lastAutoTap = -1;
 
   if (root.ExponentialRenderer && canvas) {
     renderer = root.ExponentialRenderer.create(canvas);
@@ -19,37 +20,78 @@
     ui = root.ExponentialUI.create(game, renderer);
   }
 
+  function autoRaceStep() {
+    var s = game.getState();
+    if (!s || s.mode !== 'race' || s.phase !== 'playing' || !s.race) return;
+    if (s.time - lastAutoTap < 0.12) return;
+    var race = s.race;
+    var target = (race.trackLeft + race.trackRight) / 2;
+    for (var i = 0; i < race.gates.length; i++) {
+      if (!race.gates[i].passed && race.gates[i].y > race.player.y - 20) {
+        target = race.gates[i].gapX;
+        break;
+      }
+    }
+    var sign = target > race.player.x ? -1 : 1;
+    game.tap(race.player.x + sign * 65, race.player.y - 55);
+    lastAutoTap = s.time;
+  }
+
   function loop(now) {
     var state = game.state;
     if (state.phase === 'playing') {
-      if (perfStart == null) perfStart = now;
+      if (perfStart == null) {
+        perfStart = now;
+        lastAutoTap = -1;
+      }
       var t = (now - perfStart) / 1000;
       if (!isFinite(t) || t < 0) t = 0;
       var dt = lastNow == null ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
-      var frame = state.mode === 'frame' ? game.updateFrame(t, dt) : game.update(t);
+      var frame;
       var audio = root.ExpAudio;
-      if (audio && audio.tick) audio.tick(t);
-      if (state.mode === 'frame') {
-        if (audio && audio.capture) {
-          for (var c = 0; c < frame.captureEvents.length; c++) {
-            var event = frame.captureEvents[c];
-            if (event.reset) {
-              if (audio.impact) audio.impact();
-            } else {
-              audio.capture(t, frame.root.freq);
-            }
+      if (state.mode === 'race') {
+        frame = game.updateRace(t, dt);
+        if (audio && audio.tick) audio.tick(t);
+        if (audio && frame.race && frame.race.events) {
+          for (var e = 0; e < frame.race.events.length; e++) {
+            var event = frame.race.events[e];
+            if (event.type === 'gate' && audio.capture) audio.capture(t, frame.root.freq);
+            if (event.type === 'finish' && audio.impact) audio.impact();
           }
         }
         if (renderer) {
           renderer.update(dt, frame);
-          renderer.drawFrame(frame, t);
+          renderer.drawRace(frame, t);
         }
-      } else if (renderer) {
-        renderer.sync(frame);
-        renderer.update(dt, frame);
-        renderer.draw(frame, t);
+        if (ui) {
+          if (frame.phase === 'finished') ui.render(frame);
+          else ui.update(frame);
+        }
+      } else {
+        frame = state.mode === 'frame' ? game.updateFrame(t, dt) : game.update(t);
+        if (audio && audio.tick) audio.tick(t);
+        if (state.mode === 'frame') {
+          if (audio && audio.capture) {
+            for (var c = 0; c < frame.captureEvents.length; c++) {
+              var cap = frame.captureEvents[c];
+              if (cap.reset) {
+                if (audio.impact) audio.impact();
+              } else {
+                audio.capture(t, frame.root.freq);
+              }
+            }
+          }
+          if (renderer) {
+            renderer.update(dt, frame);
+            renderer.drawFrame(frame, t);
+          }
+        } else if (renderer) {
+          renderer.sync(frame);
+          renderer.update(dt, frame);
+          renderer.draw(frame, t);
+        }
+        if (ui) ui.update(frame);
       }
-      if (ui) ui.update(frame);
     } else {
       perfStart = null;
       lastNow = null;
@@ -63,9 +105,14 @@
     title: 'BLOOM',
     start: function (mode) { game.start(mode); },
     startFrame: function () { game.start('frame'); },
-    autoPlayStep: function () { game.autoStep(); },
+    startRace: function () { game.start('race'); },
+    autoPlayStep: function () {
+      if (game.state.phase === 'start') { game.autoStep(); return; }
+      if (game.state.mode === 'race' && game.state.phase === 'playing') autoRaceStep();
+    },
     isDone: function () {
       var s = game.getState();
+      if (s.mode === 'race') return s.phase === 'finished';
       return s.phase === 'playing' && (s.mode === 'frame' ? s.captures >= 4 : s.cycle >= 2);
     },
     getState: function () { return game.getState(); }
