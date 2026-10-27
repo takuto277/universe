@@ -1634,7 +1634,7 @@
       rng: options.rng
     });
     g.deck = checkpoint.deck.slice();
-    g.deckParams = clone(checkpoint.deckParams || {});
+    g.deckParams = normalizeParams(checkpoint.deckParams || {});
     g.fusion = normalizeFusion(checkpoint.fusion);
     resetStageState(g, checkpoint.stage || 1);
     g.stageTarget = checkpoint.stageTarget || stageTargetFor(g.stage);

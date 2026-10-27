@@ -49,6 +49,12 @@ Harness.run({
       h.assert(els['screen-end'] && els['screen-end'].classList.contains('visible'), '終了画面が出ていない');
       h.assert(els['btn-retry'] && !els['btn-retry'].classList.contains('hidden'), 'ステージやり直しボタンが出ていない');
       h.assert(els['life'] && els['life'].textContent.indexOf('●') < 0, 'ライフ表示が0になっていない: ' + els['life'].textContent);
+      var retry = els['btn-retry'];
+      h.assert(retry.listeners.click && retry.listeners.click.length > 0, 'リトライのクリック配線がない');
+      retry.listeners.click[0]({});
+      var afterRetry = window.__GAME__.getState();
+      h.assert(afterRetry.phase === 'run', 'リトライでステージ開始に戻らない: ' + afterRetry.phase);
+      h.assert(afterRetry.hp > 0 && afterRetry.score === 0, 'リトライで開始時点が復元されない');
     }
   },
   summary: function (state) {

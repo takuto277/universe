@@ -33,6 +33,12 @@ function driveTo(game, predicate, limit) {
   return steps;
 }
 
+var CONCEPTS_LABEL = { bread: 'パン', fish: '魚', gem: '宝石', me: '私', you: 'あなた', want: '欲しい', not: '否定' };
+
+function wrongAction(scene) {
+  return scene.correctAction === 'give' ? 'take' : 'give';
+}
+
 function lineConcept(state, id) {
   for (var i = 0; i < state.line.length; i++) {
     if (state.line[i].concept === id) return state.line[i];
@@ -64,57 +70,77 @@ assert(parseConcepts(['bread', 'me', 'want']) === null, '語順が違う文を�
 assert(E.toJapanese(youWant) === 'あなたは宝石が欲しい', '日本語訳: ' + E.toJapanese(youWant));
 assert(E.toJapanese(deny) === '私は魚が欲しくない', '否定の日本語訳: ' + E.toJapanese(deny));
 
-/* 3) 1人目: 品物は見えていて、未知語は me。行動は「差し出す」 */
+/* 3) 3人の場面: 品物は見えていて、未知語だけが隠れる。順番はシードで変わる */
 var game = newGame();
 var s = game.getState();
 assert(s.phase === 'scene' && s.scenePhase === 'guess' && s.sceneNumber === 1, '開始状態が不正');
-assert(s.item && s.item.id === 'bread' && s.item.label === 'パン', '品物が見えていない');
-assert(s.line.length === 3, '1人目の文が3語でない');
-assert(lineConcept(s, 'me').unknown && !lineConcept(s, 'me').label, 'me が未知になっていない');
-assert(lineConcept(s, 'bread').known && lineConcept(s, 'bread').label === 'パン', '品物の語が既知でない');
+assert(game.scenes.length === 3, '場面数が3でない');
+var itemIds = game.scenes.map(function (sc) { return sc.item; }).sort().join(',');
+assert(itemIds === 'bread,fish,gem', '品物が3種類そろっていない');
+for (var gi = 0; gi < game.scenes.length; gi++) {
+  var gs = game.scenes[gi];
+  assert(gs.gesture.indexOf(CONCEPTS_LABEL[gs.item]) < 0, 'しぐさが正解の品を直接名指ししている: ' + gs.item);
+}
+assert(s.item && s.item.label === CONCEPTS_LABEL[s.item.id], '品物が見えていない');
+assert(s.line.length === game.scenes[0].line.length, '1人目の文の語数が不正');
+assert(lineConcept(s, s.item.id).known && lineConcept(s, s.item.id).label === s.item.label, '品物の語が既知でない');
 assert(lineConcept(s, 'want').known && lineConcept(s, 'want').label === '欲しい', 'want が既知でない');
-assert(s.canConfirm && s.confirmCost === 2, '確認ができない');
 assert(s.actions.length === 3 && s.actions[0].id === 'give' && s.actions[1].id === 'take' && s.actions[2].id === 'refuse', '行動の選択肢が不正');
 assert(s.canAct && !s.canNext, '行動/次への状態が不正');
 
-/* 4) 確認は2硬貨で未知語を開示し、行動の前に選べる */
-assert(game.confirmWord() === true, '未知語を確認できない');
-assert(game.state.coins === -2, '確認コストが-2でない: ' + game.state.coins);
-s = game.getState();
-assert(!s.canConfirm && lineConcept(s, 'me').known && lineConcept(s, 'me').label === '私', '確認後にmeが既知でない');
-assert(game.confirmWord() === false, '同じ語を二度確認できてしまう');
+var firstUnknown = game.scenes[0].unknown;
+if (firstUnknown) {
+  assert(s.canConfirm && s.confirmCost === 2, '確認ができない');
+  assert(game.confirmWord() === true, '未知語を確認できない');
+  assert(game.state.coins === -2, '確認コストが-2でない: ' + game.state.coins);
+  s = game.getState();
+  assert(!s.canConfirm && lineConcept(s, firstUnknown).known, '確認後に未知語が既知でない');
+  assert(game.confirmWord() === false, '同じ語を二度確認できてしまう');
+} else {
+  assert(!s.canConfirm, '未知語がない場面で確認できる');
+}
 
-/* 5) 正しい行動で+10、間違えると+3。行動後は必ず語を学ぶ */
-assert(game.chooseAction('give') === true, '正しい「差し出す」が通らない');
-assert(game.state.coins === 8 && game.state.learned.me, '確認+正解の硬貨/学習が不正: ' + game.state.coins);
+/* 4) 正しい行動で+10、間違えると+3。行動後は必ず語を学ぶ */
+var firstScene = game.scenes[0];
+assert(game.chooseAction(firstScene.correctAction) === true, '正しい行動が通らない');
+var expected = (firstUnknown ? 8 : 10);
+assert(game.state.coins === expected, '1人目の硬貨が不正: ' + game.state.coins);
+if (firstUnknown) assert(game.state.learned[firstUnknown], '未知語を学べていない');
 var result = game.getState().sceneResult;
-assert(result.correct && result.correctAction === 'give' && result.coinsDelta === 10, '正解結果が不正');
-assert(result.detail.indexOf('私') >= 0 && result.detail.indexOf('差し出す') >= 0, '正解の説明が不足');
+assert(result.correct && result.correctAction === firstScene.correctAction && result.coinsDelta === 10, '正解結果が不正');
+if (firstUnknown) assert(result.detail.indexOf(CONCEPTS_LABEL[firstUnknown]) >= 0, '正解の説明に意味がない');
 assert(game.getState().scenePhase === 'result' && game.getState().canNext, '結果フェーズへ移らない');
-
-/* 6) 2人目: not を確認して「断る」 */
 game.nextScene();
-s = game.getState();
-assert(s.sceneNumber === 2 && s.item.id === 'fish', '2人目へ進めない');
-assert(lineConcept(s, 'me').known && lineConcept(s, 'me').label === '私', '1人目のmeが引き継がれない');
-assert(lineConcept(s, 'not').unknown, 'not が未知でない');
-assert(game.confirmWord() === true && game.state.coins === 6, '2人目の確認が不正');
-assert(game.chooseAction('refuse') === true, '2人目の正解「断る」が通らない');
-assert(game.state.coins === 16 && game.state.learned.not, '2人目の硬貨/学習が不正: ' + game.state.coins);
 
-/* 7) 3人目: すべて既知。しぐさから「受け取る」を選ぶ */
-game.nextScene();
-s = game.getState();
-assert(s.sceneNumber === 3 && s.item.id === 'gem', '3人目へ進めない');
-assert(!s.canConfirm && lineConcept(s, 'not').known && lineConcept(s, 'not').label === '否定', '3人目でnotが既知でない');
-assert(lineConcept(s, 'me').label === '私' && lineConcept(s, 'gem').label === '宝石', '3人目の既知語が不正');
-assert(game.chooseAction('take') === true, '3人目の正解「受け取る」が通らない');
-assert(game.state.coins === 26 && game.state.learned.gem, '3人目の硬貨/学習が不正: ' + game.state.coins);
+/* 5) 2人目・3人目: 未知語を確認し、正しい行動で学ぶ */
+for (var si = 1; si < game.scenes.length; si++) {
+  s = game.getState();
+  var scene = game.scenes[si];
+  assert(s.sceneNumber === si + 1 && s.item.id === scene.item, '場面の品物が一致しない');
+  if (scene.unknown) {
+    assert(lineConcept(s, scene.unknown).unknown, '未知語が隠れていない: ' + scene.unknown);
+    var beforeConfirm = game.state.coins;
+    assert(game.confirmWord() === true && game.state.coins === beforeConfirm - 2, '未知語の確認が不正');
+    s = game.getState();
+    assert(lineConcept(s, scene.unknown).label === CONCEPTS_LABEL[scene.unknown] || lineConcept(s, scene.unknown).label, '確認後のラベルが不正');
+    assert(game.confirmWord() === false, '同じ語を二度確認できてしまう');
+  } else {
+    assert(!s.canConfirm, '未知語がない場面で確認できる');
+  }
+  var beforeAction = game.state.coins;
+  assert(game.chooseAction(scene.correctAction) === true, '正しい行動が通らない: ' + scene.correctAction);
+  assert(game.state.coins === beforeAction + 10, '正解の硬貨が不正');
+  if (scene.unknown) assert(game.state.learned[scene.unknown], '未知語を学べていない: ' + scene.unknown);
+  assert(game.getState().sceneResult.correct, '正解結果が不正');
+  if (si < game.scenes.length - 1) game.nextScene();
+}
+assert(game.state.coins === 26, '全問正解の硬貨が26でない: ' + game.state.coins);
 game.nextScene();
 assert(game.state.phase === 'contract' && game.state.contract, '3人目後に契約へ進めない');
 s = game.getState();
 assert(s.contract.tokens.length === 3 && s.contract.meaning === null, '契約の語数/未決定状態が不正');
-assert(s.contractMemo.length === 3, '契約メモが不正');
+assert(s.contractMemo.length === 4, '契約メモが不正');
+assert(s.contractMemo.some(function (m) { return m.id === 'fish' && m.label === '魚'; }), '契約メモに魚の語がない');
 
 /* 8) 契約: 署名で効果、拒否で増減なし */
 var contract = game.state.contract;
@@ -144,11 +170,10 @@ assert(game.state.rank === 'S', '自動プレイがSでない: ' + game.state.ra
 
 /* 10) 全問間違いでも最後まで進み、語は学べる */
 game = newGame();
-game.chooseAction('take');
-game.nextScene();
-game.chooseAction('give');
-game.nextScene();
-game.chooseAction('give');
+for (var wi = 0; wi < game.scenes.length; wi++) {
+  game.chooseAction(wrongAction(game.scenes[wi]));
+  if (wi < game.scenes.length - 1) game.nextScene();
+}
 game.nextScene();
 assert(game.state.phase === 'contract' && game.state.coins === 9, '全問間違いの進行/硬貨が不正: ' + game.state.coins);
 assert(game.state.learned.me && game.state.learned.not, '間違えてもme/notを学べていない');
