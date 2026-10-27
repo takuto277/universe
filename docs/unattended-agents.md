@@ -212,7 +212,7 @@ tail -n 50 ~/Library/Logs/universe-agent-runner.log
 
 - LaunchAgent は main 追従の専用チェックアウト（既定 `~/.local/share/universe-automation`）から動く。人間の作業ブランチには依存しない
 - 既定パスのチェックアウトは初回起動時に管理マーカーを自動付与し、以後の起動で `origin/main` へ更新する。更新ログは `~/Library/Logs/universe-automation-update.log` に残る
-- 同時起動時は更新ロックで片方だけが更新し、もう片方は現在の版で実行する
+- 更新ロックは更新処理だけを直列化します。実行中のエージェントがある間に別の起動が更新すると、その実行は現在の版のまま進み、次回起動から新しい版になります
 - 専用チェックアウトは元リポジトリの linked worktree です。元チェックアウトを移動・削除すると壊れるため、削除するときは `automation-root.sh remove` を使う
 - ブランチをチェックアウトした worktree は指定できません（detached HEAD の専用 worktree のみ）
 - カスタムパスの新規作成では `automation-root.sh ensure` がマーカーを付与します

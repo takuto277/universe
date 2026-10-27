@@ -28,7 +28,8 @@ git -C "$TMP/seed" add value.txt
 git -C "$TMP/seed" commit -qm seed
 git -C "$TMP/seed" push -q origin main
 mkdir -p "$TMP/seed/tools"
-cp "$ROOT/tools/automation-root.sh" "$ROOT/tools/install-auto-pr.sh" "$TMP/seed/tools/"
+cp "$ROOT/tools/automation-root.sh" "$ROOT/tools/install-auto-pr.sh" \
+  "$ROOT/tools/install-agent-runner.sh" "$ROOT/tools/install-agent-planner.sh" "$TMP/seed/tools/"
 
 AUTO="$TMP/auto"
 HOME="$TMP/home" PATH="$TMP/bin:/usr/bin:/bin" UNIVERSE_AUTOMATION_ROOT="$AUTO" \
@@ -38,6 +39,16 @@ plist="$TMP/home/Library/LaunchAgents/com.takuto277.universe-auto-pr.plist"
 [ -f "$plist" ]
 grep -q "$AUTO/tools/automation-run.sh" "$plist"
 grep -q bootstrap "$TMP/launchctl.log"
+
+for script in install-agent-runner.sh install-agent-planner.sh; do
+  HOME="$TMP/home" PATH="$TMP/bin:/usr/bin:/bin" UNIVERSE_AUTOMATION_ROOT="$AUTO" \
+    UNIVERSE_AGENT_BASE=main bash "$TMP/seed/tools/$script" >/dev/null
+done
+for label in com.takuto277.universe-agent-runner com.takuto277.universe-agent-planner; do
+  plist="$TMP/home/Library/LaunchAgents/$label.plist"
+  [ -f "$plist" ]
+  grep -q "$AUTO/tools/automation-run.sh" "$plist"
+done
 
 AUTO2="$TMP/auto2"
 if HOME="$TMP/home2" PATH="$TMP/bin:/usr/bin:/bin" UNIVERSE_AUTOMATION_ROOT="$AUTO2" \

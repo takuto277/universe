@@ -95,6 +95,20 @@ out="$(HOME="$DEFAULT_HOME" bash "$DEFAULT_AUTO/tools/automation-run.sh" hello.s
 rm -f "$DEFAULT_AUTO/.universe-automation-root"
 HOME="$DEFAULT_HOME" bash "$TMP/work/tools/automation-root.sh" ensure >/dev/null
 [ -f "$DEFAULT_AUTO/.universe-automation-root" ]
+
+# fetch 失敗時は現在の版で続行し、ログをローテーションする
+git -C "$DEFAULT_AUTO" remote set-url origin "$TMP/missing.git"
+run_log="$TMP/automation-update.log"
+out="$(HOME="$DEFAULT_HOME" UNIVERSE_AUTOMATION_UPDATE_LOG="$run_log" \
+  bash "$DEFAULT_AUTO/tools/automation-run.sh" hello.sh)"
+[ "$out" = "hello" ]
+grep -q "fetch failed; continue with current checkout" "$run_log"
+python3 -c 'print("x" * 1100000)' >"$run_log"
+out="$(HOME="$DEFAULT_HOME" UNIVERSE_AUTOMATION_UPDATE_LOG="$run_log" \
+  bash "$DEFAULT_AUTO/tools/automation-run.sh" hello.sh)"
+[ "$out" = "hello" ]
+[ -f "$run_log.1" ]
+
 HOME="$DEFAULT_HOME" bash "$TMP/work/tools/automation-root.sh" remove >/dev/null
 
 printf 'automation root tests OK\n'
