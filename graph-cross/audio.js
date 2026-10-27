@@ -181,6 +181,16 @@
       tone(1320, now, 0.05, 'sawtooth', 0.09, sfxGain);
       tone(1760, now + 0.025, 0.12, 'sine', 0.09, sfxGain);
       tone(2640, now + 0.055, 0.16, 'triangle', 0.07, sfxGain);
+    } else if (name === 'armor') {
+      tone(300, now, 0.06, 'square', 0.09, sfxGain);
+      tone(440, now + 0.04, 0.09, 'triangle', 0.08, sfxGain);
+    } else if (name === 'split') {
+      tone(620, now, 0.06, 'triangle', 0.09, sfxGain);
+      tone(420, now + 0.07, 0.10, 'triangle', 0.09, sfxGain);
+      tone(880, now + 0.14, 0.12, 'sine', 0.07, sfxGain);
+    } else if (name === 'jam') {
+      tone(220, now, 0.08, 'sawtooth', 0.10, sfxGain);
+      tone(160, now + 0.06, 0.16, 'square', 0.09, sfxGain);
     } else if (name === 'warn') {
       tone(1046, now, 0.06, 'square', 0.08, sfxGain);
       tone(784, now + 0.09, 0.10, 'square', 0.08, sfxGain);

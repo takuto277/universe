@@ -618,6 +618,81 @@ E.update(g, 1 / 60);
 var bossBreakerHit = E.consumeEvents(g).filter(function (e) { return e.type === 'bossHit'; })[0];
 assert(bossBreakerHit && bossBreakerHit.damage === 3, 'ボスブレイカーで弱点ダメージ+1');
 
+/* 9d0e) 通常敵ギミック */
+function gimmickGame(seed) {
+  var g = makeGame(seed, ['hold', 'up', 'wave']);
+  g.rivals = [];
+  g.items = [];
+  g.boss = null;
+  g.stageHits = 0;
+  g.stageTarget = 99;
+  g.spawnTimer = 999;
+  g.itemTimer = 999;
+  g.y = 300;
+  g.trail = [{ x: g.headX, y: g.y, mode: 'hold' }];
+  return g;
+}
+
+g = gimmickGame(9301);
+var armorRival = lineRival(g.headX - 120, g.y, 200);
+armorRival.family = 'linear';
+armorRival.armor = true;
+armorRival.hp = 2;
+armorRival.maxHp = 2;
+armorRival.invuln = 0;
+g.rivals = [armorRival];
+E.update(g, 1 / 60);
+assert(g.rivals.length === 1 && armorRival.hp === 1 && g.hits === 0, '装甲は通常交差1回では壊れない');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'armorHit'; }), 'armorHitイベント');
+armorRival.invuln = 0;
+g.trail = [{ x: g.headX, y: g.y, mode: 'hold' }];
+E.update(g, 1 / 60);
+assert(g.rivals.length === 0 && g.hits === 1, '装甲は2回目で壊れる');
+
+g = gimmickGame(9302);
+var weakArmor = lineRival(g.headX - 120, g.y, 200);
+weakArmor.family = 'linear';
+weakArmor.armor = true;
+weakArmor.hp = 2;
+weakArmor.maxHp = 2;
+weakArmor.invuln = 0;
+g.rivals = [weakArmor];
+g.trail = [{ x: g.headX, y: g.y, mode: 'up' }];
+E.setMode(g, 'up');
+E.update(g, 1 / 60);
+assert(g.rivals.length === 0, '弱点交差なら装甲を一撃で壊せる');
+
+g = gimmickGame(9303);
+var splitter = lineRival(g.headX - 120, g.y, 200);
+splitter.family = 'wave';
+splitter.splitter = true;
+splitter.hp = 1;
+splitter.maxHp = 1;
+splitter.invuln = 0;
+g.rivals = [splitter];
+E.update(g, 1 / 60);
+assert(g.rivals.length === 2, '分裂敵は撃破で2体に分かれる');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'split'; }), 'splitイベント');
+
+g = gimmickGame(9304);
+var jammer = lineRival(g.headX - 120, g.y, 200);
+jammer.family = 'wave';
+jammer.jammer = true;
+jammer.hp = 1;
+jammer.maxHp = 1;
+jammer.invuln = 0;
+g.rivals = [jammer];
+E.update(g, 1 / 60);
+var jamEvents = E.consumeEvents(g).filter(function (e) { return e.type === 'jam'; });
+assert(jamEvents.length === 1, 'jamイベント');
+var jamSlot = jamEvents[0].slot;
+assert(g.jamTimers[jamSlot] > 0, 'ジャマーがスロットを封印');
+assert(E.setMode(g, g.deck[jamSlot]) === false, '封印中の関数は選べない');
+g.trail = [{ x: g.headX, y: g.y, mode: 'hold' }];
+for (i = 0; i < 200; i++) E.update(g, 1 / 60);
+assert(g.jamTimers[jamSlot] === 0, 'ジャムは時間で解除');
+assert(E.setMode(g, g.deck[jamSlot]) === true, '解除後は選べる');
+
 /* 9d1) ストレス解消モード */
 g = E.createGame({ width: 1000, height: 620, deck: ['hold', 'up', 'wave'], mode: 'stress', rng: mulberry32(908) });
 assert(g.gameMode === 'stress' && E.snapshot(g).infiniteLives === true, 'ストレスモードの無限ライフ');

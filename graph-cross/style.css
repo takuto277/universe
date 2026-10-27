@@ -946,6 +946,25 @@ body {
   background: linear-gradient(180deg, rgba(95, 240, 255, 0.14), var(--panel));
 }
 .mode-btn.active b { text-shadow: 0 0 12px currentColor; }
+.mode-btn.jammed {
+  border-color: #ff4d8d;
+  opacity: 0.62;
+}
+.mode-btn.jammed::before {
+  content: "JAM";
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: inherit;
+  background: rgba(255, 77, 141, 0.24);
+  color: #ffd4df;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1.5px;
+  pointer-events: none;
+}
 .mode-btn.tutorial-target {
   border-color: #ff4d5e;
   outline: 2px solid #ff4d5e;
