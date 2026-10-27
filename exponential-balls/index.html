@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05080e" />
+  <meta name="description" content="音楽の小節に合わせてボールが倍々に増える、縦画面のオーディオビジュアル体験。" />
+  <title>倍々</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <div class="hud-title">
+          <p class="eyebrow">EXPONENTIAL BLOOM</p>
+          <h1>倍々</h1>
+        </div>
+        <button id="btn-mute" class="sound-btn" type="button">音 ON</button>
+      </div>
+
+      <div class="count-wrap">
+        <span id="count" class="count">1</span>
+        <span class="count-label">BALLS</span>
+      </div>
+
+      <div class="meta">
+        <span id="cycle">CYCLE 1</span>
+        <span id="bar">BAR 1 / 12</span>
+        <span id="bpm">120 BPM</span>
+      </div>
+      <div class="bar-track"><i id="bar-fill"></i></div>
+      <p class="tap-hint">タップで押し返す</p>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">EXPONENTIAL BLOOM</p>
+        <h1>倍々</h1>
+        <p class="lead">音楽の小節に合わせて、ボールが倍々に増える。1 → 2 → 4 → … → 2,048。タップで押し返せる。</p>
+        <svg class="start-art" viewBox="0 0 260 150" role="img" aria-label="1から2、4へ増えるボール">
+          <circle cx="54" cy="94" r="15" fill="#6fd6c3" opacity="0.9" />
+          <circle cx="105" cy="76" r="11" fill="#f4c96b" opacity="0.9" />
+          <circle cx="105" cy="112" r="11" fill="#f4c96b" opacity="0.9" />
+          <circle cx="171" cy="58" r="8" fill="#8fe5d6" />
+          <circle cx="171" cy="82" r="8" fill="#8fe5d6" />
+          <circle cx="171" cy="106" r="8" fill="#8fe5d6" />
+          <circle cx="171" cy="130" r="8" fill="#8fe5d6" />
+          <path d="M64 94 H88 M123 76 H151 M123 112 H151" stroke="#93a6c4" stroke-width="2" stroke-dasharray="3 4" opacity="0.6" />
+          <circle cx="218" cy="82" r="22" fill="none" stroke="#f4c96b" stroke-width="1.5" opacity="0.5" />
+          <circle cx="218" cy="82" r="30" fill="none" stroke="#6fd6c3" stroke-width="1" opacity="0.3" />
+        </svg>
+        <button id="btn-start" class="primary big" type="button">はじめる</button>
+        <button id="btn-sound" class="link-btn" type="button">音: ON</button>
+        <p class="tiny">120 BPM / 24秒で1サイクル。音が出ます。</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="audio.js"></script>
+  <script src="renderer.js"></script>
+  <script src="ui.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>
