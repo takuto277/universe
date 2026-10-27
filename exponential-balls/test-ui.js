@@ -1,4 +1,4 @@
-/* test-ui.js : モード選択・MODES・HUDの検証（jsc で実行）
+/* test-ui.js : モード選択・START・HOME・HUDの検証（jsc で実行）
  * 実行例:
  *   cd exponential-balls && jsc test-ui.js
  */
@@ -38,12 +38,17 @@ var ui = ExponentialUI.create(game, renderer);
 
 assert(hasClass('start-overlay', 'visible'), '初期スタート画面が出ていない');
 assert(hasClass('hud', 'is-hidden'), '初期HUDが表示されている');
-assert(text('btn-start') === 'BEGIN AUTO', '初期の開始ボタンがAUTOでない');
+assert(hasClass('mode-auto', 'selected'), 'AUTOが初期選択されていない');
+assert(!hasClass('mode-frame', 'selected'), 'FRAMEが初期選択されている');
+assert(text('mode-auto-state') === 'SELECTED' && text('mode-frame-state') === 'SELECT', '選択表示が不正');
+assert(text('btn-start') === 'START AUTO', '開始ボタンがSTART AUTOでない: ' + text('btn-start'));
 
 click('mode-frame');
-assert(text('btn-start') === 'BEGIN FRAME', 'FRAME選択で開始ボタンが変わらない');
-assert(hasClass('mode-frame', 'selected'), 'FRAMEカードが選択されない');
-assert(!hasClass('mode-auto', 'selected'), 'AUTOカードの選択が残る');
+assert(game.state.phase === 'start', 'モード選択だけで開始してしまう');
+assert(hasClass('start-overlay', 'visible'), 'モード選択でスタート画面が消える');
+assert(hasClass('mode-frame', 'selected') && !hasClass('mode-auto', 'selected'), 'FRAME選択が反映されない');
+assert(text('mode-frame-state') === 'SELECTED' && text('mode-auto-state') === 'SELECT', 'FRAMEの選択表示が不正');
+assert(text('btn-start') === 'START FRAME', '開始ボタンがSTART FRAMEでない: ' + text('btn-start'));
 
 click('btn-start');
 assert(game.state.phase === 'playing' && game.state.mode === 'frame', 'FRAMEで開始できない');
@@ -57,14 +62,15 @@ game.updateFrame(0.1, 1 / 60);
 ui.update(game.getState());
 assert(text('stat') === 'CAPTURES 0', '更新後のCAPTURES表示が不正');
 
-click('btn-modes');
-assert(game.state.phase === 'start', 'MODESでホームに戻らない');
-assert(hasClass('start-overlay', 'visible'), 'MODES後もスタート画面が隠れている');
-assert(hasClass('hud', 'is-hidden'), 'MODES後もHUDが表示されている');
-assert(renderer.state().length === 0, 'MODES後もAUTOのボールが残る');
+click('btn-home');
+assert(game.state.phase === 'start', 'HOMEでホームに戻らない');
+assert(hasClass('start-overlay', 'visible'), 'HOME後もスタート画面が隠れている');
+assert(hasClass('hud', 'is-hidden'), 'HOME後もHUDが表示されている');
+assert(renderer.state().length === 0, 'HOME後もAUTOのボールが残る');
+assert(text('btn-start') === 'START FRAME' && hasClass('mode-frame', 'selected'), 'HOME後も選択が保持されない');
 
 click('mode-auto');
-assert(text('btn-start') === 'BEGIN AUTO', 'AUTOに戻せない');
+assert(text('btn-start') === 'START AUTO' && hasClass('mode-auto', 'selected'), 'AUTOに選択し直せない');
 click('btn-start');
 assert(game.state.phase === 'playing' && game.state.mode === 'auto', 'AUTOで開始できない');
 assert(text('mode-name') === 'AUTO', 'HUDのモードがAUTOでない');

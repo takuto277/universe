@@ -20,7 +20,7 @@
           <p id="mode-name" class="mode-name">AUTO</p>
         </div>
         <div class="hud-actions">
-          <button id="btn-modes" class="sound-btn" type="button">MODES</button>
+          <button id="btn-home" class="sound-btn" type="button">HOME</button>
           <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
         </div>
       </div>
@@ -43,20 +43,23 @@
       <div class="start-content">
         <p class="eyebrow">EXPONENTIAL BLOOM</p>
         <h1>BLOOM</h1>
-        <p class="lead">Every ball doubles. Pick how it grows.</p>
+        <p class="lead">Every ball doubles. Pick a mode to start.</p>
 
+        <p class="mode-prompt">SELECT MODE</p>
         <div class="mode-grid" role="group" aria-label="Game mode">
           <button id="mode-auto" class="mode-card selected" type="button" aria-pressed="true">
-            <span class="mode-tag">AUTO</span>
+            <span class="mode-head"><span class="mode-tag">AUTO</span><span id="mode-auto-state" class="mode-play">SELECTED</span></span>
             <span class="mode-title">BAR BY BAR</span>
             <span class="mode-desc">A new ball every bar, locked to the beat. 1 to 2,048 in 12 bars.</span>
           </button>
           <button id="mode-frame" class="mode-card" type="button" aria-pressed="false">
-            <span class="mode-tag">FRAME</span>
+            <span class="mode-head"><span class="mode-tag">FRAME</span><span id="mode-frame-state" class="mode-play">SELECT</span></span>
             <span class="mode-title">CATCH &amp; DOUBLE</span>
             <span class="mode-desc">Balls drift in all directions. Anything crossing the top frame doubles. No two runs alike.</span>
           </button>
         </div>
+
+        <button id="btn-start" class="primary big" type="button">START AUTO</button>
 
         <svg class="start-art" viewBox="0 0 260 150" role="img" aria-label="Balls doubling from one to many">
           <circle cx="54" cy="94" r="15" fill="#6fd6c3" opacity="0.9" />
@@ -71,7 +74,6 @@
           <circle cx="218" cy="82" r="30" fill="none" stroke="#6fd6c3" stroke-width="1" opacity="0.3" />
         </svg>
 
-        <button id="btn-start" class="primary big" type="button">BEGIN AUTO</button>
         <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
         <p class="tiny">120 BPM / 24 s cycle. Sound on.</p>
       </div>

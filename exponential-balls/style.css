@@ -215,10 +215,19 @@ h1, p { margin: 0; }
   color: #c6d3e9;
 }
 
+.mode-prompt {
+  margin-top: 14px;
+  padding-left: 2px;
+  text-align: left;
+  font-size: 9px;
+  letter-spacing: 0.2em;
+  color: var(--faint);
+}
+
 .mode-grid {
   display: grid;
   gap: 8px;
-  margin-top: 14px;
+  margin-top: 6px;
 }
 
 .mode-card {
@@ -241,14 +250,40 @@ h1, p { margin: 0; }
   box-shadow: inset 0 0 0 1px rgba(244, 201, 107, 0.18);
 }
 
+.mode-card:active { transform: scale(0.99); }
+
+.mode-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.mode-play {
+  padding: 3px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--faint);
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+}
+
+.mode-card.selected .mode-play {
+  border-color: transparent;
+  background: linear-gradient(180deg, #ffe6a4, var(--gold) 60%, #c99334);
+  color: #1a1408;
+}
+
+.mode-card.selected .mode-tag { color: var(--gold); }
+
 .mode-tag {
   font-size: 9px;
   font-weight: 700;
   letter-spacing: 0.18em;
   color: var(--teal);
 }
-
-.mode-card.selected .mode-tag { color: var(--gold); }
 
 .mode-title {
   font-size: 14px;
@@ -285,7 +320,7 @@ h1, p { margin: 0; }
 }
 
 .primary:hover { transform: translateY(-1px); filter: brightness(1.05); }
-.primary.big { width: 100%; padding: 14px 20px; font-size: 16px; }
+.primary.big { width: 100%; margin-top: 12px; padding: 14px 20px; font-size: 16px; }
 
 .link-btn {
   display: block;

@@ -20,13 +20,15 @@
       barFill: $('bar-fill'),
       modeName: $('mode-name'),
       hint: $('hint'),
-      btnModes: $('btn-modes'),
+      btnHome: $('btn-home'),
       btnMute: $('btn-mute'),
       startOverlay: $('start-overlay'),
       btnStart: $('btn-start'),
       btnSound: $('btn-sound'),
       modeAuto: $('mode-auto'),
       modeFrame: $('mode-frame'),
+      modeAutoState: $('mode-auto-state'),
+      modeFrameState: $('mode-frame-state'),
       canvas: $('canvas')
     };
 
@@ -48,8 +50,10 @@
     }
 
     function updateStart() {
-      setText(els.btnStart, selectedMode === 'frame' ? 'BEGIN FRAME' : 'BEGIN AUTO');
       var autoOn = selectedMode === 'auto';
+      setText(els.btnStart, autoOn ? 'START AUTO' : 'START FRAME');
+      setText(els.modeAutoState, autoOn ? 'SELECTED' : 'SELECT');
+      setText(els.modeFrameState, autoOn ? 'SELECT' : 'SELECTED');
       toggleClass(els.modeAuto, 'selected', autoOn);
       toggleClass(els.modeFrame, 'selected', !autoOn);
       if (els.modeAuto) els.modeAuto.setAttribute('aria-pressed', autoOn ? 'true' : 'false');
@@ -110,15 +114,16 @@
       updateStart();
     }
 
-    if (els.modeAuto) els.modeAuto.addEventListener('click', function () { selectMode('auto'); });
-    if (els.modeFrame) els.modeFrame.addEventListener('click', function () { selectMode('frame'); });
-
-    if (els.btnStart) els.btnStart.addEventListener('click', function () {
+    function startGame() {
       if (game.state.phase === 'playing') return;
       if (root.ExpAudio) root.ExpAudio.start();
       updateSound();
       game.start(selectedMode);
-    });
+    }
+
+    if (els.modeAuto) els.modeAuto.addEventListener('click', function () { selectMode('auto'); });
+    if (els.modeFrame) els.modeFrame.addEventListener('click', function () { selectMode('frame'); });
+    if (els.btnStart) els.btnStart.addEventListener('click', startGame);
 
     function toggleSound() {
       if (root.ExpAudio) root.ExpAudio.toggleMute();
@@ -128,7 +133,7 @@
     if (els.btnMute) els.btnMute.addEventListener('click', toggleSound);
     if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
 
-    if (els.btnModes) els.btnModes.addEventListener('click', function () {
+    if (els.btnHome) els.btnHome.addEventListener('click', function () {
       if (root.ExpAudio) root.ExpAudio.stop();
       if (renderer && renderer.clear) renderer.clear();
       game.reset();
@@ -151,7 +156,9 @@
       render: render,
       update: update,
       updateSound: updateSound,
-      selectMode: selectMode
+      updateStart: updateStart,
+      selectMode: selectMode,
+      startGame: startGame
     };
   }
 
