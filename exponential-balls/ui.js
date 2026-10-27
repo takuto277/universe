@@ -93,7 +93,7 @@
         lastCycle = state.cycle;
       }
       var stat = state.mode === 'frame'
-        ? 'CAPTURES ' + (state.captures || 0)
+        ? 'DOUBLES ' + (state.captures || 0)
         : 'BAR ' + (state.bar + 1) + ' / ' + state.barsPerCycle;
       if (stat !== lastStat) {
         setText(els.stat, stat);
@@ -101,7 +101,7 @@
       }
       if (state.mode !== lastMode) {
         setText(els.modeName, state.mode === 'frame' ? 'FRAME' : 'AUTO');
-        setText(els.hint, state.mode === 'frame' ? 'CATCH IN THE FRAME' : 'DOUBLE ON EVERY BAR');
+        setText(els.hint, state.mode === 'frame' ? 'TOUCH THE LINE · TAP TO PUSH' : 'DOUBLE ON EVERY BAR · TAP TO PUSH');
         lastMode = state.mode;
       }
       setText(els.bpm, state.bpm + ' BPM');
@@ -132,6 +132,24 @@
 
     if (els.btnMute) els.btnMute.addEventListener('click', toggleSound);
     if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
+
+    if (els.canvas) {
+      els.canvas.addEventListener('pointerdown', function (event) {
+        if (game.state.phase !== 'playing') return;
+        if (event && event.preventDefault) event.preventDefault();
+        var rect = els.canvas.getBoundingClientRect ? els.canvas.getBoundingClientRect() : { width: 1, height: 1, left: 0, top: 0 };
+        var w = rect.width || 1;
+        var h = rect.height || 1;
+        var x = ((event ? event.clientX : 0) - (rect.left || 0));
+        var y = ((event ? event.clientY : 0) - (rect.top || 0));
+        var state = game.getState();
+        if (state.mode === 'frame' && game.tap) {
+          game.tap(x * state.field.w / w, y * state.field.h / h);
+        }
+        if (renderer && renderer.tap) renderer.tap(x, y);
+        if (root.ExpAudio && root.ExpAudio.tap) root.ExpAudio.tap();
+      });
+    }
 
     if (els.btnHome) els.btnHome.addEventListener('click', function () {
       if (root.ExpAudio) root.ExpAudio.stop();

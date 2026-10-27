@@ -16,6 +16,7 @@ assert(ExpAudio.ready() === false, 'AudioContextなしでreadyになる');
 ExpAudio.tick(1);
 ExpAudio.capture(1, 130.81);
 ExpAudio.impact();
+ExpAudio.tap();
 assert(ExpAudio.toggleMute() === true, 'ミュートにできない');
 assert(ExpAudio.toggleMute() === false, 'ミュート解除できない');
 
@@ -118,6 +119,9 @@ assert(oscStarts > before, 'キャプチャ音が鳴らない');
 before = oscStarts;
 ExpAudio.impact();
 assert(oscStarts > before, 'インパクト音が鳴らない');
+before = oscStarts;
+ExpAudio.tap();
+assert(oscStarts > before, 'タップ音が鳴らない');
 
 before = oscStarts;
 assert(ExpAudio.toggleMute() === true, 'ミュートにできない');

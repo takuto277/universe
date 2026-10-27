@@ -55,12 +55,12 @@ assert(game.state.phase === 'playing' && game.state.mode === 'frame', 'FRAMEで�
 assert(!hasClass('start-overlay', 'visible'), '開始後もスタート画面が残る');
 assert(!hasClass('hud', 'is-hidden'), '開始後もHUDが隠れている');
 assert(text('mode-name') === 'FRAME', 'HUDのモードがFRAMEでない');
-assert(text('stat') === 'CAPTURES 0', 'HUDのCAPTURESが0でない: ' + text('stat'));
-assert(text('hint') === 'CATCH IN THE FRAME', 'FRAMEのヒントが不正');
+assert(text('stat') === 'DOUBLES 0', 'HUDのDOUBLESが0でない: ' + text('stat'));
+assert(text('hint') === 'TOUCH THE LINE · TAP TO PUSH', 'FRAMEのヒントが不正');
 
 game.updateFrame(0.1, 1 / 60);
 ui.update(game.getState());
-assert(text('stat') === 'CAPTURES 0', '更新後のCAPTURES表示が不正');
+assert(text('stat') === 'DOUBLES 0', '更新後のDOUBLES表示が不正');
 
 click('btn-home');
 assert(game.state.phase === 'start', 'HOMEでホームに戻らない');
@@ -74,7 +74,7 @@ assert(text('btn-start') === 'START AUTO' && hasClass('mode-auto', 'selected'), 
 click('btn-start');
 assert(game.state.phase === 'playing' && game.state.mode === 'auto', 'AUTOで開始できない');
 assert(text('mode-name') === 'AUTO', 'HUDのモードがAUTOでない');
-assert(text('hint') === 'DOUBLE ON EVERY BAR', 'AUTOのヒントが不正');
+assert(text('hint') === 'DOUBLE ON EVERY BAR · TAP TO PUSH', 'AUTOのヒントが不正');
 assert(text('stat') === 'BAR 1 / 12', 'AUTOのバー表示が不正: ' + text('stat'));
 
 game.update(0.1);

@@ -290,6 +290,13 @@
     impact(ctx.currentTime + 0.01);
   }
 
+  function tap() {
+    if (!ctx || !started || ctx.state !== 'running' || !enabled) return;
+    var when = ctx.currentTime + 0.01;
+    oscillator('sine', currentRoot * 2, when, when + 0.2, 0.12, master, true);
+    oscillator('sine', currentRoot * 3, when + 0.03, when + 0.28, 0.07, master, true);
+  }
+
   function stop() {
     started = false;
     scheduledStep = -1;
@@ -305,6 +312,7 @@
     tick: tick,
     capture: capture,
     impact: impactNow,
+    tap: tap,
     toggleMute: toggleMute,
     setMuted: setMuted,
     isEnabled: isEnabled

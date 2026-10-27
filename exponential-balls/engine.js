@@ -1,8 +1,8 @@
 /* engine.js : BLOOM の時間・小節・倍々スケジュールと FRAME モード
  *
  * AUTO : 120 BPM / 4/4。1小節ごとに 1 → 2 → ... → 2048。12小節でリセット。
- * FRAME: ボールが上部のフレームに入ると、その場で2個に増える。
- *        ボールは常に360度のどれかの方向へ動き、壁で跳ね返る。
+ * FRAME: ボールが上部のラインに触れると2個に増え、ラインと逆の下向き180度へ飛ぶ。
+ *        ボールは常に360度のどれかの方向へ動き、壁で跳ね返る。子ボールの色はだんだん濃くなる。
  */
 (function (root, factory) {
   'use strict';
@@ -27,7 +27,7 @@
   var MAX_COUNT = Math.pow(2, BARS_PER_CYCLE - 1);
 
   var FIELD = { w: 390, h: 844 };
-  var FRAME = { x: 55, y: 220, w: 280, h: 76 };
+  var LINE = { x: 55, y: 220, w: 280, h: 4 };
   var FRAME_MAX = MAX_COUNT;
   var TAU = Math.PI * 2;
 
@@ -93,21 +93,22 @@
       return ROOTS[state.cycle % ROOTS.length].hue;
     }
 
-    function makeBall(x, y, speedMin, speedMax, immune) {
-      var angle = Math.random() * TAU;
+    function makeBall(x, y, speedMin, speedMax, immune, depth, angle) {
+      var a = angle == null ? Math.random() * TAU : angle;
       var speed = rnd(speedMin, speedMax);
       return {
         x: x,
         y: y,
-        vx: Math.cos(angle) * speed,
-        vy: Math.sin(angle) * speed,
+        vx: Math.cos(a) * speed,
+        vy: Math.sin(a) * speed,
         hue: (hueNow() + rnd(-22, 22) + 360) % 360,
+        depth: depth || 0,
         immune: immune || 0
       };
     }
 
     function initialBall() {
-      var b = makeBall(FIELD.w / 2, FRAME.y + FRAME.h + 30, 110, 170, 0);
+      var b = makeBall(FIELD.w / 2, LINE.y + 30, 110, 170, 0, 0);
       var speed = Math.hypot(b.vx, b.vy);
       var angle = -Math.PI / 2 + rnd(-0.55, 0.55);
       b.vx = Math.cos(angle) * speed;
@@ -173,15 +174,29 @@
       return getState();
     }
 
-    function insideFrame(ball) {
-      return ball.x >= FRAME.x && ball.x <= FRAME.x + FRAME.w &&
-        ball.y >= FRAME.y && ball.y <= FRAME.y + FRAME.h;
+    function crossedLine(ball, prevY) {
+      if (ball.x < LINE.x || ball.x > LINE.x + LINE.w) return false;
+      var before = prevY - LINE.y;
+      var after = ball.y - LINE.y;
+      return (before <= 0 && after >= 0) || (before >= 0 && after <= 0);
     }
 
-    function spawnFromFrame() {
-      var x = FRAME.x + FRAME.w / 2 + rnd(-FRAME.w * 0.34, FRAME.w * 0.34);
-      var y = FRAME.y + FRAME.h + rnd(8, 26);
-      return makeBall(x, y, 90, 180, 0.4);
+    function spawnFromLine(parent) {
+      var base = rnd(Math.PI * 0.18, Math.PI * 0.82);
+      var pair = [];
+      for (var i = 0; i < 2; i++) {
+        var angle = base + (i === 0 ? -1 : 1) * rnd(0.05, 0.22);
+        angle = Math.max(Math.PI * 0.1, Math.min(Math.PI * 0.9, angle));
+        var speed = rnd(90, 170);
+        var b = makeBall(
+          parent.x + rnd(-8, 8),
+          LINE.y + rnd(14, 24),
+          speed, speed, 0.35, (parent.depth || 0) + 1, angle
+        );
+        b.hue = (parent.hue + rnd(-6, 6) + 360) % 360;
+        pair.push(b);
+      }
+      return pair;
     }
 
     function updateFrame(t, dt) {
@@ -200,6 +215,7 @@
       var captured = [];
       for (var i = 0; i < state.balls.length; i++) {
         var b = state.balls[i];
+        var prevY = b.y;
         b.immune = Math.max(0, b.immune - dt);
         b.x += b.vx * dt;
         b.y += b.vy * dt;
@@ -208,12 +224,12 @@
         if (b.y < 0) { b.y = 0; b.vy = Math.abs(b.vy) || 1; }
         if (b.y > FIELD.h) { b.y = FIELD.h; b.vy = -Math.abs(b.vy) || -1; }
         if (Math.abs(b.vx) + Math.abs(b.vy) < 0.01) {
-          var fresh = makeBall(b.x, b.y, 70, 130, 0);
+          var fresh = makeBall(b.x, b.y, 70, 130, 0, b.depth);
           b.vx = fresh.vx;
           b.vy = fresh.vy;
         }
-        if (insideFrame(b) && b.immune <= 0) {
-          captured.push({ x: b.x, y: b.y, hue: b.hue });
+        if (crossedLine(b, prevY) && b.immune <= 0) {
+          captured.push(b);
         } else {
           kept.push(b);
         }
@@ -221,10 +237,12 @@
 
       state.balls = kept;
       for (var c = 0; c < captured.length; c++) {
+        var parent = captured[c];
         state.captures += 1;
-        state.captureEvents.push({ x: captured[c].x, y: captured[c].y, hue: captured[c].hue, time: t, reset: false });
-        state.balls.push(spawnFromFrame());
-        state.balls.push(spawnFromFrame());
+        state.captureEvents.push({ x: parent.x, y: LINE.y, hue: parent.hue, time: t, reset: false });
+        var pair = spawnFromLine(parent);
+        state.balls.push(pair[0]);
+        state.balls.push(pair[1]);
       }
 
       state.count = state.balls.length;
@@ -235,8 +253,8 @@
         state.count = 1;
         state.frameReset = true;
         state.captureEvents.push({
-          x: FRAME.x + FRAME.w / 2,
-          y: FRAME.y + FRAME.h / 2,
+          x: LINE.x + LINE.w / 2,
+          y: LINE.y,
           hue: hueNow(),
           time: t,
           reset: true
@@ -248,7 +266,7 @@
 
     function getState() {
       var balls = state.mode === 'frame' ? state.balls.map(function (b) {
-        return { x: b.x, y: b.y, vx: b.vx, vy: b.vy, hue: b.hue };
+        return { x: b.x, y: b.y, vx: b.vx, vy: b.vy, hue: b.hue, depth: b.depth || 0 };
       }) : [];
       return {
         phase: state.phase,
@@ -277,10 +295,27 @@
         maxBalls: FRAME_MAX,
         maxAutoBalls: MAX_COUNT,
         field: FIELD,
-        frame: FRAME,
+        line: LINE,
         root: ROOTS[state.cycle % ROOTS.length],
         rootIndex: state.cycle % ROOTS.length
       };
+    }
+
+    function tap(x, y) {
+      if (state.phase !== 'playing' || state.mode !== 'frame') return false;
+      var radiusSq = 120 * 120;
+      for (var i = 0; i < state.balls.length; i++) {
+        var b = state.balls[i];
+        var dx = b.x - x;
+        var dy = b.y - y;
+        var d2 = dx * dx + dy * dy;
+        if (d2 > radiusSq) continue;
+        var d = Math.sqrt(d2) || 1;
+        var force = 260 * (1 - d / 120);
+        b.vx += (dx / d) * force;
+        b.vy += (dy / d) * force;
+      }
+      return true;
     }
 
     function autoStep() {
@@ -294,6 +329,7 @@
       reset: resetState,
       update: update,
       updateFrame: updateFrame,
+      tap: tap,
       autoStep: autoStep,
       getState: getState
     };
@@ -313,7 +349,8 @@
     MAX_COUNT: MAX_COUNT,
     FRAME_MAX: FRAME_MAX,
     FIELD: FIELD,
-    FRAME: FRAME,
+    LINE: LINE,
+    FRAME: LINE,
     ROOTS: ROOTS
   };
 });
