@@ -822,6 +822,7 @@
       var step = C.TUTORIAL_STEPS[index];
       if (!step || !els.tutorialPanel) return;
       els.tutorialPanel.classList.remove('hidden');
+      els.tutorialPanel.classList.toggle('tutorial-top', index === 2);
       if (els.tutorialCount) els.tutorialCount.textContent = (index + 1) + ' / ' + total;
       if (els.tutorialTitle) els.tutorialTitle.textContent = step.title;
       if (els.tutorialDesc) els.tutorialDesc.textContent = step.desc;
@@ -838,6 +839,7 @@
       var info = C.TUTORIAL_COMPLETE;
       if (!info || !els.tutorialPanel) return;
       els.tutorialPanel.classList.remove('hidden');
+      els.tutorialPanel.classList.remove('tutorial-top');
       if (els.tutorialCount) els.tutorialCount.textContent = 'READY';
       if (els.tutorialTitle) els.tutorialTitle.textContent = info.title;
       if (els.tutorialDesc) els.tutorialDesc.textContent = info.desc;
@@ -851,7 +853,10 @@
     }
 
     function hideTutorial() {
-      if (els.tutorialPanel) els.tutorialPanel.classList.add('hidden');
+      if (els.tutorialPanel) {
+        els.tutorialPanel.classList.add('hidden');
+        els.tutorialPanel.classList.remove('tutorial-top');
+      }
       setTutorialTarget(-1);
     }
 

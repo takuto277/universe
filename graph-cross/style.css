@@ -583,6 +583,10 @@ body {
   pointer-events: none;
 }
 #tutorial-panel.hidden, #tutorial-panel .hidden { display: none; }
+#tutorial-panel.tutorial-top {
+  top: 16px;
+  bottom: auto;
+}
 .tutorial-head {
   display: flex;
   align-items: center;
@@ -1406,6 +1410,7 @@ body {
   .gacha-item .swap-preview { height: 34px; }
   .gacha-roll { font-size: 15px; padding: 11px; }
   #tutorial-panel { bottom: 8px; padding: 9px 11px 10px; border-radius: 12px; }
+  #tutorial-panel.tutorial-top { top: 48px; bottom: auto; }
   .tutorial-main { flex-direction: column; align-items: stretch; gap: 7px; }
   .tutorial-visual { flex: 0 0 auto; width: 100%; height: 88px; }
   #tutorial-title { font-size: 14px; }
