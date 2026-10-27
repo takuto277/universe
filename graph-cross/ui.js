@@ -403,7 +403,7 @@
       }
       var desc;
       if (previewKey === 'wave') {
-        var shapeIndex = Math.max(0, Math.min(4, Math.round(params.shape || 0)));
+        var shapeIndex = Math.max(0, Math.min(7, Math.round(params.shape || 0)));
         desc = (C.WAVE_SHAPE_LABELS[shapeIndex] || '波') + ' / 振幅 a=' + C.fmtNum(params.a) +
           ' / 周波数 b=' + C.fmtNum(params.b) + ' / 位相 c=' + C.fmtNum(params.c) +
           '。' + (C.WAVE_SHAPE_DESCS[shapeIndex] || '') + '。';
@@ -426,7 +426,7 @@
         var key = keys[i];
         var row = $('tune-row-' + key);
         if (!row) continue;
-        var visible = selectedDeck.indexOf(key) >= 0;
+        var visible = gacha.unlocked.indexOf(key) >= 0;
         row.classList.toggle('hidden', !visible);
         if (!visible) continue;
         any = true;
@@ -482,6 +482,23 @@
       }
     }
 
+    function updateFusionPreview() {
+      if (!els.fusionPreview) return;
+      var primary = els.fusionPrimary ? els.fusionPrimary.value : '';
+      var secondary = els.fusionSecondary ? els.fusionSecondary.value : '';
+      if (!C.MODES[primary] || !C.MODES[secondary] || primary === secondary ||
+        primary === 'fusion' || secondary === 'fusion') {
+        els.fusionPreview.classList.add('hidden');
+        els.fusionPreview.innerHTML = '';
+        return;
+      }
+      var fusion = { primary: primary, secondary: secondary };
+      var label = C.formatModeLabel('fusion', selectedParams, fusion);
+      els.fusionPreview.classList.remove('hidden');
+      els.fusionPreview.innerHTML = modePreviewSvg('fusion', selectedParams, fusion) +
+        '<div class="fusion-preview-copy"><span>FUSION TRAJECTORY</span><b>' + label + '</b></div>';
+    }
+
     function updateFusionUi() {
       var card = deckCards.fusion;
       if (card) {
@@ -509,6 +526,7 @@
             (selected ? ' / デッキに入っています' : ' / デッキに1枚空きがあれば追加できます');
         }
       }
+      updateFusionPreview();
     }
 
     function createFusion() {
@@ -624,7 +642,7 @@
     }
 
     function onWaveShapeChange(value) {
-      var shape = Math.max(0, Math.min(4, Math.round(parseFloat(value) || 0)));
+      var shape = Math.max(0, Math.min(7, Math.round(parseFloat(value) || 0)));
       selectedParams.wave.shape = shape;
       previewKey = 'wave';
       saveParams();
@@ -1150,6 +1168,7 @@
       els.fusionSecondary = $('fusion-secondary');
       els.btnFuse = $('btn-fuse');
       els.fusionNote = $('fusion-note');
+      els.fusionPreview = $('fusion-preview');
       els.tuneRows = $('tune-rows');
       els.tuneEmpty = $('tune-empty');
       els.tunePreviewWrap = $('tune-preview-wrap');
@@ -1191,6 +1210,8 @@
       }
       buildFusionSelects();
       if (els.btnFuse) els.btnFuse.addEventListener('click', createFusion);
+      if (els.fusionPrimary) els.fusionPrimary.addEventListener('change', updateFusionPreview);
+      if (els.fusionSecondary) els.fusionSecondary.addEventListener('change', updateFusionPreview);
 
       for (i = 0; i < 4; i++) {
         var slot = $('slot-' + i);

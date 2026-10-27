@@ -400,6 +400,31 @@ body {
 .fusion-plus { color: var(--gold); font-weight: 900; }
 .fusion-btn { margin: 0; padding: 6px 14px; font-size: 11px; }
 #fusion-note { font-size: 10px; }
+.fusion-preview {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 5px 7px;
+  border: 1px solid rgba(180, 140, 255, 0.28);
+  border-radius: 9px;
+  background: rgba(5, 11, 20, 0.62);
+}
+.fusion-preview.hidden { display: none; }
+.fusion-preview .swap-preview { flex: 0 0 230px; width: 230px; height: 66px; }
+.fusion-preview-copy { min-width: 0; }
+.fusion-preview-copy span { display: block; color: #b48cff; font-size: 8px; font-weight: 900; letter-spacing: 1.3px; }
+.fusion-preview-copy b {
+  display: block;
+  margin-top: 3px;
+  color: var(--text);
+  font-size: 12px;
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+@media (max-width: 640px) {
+  .fusion-preview { flex-direction: column; align-items: stretch; gap: 4px; }
+  .fusion-preview .swap-preview { flex: 0 0 auto; width: 100%; height: 54px; }
+}
 .deck-card.hidden { display: none; }
 #deck-builder {
   width: min(660px, 100%);

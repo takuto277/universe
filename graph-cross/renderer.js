@@ -556,7 +556,7 @@
       var fieldH = 520;
       var y = fieldH / 2;
       var power = Math.max(2, Math.round(params.p || 2));
-      var shapeIndex = Math.max(0, Math.min(4, Math.round(params.shape || 0)));
+      var shapeIndex = Math.max(0, Math.min(7, Math.round(params.shape || 0)));
       var waveAmp = 68 * (params.a || 1);
       var waveBase = fieldH / 2 - waveAmp * E.waveShapeValue(shapeIndex, params.c || 0, 0);
       var vy = (params.b || 0) * 120;
