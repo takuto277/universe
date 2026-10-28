@@ -25,6 +25,7 @@ assert(!g.over && g.overReason === null, '開始時はプレイ中');
 assert(g.moving && g.moving.w === E.BLOCK_WIDTH, '次のブロックは土台と同じ幅');
 assert(g.moving.x === -E.FIELD_HALF && g.moving.dir === 1, '左端から右へ動き始める');
 assert(g.moving.y === E.BLOCK_HEIGHT, '次のブロックは土台の上');
+assert(typeof g.moving.hue === 'number', '次のブロックに描画用の色相がある');
 assert(g.speed === E.BASE_SPEED, '初期速度');
 
 /* 2) 左右に往復し、範囲から出ない */

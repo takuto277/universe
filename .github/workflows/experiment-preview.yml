@@ -118,6 +118,21 @@ jobs:
           python -m pip install -r tools/playtest/requirements.txt
           python -m playwright install --with-deps chromium
 
+      - name: Wait for preview to be ready
+        env:
+          URL: ${{ needs.preview.outputs.url }}
+        run: |
+          set -euo pipefail
+          for _ in $(seq 1 30); do
+            code="$(curl -s -o /dev/null -w '%{http_code}' "$URL" || true)"
+            if [ "$code" = "200" ]; then
+              exit 0
+            fi
+            sleep 6
+          done
+          echo "preview did not become ready: $URL (last HTTP $code)" >&2
+          exit 1
+
       - name: Play preview in Chromium
         run: |
           python tools/playtest/playtest.py \
