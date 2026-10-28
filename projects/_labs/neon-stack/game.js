@@ -8,13 +8,21 @@
 
   var GROUND = 66;
   var BEST_KEY = 'neon-stack-best';
+  var DAILY_PREFIX = 'neon-stack-daily-';
   var MUTE_KEY = 'neon-stack-muted';
+  var MODIFIER_LABELS = { fast: 'SPEED', core: 'CORE', tight: 'TIGHT' };
+  var BIOMES = [
+    { top: '#0a0620', mid: '#070a19', bottom: '#02030a', glow: 'rgba(70, 60, 190, 0.24)', glow2: 'rgba(140, 30, 170, 0.10)', grid: 'rgba(90, 170, 255, 0.075)', center: 'rgba(120, 120, 255, 0.16)', ground: 'rgba(60, 230, 255, 0.22)', line: 'rgba(100, 245, 255, 0.85)' },
+    { top: '#1b0626', mid: '#0b0718', bottom: '#03020a', glow: 'rgba(255, 61, 240, 0.22)', glow2: 'rgba(90, 40, 220, 0.12)', grid: 'rgba(255, 100, 220, 0.08)', center: 'rgba(255, 90, 210, 0.18)', ground: 'rgba(255, 90, 220, 0.22)', line: 'rgba(255, 120, 235, 0.85)' },
+    { top: '#061b22', mid: '#06121b', bottom: '#02080c', glow: 'rgba(30, 220, 210, 0.20)', glow2: 'rgba(30, 100, 240, 0.12)', grid: 'rgba(60, 240, 220, 0.08)', center: 'rgba(60, 240, 220, 0.16)', ground: 'rgba(60, 240, 210, 0.22)', line: 'rgba(90, 255, 230, 0.85)' },
+    { top: '#221306', mid: '#160d06', bottom: '#080402', glow: 'rgba(255, 170, 50, 0.20)', glow2: 'rgba(255, 60, 120, 0.12)', grid: 'rgba(255, 190, 80, 0.08)', center: 'rgba(255, 180, 70, 0.16)', ground: 'rgba(255, 170, 70, 0.22)', line: 'rgba(255, 210, 110, 0.85)' }
+  ];
 
   var canvas = null;
   var ctx = null;
   var els = {};
   var state = null;
-  var view = { phase: 'idle', overAt: 0, autoDrops: 0 };
+  var view = { phase: 'idle', overAt: 0, autoDrops: 0, mode: 'normal', biome: 0, modifier: null, dailyKey: null };
   var viewW = 480;
   var viewH = 640;
   var dpr = 1;
@@ -25,7 +33,8 @@
   var stars = [];
   var shake = 0;
   var flash = 0;
-  var best = loadBest();
+  var bestKey = BEST_KEY;
+  var best = loadBest(bestKey);
   var muted = loadMuted();
 
   function nowMs() {
@@ -57,18 +66,23 @@
     } catch (e) { }
   }
 
-  function loadBest() {
+  function todayKey() {
+    var d = new Date();
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+  }
+
+  function loadBest(key) {
     try {
       if (typeof localStorage === 'undefined') return 0;
-      return Math.max(0, parseInt(localStorage.getItem(BEST_KEY) || '0', 10) || 0);
+      return Math.max(0, parseInt(localStorage.getItem(key || BEST_KEY) || '0', 10) || 0);
     } catch (e) {
       return 0;
     }
   }
 
-  function saveBest(value) {
+  function saveBest(value, key) {
     try {
-      if (typeof localStorage !== 'undefined') localStorage.setItem(BEST_KEY, String(value));
+      if (typeof localStorage !== 'undefined') localStorage.setItem(key || BEST_KEY, String(value));
     } catch (e) { }
   }
 
@@ -88,13 +102,34 @@
     if (els.screenEnd) els.screenEnd.classList.remove('visible');
   }
 
-  function beginRun() {
-    state = E.createGame({ width: viewW, height: viewH });
+  function beginRun(mode) {
+    mode = mode === 'daily' ? 'daily' : 'normal';
+    var dailyKey = todayKey();
+    state = E.createGame({
+      width: viewW,
+      height: viewH,
+      daily: mode === 'daily',
+      dailyKey: dailyKey
+    });
+    view.mode = mode;
+    view.dailyKey = dailyKey;
+    view.modifier = state.modifier;
+    view.biome = 0;
+    bestKey = mode === 'daily' ? DAILY_PREFIX + dailyKey : BEST_KEY;
+    best = loadBest(bestKey);
+    if (els.bestLabel) els.bestLabel.textContent = mode === 'daily' ? 'DAILY BEST' : 'BEST';
+    if (els.endBestLabel) els.endBestLabel.textContent = mode === 'daily' ? 'DAILY BEST' : 'BEST';
+    if (els.modeLabel) {
+      els.modeLabel.textContent = mode === 'daily'
+        ? 'DAILY / ' + (MODIFIER_LABELS[state.modifier] || 'CHALLENGE')
+        : '';
+    }
     rings = [];
     if (audio) {
       audio.unlock();
       audio.setMuted(muted);
       audio.setIntensity(0);
+      audio.setBiome(0);
       audio.startBgm();
     }
     view.phase = 'run';
@@ -116,13 +151,18 @@
     var snap = E.snapshot(state);
     if (snap.score > best) {
       best = snap.score;
-      saveBest(best);
+      saveBest(best, bestKey);
     }
     if (els.endScore) els.endScore.textContent = String(snap.score);
     if (els.endBest) els.endBest.textContent = String(best);
     if (els.endHeight) els.endHeight.textContent = String(snap.height);
     if (els.endCombo) els.endCombo.textContent = String(snap.maxCombo);
     if (els.endPerfect) els.endPerfect.textContent = String(snap.perfects);
+    if (els.endMode) {
+      els.endMode.textContent = view.mode === 'daily'
+        ? 'DAILY / ' + (MODIFIER_LABELS[view.modifier] || 'CHALLENGE')
+        : '';
+    }
     if (els.screenEnd) els.screenEnd.classList.add('visible');
     updateHud();
   }
@@ -139,7 +179,7 @@
   /* ===== 入力 ===== */
   function tryDrop() {
     if (!state || view.phase !== 'run' || state.over) return;
-    var result = E.drop(state);
+    var result = E.drop(state, { onBeat: audio ? audio.isOnBeat() : false });
     if (!result) return;
     processEvents();
     updateHud();
@@ -152,11 +192,11 @@
   function onPointer(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (view.phase === 'idle') {
-      beginRun();
+      beginRun('normal');
     } else if (view.phase === 'run') {
       tryDrop();
     } else if (view.phase === 'over') {
-      beginRun();
+      beginRun(view.mode);
     }
   }
 
@@ -167,7 +207,8 @@
     var k = e.key || '';
     if (k === ' ' || k === 'Spacebar' || k === 'Enter' || k === 'ArrowDown' || k === 's' || k === 'S') {
       if (e.preventDefault) e.preventDefault();
-      if (view.phase === 'idle' || view.phase === 'over') beginRun();
+      if (view.phase === 'idle') beginRun('normal');
+      else if (view.phase === 'over') beginRun(view.mode);
       else tryDrop();
     }
   }
@@ -192,7 +233,22 @@
   }
 
   function popup(text, x, y, color, size) {
-    popups.push({ text: text, x: x, y: y, life: 0.9, max: 0.9, color: color, size: size || 22 });
+    var lift = 0;
+    for (var i = 0; i < popups.length; i++) {
+      if (Math.abs(popups[i].x - x) < 90) lift += (popups[i].size || 22) + 4;
+    }
+    if (popups.length >= 6) popups.shift();
+    popups.push({ text: text, x: x, y: y - lift, life: 0.72, max: 0.72, color: color, size: size || 22 });
+  }
+
+  function updateBiome() {
+    if (!state) return;
+    var next = Math.floor(state.height / 10);
+    if (next === view.biome) return;
+    view.biome = next;
+    if (audio) audio.setBiome(next);
+    popup('AREA ' + (next + 1), viewW / 2, viewH * 0.28, '#ffd166', 20);
+    flash = Math.max(flash, 0.12);
   }
 
   function processEvents() {
@@ -204,16 +260,19 @@
       if (ev.type === 'place') {
         if (ev.perfect) {
           burst(p.x, p.y, 26, ['#ffe98a', '#ffd166', '#57f6ff', '#ffffff'], 340, 0.8);
-          rings.push({ x: p.x, y: p.y, r: 10, maxR: Math.max(viewW, viewH) * 0.46, life: 0.62, max: 0.62, color: '#ffe98a' });
-          rings.push({ x: p.x, y: p.y, r: 4, maxR: Math.max(viewW, viewH) * 0.3, life: 0.42, max: 0.42, color: '#57f6ff' });
+          rings.push({ x: p.x, y: p.y, r: 10, maxR: Math.min(viewW, viewH) * 0.56, life: 0.62, max: 0.62, color: '#ffe98a' });
+          rings.push({ x: p.x, y: p.y, r: 4, maxR: Math.min(viewW, viewH) * 0.38, life: 0.42, max: 0.42, color: '#57f6ff' });
           flash = Math.max(flash, 0.34);
           shake = Math.max(shake, 0.38);
-          popup('PERFECT!', p.x, p.y - 18, '#ffe98a', 26);
-          if (ev.combo > 1) popup('COMBO x' + ev.combo, p.x, p.y - 48, '#57f6ff', 17);
+          var label = ev.core ? 'CORE PERFECT!' : 'PERFECT!';
+          if (ev.repair) label += ' +REPAIR';
+          if (ev.beat) label += ' +BEAT';
+          if (ev.combo > 1 && ev.combo % 5 === 0) label += ' x' + ev.combo;
+          popup(label, p.x, p.y - 18, ev.core ? '#ffd166' : '#ffe98a', label.length > 18 ? 19 : (ev.core ? 23 : 25));
         } else {
           burst(p.x, p.y, 11, ['#57f6ff', '#8f7bff', '#ffffff'], 190, 0.5);
           if (ev.combo === 0 && ev.gain > 0) {
-            popup('+' + ev.gain, p.x, p.y - 16, '#9fe9ff', 16);
+            popup('+' + ev.gain + (ev.beat ? ' BEAT' : ''), p.x, p.y - 16, '#9fe9ff', 16);
           }
         }
       } else if (ev.type === 'miss') {
@@ -222,8 +281,10 @@
         flash = 0.7;
       }
       if (audio) {
-        if (ev.type === 'place') audio.play(ev.perfect ? 'perfect' : 'place', ev.combo || 0, ev.perfect);
-        else if (ev.type === 'miss') audio.play('miss');
+        if (ev.type === 'place') {
+          audio.play(ev.perfect ? 'perfect' : 'place', ev.combo || 0, ev.perfect);
+          if (ev.beat) audio.play('beat');
+        } else if (ev.type === 'miss') audio.play('miss');
       }
     }
   }
@@ -328,16 +389,17 @@
   }
 
   function drawBackdrop(time) {
+    var palette = BIOMES[view.biome % BIOMES.length];
     var grad = ctx.createLinearGradient(0, 0, 0, viewH);
-    grad.addColorStop(0, '#0a0620');
-    grad.addColorStop(0.5, '#070a19');
-    grad.addColorStop(1, '#02030a');
+    grad.addColorStop(0, palette.top);
+    grad.addColorStop(0.5, palette.mid);
+    grad.addColorStop(1, palette.bottom);
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, viewW, viewH);
 
     var glow = ctx.createRadialGradient(viewW * 0.5, viewH * 0.42, 20, viewW * 0.5, viewH * 0.42, viewW * 0.72);
-    glow.addColorStop(0, 'rgba(70, 60, 190, 0.24)');
-    glow.addColorStop(0.55, 'rgba(140, 30, 170, 0.10)');
+    glow.addColorStop(0, palette.glow);
+    glow.addColorStop(0.55, palette.glow2);
     glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, viewW, viewH);
@@ -352,7 +414,7 @@
     var cam = state ? state.cameraY : 0;
     var spacing = 58;
     var offset = ((viewH - GROUND + cam) % spacing + spacing) % spacing;
-    ctx.strokeStyle = 'rgba(90, 170, 255, 0.075)';
+    ctx.strokeStyle = palette.grid;
     ctx.lineWidth = 1;
     for (var y = offset; y < viewH; y += spacing) {
       ctx.beginPath();
@@ -361,7 +423,7 @@
       ctx.stroke();
     }
 
-    ctx.strokeStyle = 'rgba(120, 120, 255, 0.16)';
+    ctx.strokeStyle = palette.center;
     ctx.beginPath();
     ctx.moveTo(viewW / 2, 0);
     ctx.lineTo(viewW / 2, viewH);
@@ -370,17 +432,18 @@
 
   function drawGround() {
     var y = viewH - GROUND;
+    var palette = BIOMES[view.biome % BIOMES.length];
     var grad = ctx.createLinearGradient(0, y, 0, viewH);
-    grad.addColorStop(0, 'rgba(60, 230, 255, 0.22)');
+    grad.addColorStop(0, palette.ground);
     grad.addColorStop(0.25, 'rgba(20, 40, 90, 0.5)');
     grad.addColorStop(1, 'rgba(2, 3, 10, 0.95)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, y, viewW, GROUND);
 
     ctx.save();
-    ctx.shadowColor = 'rgba(70, 235, 255, 0.85)';
+    ctx.shadowColor = palette.line;
     ctx.shadowBlur = 16;
-    ctx.strokeStyle = 'rgba(100, 245, 255, 0.85)';
+    ctx.strokeStyle = palette.line;
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(0, y);
@@ -548,6 +611,7 @@
       E.update(state, dt);
       if (view.phase === 'run') {
         processEvents();
+        updateBiome();
         if (state.over) {
           view.phase = 'dying';
           view.overAt = ts;
@@ -581,12 +645,18 @@
     els.combo = $('combo');
     els.perfect = $('perfect');
     els.best = $('best');
+    els.bestLabel = $('best-label');
+    els.modeLabel = $('mode-label');
+    els.endMode = $('end-mode');
+    els.btnDaily = $('btn-daily');
+    els.dailyNote = $('daily-note');
     els.screenStart = $('screen-start');
     els.screenEnd = $('screen-end');
     els.btnStart = $('btn-start');
     els.btnAgain = $('btn-again');
     els.endScore = $('end-score');
     els.endBest = $('end-best');
+    els.endBestLabel = $('end-best-label');
     els.endHeight = $('end-height');
     els.endCombo = $('end-combo');
     els.endPerfect = $('end-perfect');
@@ -596,8 +666,13 @@
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
     }
 
-    if (els.btnStart) els.btnStart.addEventListener('click', beginRun);
-    if (els.btnAgain) els.btnAgain.addEventListener('click', beginRun);
+    if (els.btnStart) els.btnStart.addEventListener('click', function () { beginRun('normal'); });
+    if (els.btnDaily) els.btnDaily.addEventListener('click', function () { beginRun('daily'); });
+    if (els.btnAgain) els.btnAgain.addEventListener('click', function () { beginRun(view.mode); });
+    if (els.dailyNote) {
+      var dailyModifier = E.dailyModifier(todayKey());
+      els.dailyNote.textContent = '今日のチャレンジ: ' + (MODIFIER_LABELS[dailyModifier] || 'CHALLENGE');
+    }
     if (audio) audio.setMuted(muted);
     updateSoundButton();
     if (els.btnSound) {
@@ -650,10 +725,12 @@
           return !!(state && state.over && view.phase === 'over');
         },
         getState: function () {
-          if (!state) return { phase: view.phase, over: false, score: 0, best: best, height: 0 };
+          if (!state) return { phase: view.phase, over: false, score: 0, best: best, height: 0, mode: view.mode, biome: view.biome };
           var snap = E.snapshot(state);
           snap.phase = view.phase;
           snap.best = best;
+          snap.mode = view.mode;
+          snap.biome = view.biome;
           return snap;
         }
       };
