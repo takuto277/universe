@@ -13,7 +13,7 @@
     var particles = [];
     var camYaw = 0.55;
     var camElev = 0.5;
-    var camFocusZ = null;
+    var camFocusNorm = 0.05;
     var flash = 0;
     var beatPulse = 0;
     var radius = 30;
@@ -116,7 +116,7 @@
       particles = [];
       camYaw = 0.55;
       camElev = 0.5;
-      camFocusZ = null;
+      camFocusNorm = 0.05;
       flash = 0;
       beatPulse = 0;
     }
@@ -168,22 +168,6 @@
           trail.hue = ball.hue;
           trail.points.push({ x: ball.x, y: ball.y, life: 1 });
           if (trail.points.length > 9) trail.points.shift();
-        }
-      }
-      if (state && state.mode === 'race3d' && state.race3d) {
-        var lowest = Infinity;
-        for (var rb3 = 0; rb3 < state.race3d.balls.length; rb3++) {
-          var ball3 = state.race3d.balls[rb3];
-          if (ball3.z < lowest) lowest = ball3.z;
-          var trail3 = raceTrails[ball3.id] || (raceTrails[ball3.id] = { hue: ball3.hue, points: [] });
-          trail3.hue = ball3.hue;
-          trail3.points.push({ x: ball3.x, y: ball3.y, z: ball3.z, life: 1 });
-          if (trail3.points.length > 9) trail3.points.shift();
-        }
-        if (lowest < Infinity) {
-          var focusTarget = Math.max(260, Math.min(state.race3d.bounds.zMax - 260, lowest + 220));
-          if (camFocusZ == null) camFocusZ = focusTarget;
-          else camFocusZ += (focusTarget - camFocusZ) * Math.min(1, dt * 2.6);
         }
       }
       for (var key in raceTrails) {
@@ -333,8 +317,12 @@
       camElev = Math.max(0.06, Math.min(1.4, camElev + dy * 0.004));
     }
 
+    function setFocusNorm(norm) {
+      camFocusNorm = Math.max(0, Math.min(1, norm));
+    }
+
     function cameraState() {
-      return { yaw: camYaw, elev: camElev, focusZ: camFocusZ };
+      return { yaw: camYaw, elev: camElev, focusNorm: camFocusNorm };
     }
 
     function spawnBurst(x, y, hue, count, power) {
@@ -600,7 +588,7 @@
       var race = state.race3d;
       var hue = state.root ? state.root.hue : 188;
       var focal = 620;
-      var focusZ = camFocusZ == null ? race.bounds.zMax * 0.8 : camFocusZ;
+      var focusZ = 260 + (1 - camFocusNorm) * (race.bounds.zMax - 520);
       var radius = 700;
       var elev = camElev;
       var horizontal = Math.cos(elev) * radius;
@@ -861,20 +849,6 @@
         ctx.stroke();
       }
 
-      for (var key in raceTrails) {
-        var trail = raceTrails[key];
-        for (var pt = 0; pt < trail.points.length; pt++) {
-          var point = trail.points[pt];
-          if (point.z == null) continue;
-          var tp = project(point);
-          if (!tp) continue;
-          ctx.fillStyle = 'hsla(' + trail.hue + ', 90%, 68%, ' + Math.max(0, point.life * 0.16).toFixed(3) + ')';
-          ctx.beginPath();
-          ctx.arc(tp.x, tp.y, Math.max(1, race.ballRadius * tp.scale * point.life), 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
       var drawBalls = race.balls.slice().sort(function (a, b) {
         var pa = project(a);
         var pb = project(b);
@@ -936,6 +910,7 @@
       drawRace: drawRace,
       drawRace3D: drawRace3D,
       orbit: orbit,
+      setFocusNorm: setFocusNorm,
       camera: cameraState,
       tap: tap,
       clear: clear,

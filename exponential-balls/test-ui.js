@@ -150,7 +150,14 @@ assert(text('mode-name') === 'RACE 3D', 'HUDのモードがRACE 3Dでない');
 assert(text('count-label') === 'ALIVE', 'RACE 3DのカウントラベルがALIVEでない');
 assert(text('count') === '20', 'RACE 3Dの初期球数が20でない: ' + text('count'));
 assert(text('cycle') === 'TIME 0.0', 'RACE 3DのTIME表示が不正');
-assert(text('hint') === 'DRAG TO ORBIT · UP/DOWN TO TILT', 'RACE 3Dのヒントが不正');
+assert(text('hint') === 'DRAG TO ORBIT · SLIDER TO TRAVEL', 'RACE 3Dのヒントが不正');
+assert(!hasClass('cam-slider', 'is-hidden'), 'RACE 3Dでカメラスライダーが出ない');
+
+var camFocusBefore = renderer.camera().focusNorm;
+pointer('cam-slider', 100, 100);
+pointerMove('cam-slider', 100, 500);
+pointerUp('cam-slider');
+assert(renderer.camera().focusNorm !== camFocusBefore, 'カメラスライダーでカメラが動かない');
 
 var race3dBefore = JSON.stringify(game.getState().race3d.balls);
 var camBefore = renderer.camera();
@@ -183,5 +190,6 @@ assert(hasClass('result-overlay', 'visible') === false, 'RACE 3D再開後も結�
 click('btn-home');
 assert(game.state.phase === 'start', 'RACE 3D HOMEで戻れない');
 assert(text('btn-start') === 'START 3D', 'RACE 3D HOME後の選択が保持されない');
+assert(hasClass('cam-slider', 'is-hidden'), 'HOME後もカメラスライダーが残る');
 
 print('ui tests OK (' + passed + ' assertions)');

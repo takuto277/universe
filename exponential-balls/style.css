@@ -453,3 +453,52 @@ h1, p { margin: 0; }
   .link-btn { margin-top: 5px; padding: 5px; }
   .tiny { margin-top: 6px; font-size: 9px; }
 }
+
+.cam-slider {
+  position: absolute;
+  top: 50%;
+  right: 8px;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 32px;
+  height: 38%;
+  padding: 8px 0;
+  transform: translateY(-50%);
+  border: 1px solid rgba(111, 214, 195, 0.2);
+  border-radius: 999px;
+  background: rgba(5, 8, 14, 0.55);
+  backdrop-filter: blur(6px);
+  pointer-events: auto;
+  touch-action: none;
+  user-select: none;
+}
+
+.cam-label {
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  color: var(--teal);
+}
+
+.cam-track {
+  position: relative;
+  width: 5px;
+  flex: 1;
+  border-radius: 999px;
+  background: linear-gradient(180deg, rgba(111, 214, 195, 0.5), rgba(244, 201, 107, 0.35));
+}
+
+.cam-thumb {
+  position: absolute;
+  left: 50%;
+  top: 5%;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  border-radius: 50%;
+  background: var(--gold);
+  box-shadow: 0 0 12px rgba(244, 201, 107, 0.65);
+}

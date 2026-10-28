@@ -132,8 +132,10 @@ var race3dState = {
 renderer.update(1 / 60, race3dState);
 var camBefore = renderer.camera();
 renderer.orbit(12, 8);
+renderer.setFocusNorm(0.45);
 var camAfter = renderer.camera();
 assert(camAfter.yaw !== camBefore.yaw || camAfter.elev !== camBefore.elev, 'RACE3Dのカメラを動かせない');
+assert(camAfter.focusNorm === 0.45, 'RACE3Dのカメラ高さを変えられない');
 renderer.drawRace3D(race3dState, 2.2);
 assert(renderer.state().length === beforeRace, 'RACE3D描画でAUTOの状態が壊れる');
 
