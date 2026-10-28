@@ -45,12 +45,37 @@
     activeTop: 0.015,
     dropSpeed: 0.55,
     mergeGap: 0.021,
-    bridgeGap: 0.24,
     overflowGrace: 0.5,
     finishLimit: 60,
     maxHints: 3,
     maxShakes: 3
   };
+
+  var BRIDGE_LIMIT = {};
+  (function () {
+    function mapCircleGap(a, b) {
+      var pa = BY_CODE[a];
+      var pb = BY_CODE[b];
+      var best = Infinity;
+      for (var i = 0; i < pa.circles.length; i++) {
+        var ca = pa.circles[i];
+        for (var j = 0; j < pb.circles.length; j++) {
+          var cb = pb.circles[j];
+          var dx = cb[0] - ca[0];
+          var dy = cb[1] - ca[1];
+          var d = Math.sqrt(dx * dx + dy * dy) - ca[2] - cb[2];
+          if (d < best) best = d;
+        }
+      }
+      return best;
+    }
+    for (var key in BRIDGES) {
+      if (!Object.prototype.hasOwnProperty.call(BRIDGES, key)) continue;
+      var codes = key.split('-');
+      var gap = mapCircleGap(Number(codes[0]), Number(codes[1]));
+      BRIDGE_LIMIT[key] = Math.max(WORLD.mergeGap, gap + WORLD.mergeGap);
+    }
+  })();
 
   function clamp(v, min, max) {
     return v < min ? min : (v > max ? max : v);
@@ -241,6 +266,19 @@
     return false;
   }
 
+  function bridgeLimit(a, b) {
+    var limit = WORLD.mergeGap;
+    for (var i = 0; i < a.members.length; i++) {
+      for (var j = 0; j < b.members.length; j++) {
+        var x = Math.min(a.members[i], b.members[j]);
+        var y = Math.max(a.members[i], b.members[j]);
+        var pairLimit = BRIDGE_LIMIT[x + '-' + y];
+        if (pairLimit && pairLimit > limit) limit = pairLimit;
+      }
+    }
+    return limit;
+  }
+
   function circleGap(a, b, limit) {
     if (limit == null) limit = WORLD.mergeGap;
     var ab = a.bounds;
@@ -337,8 +375,8 @@
         var a = s.bodies[i];
         var b = s.bodies[j];
         if (!adjacent(a, b)) continue;
-        var gap = bridgeBetween(a, b) ? WORLD.bridgeGap : WORLD.mergeGap;
-        if (circleGap(a, b, gap) <= gap) return [a, b];
+        var limit = bridgeBetween(a, b) ? bridgeLimit(a, b) : WORLD.mergeGap;
+        if (circleGap(a, b, limit) <= limit) return [a, b];
       }
     }
     return null;

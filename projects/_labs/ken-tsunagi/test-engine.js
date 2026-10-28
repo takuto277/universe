@@ -128,6 +128,17 @@ assert(s.bodies.length === 1 && s.bodies[0].members.length === 2, '近づけた�
 E.world.gravity = bridgeGravity;
 
 s = E.createRun();
+bridgeGravity = E.world.gravity;
+E.world.gravity = 0;
+var hokkai = E.addPiece(s, 1, 0.2, 0.5);
+E.addPiece(s, 2,
+  hokkai.x + (E.byCode[2].center[0] - E.byCode[1].center[0]) + 0.1,
+  hokkai.y + (E.byCode[2].center[1] - E.byCode[1].center[1]));
+tickLoop(s, 3);
+assert(s.bodies.length === 2, '狭い海峡の橋ペアが離れたままでも合体してしまう');
+E.world.gravity = bridgeGravity;
+
+s = E.createRun();
 var ref = E.byCode[1];
 var clearGravity = E.world.gravity;
 E.world.gravity = 0;
