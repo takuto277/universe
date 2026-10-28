@@ -122,11 +122,18 @@ var race3dState = {
     portals: [{ x: -120, y: 0, z: 470, r: 14, hue: 195 }, { x: 120, y: 0, z: 150, r: 14, hue: 40 }],
     wells: [{ x: -80, y: -60, z: 500, r: 60 }],
     boosters: [{ x: 0, y: -100, z: 690, r: 24, vx: 0, vy: 80, vz: -120 }],
+    plates: [{ x: -60, y: 0, z: 2040, r: 62, bounce: 0.58 }],
+    slows: [{ x: -40, y: 30, z: 1960, r: 92 }],
+    fans: [{ x: 40, y: 30, z: 1880, r: 58, power: 120 }],
     result: null,
     events: [{ type: 'eliminate', x: 0, y: 0, z: 0, hue: 36, id: 3 }]
   }
 };
 renderer.update(1 / 60, race3dState);
+var camBefore = renderer.camera();
+renderer.orbit(12, 8);
+var camAfter = renderer.camera();
+assert(camAfter.yaw !== camBefore.yaw || camAfter.elev !== camBefore.elev, 'RACE3Dのカメラを動かせない');
 renderer.drawRace3D(race3dState, 2.2);
 assert(renderer.state().length === beforeRace, 'RACE3D描画でAUTOの状態が壊れる');
 

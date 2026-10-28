@@ -51,6 +51,7 @@
     var lastStat = '';
     var lastMode = '';
     var bumpTimer = null;
+    var drag = null;
 
     function soundOn() {
       return root.ExpAudio ? root.ExpAudio.isEnabled() : true;
@@ -106,7 +107,7 @@
         return;
       }
       if (state.mode === 'race3d') {
-        updateRace(state, state.race3d, 'RACE 3D', 'NO TAP · 3D LAST BALL');
+        updateRace(state, state.race3d, 'RACE 3D', 'DRAG TO ORBIT · UP/DOWN TO TILT');
         return;
       }
       setText(els.countLabel, 'BALLS');
@@ -230,13 +231,34 @@
         var x = ((event ? event.clientX : 0) - (rect.left || 0));
         var y = ((event ? event.clientY : 0) - (rect.top || 0));
         var state = game.getState();
-        if (state.mode === 'race' || state.mode === 'race3d') return;
+        if (state.mode === 'race') return;
+        if (state.mode === 'race3d') {
+          drag = { id: event ? event.pointerId : null, x: event ? event.clientX : 0, y: event ? event.clientY : 0 };
+          if (els.canvas.setPointerCapture && event && event.pointerId != null) {
+            try { els.canvas.setPointerCapture(event.pointerId); } catch (e) { }
+          }
+          return;
+        }
         if (state.mode === 'frame' && game.tap) {
           game.tap(x * state.field.w / w, y * state.field.h / h);
         }
         if (renderer && renderer.tap) renderer.tap(x, y);
         if (root.ExpAudio && root.ExpAudio.tap) root.ExpAudio.tap();
       });
+
+      els.canvas.addEventListener('pointermove', function (event) {
+        if (!drag || game.state.phase !== 'playing') return;
+        var dx = (event ? event.clientX : 0) - drag.x;
+        var dy = (event ? event.clientY : 0) - drag.y;
+        drag.x = event ? event.clientX : drag.x;
+        drag.y = event ? event.clientY : drag.y;
+        if (renderer && renderer.orbit) renderer.orbit(dx, dy);
+        if (event && event.preventDefault) event.preventDefault();
+      });
+
+      function endDrag() { drag = null; }
+      els.canvas.addEventListener('pointerup', endDrag);
+      els.canvas.addEventListener('pointercancel', endDrag);
     }
 
     if (root.addEventListener) {

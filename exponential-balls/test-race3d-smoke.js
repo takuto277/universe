@@ -23,7 +23,7 @@ globalThis.__GAME__.start = globalThis.__GAME__.startRace3D;
 
 Harness.run({
   name: 'exponential-balls race3d',
-  maxSteps: 3000,
+  maxSteps: 6000,
   afterDone: 0,
   check: function (state, h) {
     if (!state || state.phase !== 'finished') { h.assert(false, '3Dレースが終了していない'); return; }

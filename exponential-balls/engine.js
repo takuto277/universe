@@ -84,42 +84,82 @@
     gravity: 180,
     damping: 0.9995,
     maxSpeed: 520,
-    bounds: { x: 165, y: 125, zMin: 0, zMax: 820 },
-    startZ: 730,
+    bounds: { x: 165, y: 125, zMin: 0, zMax: 2460 },
+    startZ: 2190,
     voidZ: 0,
-    suddenDeath: 38,
-    riseSpeed: 18,
-    maxTime: 70,
+    suddenDeath: 55,
+    riseSpeed: 20,
+    maxTime: 90,
     pegs: [
-      { x: -110, y: -80, z: 640 }, { x: 0, y: -90, z: 640 }, { x: 110, y: -80, z: 640 },
-      { x: -70, y: 20, z: 590 }, { x: 70, y: 20, z: 590 }, { x: 0, y: 100, z: 580 },
-      { x: -130, y: -40, z: 500 }, { x: 0, y: -10, z: 500 }, { x: 130, y: -40, z: 500 },
-      { x: -80, y: 80, z: 440 }, { x: 80, y: 80, z: 440 }, { x: 0, y: -100, z: 430 },
-      { x: -120, y: 30, z: 350 }, { x: 0, y: 30, z: 350 }, { x: 120, y: 30, z: 350 },
-      { x: -60, y: -70, z: 260 }, { x: 60, y: -70, z: 260 }, { x: 0, y: 80, z: 250 }
+      { x: -110, y: -80, z: 2100 }, { x: 0, y: -90, z: 2070 }, { x: 110, y: -80, z: 2100 },
+      { x: -70, y: 20, z: 1950 }, { x: 70, y: 20, z: 1950 }, { x: 0, y: 100, z: 1920 },
+      { x: -130, y: -40, z: 1780 }, { x: 0, y: -10, z: 1760 }, { x: 130, y: -40, z: 1780 },
+      { x: -80, y: 80, z: 1580 }, { x: 80, y: 80, z: 1580 }, { x: 0, y: -100, z: 1550 },
+      { x: -120, y: 30, z: 1320 }, { x: 0, y: 30, z: 1300 }, { x: 120, y: 30, z: 1320 },
+      { x: -60, y: -70, z: 1080 }, { x: 60, y: -70, z: 1080 }, { x: 0, y: 80, z: 1050 },
+      { x: -110, y: 40, z: 840 }, { x: 0, y: -20, z: 820 }, { x: 110, y: 40, z: 840 },
+      { x: -70, y: -80, z: 600 }, { x: 70, y: -80, z: 600 }, { x: 0, y: 70, z: 570 },
+      { x: -100, y: 20, z: 360 }, { x: 100, y: 20, z: 360 }, { x: 0, y: -50, z: 300 }
     ],
     bumpers: [
-      { x: -90, y: -40, z: 300, baseX: -90, amp: 28, speed: 1.8, phase: 0, r: 16 },
-      { x: 90, y: 40, z: 300, baseX: 90, amp: 32, speed: 2.2, phase: 1.7, r: 16 },
-      { x: 0, y: 0, z: 560, baseX: 0, amp: 50, speed: 1.4, phase: 2.4, r: 18 }
+      { x: -90, y: -40, z: 2000, baseX: -90, amp: 30, speed: 1.8, phase: 0, r: 16 },
+      { x: 90, y: 40, z: 1660, baseX: 90, amp: 34, speed: 2.2, phase: 1.7, r: 16 },
+      { x: 0, y: 0, z: 1380, baseX: 0, amp: 54, speed: 1.4, phase: 2.4, r: 18 },
+      { x: -90, y: 50, z: 920, baseX: -90, amp: 36, speed: 2.0, phase: 0.7, r: 16 },
+      { x: 80, y: -40, z: 480, baseX: 80, amp: 44, speed: 2.4, phase: 2.9, r: 18 }
     ],
     spinners: [
-      { x: 0, y: 0, z: 600, len: 70, half: 4, angle: 0, speed: 4.0 },
-      { x: -40, y: 40, z: 380, len: 55, half: 4, angle: 1.1, speed: -4.6 },
-      { x: 40, y: -40, z: 220, len: 55, half: 4, angle: 2.2, speed: 4.2 }
+      { x: 0, y: 0, z: 2180, len: 70, half: 4, angle: 0, speed: 4.0 },
+      { x: -40, y: 40, z: 1870, len: 55, half: 4, angle: 1.1, speed: -4.6 },
+      { x: 40, y: -40, z: 1500, len: 58, half: 4, angle: 2.2, speed: 4.2 },
+      { x: 0, y: 0, z: 1210, len: 62, half: 4, angle: 0.7, speed: -4.0 },
+      { x: -60, y: 20, z: 860, len: 48, half: 4, angle: 2.7, speed: 4.8 },
+      { x: 60, y: -20, z: 430, len: 50, half: 4, angle: 1.5, speed: -4.4 }
     ],
     portals: [
-      { x: -120, y: 0, z: 470, r: 14, target: 1, hue: 195 },
-      { x: 120, y: 0, z: 150, r: 14, target: 0, hue: 40 }
+      { x: -120, y: 0, z: 2020, r: 14, target: 1, hue: 195 },
+      { x: 120, y: 0, z: 1480, r: 14, target: 0, hue: 40 },
+      { x: 0, y: -100, z: 1120, r: 14, target: 3, hue: 280 },
+      { x: 0, y: 100, z: 500, r: 14, target: 2, hue: 330 }
     ],
     wells: [
-      { x: -80, y: -60, z: 500, r: 60, strength: 140 },
-      { x: 80, y: 60, z: 270, r: 60, strength: 170 }
+      { x: -80, y: -60, z: 1740, r: 60, strength: 140 },
+      { x: 80, y: 60, z: 1280, r: 60, strength: 170 },
+      { x: -70, y: 50, z: 760, r: 55, strength: 160 },
+      { x: 80, y: -50, z: 340, r: 55, strength: 180 }
     ],
     boosters: [
-      { x: 0, y: -100, z: 690, r: 24, vx: 0, vy: 80, vz: -120, power: 240 },
-      { x: -130, y: 80, z: 420, r: 24, vx: 140, vy: -40, vz: -60, power: 220 },
-      { x: 130, y: -80, z: 330, r: 24, vx: -120, vy: 60, vz: -80, power: 230 }
+      { x: 0, y: -100, z: 2120, r: 24, vx: 0, vy: 80, vz: -120, power: 240 },
+      { x: -130, y: 80, z: 1420, r: 24, vx: 140, vy: -40, vz: -60, power: 220 },
+      { x: 130, y: -80, z: 700, r: 24, vx: -120, vy: 60, vz: -80, power: 230 }
+    ],
+    plates: [
+      { x: -60, y: 0, z: 2040, r: 62, bounce: 0.58 },
+      { x: 70, y: -30, z: 1810, r: 58, bounce: 0.62 },
+      { x: -30, y: 60, z: 1590, r: 66, bounce: 0.55 },
+      { x: 60, y: 40, z: 1350, r: 60, bounce: 0.6 },
+      { x: -70, y: -40, z: 1140, r: 64, bounce: 0.56 },
+      { x: 30, y: 30, z: 940, r: 62, bounce: 0.62 },
+      { x: -50, y: -30, z: 720, r: 60, bounce: 0.58 },
+      { x: 60, y: 30, z: 510, r: 64, bounce: 0.6 },
+      { x: 0, y: 0, z: 260, r: 68, bounce: 0.56 }
+    ],
+    slows: [
+      { x: -40, y: 30, z: 1960, r: 92 },
+      { x: 50, y: -40, z: 1710, r: 96 },
+      { x: -60, y: -20, z: 1450, r: 90 },
+      { x: 60, y: 30, z: 1180, r: 94 },
+      { x: -40, y: 40, z: 900, r: 92 },
+      { x: 50, y: -30, z: 640, r: 96 },
+      { x: 0, y: 0, z: 380, r: 100 }
+    ],
+    fans: [
+      { x: 40, y: 30, z: 1880, r: 58, power: 120 },
+      { x: -50, y: -30, z: 1620, r: 62, power: 130 },
+      { x: 50, y: -40, z: 1320, r: 58, power: 120 },
+      { x: -40, y: 40, z: 1050, r: 62, power: 130 },
+      { x: 40, y: 30, z: 780, r: 58, power: 120 },
+      { x: -30, y: -30, z: 540, r: 60, power: 130 }
     ]
   };
 
@@ -891,6 +931,43 @@
             break;
           }
         }
+
+        for (var sw = 0; sw < RACE3D.slows.length; sw++) {
+          var slow = RACE3D.slows[sw];
+          var sdx = b.x - slow.x;
+          var sdy = b.y - slow.y;
+          var sdz = b.z - slow.z;
+          if (sdx * sdx + sdy * sdy + sdz * sdz < slow.r * slow.r) {
+            var slowFactor = Math.max(0, 1 - 2.4 * dt);
+            b.vx *= slowFactor;
+            b.vy *= slowFactor;
+            b.vz *= slowFactor;
+          }
+        }
+        for (var fn = 0; fn < RACE3D.fans.length; fn++) {
+          var fan = RACE3D.fans[fn];
+          var fdx = b.x - fan.x;
+          var fdy = b.y - fan.y;
+          var fdz = b.z - fan.z;
+          if (fdx * fdx + fdy * fdy + fdz * fdz < fan.r * fan.r) {
+            b.vz += fan.power * dt;
+            b.vx += -fdy * 0.35 * dt;
+            b.vy += fdx * 0.35 * dt;
+          }
+        }
+        for (var pl = 0; pl < RACE3D.plates.length; pl++) {
+          var plate = RACE3D.plates[pl];
+          var pldx = b.x - plate.x;
+          var pldy = b.y - plate.y;
+          if (b.vz < 0 && b.z - b.r < plate.z && b.z + b.r > plate.z - 14 &&
+              pldx * pldx + pldy * pldy < Math.pow(plate.r + b.r, 2)) {
+            b.z = plate.z + b.r;
+            b.vz = Math.abs(b.vz) * plate.bounce + 35;
+            b.vx += rnd(-75, 75);
+            b.vy += rnd(-60, 60);
+            r.events.push({ type: 'plate', x: b.x, y: b.y, z: plate.z, hue: b.hue });
+          }
+        }
       }
 
       for (var a = 0; a < balls.length; a++) {
@@ -982,6 +1059,9 @@
         }),
         wells: RACE3D.wells,
         boosters: RACE3D.boosters,
+        plates: RACE3D.plates,
+        slows: RACE3D.slows,
+        fans: RACE3D.fans,
         result: r.result,
         events: r.events.slice()
       };
