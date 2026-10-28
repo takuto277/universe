@@ -1,165 +1,405 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>universe - 自作ゲーム&アプリのハブ</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0b1019">
+  <meta name="description" content="universeでつくったブラウザゲームの一覧。1ボタン、パズル、音楽、推理、アクションを遊べます。">
+  <title>universe games</title>
   <style>
     :root {
-      --bg: #0b1019;
-      --panel: #131c2b;
-      --panel-2: #1a2538;
-      --line: #24324a;
-      --text: #e8eefb;
-      --muted: #8fa1bd;
+      --bg: #080d16;
+      --panel: #111a2a;
+      --panel-2: #172238;
+      --line: #26344e;
+      --text: #edf4ff;
+      --muted: #93a5c2;
       --gold: #ffd166;
+      --cyan: #57f6ff;
+      --pink: #ff6ad5;
     }
     * { box-sizing: border-box; }
+    html { color-scheme: dark; scroll-behavior: smooth; }
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(1200px 800px at 50% 0%, #16233a 0%, var(--bg) 60%);
       color: var(--text);
+      background:
+        radial-gradient(1100px 700px at 50% -10%, #1a2b4a 0%, transparent 65%),
+        radial-gradient(700px 500px at 100% 30%, #2a103d 0%, transparent 55%),
+        var(--bg);
       font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Meiryo", system-ui, sans-serif;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 48px 20px;
     }
-    header { text-align: center; margin-bottom: 36px; }
+    a { color: inherit; }
+    .wrap { width: min(1180px, calc(100% - 32px)); margin: 0 auto; }
+    header { padding: 64px 0 28px; }
+    .eyebrow {
+      color: var(--cyan);
+      font-size: 11px;
+      font-weight: 800;
+      letter-spacing: 4px;
+      margin: 0 0 10px;
+    }
     h1 {
       margin: 0;
-      font-size: clamp(34px, 6vw, 56px);
-      letter-spacing: 4px;
-      background: linear-gradient(180deg, #ffffff, #9db7e8);
+      font-size: clamp(38px, 7vw, 76px);
+      line-height: 1;
+      letter-spacing: 2px;
+      background: linear-gradient(180deg, #fff 10%, #a9c8ff 55%, #7f6dff 100%);
       -webkit-background-clip: text;
       background-clip: text;
       color: transparent;
     }
-    .subtitle { color: var(--muted); margin: 8px 0 0; }
+    .subtitle { color: var(--muted); margin: 14px 0 0; font-size: clamp(13px, 2vw, 16px); }
+    .filters {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin: 28px 0 14px;
+    }
+    .filter {
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(17, 26, 42, 0.8);
+      color: var(--muted);
+      font: inherit;
+      font-size: 12px;
+      font-weight: 700;
+      padding: 7px 13px;
+      cursor: pointer;
+      transition: color .15s ease, border-color .15s ease, background .15s ease;
+    }
+    .filter:hover { color: var(--text); border-color: #46618e; }
+    .filter.active {
+      color: #071018;
+      background: var(--gold);
+      border-color: var(--gold);
+    }
+    .result-count { color: var(--muted); font-size: 12px; margin: 0 0 18px; }
     .cards {
       list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
       margin: 0;
       padding: 0;
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-      gap: 18px;
-      width: 100%;
-      max-width: 960px;
     }
-    .cards a {
-      display: block;
-      text-decoration: none;
-      color: var(--text);
-      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+    .game-card { min-width: 0; }
+    .game-card[hidden] { display: none; }
+    .card-link {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+      overflow: hidden;
       border: 1px solid var(--line);
-      border-radius: 16px;
-      padding: 22px 20px 18px;
-      transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+      border-radius: 18px;
+      background: linear-gradient(180deg, var(--panel-2), var(--panel));
+      text-decoration: none;
+      transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
     }
-    .cards a:hover {
-      transform: translateY(-3px);
-      border-color: var(--gold);
-      box-shadow: 0 14px 34px rgba(0, 0, 0, 0.45);
+    .card-link:hover, .card-link:focus-visible {
+      transform: translateY(-4px);
+      border-color: rgba(255, 209, 102, 0.7);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+      outline: none;
     }
+    .thumb {
+      position: relative;
+      margin: 0;
+      aspect-ratio: 3 / 2;
+      overflow: hidden;
+      background: #03060c;
+    }
+    .thumb img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      transition: transform .35s ease;
+    }
+    .card-link:hover .thumb img { transform: scale(1.035); }
     .tag {
-      display: inline-block;
-      font-size: 11px;
-      font-weight: 700;
-      letter-spacing: 1px;
+      position: absolute;
+      top: 12px;
+      left: 12px;
       color: #101722;
       background: var(--gold);
       border-radius: 6px;
-      padding: 2px 8px;
-      margin-bottom: 10px;
+      padding: 3px 8px;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 1px;
     }
-    .cards h2 { margin: 0 0 6px; font-size: 20px; }
-    .cards p { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.7; }
-    footer { margin-top: auto; padding-top: 48px; color: var(--muted); font-size: 12px; text-align: center; }
+    .card-body {
+      display: flex;
+      flex: 1;
+      flex-direction: column;
+      gap: 9px;
+      padding: 16px 17px 17px;
+    }
+    .card-body h2 { margin: 0; font-size: 19px; line-height: 1.35; }
+    .card-body p {
+      display: -webkit-box;
+      -webkit-box-orient: vertical;
+      -webkit-line-clamp: 3;
+      overflow: hidden;
+      margin: 0;
+      color: var(--muted);
+      font-size: 12.5px;
+      line-height: 1.65;
+    }
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 5px;
+      margin: auto 0 0;
+      padding: 4px 0 0;
+      list-style: none;
+    }
+    .tags li {
+      color: #a9c6ff;
+      background: rgba(87, 246, 255, 0.08);
+      border: 1px solid rgba(87, 246, 255, 0.18);
+      border-radius: 5px;
+      padding: 2px 6px;
+      font-size: 10px;
+      font-weight: 700;
+    }
+    .play {
+      color: var(--gold);
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 1px;
+    }
+    footer {
+      margin-top: 56px;
+      padding: 24px 0 40px;
+      border-top: 1px solid var(--line);
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.7;
+    }
     code { color: var(--gold); font-family: ui-monospace, Menlo, monospace; }
+    @media (max-width: 640px) {
+      header { padding-top: 42px; }
+      .wrap { width: min(100% - 22px, 1180px); }
+      .cards { grid-template-columns: 1fr; gap: 15px; }
+      .card-body p { -webkit-line-clamp: 4; }
+      .filters { gap: 6px; }
+      .filter { font-size: 11px; padding: 6px 10px; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      html { scroll-behavior: auto; }
+      * { transition: none !important; }
+    }
   </style>
 </head>
 <body>
-  <header>
-    <h1>universe</h1>
-    <p class="subtitle">自作アプリ・ゲームのハブ</p>
-  </header>
+  <div class="wrap">
+    <header>
+      <p class="eyebrow">UNIVERSE / GAMES</p>
+      <h1>つくったゲーム</h1>
+      <p class="subtitle">1ボタン、パズル、音楽、推理、アクション。ブラウザですぐ遊べます。</p>
+      <nav class="filters" aria-label="ジャンルで絞り込む">
+        <button class="filter active" type="button" data-filter="all" aria-pressed="true">すべて</button>
+        <button class="filter" type="button" data-filter="スポーツ" aria-pressed="false">スポーツ</button>
+        <button class="filter" type="button" data-filter="タイミング" aria-pressed="false">タイミング</button>
+        <button class="filter" type="button" data-filter="心理戦" aria-pressed="false">心理戦</button>
+        <button class="filter" type="button" data-filter="1対1" aria-pressed="false">1対1</button>
+        <button class="filter" type="button" data-filter="1ボタン" aria-pressed="false">1ボタン</button>
+        <button class="filter" type="button" data-filter="アクション" aria-pressed="false">アクション</button>
+        <button class="filter" type="button" data-filter="数学" aria-pressed="false">数学</button>
+        <button class="filter" type="button" data-filter="ローグライト" aria-pressed="false">ローグライト</button>
+        <button class="filter" type="button" data-filter="言語" aria-pressed="false">言語</button>
+        <button class="filter" type="button" data-filter="推理" aria-pressed="false">推理</button>
+        <button class="filter" type="button" data-filter="パズル" aria-pressed="false">パズル</button>
+        <button class="filter" type="button" data-filter="音楽" aria-pressed="false">音楽</button>
+        <button class="filter" type="button" data-filter="レトロ" aria-pressed="false">レトロ</button>
+        <button class="filter" type="button" data-filter="レース" aria-pressed="false">レース</button>
+        <button class="filter" type="button" data-filter="アーケード" aria-pressed="false">アーケード</button>
+        <button class="filter" type="button" data-filter="ジャンプ" aria-pressed="false">ジャンプ</button>
+        <button class="filter" type="button" data-filter="日本地図" aria-pressed="false">日本地図</button>
+      </nav>
+      <p class="result-count" id="result-count">10 本のゲーム</p>
+    </header>
 
-  <ul class="cards">
-    <li>
-      <a href="projects/_labs/baseball-game/">
-        <span class="tag">GAME</span>
-        <h2>9球種を読め!</h2>
-        <p>3回勝負の野球ゲーム。9球種と見逃しの駆け引き、カウント制、タイミングバーで長打を狙え。配球メモと得意/苦手バッジでCPUのクセを読んで打ち崩し、守備はゾーン率を見極めて四球に注意!</p>
+    <main>
+      <ul class="cards" id="game-grid">
+    <li class="game-card" data-tags="スポーツ タイミング">
+      <a class="card-link" href="projects/_labs/baseball-game/" data-app="baseball-game">
+        <figure class="thumb">
+          <img src="projects/_labs/baseball-game/thumb.jpg" alt="9球種を読め!のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>9球種を読め!</h2>
+          <p>3回勝負の野球ゲーム。9球種と見逃しの駆け引き、カウント制、タイミングバーで長打を狙え。配球メモと得意/苦手バッジでCPUのクセを読んで打ち崩し、守備はゾーン率を見極めて四球に注意!</p>
+          <ul class="tags"><li>スポーツ</li><li>タイミング</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_samples/janken-game/">
-        <span class="tag">GAME</span>
-        <h2>手を読め!</h2>
-        <p>心理戦じゃんけんゲーム。連勝ボーナスと先読み必殺の読み合い、見切りゲージを満タンにしてCPUの手を見てから選べ。手の履歴と「CPUの読み」メーターを見ながら、出しグセを読まれないように駆け引きを制せ!</p>
+    <li class="game-card" data-tags="心理戦 1対1">
+      <a class="card-link" href="projects/_samples/janken-game/" data-app="janken-game">
+        <figure class="thumb">
+          <img src="projects/_samples/janken-game/thumb.jpg" alt="手を読め!のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>手を読め!</h2>
+          <p>心理戦じゃんけんゲーム。連勝ボーナスと先読み必殺の読み合い、見切りゲージを満タンにしてCPUの手を見てから選べ。手の履歴と「CPUの読み」メーターを見ながら、出しグセを読まれないように駆け引きを制せ!</p>
+          <ul class="tags"><li>心理戦</li><li>1対1</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/gravity-flip/">
-        <span class="tag">GAME</span>
-        <h2>重力フリップ</h2>
-        <p>タップで上下の重力を反転してトゲを避ける1ボタン2Dアクション。だんだん速くなるステージでコインを集め、自己ベストの距離を目指せ!</p>
+    <li class="game-card" data-tags="1ボタン アクション">
+      <a class="card-link" href="projects/_labs/gravity-flip/" data-app="gravity-flip">
+        <figure class="thumb">
+          <img src="projects/_labs/gravity-flip/thumb.jpg" alt="重力フリップのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>重力フリップ</h2>
+          <p>タップで上下の重力を反転してトゲを避ける1ボタン2Dアクション。だんだん速くなるステージでコインを集め、自己ベストの距離を目指せ!</p>
+          <ul class="tags"><li>1ボタン</li><li>アクション</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/graph-cross/">
-        <span class="tag">GAME</span>
-        <h2>グラフクロス</h2>
-        <p>xが自動で進むグラフの上で関数を切り替え、自分の曲線を敵の曲線に交差させて大爆発を起こす2Dアクション。上昇/下降/その他のジャンルから3つ選ぶデッキ、累乗(x^p)・波(sin/cos/三角/角丸/減衰)・指数/対数/S字/山/減速下降の関数ビルダーと2関数の合成カード、リアルタイム軌道プレビューと合成後プレビュー、角度・弱点・連続MULTI、アイテムで追加される非対称グラフ、ボスとステージクリア、軌道プレビュー付きの同ジャンル関数入れ替え3択と強化3択、敵撃破時に縦ビームで撃ち抜くプリズムクロス、アイテム磁石・リバイブ・コンボガード・ボスブレイカー、関数スロットの3択追加、ローカル関数ガチャとレアリティ、3フェーズボスとレーザー/弾幕攻撃、STAGE10の最終ボスとエンディング、装甲/分裂/ジャマーの特殊敵、1ラン1回の救済チェンジ、図解付き3ステップのチュートリアル、ステージ開始時点からやり直せるリトライ、ライフ無限のストレス解消モードを搭載。BGMと効果音、スマホのタップ操作にも対応!</p>
+    <li class="game-card" data-tags="アクション 数学 ローグライト">
+      <a class="card-link" href="projects/_labs/graph-cross/" data-app="graph-cross">
+        <figure class="thumb">
+          <img src="projects/_labs/graph-cross/thumb.jpg" alt="グラフクロスのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>グラフクロス</h2>
+          <p>xが自動で進むグラフの上で関数を切り替え、自分の曲線を敵の曲線に交差させて大爆発を起こす2Dアクション。上昇/下降/その他のジャンルから3つ選ぶデッキ、累乗(x^p)・波(sin/cos/三角/角丸/減衰)・指数/対数/S字/山/減速下降の関数ビルダーと2関数の合成カード、リアルタイム軌道プレビューと合成後プレビュー、角度・弱点・連続MULTI、アイテムで追加される非対称グラフ、ボスとステージクリア、軌道プレビュー付きの同ジャンル関数入れ替え3択と強化3択、敵撃破時に縦ビームで撃ち抜くプリズムクロス、アイテム磁石・リバイブ・コンボガード・ボスブレイカー、関数スロットの3択追加、ローカル関数ガチャとレアリティ、3フェーズボスとレーザー/弾幕攻撃、STAGE10の最終ボスとエンディング、装甲/分裂/ジャマーの特殊敵、1ラン1回の救済チェンジ、図解付き3ステップのチュートリアル、ステージ開始時点からやり直せるリトライ、ライフ無限のストレス解消モードを搭載。BGMと効果音、スマホのタップ操作にも対応!</p>
+          <ul class="tags"><li>アクション</li><li>数学</li><li>ローグライト</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/unknown-word-deal/">
-        <span class="tag">GAME</span>
-        <h2>未知語de交渉</h2>
-        <p>品物は見えている。商人の短い文に潜む文法語と意図を読み、差し出す・受け取る・断るを選ぶスマホ向け言語交渉ゲーム。当たれば+10硬貨、外れれば+3硬貨。迷ったら2硬貨で意味を確認。3人目は言葉としぐさが食い違う。最後は契約書の主語を読んで署名/拒否。3〜5分。</p>
+    <li class="game-card" data-tags="言語 推理">
+      <a class="card-link" href="projects/_labs/unknown-word-deal/" data-app="unknown-word-deal">
+        <figure class="thumb">
+          <img src="projects/_labs/unknown-word-deal/thumb.jpg" alt="未知語de交渉のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>未知語de交渉</h2>
+          <p>品物は見えている。商人の短い文に潜む文法語と意図を読み、差し出す・受け取る・断るを選ぶスマホ向け言語交渉ゲーム。当たれば+10硬貨、外れれば+3硬貨。迷ったら2硬貨で意味を確認。3人目は言葉としぐさが食い違う。最後は契約書の主語を読んで署名/拒否。3〜5分。</p>
+          <ul class="tags"><li>言語</li><li>推理</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/observer-game/">
-        <span class="tag">GAME</span>
-        <h2>観測者</h2>
-        <p>敵の動きの隠れた規則を観測し、次の一手を予測するスマホ向け推理ゲーム。観測・予測・灯を動かす実験で6つの候補を絞る。外すとライフが減り、規則が変わる。12ターンで何回当てられるか。約5分。</p>
+    <li class="game-card" data-tags="推理 パズル">
+      <a class="card-link" href="projects/_labs/observer-game/" data-app="observer-game">
+        <figure class="thumb">
+          <img src="projects/_labs/observer-game/thumb.jpg" alt="観測者のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>観測者</h2>
+          <p>敵の動きの隠れた規則を観測し、次の一手を予測するスマホ向け推理ゲーム。観測・予測・灯を動かす実験で6つの候補を絞る。外すとライフが減り、規則が変わる。12ターンで何回当てられるか。約5分。</p>
+          <ul class="tags"><li>推理</li><li>パズル</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/exponential-balls/">
-        <span class="tag">GAME</span>
-        <h2>BLOOM</h2>
-        <p>ボールが2,048まで倍々に増えるAUTO、上部ラインで2個に増えるFRAME、20色の球がギミックを抜けて最後の1球を決めるノータップRACE、20球の能力差と予想を楽しむ積み木レースRACE 3Dの4モードを載せた縦画面オーディオビジュアル。AUTO/FRAMEはタップで押し返し。120 BPMのプロシージャル音楽。</p>
+    <li class="game-card" data-tags="音楽 レトロ レース">
+      <a class="card-link" href="projects/_labs/exponential-balls/" data-app="exponential-balls">
+        <figure class="thumb">
+          <img src="projects/_labs/exponential-balls/thumb.jpg" alt="BLOOMのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>BLOOM</h2>
+          <p>ボールが2,048まで倍々に増えるAUTO、上部ラインで2個に増えるFRAME、20色の球がギミックを抜けて最後の1球を決めるノータップRACE、20球の能力差と予想を楽しむ積み木レースRACE 3Dの4モードを載せた縦画面オーディオビジュアル。AUTO/FRAMEはタップで押し返し。120 BPMのプロシージャル音楽。</p>
+          <ul class="tags"><li>音楽</li><li>レトロ</li><li>レース</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/neon-stack/">
-        <span class="tag">GAME</span>
-        <h2>ネオンスタック</h2>
-        <p>1ボタンで遊ぶネオン積み上げアーケード。左右に往復するブロックを落とし、重なった幅だけが残る。PERFECTで幅キープ+コンボ、3連続で幅回復。5階ごとのコア、10階ごとのバイオーム、BGMのBEATボーナス、日替わりチャレンジ、BGM/効果音つき。</p>
+    <li class="game-card" data-tags="1ボタン 音楽 アーケード">
+      <a class="card-link" href="projects/_labs/neon-stack/" data-app="neon-stack">
+        <figure class="thumb">
+          <img src="projects/_labs/neon-stack/thumb.jpg" alt="ネオンスタックのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>ネオンスタック</h2>
+          <p>1ボタンで遊ぶネオン積み上げアーケード。左右に往復するブロックを落とし、重なった幅だけが残る。PERFECTで幅キープ+コンボ、3連続で幅回復。5階ごとのコア、10階ごとのバイオーム、BGMのBEATボーナス、日替わりチャレンジ、BGM/効果音つき。</p>
+          <ul class="tags"><li>1ボタン</li><li>音楽</li><li>アーケード</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/jump-rush/">
-        <span class="tag">GAME</span>
-        <h2>ジャンプラッシュ</h2>
-        <p>自動で走るヒーローをタップ/押しっぱなしでジャンプさせ、4種類の敵を踏み越えて城を目指すスマホ縦画面の横スクロールアクション。左右に歩く敵、跳ねる敵、空中を漂う敵、弾を撃つ敵、下から壊せる/壊せないブロック、穴、3ライフ、旗ポールから城へ入るクリア演出、距離・踏み・ブロック・タイムのスコア、ベスト保存つき。</p>
+    <li class="game-card" data-tags="アクション ジャンプ">
+      <a class="card-link" href="projects/_labs/jump-rush/" data-app="jump-rush">
+        <figure class="thumb">
+          <img src="projects/_labs/jump-rush/thumb.jpg" alt="ジャンプラッシュのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>ジャンプラッシュ</h2>
+          <p>自動で走るヒーローをタップ/押しっぱなしでジャンプさせ、4種類の敵を踏み越えて城を目指すスマホ縦画面の横スクロールアクション。左右に歩く敵、跳ねる敵、空中を漂う敵、弾を撃つ敵、下から壊せる/壊せないブロック、穴、3ライフ、旗ポールから城へ入るクリア演出、距離・踏み・ブロック・タイムのスコア、ベスト保存つき。</p>
+          <ul class="tags"><li>アクション</li><li>ジャンプ</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-    <li>
-      <a href="projects/_labs/ken-tsunagi/">
-        <span class="tag">GAME</span>
-        <h2>けんつなぎ</h2>
-        <p>47都道府県を箱に落とし、隣り合う県が触れると地図どおり合体する落ちものパズル。県は重力で積もり、陸続きと橋でつながる。47県を落としたら60秒以内に日本列島を完成させ、箱あふれと時間切れを避けてスコアを伸ばす。ヒント3回、ゆらす3回、ベストスコアと最速タイム保存つき。</p>
+    <li class="game-card" data-tags="パズル 日本地図">
+      <a class="card-link" href="projects/_labs/ken-tsunagi/" data-app="ken-tsunagi">
+        <figure class="thumb">
+          <img src="projects/_labs/ken-tsunagi/thumb.jpg" alt="けんつなぎのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
+          <span class="tag">GAME</span>
+        </figure>
+        <div class="card-body">
+          <h2>けんつなぎ</h2>
+          <p>47都道府県を箱に落とし、隣り合う県が触れると地図どおり合体する落ちものパズル。県は重力で積もり、陸続きと橋でつながる。47県を落としたら60秒以内に日本列島を完成させ、箱あふれと時間切れを避けてスコアを伸ばす。ヒント3回、ゆらす3回、ベストスコアと最速タイム保存つき。</p>
+          <ul class="tags"><li>パズル</li><li>日本地図</li></ul>
+          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
+        </div>
       </a>
     </li>
-  </ul>
+      </ul>
+    </main>
 
-  <footer>
-    ローカルで動かすには <code>python3 -m http.server</code> をこのフォルダで実行して開く（各ゲームは依存ゼロの静的ファイル）。
-  </footer>
+    <footer>
+      <p>各ゲームは依存ゼロの静的ファイルです。ローカルで動かすには <code>python3 -m http.server</code> をリポジトリ直下で実行してください。</p>
+      <p><a href="https://github.com/takuto277/universe">GitHub / takuto277/universe</a></p>
+    </footer>
+  </div>
+
+  <script>
+    (function () {
+      var cards = Array.prototype.slice.call(document.querySelectorAll('.game-card'));
+      var buttons = Array.prototype.slice.call(document.querySelectorAll('.filter'));
+      var count = document.getElementById('result-count');
+      function apply(filter) {
+        var shown = 0;
+        cards.forEach(function (card) {
+          var tags = (card.getAttribute('data-tags') || '').split(' ');
+          var visible = filter === 'all' || tags.indexOf(filter) >= 0;
+          card.hidden = !visible;
+          if (visible) shown++;
+        });
+        buttons.forEach(function (button) {
+          var active = button.getAttribute('data-filter') === filter;
+          button.classList.toggle('active', active);
+          button.setAttribute('aria-pressed', active ? 'true' : 'false');
+        });
+        count.textContent = shown + ' 本のゲーム';
+      }
+      buttons.forEach(function (button) {
+        button.addEventListener('click', function () {
+          apply(button.getAttribute('data-filter'));
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

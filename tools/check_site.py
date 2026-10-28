@@ -9,7 +9,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 ERRORS = []
-REQUIRED = ("id", "path", "tag", "title", "description")
+REQUIRED = ("id", "path", "tag", "title", "description", "thumbnail")
 
 
 def error(message):
@@ -89,6 +89,16 @@ def load_apps():
         if not list(app_dir.glob("test-*.js")):
             error(f"{label}: test-*.js がありません: {path}")
 
+        thumbnail = app["thumbnail"]
+        if thumbnail.startswith("/") or "\\" in thumbnail or ".." in Path(thumbnail).parts:
+            error(f"{label}: thumbnail はリポジトリ内の相対パスにしてください: {thumbnail}")
+        elif not (ROOT / thumbnail).is_file():
+            error(f"{label}: thumbnail がありません: {thumbnail}")
+
+        tags = app.get("tags")
+        if not isinstance(tags, list) or not tags or not all(isinstance(tag, str) and tag.strip() for tag in tags):
+            error(f"{label}: tags は空でない文字列の配列にしてください")
+
         valid.append(app)
 
     return valid
@@ -119,6 +129,18 @@ def check_index(apps):
         description = normalize(app["description"])
         if description not in html and escape(description) not in html:
             error(f'index.html: 説明が一致しません: {app["id"]}')
+
+        thumbnail = escape(app["thumbnail"])
+        if f'src="{thumbnail}"' not in html:
+            error(f'index.html: サムネイルがありません: {app["thumbnail"]}')
+
+        data_tags = escape(" ".join(app.get("tags", [])), quote=True)
+        if f'data-tags="{data_tags}"' not in html:
+            error(f'index.html: data-tags が apps.json と一致しません: {app["id"]}')
+        for tag in app.get("tags", []):
+            filter_tag = escape(tag, quote=True)
+            if f'data-filter="{filter_tag}"' not in html:
+                error(f'index.html: タグフィルターがありません: {tag}')
 
 
 def check_registered_apps(apps):
