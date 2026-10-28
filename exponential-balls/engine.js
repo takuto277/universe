@@ -34,10 +34,10 @@
   var RACE = {
     total: 20,
     ballRadius: 7,
-    gravity: 260,
-    damping: 0.999,
-    maxSpeed: 430,
-    wallBounce: 0.82,
+    gravity: 360,
+    damping: 0.9995,
+    maxSpeed: 560,
+    wallBounce: 0.9,
     arena: { left: 38, right: 352, top: 180, bottom: 812 },
     voidY: 800,
     startY: 215,
@@ -52,14 +52,24 @@
       { x: 100, y: 612 }, { x: 290, y: 612 }, { x: 195, y: 682 }
     ],
     bumpers: [
-      { x: 85, y: 695, r: 15 },
-      { x: 305, y: 695, r: 15 },
-      { x: 195, y: 760, r: 15 }
+      { x: 85, y: 695, baseX: 85, amp: 22, speed: 1.8, phase: 0, r: 15 },
+      { x: 305, y: 695, baseX: 305, amp: 30, speed: 2.2, phase: 1.7, r: 15 },
+      { x: 195, y: 760, baseX: 195, amp: 48, speed: 1.4, phase: 2.4, r: 15 }
     ],
     spinners: [
-      { x: 195, y: 410, len: 62, half: 4, angle: 0, speed: 2.1 },
-      { x: 100, y: 590, len: 48, half: 4, angle: 1.2, speed: -2.7 },
-      { x: 285, y: 520, len: 48, half: 4, angle: 2.4, speed: 2.5 }
+      { x: 195, y: 410, len: 62, half: 4, angle: 0, speed: 4.2 },
+      { x: 100, y: 590, len: 48, half: 4, angle: 1.2, speed: -5.0 },
+      { x: 285, y: 520, len: 48, half: 4, angle: 2.4, speed: 4.6 },
+      { x: 60, y: 470, len: 36, half: 4, angle: 0.6, speed: -3.8 }
+    ],
+    wells: [
+      { x: 118, y: 350, r: 58, strength: 150 },
+      { x: 278, y: 640, r: 54, strength: 190 }
+    ],
+    boosters: [
+      { x: 72, y: 420, angle: 0.3, power: 240, r: 26 },
+      { x: 318, y: 560, angle: 2.85, power: 260, r: 26 },
+      { x: 198, y: 315, angle: 1.57, power: 200, r: 24 }
     ],
     portals: [
       { x: 78, y: 520, r: 14, target: 1, hue: 190 },
@@ -314,12 +324,13 @@
           hue: (i * 18) % 360,
           x: RACE.arena.left + 50 + col * 50 + rnd(-8, 8),
           y: RACE.startY + row * 12 + rnd(-3, 3),
-          vx: rnd(-45, 45),
-          vy: rnd(0, 30),
+          vx: rnd(-90, 90),
+          vy: rnd(0, 60),
           r: RACE.ballRadius,
           alive: true,
           portalCd: 0,
-          portalUses: 0
+          portalUses: 0,
+          boostCd: 0
         });
       }
       return {
@@ -329,6 +340,9 @@
         voidY: RACE.voidY,
         events: [],
         result: null,
+        bumpers: RACE.bumpers.map(function (b) {
+          return { x: b.x, baseX: b.baseX, amp: b.amp, speed: b.speed, phase: b.phase, r: b.r, y: b.y };
+        }),
         spinners: RACE.spinners.map(function (s) {
           return { x: s.x, y: s.y, len: s.len, half: s.half, angle: s.angle, speed: s.speed };
         }),
@@ -423,12 +437,16 @@
       for (si = 0; si < r.spinners.length; si++) {
         r.spinners[si].angle += r.spinners[si].speed * dt;
       }
+      for (var mb = 0; mb < r.bumpers.length; mb++) {
+        r.bumpers[mb].x = r.bumpers[mb].baseX + Math.sin(t * r.bumpers[mb].speed + r.bumpers[mb].phase) * r.bumpers[mb].amp;
+      }
 
       var balls = r.balls;
       for (var i = 0; i < balls.length; i++) {
         var b = balls[i];
         if (!b.alive) continue;
         b.portalCd = Math.max(0, b.portalCd - dt);
+        b.boostCd = Math.max(0, b.boostCd - dt);
         b.vy += RACE.gravity * dt;
         b.vx *= RACE.damping;
         b.vy *= RACE.damping;
@@ -447,11 +465,42 @@
         for (var p = 0; p < RACE.pegs.length; p++) {
           bounceCircle(b, RACE.pegs[p].x, RACE.pegs[p].y, 5, 0.72, 0);
         }
-        for (var bu = 0; bu < RACE.bumpers.length; bu++) {
-          bounceCircle(b, RACE.bumpers[bu].x, RACE.bumpers[bu].y, RACE.bumpers[bu].r, 0.95, 70);
+        for (var bu = 0; bu < r.bumpers.length; bu++) {
+          if (bounceCircle(b, r.bumpers[bu].x, r.bumpers[bu].y, r.bumpers[bu].r, 1.0, 150)) {
+            r.events.push({ type: 'bumper', x: b.x, y: b.y, hue: b.hue });
+          }
         }
         for (si = 0; si < r.spinners.length; si++) {
-          collideSpinner(b, r.spinners[si]);
+          if (collideSpinner(b, r.spinners[si])) {
+            r.events.push({ type: 'spinner', x: b.x, y: b.y, hue: b.hue });
+          }
+        }
+        for (var wl = 0; wl < RACE.wells.length; wl++) {
+          var well = RACE.wells[wl];
+          var wdx = well.x - b.x;
+          var wdy = well.y - b.y;
+          var wd = Math.hypot(wdx, wdy);
+          if (wd < well.r && wd > 0) {
+            var pull = well.strength * (1 - wd / well.r);
+            b.vx += (wdx / wd) * pull * dt;
+            b.vy += (wdy / wd) * pull * dt;
+            b.vx += (-wdy / wd) * pull * 0.45 * dt;
+            b.vy += (wdx / wd) * pull * 0.45 * dt;
+          }
+        }
+        if (b.boostCd <= 0) {
+          for (var bo = 0; bo < RACE.boosters.length; bo++) {
+            var boost = RACE.boosters[bo];
+            var bdx = b.x - boost.x;
+            var bdy = b.y - boost.y;
+            if (bdx * bdx + bdy * bdy < Math.pow(boost.r + b.r, 2)) {
+              b.vx += Math.cos(boost.angle) * boost.power;
+              b.vy += Math.sin(boost.angle) * boost.power;
+              b.boostCd = 0.32;
+              r.events.push({ type: 'boost', x: b.x, y: b.y, hue: b.hue });
+              break;
+            }
+          }
         }
 
         var conv = RACE.conveyor;
@@ -551,10 +600,14 @@
           return { id: b.id, hue: b.hue, x: b.x, y: b.y, vx: b.vx, vy: b.vy, r: b.r };
         }),
         pegs: RACE.pegs,
-        bumpers: RACE.bumpers,
+        bumpers: r.bumpers.map(function (b) {
+          return { x: b.x, y: b.y, r: b.r };
+        }),
         spinners: r.spinners.map(function (s) {
           return { x: s.x, y: s.y, len: s.len, half: s.half, angle: s.angle };
         }),
+        wells: RACE.wells,
+        boosters: RACE.boosters,
         portals: r.portals.map(function (p) {
           return { x: p.x, y: p.y, r: p.r, hue: p.hue };
         }),

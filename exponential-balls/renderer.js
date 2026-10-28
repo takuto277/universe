@@ -10,6 +10,8 @@
     var balls = [];
     var waves = [];
     var raceTrails = {};
+    var particles = [];
+    var shake = 0;
     var flash = 0;
     var beatPulse = 0;
     var radius = 30;
@@ -109,6 +111,8 @@
       balls = [];
       waves = [];
       raceTrails = {};
+      particles = [];
+      shake = 0;
       flash = 0;
       beatPulse = 0;
     }
@@ -159,7 +163,7 @@
           var trail = raceTrails[ball.id] || (raceTrails[ball.id] = { hue: ball.hue, points: [] });
           trail.hue = ball.hue;
           trail.points.push({ x: ball.x, y: ball.y, life: 1 });
-          if (trail.points.length > 6) trail.points.shift();
+          if (trail.points.length > 9) trail.points.shift();
         }
       }
       for (var key in raceTrails) {
@@ -304,6 +308,21 @@
     }
 
 
+    function spawnBurst(x, y, hue, count, power) {
+      for (var i = 0; i < count; i++) {
+        var a = Math.random() * Math.PI * 2;
+        var v = power * (0.35 + Math.random() * 0.9);
+        particles.push({
+          x: x, y: y,
+          vx: Math.cos(a) * v,
+          vy: Math.sin(a) * v,
+          life: 0.6 + Math.random() * 0.7,
+          hue: hue + (Math.random() * 30 - 15),
+          size: 1.5 + Math.random() * 3
+        });
+      }
+    }
+
     function drawRace(state, t) {
       if (!ctx || !state || !state.race || !state.field) return;
       var race = state.race;
@@ -313,6 +332,45 @@
       function X(x) { return x * sx; }
       function Y(y) { return y * sy; }
       background(hue);
+
+      for (var ev = 0; ev < race.events.length; ev++) {
+        var evt = race.events[ev];
+        var ex = X(evt.x);
+        var ey = Y(evt.y);
+        if (evt.type === 'bumper') {
+          shake = Math.min(12, shake + 2.5);
+          flash = Math.max(flash, 0.16);
+          spawnBurst(ex, ey, evt.hue, 5, 120);
+          waves.push({ x: ex, y: ey, r: 4, speed: 220, life: 1, hue: evt.hue, width: 2 });
+        } else if (evt.type === 'spinner') {
+          shake = Math.min(12, shake + 1.8);
+          spawnBurst(ex, ey, evt.hue, 3, 90);
+          waves.push({ x: ex, y: ey, r: 3, speed: 180, life: 1, hue: evt.hue, width: 1.5 });
+        } else if (evt.type === 'boost') {
+          shake = Math.min(14, shake + 3);
+          flash = Math.max(flash, 0.2);
+          spawnBurst(ex, ey, evt.hue, 7, 180);
+          waves.push({ x: ex, y: ey, r: 5, speed: 260, life: 1, hue: evt.hue, width: 2.5 });
+        } else if (evt.type === 'eliminate') {
+          shake = Math.min(16, shake + 4);
+          flash = Math.max(flash, 0.28);
+          spawnBurst(ex, ey, evt.hue, 10, 150);
+          waves.push({ x: ex, y: ey, r: 4, speed: 180, life: 1, hue: evt.hue, width: 2 });
+        } else if (evt.type === 'portal') {
+          spawnBurst(ex, ey, evt.hue, 4, 120);
+          waves.push({ x: ex, y: ey, r: 6, speed: 240, life: 1, hue: evt.hue, width: 2 });
+        } else if (evt.type === 'winner') {
+          shake = Math.min(24, shake + 10);
+          flash = 0.7;
+          spawnBurst(ex, ey, evt.hue, 26, 230);
+          waves.push({ x: ex, y: ey, r: 24, speed: 400, life: 1, hue: evt.hue, width: 4 });
+        }
+      }
+
+      ctx.save();
+      var shakeX = (Math.random() * 2 - 1) * shake;
+      var shakeY = (Math.random() * 2 - 1) * shake;
+      ctx.translate(shakeX, shakeY);
 
       ctx.globalCompositeOperation = 'source-over';
       var left = X(race.arena.left);
@@ -361,6 +419,44 @@
         ctx.beginPath();
         ctx.arc(px, py, pr, 0, Math.PI * 2);
         ctx.fill();
+      }
+
+      for (var wll = 0; wll < race.wells.length; wll++) {
+        var well = race.wells[wll];
+        var wx = X(well.x);
+        var wy = Y(well.y);
+        var wr = well.r * sx;
+        ctx.strokeStyle = 'hsla(' + ((hue + 180) % 360) + ', 90%, 72%, 0.22)';
+        ctx.lineWidth = 1.5;
+        for (var wrr = 0; wrr < 3; wrr++) {
+          ctx.beginPath();
+          ctx.arc(wx, wy, wr * (0.35 + wrr * 0.28) + Math.sin(t * 2 + wrr) * 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        ctx.fillStyle = 'hsla(' + ((hue + 180) % 360) + ', 90%, 70%, 0.05)';
+        ctx.beginPath();
+        ctx.arc(wx, wy, wr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (var bst = 0; bst < race.boosters.length; bst++) {
+        var boost = race.boosters[bst];
+        var bx = X(boost.x);
+        var by = Y(boost.y);
+        var ba = boost.angle;
+        ctx.save();
+        ctx.translate(bx, by);
+        ctx.rotate(ba);
+        ctx.strokeStyle = 'hsla(' + ((hue + 60) % 360) + ', 95%, 72%, ' + (0.35 + beatPulse * 0.3).toFixed(3) + ')';
+        ctx.lineWidth = 2;
+        for (var ch = 0; ch < 3; ch++) {
+          ctx.beginPath();
+          ctx.moveTo(-10 + ch * 7, -10);
+          ctx.lineTo(0 + ch * 7, 0);
+          ctx.lineTo(-10 + ch * 7, 10);
+          ctx.stroke();
+        }
+        ctx.restore();
       }
 
       var conv = race.conveyor;
@@ -455,16 +551,12 @@
         ctx.fill();
       }
 
-      for (var e = 0; e < race.events.length; e++) {
-        var event = race.events[e];
-        if (event.type === 'winner') {
-          flash = 1;
-          waves.push({ x: X(event.x), y: Y(event.y), r: 20, speed: 360, life: 1, hue: event.hue, width: 4 });
-        } else if (event.type === 'eliminate') {
-          waves.push({ x: X(event.x), y: Y(event.y), r: 4, speed: 160, life: 1, hue: event.hue, width: 2 });
-        } else if (event.type === 'portal') {
-          waves.push({ x: X(event.x), y: Y(event.y), r: 6, speed: 220, life: 1, hue: event.hue, width: 2 });
-        }
+      for (var pp = 0; pp < particles.length; pp++) {
+        var pcl = particles[pp];
+        ctx.fillStyle = 'hsla(' + pcl.hue + ', 95%, 70%, ' + Math.max(0, pcl.life * 0.8).toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(X(pcl.x), Y(pcl.y), pcl.size * sx, 0, Math.PI * 2);
+        ctx.fill();
       }
 
       var win = race.result;
@@ -482,6 +574,7 @@
       }
 
       drawWaves(hue);
+      ctx.restore();
     }
 
     resize();

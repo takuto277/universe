@@ -11,6 +11,7 @@
   var ui = null;
   var perfStart = null;
   var lastNow = null;
+  var lastFx = -10;
 
   if (root.ExponentialRenderer && canvas) {
     renderer = root.ExponentialRenderer.create(canvas);
@@ -22,7 +23,10 @@
   function loop(now) {
     var state = game.state;
     if (state.phase === 'playing') {
-      if (perfStart == null) perfStart = now;
+      if (perfStart == null) {
+        perfStart = now;
+        lastFx = -10;
+      }
       var t = (now - perfStart) / 1000;
       if (!isFinite(t) || t < 0) t = 0;
       var dt = lastNow == null ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
@@ -36,6 +40,11 @@
             var event = frame.race.events[e];
             if (event.type === 'eliminate' && audio.capture) audio.capture(t, frame.root.freq);
             if (event.type === 'winner' && audio.impact) audio.impact();
+            if ((event.type === 'bumper' || event.type === 'spinner' || event.type === 'boost') &&
+                audio.tap && t - lastFx > 0.06) {
+              audio.tap();
+              lastFx = t;
+            }
           }
         }
         if (renderer) {

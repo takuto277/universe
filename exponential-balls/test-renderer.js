@@ -86,6 +86,8 @@ var raceState = {
     bumpers: [{ x: 85, y: 695, r: 15 }, { x: 305, y: 695, r: 15 }],
     spinners: [{ x: 195, y: 410, len: 62, half: 4, angle: 0.4 }],
     portals: [{ x: 78, y: 520, r: 14, hue: 190 }, { x: 312, y: 260, r: 14, hue: 40 }],
+    wells: [{ x: 118, y: 350, r: 58 }, { x: 278, y: 640, r: 54 }],
+    boosters: [{ x: 72, y: 420, angle: 0.3, r: 26 }, { x: 318, y: 560, angle: 2.85, r: 26 }],
     conveyor: { x: 225, y: 575, w: 110, h: 8, vx: -75 },
     result: null,
     events: [{ type: 'eliminate', x: 120, y: 810, hue: 36, id: 3 }]
