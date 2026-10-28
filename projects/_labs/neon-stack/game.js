@@ -3,9 +3,12 @@
   'use strict';
 
   var E = (typeof window !== 'undefined' && window.NeonStackEngine) ? window.NeonStackEngine : null;
+  var AU = (typeof window !== 'undefined' && window.NeonStackAudio) ? window.NeonStackAudio : null;
+  var audio = AU ? AU.create() : null;
 
   var GROUND = 66;
   var BEST_KEY = 'neon-stack-best';
+  var MUTE_KEY = 'neon-stack-muted';
 
   var canvas = null;
   var ctx = null;
@@ -18,10 +21,12 @@
   var lastTs = 0;
   var particles = [];
   var popups = [];
+  var rings = [];
   var stars = [];
   var shake = 0;
   var flash = 0;
   var best = loadBest();
+  var muted = loadMuted();
 
   function nowMs() {
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -36,6 +41,20 @@
   function hsl(h, s, l, a) {
     if (a == null) return 'hsl(' + h + ', ' + s + '%, ' + l + '%)';
     return 'hsla(' + h + ', ' + s + '%, ' + l + '%, ' + a + ')';
+  }
+
+  function loadMuted() {
+    try {
+      return typeof localStorage !== 'undefined' && localStorage.getItem(MUTE_KEY) === '1';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  function saveMuted(value) {
+    try {
+      if (typeof localStorage !== 'undefined') localStorage.setItem(MUTE_KEY, value ? '1' : '0');
+    } catch (e) { }
   }
 
   function loadBest() {
@@ -71,6 +90,13 @@
 
   function beginRun() {
     state = E.createGame({ width: viewW, height: viewH });
+    rings = [];
+    if (audio) {
+      audio.unlock();
+      audio.setMuted(muted);
+      audio.setIntensity(0);
+      audio.startBgm();
+    }
     view.phase = 'run';
     view.overAt = 0;
     view.autoDrops = 0;
@@ -86,6 +112,7 @@
 
   function showEnd() {
     view.phase = 'over';
+    if (audio) audio.stopBgm();
     var snap = E.snapshot(state);
     if (snap.score > best) {
       best = snap.score;
@@ -135,6 +162,8 @@
 
   function onKey(e) {
     if (!e) return;
+    var tag = e.target && e.target.tagName;
+    if (tag === 'BUTTON' || tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
     var k = e.key || '';
     if (k === ' ' || k === 'Spacebar' || k === 'Enter' || k === 'ArrowDown' || k === 's' || k === 'S') {
       if (e.preventDefault) e.preventDefault();
@@ -174,10 +203,12 @@
       var p = screenPos(ev.x, ev.y + (state ? E.BLOCK_HEIGHT : 0));
       if (ev.type === 'place') {
         if (ev.perfect) {
-          burst(p.x, p.y, 18, ['#ffe98a', '#ffd166', '#57f6ff', '#ffffff'], 300, 0.7);
-          flash = Math.max(flash, 0.2);
-          shake = Math.max(shake, 0.26);
-          popup('PERFECT', p.x, p.y - 18, '#ffe98a', 24);
+          burst(p.x, p.y, 26, ['#ffe98a', '#ffd166', '#57f6ff', '#ffffff'], 340, 0.8);
+          rings.push({ x: p.x, y: p.y, r: 10, maxR: Math.max(viewW, viewH) * 0.46, life: 0.62, max: 0.62, color: '#ffe98a' });
+          rings.push({ x: p.x, y: p.y, r: 4, maxR: Math.max(viewW, viewH) * 0.3, life: 0.42, max: 0.42, color: '#57f6ff' });
+          flash = Math.max(flash, 0.34);
+          shake = Math.max(shake, 0.38);
+          popup('PERFECT!', p.x, p.y - 18, '#ffe98a', 26);
           if (ev.combo > 1) popup('COMBO x' + ev.combo, p.x, p.y - 48, '#57f6ff', 17);
         } else {
           burst(p.x, p.y, 11, ['#57f6ff', '#8f7bff', '#ffffff'], 190, 0.5);
@@ -189,6 +220,10 @@
         burst(p.x, p.y, 34, ['#ff3df0', '#ff6b9d', '#ffd166', '#ffffff'], 380, 0.9);
         shake = 1;
         flash = 0.7;
+      }
+      if (audio) {
+        if (ev.type === 'place') audio.play(ev.perfect ? 'perfect' : 'place', ev.combo || 0, ev.perfect);
+        else if (ev.type === 'miss') audio.play('miss');
       }
     }
   }
@@ -211,6 +246,12 @@
       pop.life -= dt;
       pop.y -= 42 * dt;
       if (pop.life <= 0) popups.splice(i, 1);
+    }
+    for (i = rings.length - 1; i >= 0; i--) {
+      var ring = rings[i];
+      ring.life -= dt;
+      ring.r += (ring.maxR - ring.r) * Math.min(1, dt * 9);
+      if (ring.life <= 0) rings.splice(i, 1);
     }
     if (shake > 0) shake = Math.max(0, shake - dt * 2.4);
     if (flash > 0) flash = Math.max(0, flash - dt * 2.6);
@@ -425,6 +466,21 @@
     ctx.globalAlpha = 1;
     ctx.shadowBlur = 0;
 
+    for (i = 0; i < rings.length; i++) {
+      var ring = rings[i];
+      var ra = clamp(ring.life / ring.max, 0, 1);
+      ctx.globalAlpha = ra;
+      ctx.strokeStyle = ring.color;
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = ring.color;
+      ctx.shadowBlur = 18;
+      ctx.beginPath();
+      ctx.arc(ring.x, ring.y, ring.r, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+
     for (i = 0; i < popups.length; i++) {
       var pop = popups[i];
       var alpha = clamp(pop.life / pop.max, 0, 1);
@@ -503,12 +559,20 @@
     if (view.phase === 'dying' && state && ts - view.overAt > 520) showEnd();
 
     updateEffects(dt);
+    if (audio && state) audio.setIntensity(Math.min(3, Math.floor(state.height / 8)));
     draw(ts / 1000);
 
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
   }
 
   /* ===== 初期化 ===== */
+  function updateSoundButton() {
+    if (els.btnSound) {
+      els.btnSound.textContent = muted ? '音 OFF' : '音 ON';
+      els.btnSound.setAttribute('aria-pressed', muted ? 'false' : 'true');
+    }
+  }
+
   function init() {
     canvas = $('arena');
     els.stage = $('stage');
@@ -526,6 +590,7 @@
     els.endHeight = $('end-height');
     els.endCombo = $('end-combo');
     els.endPerfect = $('end-perfect');
+    els.btnSound = $('btn-sound');
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
@@ -533,6 +598,21 @@
 
     if (els.btnStart) els.btnStart.addEventListener('click', beginRun);
     if (els.btnAgain) els.btnAgain.addEventListener('click', beginRun);
+    if (audio) audio.setMuted(muted);
+    updateSoundButton();
+    if (els.btnSound) {
+      els.btnSound.addEventListener('click', function (e) {
+        if (e && e.preventDefault) e.preventDefault();
+        muted = !muted;
+        saveMuted(muted);
+        if (audio) {
+          audio.unlock();
+          audio.setMuted(muted);
+          if (!muted && view.phase === 'run') audio.startBgm();
+        }
+        updateSoundButton();
+      });
+    }
     if (canvas) {
       canvas.addEventListener('pointerdown', onPointer);
     }
