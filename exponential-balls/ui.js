@@ -55,7 +55,7 @@
     var lastMode = '';
     var bumpTimer = null;
     var drag = null;
-    var camNorm = 0.05;
+    var camNorm = 0;
     var camDrag = false;
 
     function soundOn() {

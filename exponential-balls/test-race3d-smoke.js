@@ -19,6 +19,7 @@ tryLoad(['game.js', 'exponential-balls/game.js']);
 if (!globalThis.__GAME__ || typeof globalThis.__GAME__.startRace3D !== 'function') {
   throw new Error('startRace3D がない');
 }
+ExponentialEngine.RACE3D.maxTime = 25;
 globalThis.__GAME__.start = globalThis.__GAME__.startRace3D;
 
 Harness.run({
