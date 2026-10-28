@@ -164,6 +164,15 @@
           if (trail.points.length > 9) trail.points.shift();
         }
       }
+      if (state && state.mode === 'race3d' && state.race3d) {
+        for (var rb3 = 0; rb3 < state.race3d.balls.length; rb3++) {
+          var ball3 = state.race3d.balls[rb3];
+          var trail3 = raceTrails[ball3.id] || (raceTrails[ball3.id] = { hue: ball3.hue, points: [] });
+          trail3.hue = ball3.hue;
+          trail3.points.push({ x: ball3.x, y: ball3.y, z: ball3.z, life: 1 });
+          if (trail3.points.length > 9) trail3.points.shift();
+        }
+      }
       for (var key in raceTrails) {
         var pts = raceTrails[key].points;
         for (var pt = pts.length - 1; pt >= 0; pt--) {
@@ -564,6 +573,281 @@
       drawWaves(hue);
     }
 
+    function drawRace3D(state, t) {
+      if (!ctx || !state || !state.race3d || !state.field) return;
+      var race = state.race3d;
+      var hue = state.root ? state.root.hue : 188;
+      var focal = 620;
+      var yaw = 0.55 + Math.sin(t * 0.16) * 0.18;
+      var cam = {
+        x: Math.sin(yaw) * 620,
+        y: -Math.cos(yaw) * 620,
+        z: 560
+      };
+      var target = { x: 0, y: 0, z: 350 };
+      var fx = target.x - cam.x;
+      var fy = target.y - cam.y;
+      var fz = target.z - cam.z;
+      var fl = Math.sqrt(fx * fx + fy * fy + fz * fz);
+      fx /= fl; fy /= fl; fz /= fl;
+      var rx = fy;
+      var ry = -fx;
+      var rl = Math.sqrt(rx * rx + ry * ry) || 1;
+      rx /= rl; ry /= rl;
+      var ux = ry * fz;
+      var uy = -rx * fz;
+      var uz = rx * fy - ry * fx;
+      var ul = Math.sqrt(ux * ux + uy * uy + uz * uz) || 1;
+      ux /= ul; uy /= ul; uz /= ul;
+      var camData = { cam: cam, fx: fx, fy: fy, fz: fz, rx: rx, ry: ry, rz: 0, ux: ux, uy: uy, uz: uz };
+
+      function project(p) {
+        var vx = p.x - cam.x;
+        var vy = p.y - cam.y;
+        var vz = p.z - cam.z;
+        var depth = vx * camData.fx + vy * camData.fy + vz * camData.fz;
+        if (depth < 40) return null;
+        var sx = vx * camData.rx + vy * camData.ry + vz * camData.rz;
+        var sy = vx * camData.ux + vy * camData.uy + vz * camData.uz;
+        var k = focal / depth;
+        return { x: width / 2 + sx * k, y: height / 2 - sy * k, depth: depth, scale: k };
+      }
+
+      function line3(a, b, color, widthPx) {
+        var pa = project(a);
+        var pb = project(b);
+        if (!pa || !pb) return;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = widthPx || 1;
+        ctx.beginPath();
+        ctx.moveTo(pa.x, pa.y);
+        ctx.lineTo(pb.x, pb.y);
+        ctx.stroke();
+      }
+
+      background(hue);
+      ctx.globalCompositeOperation = 'lighter';
+
+      for (var ev = 0; ev < race.events.length; ev++) {
+        var evt = race.events[ev];
+        var ep = project(evt);
+        if (!ep) continue;
+        if (evt.type === 'bumper') {
+          spawnBurst(ep.x, ep.y, evt.hue, 5, 120);
+          flash = Math.max(flash, 0.14);
+          waves.push({ x: ep.x, y: ep.y, r: 4, speed: 220, life: 1, hue: evt.hue, width: 2 });
+        } else if (evt.type === 'spinner') {
+          spawnBurst(ep.x, ep.y, evt.hue, 3, 90);
+          waves.push({ x: ep.x, y: ep.y, r: 3, speed: 180, life: 1, hue: evt.hue, width: 1.5 });
+        } else if (evt.type === 'boost') {
+          spawnBurst(ep.x, ep.y, evt.hue, 7, 180);
+          flash = Math.max(flash, 0.18);
+          waves.push({ x: ep.x, y: ep.y, r: 5, speed: 260, life: 1, hue: evt.hue, width: 2.5 });
+        } else if (evt.type === 'eliminate') {
+          spawnBurst(ep.x, ep.y, evt.hue, 10, 150);
+          flash = Math.max(flash, 0.24);
+          waves.push({ x: ep.x, y: ep.y, r: 4, speed: 180, life: 1, hue: evt.hue, width: 2 });
+        } else if (evt.type === 'portal') {
+          spawnBurst(ep.x, ep.y, evt.hue, 4, 120);
+          waves.push({ x: ep.x, y: ep.y, r: 6, speed: 240, life: 1, hue: evt.hue, width: 2 });
+        } else if (evt.type === 'winner') {
+          flash = 0.65;
+          spawnBurst(ep.x, ep.y, evt.hue, 26, 230);
+          waves.push({ x: ep.x, y: ep.y, r: 24, speed: 400, life: 1, hue: evt.hue, width: 4 });
+        }
+      }
+
+      var B = race.bounds;
+      var corners = [
+        { x: -B.x, y: B.y, z: 0 }, { x: B.x, y: B.y, z: 0 },
+        { x: B.x, y: B.y, z: B.zMax }, { x: -B.x, y: B.y, z: B.zMax },
+        { x: -B.x, y: -B.y, z: 0 }, { x: B.x, y: -B.y, z: 0 },
+        { x: B.x, y: -B.y, z: B.zMax }, { x: -B.x, y: -B.y, z: B.zMax }
+      ];
+      var voidY = race.voidZ;
+      ctx.globalCompositeOperation = 'source-over';
+      var floor = project({ x: 0, y: 0, z: voidY });
+      if (floor) {
+        var fg = ctx.createLinearGradient(0, floor.y - 30, 0, height);
+        fg.addColorStop(0, 'rgba(4, 8, 14, 0.12)');
+        fg.addColorStop(0.45, 'rgba(220, 48, 82, 0.16)');
+        fg.addColorStop(1, 'rgba(4, 8, 14, 0.9)');
+        ctx.fillStyle = fg;
+        ctx.fillRect(0, 0, width, height);
+      }
+      ctx.globalCompositeOperation = 'lighter';
+
+      var gridCol = 'hsla(' + hue + ', 70%, 60%, 0.10)';
+      for (var gx = -B.x; gx <= B.x; gx += 55) {
+        line3({ x: gx, y: -B.y, z: voidY }, { x: gx, y: B.y, z: voidY }, gridCol, 1);
+      }
+      for (var gy = -B.y; gy <= B.y; gy += 50) {
+        line3({ x: -B.x, y: gy, z: voidY }, { x: B.x, y: gy, z: voidY }, gridCol, 1);
+      }
+      line3(corners[0], corners[1], 'hsla(' + hue + ', 80%, 66%, 0.35)', 2);
+      line3(corners[1], corners[2], 'hsla(' + hue + ', 80%, 66%, 0.24)', 1);
+      line3(corners[2], corners[3], 'hsla(' + hue + ', 80%, 66%, 0.24)', 1);
+      line3(corners[3], corners[0], 'hsla(' + hue + ', 80%, 66%, 0.24)', 1);
+      line3(corners[0], corners[4], 'hsla(' + hue + ', 80%, 66%, 0.18)', 1);
+      line3(corners[1], corners[5], 'hsla(' + hue + ', 80%, 66%, 0.18)', 1);
+      line3(corners[3], corners[7], 'hsla(' + hue + ', 80%, 66%, 0.18)', 1);
+      line3(corners[2], corners[6], 'hsla(' + hue + ', 80%, 66%, 0.18)', 1);
+      line3(corners[4], corners[5], 'hsla(' + hue + ', 80%, 66%, 0.28)', 1);
+      line3(corners[5], corners[6], 'hsla(' + hue + ', 80%, 66%, 0.22)', 1);
+      line3(corners[6], corners[7], 'hsla(' + hue + ', 80%, 66%, 0.22)', 1);
+      line3(corners[7], corners[4], 'hsla(' + hue + ', 80%, 66%, 0.22)', 1);
+
+      for (var wl = 0; wl < race.wells.length; wl++) {
+        var well = race.wells[wl];
+        var wp = project(well);
+        if (!wp) continue;
+        ctx.strokeStyle = 'hsla(' + ((hue + 180) % 360) + ', 90%, 72%, 0.22)';
+        ctx.lineWidth = 1.5;
+        for (var wr = 0; wr < 3; wr++) {
+          ctx.beginPath();
+          ctx.arc(wp.x, wp.y, well.r * wp.scale * (0.35 + wr * 0.28) + Math.sin(t * 2 + wr) * 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      for (var bst = 0; bst < race.boosters.length; bst++) {
+        var boost = race.boosters[bst];
+        var bp = project(boost);
+        if (!bp) continue;
+        var dir = Math.sqrt(boost.vx * boost.vx + boost.vy * boost.vy + boost.vz * boost.vz) || 1;
+        var tip = project({ x: boost.x + boost.vx / dir * 34, y: boost.y + boost.vy / dir * 34, z: boost.z + boost.vz / dir * 34 });
+        if (tip) {
+          ctx.strokeStyle = 'hsla(' + ((hue + 60) % 360) + ', 95%, 72%, 0.55)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(bp.x, bp.y);
+          ctx.lineTo(tip.x, tip.y);
+          ctx.stroke();
+          ctx.beginPath();
+          ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
+          ctx.fillStyle = 'hsla(' + ((hue + 60) % 360) + ', 95%, 72%, 0.6)';
+          ctx.fill();
+        }
+      }
+
+      for (var po = 0; po < race.portals.length; po++) {
+        var portal = race.portals[po];
+        var pp = project(portal);
+        if (!pp) continue;
+        ctx.strokeStyle = 'hsla(' + portal.hue + ', 90%, 72%, 0.45)';
+        ctx.lineWidth = 2;
+        ctx.setLineDash([4, 4]);
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, portal.r * pp.scale + 2, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.fillStyle = 'hsla(' + portal.hue + ', 90%, 68%, 0.12)';
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, portal.r * pp.scale, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (var peg = 0; peg < race.pegs.length; peg++) {
+        var pegP = project(race.pegs[peg]);
+        if (!pegP) continue;
+        ctx.fillStyle = 'hsla(' + hue + ', 70%, 70%, 0.32)';
+        ctx.beginPath();
+        ctx.arc(pegP.x, pegP.y, Math.max(1.5, 5 * pegP.scale), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (var bump = 0; bump < race.bumpers.length; bump++) {
+        var bumper = race.bumpers[bump];
+        var bmp = project(bumper);
+        if (!bmp) continue;
+        ctx.strokeStyle = 'hsla(174, 90%, 72%, ' + (0.45 + beatPulse * 0.2).toFixed(3) + ')';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(bmp.x, bmp.y, bumper.r * bmp.scale, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      for (var sp = 0; sp < race.spinners.length; sp++) {
+        var spin = race.spinners[sp];
+        var cosA = Math.cos(spin.angle);
+        var sinA = Math.sin(spin.angle);
+        var e1 = project({ x: spin.x - cosA * spin.len, y: spin.y - sinA * spin.len, z: spin.z });
+        var e2 = project({ x: spin.x + cosA * spin.len, y: spin.y + sinA * spin.len, z: spin.z });
+        if (e1 && e2) {
+          ctx.strokeStyle = 'hsla(' + ((hue + 120) % 360) + ', 90%, 72%, 0.5)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(e1.x, e1.y);
+          ctx.lineTo(e2.x, e2.y);
+          ctx.stroke();
+        }
+      }
+
+      for (var key in raceTrails) {
+        var trail = raceTrails[key];
+        for (var pt = 0; pt < trail.points.length; pt++) {
+          var point = trail.points[pt];
+          if (point.z == null) continue;
+          var tp = project(point);
+          if (!tp) continue;
+          ctx.fillStyle = 'hsla(' + trail.hue + ', 90%, 68%, ' + Math.max(0, point.life * 0.16).toFixed(3) + ')';
+          ctx.beginPath();
+          ctx.arc(tp.x, tp.y, Math.max(1, race.ballRadius * tp.scale * point.life), 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
+      var drawBalls = race.balls.slice().sort(function (a, b) {
+        var pa = project(a);
+        var pb = project(b);
+        return (pa ? pa.depth : 0) - (pb ? pb.depth : 0);
+      });
+      for (var i = 0; i < drawBalls.length; i++) {
+        var ball = drawBalls[i];
+        var bp2 = project(ball);
+        if (!bp2) continue;
+        var r = Math.max(2, ball.r * bp2.scale);
+        var glow = ctx.createRadialGradient(bp2.x, bp2.y, 0, bp2.x, bp2.y, r * 3);
+        glow.addColorStop(0, 'hsla(' + ball.hue + ', 92%, 68%, 0.3)');
+        glow.addColorStop(1, 'hsla(' + ball.hue + ', 90%, 60%, 0)');
+        ctx.fillStyle = glow;
+        ctx.beginPath();
+        ctx.arc(bp2.x, bp2.y, r * 3, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'hsla(' + ball.hue + ', 92%, 64%, 0.95)';
+        ctx.beginPath();
+        ctx.arc(bp2.x, bp2.y, r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
+        ctx.beginPath();
+        ctx.arc(bp2.x - r * 0.25, bp2.y - r * 0.25, r * 0.3, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      for (var pp2 = 0; pp2 < particles.length; pp2++) {
+        var pcl = particles[pp2];
+        ctx.fillStyle = 'hsla(' + pcl.hue + ', 95%, 70%, ' + Math.max(0, pcl.life * 0.8).toFixed(3) + ')';
+        ctx.beginPath();
+        ctx.arc(pcl.x, pcl.y, pcl.size * Math.min(width / 390, height / 844), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      if (race.result) {
+        for (var wb = 0; wb < race.balls.length; wb++) {
+          if (race.balls[wb].id !== race.result.winnerId) continue;
+          var wp2 = project(race.balls[wb]);
+          if (!wp2) continue;
+          ctx.strokeStyle = 'hsla(' + race.result.winnerHue + ', 95%, 76%, 0.75)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(wp2.x, wp2.y, 18 + Math.sin(t * 5) * 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      drawWaves(hue);
+    }
+
     resize();
     return {
       resize: resize,
@@ -572,6 +856,7 @@
       draw: draw,
       drawFrame: drawFrame,
       drawRace: drawRace,
+      drawRace3D: drawRace3D,
       tap: tap,
       clear: clear,
       state: function () { return balls; }

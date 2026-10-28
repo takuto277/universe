@@ -43,6 +43,7 @@ python3 -m http.server 8000   # ローカル確認
 - 通常は PR を Ready にすれば、ローカルの watcher がレビューとマージを進める。作業中は Draft にするか `ai-pause` ラベルを付ける
 - watcher を使わず即時実行する場合は `/pr-deliver <PR番号>` を使う。レビューだけなら `/pr-review`、マージだけなら `/pr-merge` を使う
 - マージ前に `python3 tools/pr_merge.py --pr <PR番号>` の五点ゲートを通す。ゲートが失敗した状態でマージしない。`--admin`、`--auto`、直接の `gh pr merge` は使わない
+- ユーザーはデプロイ済みのものを試して良し悪しを判断する。実装と検証が終わったら、追加確認なしで PR 作成、レビュー、五点ゲート、マージ、Pages 反映まで進めてよい（五点ゲートは省略しない）
 - レビュー本文は `COMMENT` で投稿し、`APPROVE` / `REQUEST_CHANGES` は使わない。対象 head SHA と Blocker 数は `ai-pr-review` marker で記録する
 - PR の本文は `.github/pull_request_template.md` に沿って書く。マージ前に `./tools/verify.sh` を通す
 - コミットメッセージは `baseball-game: ...` のようにアプリ名または `repo:` で始め、日本語で理由が分かるように書く
