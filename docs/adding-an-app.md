@@ -53,13 +53,15 @@ window.__GAME__ = {
 {
   "id": "my-app",
   "path": "projects/_labs/my-app/",
-  "tag": "APP",
+  "tag": "GAME",
   "title": "My App",
-  "description": "一覧に表示する短い説明"
+  "description": "一覧に表示する短い説明",
+  "tags": ["ジャンル", "操作"],
+  "thumbnail": "projects/_labs/my-app/thumb.jpg"
 }
 ```
 
-`index.html` のカードにも同じ `path`、`tag`、`title`、`description` を反映します。
+`index.html` のカードにも同じ `path`、`tag`、`title`、`description`、`tags`、`thumbnail` を反映します。サムネイルは [ゲーム一覧](game-list.md) の手順で生成できます。
 
 ## 6. 検査する
 
