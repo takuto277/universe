@@ -75,27 +75,32 @@ renderer.drawFrame(frameState, 1.1);
 var raceState = {
   mode: 'race', root: { hue: 188 }, cycle: 0, bar: 0, beat: 0, field: { w: 390, h: 844 },
   race: {
-    duration: 60, timeLeft: 59.4, finishY: 4200, worldHeight: 4200,
-    trackLeft: 45, trackRight: 345, gapW: 110,
-    player: { x: 195, y: 320, vx: 10, vy: 120, radius: 10 },
-    ghost: { x: 195, y: 280, time: null, finished: false },
-    gates: [
-      { y: 1150, gapX: 105, gapW: 110, passed: false },
-      { y: 2450, gapX: 270, gapW: 110, passed: false },
-      { y: 3550, gapX: 170, gapW: 110, passed: false }
+    elapsed: 5.2, alive: 3, total: 20, eliminated: 17, ballRadius: 7, voidY: 800,
+    arena: { left: 38, right: 352, top: 180, bottom: 812 },
+    balls: [
+      { id: 1, hue: 0, x: 100, y: 400, vx: 10, vy: 50, r: 7 },
+      { id: 7, hue: 108, x: 190, y: 520, vx: -22, vy: 80, r: 7 },
+      { id: 15, hue: 252, x: 290, y: 620, vx: 18, vy: 120, r: 7 }
     ],
-    gateIndex: 0, gatesPassed: 0, result: null, events: [], beatHit: false, tapCount: 0
+    pegs: [{ x: 95, y: 300 }, { x: 195, y: 462 }],
+    bumpers: [{ x: 85, y: 695, r: 15 }, { x: 305, y: 695, r: 15 }],
+    spinners: [{ x: 195, y: 410, len: 62, half: 4, angle: 0.4 }],
+    portals: [{ x: 78, y: 520, r: 14, hue: 190 }, { x: 312, y: 260, r: 14, hue: 40 }],
+    conveyor: { x: 225, y: 575, w: 110, h: 8, vx: -75 },
+    result: null,
+    events: [{ type: 'eliminate', x: 120, y: 810, hue: 36, id: 3 }]
   }
 };
 var beforeRace = renderer.state().length;
 renderer.update(1 / 60, raceState);
-renderer.drawRace(raceState, 1);
+renderer.drawRace(raceState, 5.2);
 assert(renderer.state().length === beforeRace, 'RACE描画でAUTOの状態が壊れる');
 
-raceState.race.player.y = 4190;
-raceState.race.gates[0].passed = true;
-raceState.race.captureEvents = [];
+raceState.race.alive = 1;
+raceState.race.balls = [{ id: 7, hue: 108, x: 190, y: 430, vx: 0, vy: 0, r: 7 }];
+raceState.race.result = { winnerId: 7, winnerHue: 108, time: 5.4, total: 20, eliminated: 19, alive: 1 };
+raceState.race.events = [{ type: 'winner', x: 190, y: 430, hue: 108, id: 7 }];
 renderer.update(1 / 60, raceState);
-renderer.drawRace(raceState, 23);
+renderer.drawRace(raceState, 5.4);
 
 print('renderer tests OK (' + passed + ' assertions)');

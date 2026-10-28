@@ -35,8 +35,9 @@
       resultOverlay: $('result-overlay'),
       resultTitle: $('result-title'),
       resultSub: $('result-sub'),
+      resultWinner: $('result-winner'),
+      resultDot: $('result-dot'),
       resultTime: $('result-time'),
-      resultGhost: $('result-ghost'),
       btnRaceAgain: $('btn-race-again'),
       btnResultHome: $('btn-result-home'),
       canvas: $('canvas')
@@ -135,15 +136,26 @@
     function updateRace(state) {
       var race = state.race;
       if (!race) return;
-      setText(els.count, Math.max(0, race.timeLeft).toFixed(1));
-      setText(els.countLabel, 'LEFT');
-      setText(els.cycle, 'GATE ' + race.gateIndex + ' / ' + race.gates.length);
-      setText(els.stat, 'GHOST ' + Math.min(100, Math.round((race.ghost.y / race.finishY) * 100)) + '%');
+      if (race.alive !== lastCount) {
+        setText(els.count, String(race.alive));
+        if (els.count && els.count.classList) {
+          els.count.classList.remove('bump');
+          if (bumpTimer) clearTimeout(bumpTimer);
+          if (els.count.offsetWidth != null) els.count.classList.add('bump');
+          bumpTimer = setTimeout(function () {
+            if (els.count) els.count.classList.remove('bump');
+          }, 190);
+        }
+        lastCount = race.alive;
+      }
+      setText(els.countLabel, 'ALIVE');
+      setText(els.cycle, 'TIME ' + race.elapsed.toFixed(1));
+      setText(els.stat, 'OUT ' + race.eliminated);
       setText(els.bpm, state.bpm + ' BPM');
       setText(els.modeName, 'RACE');
-      setText(els.hint, 'TAP BEHIND TO SURGE · TAP AHEAD TO BRAKE');
+      setText(els.hint, 'NO TAP · LAST BALL WINS');
       if (els.barFill && els.barFill.style) {
-        var progress = Math.max(0, Math.min(100, (race.player.y / race.finishY) * 100));
+        var progress = Math.max(0, Math.min(100, (race.eliminated / race.total) * 100));
         els.barFill.style.width = progress.toFixed(2) + '%';
       }
     }
@@ -151,12 +163,14 @@
     function updateResult(state) {
       var result = state.race && state.race.result;
       if (!result) return;
-      var title = result.status === 'win' ? 'YOU WIN' : result.status === 'lose' ? 'GHOST WINS' : 'TIME UP';
-      var sub = result.status === 'win' ? 'You beat the ghost.' : result.status === 'lose' ? 'The ghost got there first.' : 'The 60 seconds ran out.';
-      setText(els.resultTitle, title);
-      setText(els.resultSub, sub);
-      setText(els.resultTime, result.status === 'dnf' ? 'DNF' : result.time.toFixed(1) + 's');
-      setText(els.resultGhost, result.ghostTime.toFixed(1) + 's');
+      setText(els.resultTitle, 'BALL ' + result.winnerId + ' WINS');
+      setText(els.resultSub, result.eliminated + ' balls out. Last ball standing.');
+      setText(els.resultWinner, 'BALL ' + result.winnerId);
+      setText(els.resultTime, result.time.toFixed(1) + 's');
+      if (els.resultDot && els.resultDot.style) {
+        els.resultDot.style.background = 'hsl(' + result.winnerHue + ', 92%, 64%)';
+        els.resultDot.style.boxShadow = '0 0 12px hsla(' + result.winnerHue + ', 92%, 64%, 0.65)';
+      }
     }
 
     function selectMode(mode) {
@@ -209,7 +223,8 @@
         var x = ((event ? event.clientX : 0) - (rect.left || 0));
         var y = ((event ? event.clientY : 0) - (rect.top || 0));
         var state = game.getState();
-        if ((state.mode === 'frame' || state.mode === 'race') && game.tap) {
+        if (state.mode === 'race') return;
+        if (state.mode === 'frame' && game.tap) {
           game.tap(x * state.field.w / w, y * state.field.h / h);
         }
         if (renderer && renderer.tap) renderer.tap(x, y);

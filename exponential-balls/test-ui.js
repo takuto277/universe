@@ -93,32 +93,38 @@ assert(text('btn-start') === 'START RACE' && hasClass('mode-race', 'selected'), 
 click('btn-start');
 assert(game.state.phase === 'playing' && game.state.mode === 'race', 'RACEで開始できない');
 assert(text('mode-name') === 'RACE', 'HUDのモードがRACEでない');
-assert(text('count-label') === 'LEFT', 'RACEのカウントラベルがLEFTでない');
-assert(text('cycle') === 'GATE 0 / 3', 'HUDのGATE表示が不正: ' + text('cycle'));
-assert(text('stat').indexOf('GHOST ') === 0, 'HUDのGHOST表示が不正: ' + text('stat'));
-assert(text('hint') === 'TAP BEHIND TO SURGE · TAP AHEAD TO BRAKE', 'RACEのヒントが不正');
+assert(text('count-label') === 'ALIVE', 'RACEのカウントラベルがALIVEでない');
+assert(text('count') === '20', 'RACEの初期球数が20でない: ' + text('count'));
+assert(text('cycle') === 'TIME 0.0', 'HUDのTIME表示が不正: ' + text('cycle'));
+assert(text('stat') === 'OUT 0', 'HUDのOUT表示が不正: ' + text('stat'));
+assert(text('hint') === 'NO TAP · LAST BALL WINS', 'RACEのヒントが不正');
 
-var racePlayer = game.state.race.player;
-var raceVy = racePlayer.vy;
+var raceBefore = JSON.stringify(game.getState().race.balls);
 pointer('canvas', 450, 160);
-assert(racePlayer.vy > raceVy, 'RACEでタップしても加速しない');
+assert(JSON.stringify(game.getState().race.balls) === raceBefore, 'RACEでタップ介入できてしまう');
 
 game.updateRace(0.5, 1 / 60);
 ui.update(game.getState());
-assert(text('count') !== '60.0', 'RACEの残り時間が減っていない');
+assert(text('count') === '20', 'RACEの初期の生存数が変わった');
 
-game.updateRace(61, 1 / 60);
+var guard = 0;
+while (game.state.phase === 'playing' && guard < 6000) {
+  game.updateRace(guard / 60, 1 / 60);
+  guard += 1;
+}
 ui.render(game.getState());
 assert(hasClass('result-overlay', 'visible'), 'RACE結果画面が出ていない');
 assert(hasClass('start-overlay', 'visible') === false, '結果画面でスタート画面が残る');
-assert(text('result-title') === 'TIME UP', 'TIME UPのタイトルが不正');
-assert(text('result-time') === 'DNF', 'DNF表示が不正');
-assert(/s$/.test(text('result-ghost')), 'ゴーストタイム表示が不正');
+assert(/^BALL \d+ WINS$/.test(text('result-title')), '勝者タイトルが不正: ' + text('result-title'));
+assert(text('result-winner') === 'BALL ' + game.state.race.result.winnerId, '勝者表示が不正');
+assert(text('result-sub') === '19 balls out. Last ball standing.', '結果サブが不正: ' + text('result-sub'));
+assert(/s$/.test(text('result-time')), '勝者タイム表示が不正');
 
 click('btn-race-again');
 assert(game.state.phase === 'playing' && game.state.mode === 'race', 'RACE AGAINで再開できない');
 assert(hasClass('result-overlay', 'visible') === false, '再開後も結果画面が残る');
 assert(!hasClass('hud', 'is-hidden'), '再開後もHUDが隠れている');
+assert(text('count') === '20', '再開後の初期球数が20でない');
 
 click('btn-home');
 assert(game.state.phase === 'start', 'RACE HOMEで戻れない');
