@@ -143,6 +143,7 @@ assert(game.tap(10, 10) === false, 'AUTOでエンジン側のタップが有効�
 assert(E.RACE && E.RACE.total === 20, 'RACEの球数が20でない');
 assert(E.RACE.pegs.length > 0 && E.RACE.bumpers.length > 0 && E.RACE.spinners.length > 0, 'RACEのギミックがない');
 assert(E.RACE.portals.length >= 2 && E.RACE.conveyor, 'RACEのポータル/コンベアがない');
+assert(E.RACE.wells.length >= 1 && E.RACE.boosters.length >= 1, 'RACEのウェル/ブースターがない');
 
 game = E.createGame();
 game.start('race');
