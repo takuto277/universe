@@ -206,6 +206,49 @@ body {
 .end-title.lose { color: var(--red); }
 .end-detail { color: var(--muted); font-size: 14px; }
 
+/* 結果画面の直近履歴。狭い幅でも折り返さずに読めるよう固定カラムで組む */
+.end-history {
+  width: min(100%, 320px);
+  padding: 8px 10px 9px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: rgba(19, 28, 43, 0.85);
+  text-align: left;
+}
+.end-history:empty { display: none; }
+.eh-title {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 4px;
+  color: var(--gold);
+  font-size: 12px;
+  font-weight: 700;
+}
+.eh-title span { color: var(--muted); font-size: 10.5px; font-weight: 600; }
+.eh-list { display: grid; gap: 3px; margin: 0; padding: 0; list-style: none; }
+.eh-row {
+  display: grid;
+  grid-template-columns: 2.2em 1.7em 1.4em 1.7em minmax(3em, 1fr);
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1.4;
+}
+.eh-round { color: var(--muted); font-size: 10.5px; font-weight: 600; }
+.eh-hand {
+  text-align: center;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.07);
+}
+.eh-vs { color: var(--muted); font-size: 10px; font-weight: 600; text-align: center; }
+.eh-result { font-size: 11px; text-align: right; }
+.eh-row.win .eh-result { color: var(--green); }
+.eh-row.lose .eh-result { color: var(--red); }
+.eh-row.draw .eh-result { color: var(--muted); }
+
 /* ===== メッセージ ===== */
 .message {
   max-width: 980px;
