@@ -12,6 +12,9 @@
   var els = {};
   var revealTimers = [];
 
+  /* 結果画面に出す履歴の件数。HUD の履歴(12件)とは別に、振り返りやすさを優先する */
+  var END_HISTORY_LIMIT = 5;
+
   /* phase: idle -> select <-> preview -> reveal -> select / over */
   var view = {
     phase: 'idle',
@@ -81,6 +84,31 @@
     els.memo.innerHTML = parts.join('');
   }
 
+  function renderEndHistory(history) {
+    if (!els.endHistory) return;
+    if (!history || history.length === 0) {
+      els.endHistory.innerHTML = '';
+      return;
+    }
+    var start = Math.max(0, history.length - END_HISTORY_LIMIT);
+    var rows = [];
+    for (var i = start; i < history.length; i++) {
+      var e = history[i];
+      var cls = e.result === 'win' ? 'win' : e.result === 'lose' ? 'lose' : 'draw';
+      var resultLabel = e.result === 'win' ? '勝ち' : e.result === 'lose' ? '負け' : 'あいこ';
+      rows.push('<li class="eh-row ' + cls + '" data-round="' + e.round + '">' +
+        '<span class="eh-round">R' + e.round + '</span>' +
+        '<span class="eh-hand">' + E.HAND_MARKS[e.player] + '</span>' +
+        '<span class="eh-vs">vs</span>' +
+        '<span class="eh-hand">' + E.HAND_MARKS[e.cpu] + '</span>' +
+        '<span class="eh-result">' + resultLabel + '</span>' +
+        '</li>');
+    }
+    els.endHistory.innerHTML =
+      '<div class="eh-title">直近の手 <span>あなた vs CPU</span></div>' +
+      '<ul class="eh-list">' + rows.join('') + '</ul>';
+  }
+
   function updateUI() {
     if (!state) return;
     var snap = E.snapshot(state);
@@ -126,6 +154,7 @@
     view.hit = null;
     els.screenStart.classList.remove('visible');
     els.screenEnd.classList.remove('visible');
+    renderEndHistory([]);
     setMessage('手を選べ! グー / チョキ / パー', null);
     setHint('1〜3 で選択・ゲージ満タンなら 4 で先読み (CPUの手を見てから選べる)');
     updateUI();
@@ -187,6 +216,7 @@
     els.endTitle.className = 'end-title ' + (snap.winner === 'player' ? 'win' : 'lose');
     els.endDetail.textContent = 'あなた HP ' + snap.hp.player + ' / CPU HP ' + snap.hp.cpu +
       '・' + snap.history.length + 'ラウンド・CPUのクセ: ' + snap.styleName;
+    renderEndHistory(snap.history);
     els.screenEnd.classList.add('visible');
   }
 
@@ -304,6 +334,7 @@
     els.screenEnd = $('screen-end');
     els.endTitle = $('end-title');
     els.endDetail = $('end-detail');
+    els.endHistory = $('end-history');
 
     if (R && R.create) renderer = R.create(canvas);
 

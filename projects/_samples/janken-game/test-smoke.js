@@ -15,6 +15,19 @@ tryLoad(['engine.js', 'projects/_samples/janken-game/engine.js']);
 tryLoad(['renderer.js', 'projects/_samples/janken-game/renderer.js']);
 tryLoad(['game.js', 'projects/_samples/janken-game/game.js']);
 
+var E = (typeof JankenEngine !== 'undefined') ? JankenEngine : null;
+
+/* 結果画面の履歴に並んでいる行(ラウンド番号と中身)を取り出す */
+function parseEndHistory(html) {
+  var rows = [];
+  var re = /data-round="(\d+)"[\s\S]*?<\/li>/g;
+  var m;
+  while ((m = re.exec(html || '')) !== null) {
+    rows.push({ round: Number(m[1]), html: m[0] });
+  }
+  return rows;
+}
+
 Harness.run({
   name: 'janken-game',
   maxSteps: 20000,
@@ -32,6 +45,25 @@ Harness.run({
     var els = h.elements;
     h.assert(els['screen-end'] && els['screen-end'].classList.contains('visible'), 'エンド画面が表示されていない');
     h.assert(els['screen-start'] && !els['screen-start'].classList.contains('visible'), 'スタート画面が残っている');
+
+    /* 結果画面には直近5ラウンド(それ未満なら全ラウンド)の手が並ぶ */
+    var endHistory = els['end-history'];
+    h.assert(endHistory, '結果画面の履歴要素がない');
+    var rows = parseEndHistory(endHistory.innerHTML);
+    var expectedCount = Math.min(5, state.history.length);
+    h.assert(rows.length === expectedCount,
+      '結果画面の履歴件数が想定と違う: ' + rows.length + ' (期待 ' + expectedCount + ')');
+    var expectedEntries = state.history.slice(state.history.length - expectedCount);
+    h.assert(rows.map(function (row) { return row.round; }).join(',') ===
+      expectedEntries.map(function (entry) { return entry.round; }).join(','),
+      '結果画面の履歴が直近のラウンドと違う');
+    for (var r = 0; r < expectedEntries.length; r++) {
+      var entry = expectedEntries[r];
+      h.assert(rows[r].html.indexOf(E.HAND_MARKS[entry.player]) >= 0,
+        'R' + entry.round + ' の自分の手が履歴にない');
+      h.assert(rows[r].html.indexOf(E.HAND_MARKS[entry.cpu]) >= 0,
+        'R' + entry.round + ' のCPUの手が履歴にない');
+    }
   },
   summary: function (state) {
     print('  最終: あなた HP ' + state.hp.player + ' - CPU HP ' + state.hp.cpu +
