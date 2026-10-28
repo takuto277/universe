@@ -78,6 +78,51 @@
     conveyor: { x: 225, y: 575, w: 110, h: 8, vx: -75 }
   };
 
+  var RACE3D = {
+    total: 20,
+    ballRadius: 6.5,
+    gravity: 180,
+    damping: 0.9995,
+    maxSpeed: 520,
+    bounds: { x: 165, y: 125, zMin: 0, zMax: 820 },
+    startZ: 730,
+    voidZ: 0,
+    suddenDeath: 38,
+    riseSpeed: 18,
+    maxTime: 70,
+    pegs: [
+      { x: -110, y: -80, z: 640 }, { x: 0, y: -90, z: 640 }, { x: 110, y: -80, z: 640 },
+      { x: -70, y: 20, z: 590 }, { x: 70, y: 20, z: 590 }, { x: 0, y: 100, z: 580 },
+      { x: -130, y: -40, z: 500 }, { x: 0, y: -10, z: 500 }, { x: 130, y: -40, z: 500 },
+      { x: -80, y: 80, z: 440 }, { x: 80, y: 80, z: 440 }, { x: 0, y: -100, z: 430 },
+      { x: -120, y: 30, z: 350 }, { x: 0, y: 30, z: 350 }, { x: 120, y: 30, z: 350 },
+      { x: -60, y: -70, z: 260 }, { x: 60, y: -70, z: 260 }, { x: 0, y: 80, z: 250 }
+    ],
+    bumpers: [
+      { x: -90, y: -40, z: 300, baseX: -90, amp: 28, speed: 1.8, phase: 0, r: 16 },
+      { x: 90, y: 40, z: 300, baseX: 90, amp: 32, speed: 2.2, phase: 1.7, r: 16 },
+      { x: 0, y: 0, z: 560, baseX: 0, amp: 50, speed: 1.4, phase: 2.4, r: 18 }
+    ],
+    spinners: [
+      { x: 0, y: 0, z: 600, len: 70, half: 4, angle: 0, speed: 4.0 },
+      { x: -40, y: 40, z: 380, len: 55, half: 4, angle: 1.1, speed: -4.6 },
+      { x: 40, y: -40, z: 220, len: 55, half: 4, angle: 2.2, speed: 4.2 }
+    ],
+    portals: [
+      { x: -120, y: 0, z: 470, r: 14, target: 1, hue: 195 },
+      { x: 120, y: 0, z: 150, r: 14, target: 0, hue: 40 }
+    ],
+    wells: [
+      { x: -80, y: -60, z: 500, r: 60, strength: 140 },
+      { x: 80, y: 60, z: 270, r: 60, strength: 170 }
+    ],
+    boosters: [
+      { x: 0, y: -100, z: 690, r: 24, vx: 0, vy: 80, vz: -120, power: 240 },
+      { x: -130, y: 80, z: 420, r: 24, vx: 140, vy: -40, vz: -60, power: 220 },
+      { x: 130, y: -80, z: 330, r: 24, vx: -120, vy: 60, vz: -80, power: 230 }
+    ]
+  };
+
   var ROOTS = [
     { name: 'C minor', freq: 130.81, hue: 188 },
     { name: 'E♭ minor', freq: 155.56, hue: 268 },
@@ -108,6 +153,7 @@
       captureEvents: [],
       balls: [],
       race: null,
+      race3d: null,
       startedAt: 0
     };
 
@@ -165,7 +211,7 @@
     }
 
     function start(mode) {
-      var chosen = mode === 'frame' ? 'frame' : mode === 'race' ? 'race' : 'auto';
+      var chosen = mode === 'frame' ? 'frame' : mode === 'race' ? 'race' : mode === 'race3d' ? 'race3d' : 'auto';
       state.mode = chosen;
       state.phase = 'playing';
       state.time = 0;
@@ -183,6 +229,7 @@
       state.captureEvents = [];
       state.balls = chosen === 'frame' ? [initialBall()] : [];
       state.race = chosen === 'race' ? createRaceState() : null;
+      state.race3d = chosen === 'race3d' ? createRace3DState() : null;
       state.startedAt = Date.now();
       emit();
       return true;
@@ -205,6 +252,7 @@
       state.captureEvents = [];
       state.balls = [];
       state.race = null;
+      state.race3d = null;
       emit();
     }
 
@@ -617,6 +665,328 @@
       };
     }
 
+    function createRace3DState() {
+      var balls = [];
+      for (var i = 0; i < RACE3D.total; i++) {
+        balls.push({
+          id: i + 1,
+          hue: (i * 18) % 360,
+          x: rnd(-130, 130),
+          y: rnd(-100, 100),
+          z: RACE3D.startZ + rnd(-10, 20),
+          vx: rnd(-70, 70),
+          vy: rnd(-50, 50),
+          vz: rnd(-30, 0),
+          r: RACE3D.ballRadius,
+          alive: true,
+          portalCd: 0,
+          portalUses: 0,
+          boostCd: 0
+        });
+      }
+      return {
+        alive: RACE3D.total,
+        balls: balls,
+        eliminated: 0,
+        voidZ: RACE3D.voidZ,
+        events: [],
+        result: null,
+        bumpers: RACE3D.bumpers.map(function (b) {
+          return { x: b.x, y: b.y, z: b.z, baseX: b.baseX, amp: b.amp, speed: b.speed, phase: b.phase, r: b.r };
+        }),
+        spinners: RACE3D.spinners.map(function (s) {
+          return { x: s.x, y: s.y, z: s.z, len: s.len, half: s.half, angle: s.angle, speed: s.speed };
+        }),
+        portals: RACE3D.portals.map(function (p) {
+          return { x: p.x, y: p.y, z: p.z, r: p.r, target: p.target, hue: p.hue };
+        })
+      };
+    }
+
+    function finishRace3D(t, r, winner) {
+      r.alive = 1;
+      r.result = {
+        winnerId: winner.id,
+        winnerHue: winner.hue,
+        time: Math.min(t, RACE3D.maxTime),
+        total: RACE3D.total,
+        eliminated: RACE3D.total - 1,
+        alive: 1
+      };
+      for (var i = 0; i < r.balls.length; i++) {
+        if (r.balls[i] !== winner) r.balls[i].alive = false;
+      }
+      winner.alive = true;
+      r.events.push({ type: 'winner', x: winner.x, y: winner.y, z: winner.z, hue: winner.hue, id: winner.id });
+      state.phase = 'finished';
+      state.time = Math.min(t, RACE3D.maxTime);
+    }
+
+    function bounceSphere3D(b, cx, cy, cz, cr, rest, boost) {
+      var dx = b.x - cx;
+      var dy = b.y - cy;
+      var dz = b.z - cz;
+      var d = Math.sqrt(dx * dx + dy * dy + dz * dz);
+      var min = b.r + cr;
+      if (d >= min) return false;
+      var nx = dx / (d || 1);
+      var ny = dy / (d || 1);
+      var nz = dz / (d || 1);
+      b.x = cx + nx * min;
+      b.y = cy + ny * min;
+      b.z = cz + nz * min;
+      var vn = b.vx * nx + b.vy * ny + b.vz * nz;
+      if (vn < 0) {
+        b.vx -= (1 + rest) * vn * nx;
+        b.vy -= (1 + rest) * vn * ny;
+        b.vz -= (1 + rest) * vn * nz;
+      }
+      if (boost) {
+        b.vx += nx * boost;
+        b.vy += ny * boost;
+        b.vz += nz * boost;
+      }
+      return true;
+    }
+
+    function collideSpinner3D(b, s) {
+      var ux = Math.cos(s.angle);
+      var uy = Math.sin(s.angle);
+      var dx = b.x - s.x;
+      var dy = b.y - s.y;
+      var along = Math.max(-s.len, Math.min(s.len, dx * ux + dy * uy));
+      var px = s.x + ux * along;
+      var py = s.y + uy * along;
+      var nx = b.x - px;
+      var ny = b.y - py;
+      var nz = b.z - s.z;
+      var d = Math.sqrt(nx * nx + ny * ny + nz * nz);
+      var min = b.r + s.half;
+      if (d >= min) return false;
+      nx = nx / (d || 1);
+      ny = ny / (d || 1);
+      nz = nz / (d || 1);
+      b.x = px + nx * min;
+      b.y = py + ny * min;
+      b.z = s.z + nz * min;
+      var vn = b.vx * nx + b.vy * ny + b.vz * nz;
+      if (vn < 0) {
+        b.vx -= 1.65 * vn * nx;
+        b.vy -= 1.65 * vn * ny;
+        b.vz -= 1.65 * vn * nz;
+      }
+      var tangent = s.speed * along * 0.6;
+      b.vx += -uy * tangent;
+      b.vy += ux * tangent;
+      return true;
+    }
+
+    function updateRace3D(t, dt) {
+      if (state.phase !== 'playing' || state.mode !== 'race3d' || !state.race3d) return getState();
+      if (!isFinite(t) || t < 0) t = 0;
+      if (t < state.time) t = state.time;
+      if (!isFinite(dt) || dt <= 0) dt = 1 / 60;
+      dt = Math.min(0.05, dt);
+      clock(t);
+      var r = state.race3d;
+      r.events = [];
+      if (t > RACE3D.suddenDeath) {
+        r.voidZ = Math.min(620, (t - RACE3D.suddenDeath) * RACE3D.riseSpeed);
+      }
+      var si;
+      for (si = 0; si < r.spinners.length; si++) {
+        r.spinners[si].angle += r.spinners[si].speed * dt;
+      }
+      for (var mb = 0; mb < r.bumpers.length; mb++) {
+        r.bumpers[mb].x = r.bumpers[mb].baseX + Math.sin(t * r.bumpers[mb].speed + r.bumpers[mb].phase) * r.bumpers[mb].amp;
+      }
+
+      var balls = r.balls;
+      for (var i = 0; i < balls.length; i++) {
+        var b = balls[i];
+        if (!b.alive) continue;
+        b.portalCd = Math.max(0, b.portalCd - dt);
+        b.boostCd = Math.max(0, b.boostCd - dt);
+        b.vz -= RACE3D.gravity * dt;
+        b.vx *= RACE3D.damping;
+        b.vy *= RACE3D.damping;
+        b.vz *= RACE3D.damping;
+        var speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
+        if (speed > RACE3D.maxSpeed) {
+          b.vx = b.vx / speed * RACE3D.maxSpeed;
+          b.vy = b.vy / speed * RACE3D.maxSpeed;
+          b.vz = b.vz / speed * RACE3D.maxSpeed;
+        }
+        b.x += b.vx * dt;
+        b.y += b.vy * dt;
+        b.z += b.vz * dt;
+
+        if (b.x - b.r < -RACE3D.bounds.x) { b.x = -RACE3D.bounds.x + b.r; b.vx = Math.abs(b.vx) * 0.86; }
+        if (b.x + b.r > RACE3D.bounds.x) { b.x = RACE3D.bounds.x - b.r; b.vx = -Math.abs(b.vx) * 0.86; }
+        if (b.y - b.r < -RACE3D.bounds.y) { b.y = -RACE3D.bounds.y + b.r; b.vy = Math.abs(b.vy) * 0.86; }
+        if (b.y + b.r > RACE3D.bounds.y) { b.y = RACE3D.bounds.y - b.r; b.vy = -Math.abs(b.vy) * 0.86; }
+        if (b.z + b.r > RACE3D.bounds.zMax) { b.z = RACE3D.bounds.zMax - b.r; b.vz = -Math.abs(b.vz) * 0.86; }
+
+        for (var p = 0; p < RACE3D.pegs.length; p++) {
+          bounceSphere3D(b, RACE3D.pegs[p].x, RACE3D.pegs[p].y, RACE3D.pegs[p].z, 5, 0.78, 0);
+        }
+        for (var bu = 0; bu < r.bumpers.length; bu++) {
+          if (bounceSphere3D(b, r.bumpers[bu].x, r.bumpers[bu].y, r.bumpers[bu].z, r.bumpers[bu].r, 1.0, 150)) {
+            r.events.push({ type: 'bumper', x: b.x, y: b.y, z: b.z, hue: b.hue });
+          }
+        }
+        for (si = 0; si < r.spinners.length; si++) {
+          if (collideSpinner3D(b, r.spinners[si])) {
+            r.events.push({ type: 'spinner', x: b.x, y: b.y, z: b.z, hue: b.hue });
+          }
+        }
+        for (var wl = 0; wl < RACE3D.wells.length; wl++) {
+          var well = RACE3D.wells[wl];
+          var wdx = well.x - b.x;
+          var wdy = well.y - b.y;
+          var wdz = well.z - b.z;
+          var wd = Math.sqrt(wdx * wdx + wdy * wdy + wdz * wdz);
+          if (wd < well.r && wd > 0) {
+            var pull = well.strength * (1 - wd / well.r);
+            b.vx += (wdx / wd) * pull * dt;
+            b.vy += (wdy / wd) * pull * dt;
+            b.vz += (wdz / wd) * pull * dt;
+            b.vx += (-wdy / wd) * pull * 0.45 * dt;
+            b.vy += (wdx / wd) * pull * 0.45 * dt;
+          }
+        }
+        if (b.boostCd <= 0) {
+          for (var bo = 0; bo < RACE3D.boosters.length; bo++) {
+            var boost = RACE3D.boosters[bo];
+            var bdx = b.x - boost.x;
+            var bdy = b.y - boost.y;
+            var bdz = b.z - boost.z;
+            if (bdx * bdx + bdy * bdy + bdz * bdz < Math.pow(boost.r + b.r, 2)) {
+              b.vx += boost.vx;
+              b.vy += boost.vy;
+              b.vz += boost.vz;
+              b.boostCd = 0.32;
+              r.events.push({ type: 'boost', x: b.x, y: b.y, z: b.z, hue: b.hue });
+              break;
+            }
+          }
+        }
+        for (var po = 0; po < r.portals.length; po++) {
+          var portal = r.portals[po];
+          if (b.portalCd > 0 || b.portalUses >= 2) continue;
+          var pdx = b.x - portal.x;
+          var pdy = b.y - portal.y;
+          var pdz = b.z - portal.z;
+          if (pdx * pdx + pdy * pdy + pdz * pdz < Math.pow(b.r + portal.r, 2)) {
+            var target = r.portals[portal.target];
+            b.x = target.x;
+            b.y = target.y;
+            b.z = target.z;
+            b.vx *= 0.72;
+            b.vy *= 0.72;
+            b.vz = 80;
+            b.portalCd = 0.7;
+            b.portalUses += 1;
+            r.events.push({ type: 'portal', x: target.x, y: target.y, z: target.z, hue: portal.hue });
+            break;
+          }
+        }
+      }
+
+      for (var a = 0; a < balls.length; a++) {
+        if (!balls[a].alive) continue;
+        for (var c = a + 1; c < balls.length; c++) {
+          if (!balls[c].alive) continue;
+          var ba = balls[a];
+          var bb = balls[c];
+          var ddx = bb.x - ba.x;
+          var ddy = bb.y - ba.y;
+          var ddz = bb.z - ba.z;
+          var dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
+          var minD = ba.r + bb.r;
+          if (dist >= minD || dist <= 0) continue;
+          var nx = ddx / dist;
+          var ny = ddy / dist;
+          var nz = ddz / dist;
+          var overlap = (minD - dist) / 2;
+          ba.x -= nx * overlap;
+          ba.y -= ny * overlap;
+          ba.z -= nz * overlap;
+          bb.x += nx * overlap;
+          bb.y += ny * overlap;
+          bb.z += nz * overlap;
+          var rvx = bb.vx - ba.vx;
+          var rvy = bb.vy - ba.vy;
+          var rvz = bb.vz - ba.vz;
+          var vn = rvx * nx + rvy * ny + rvz * nz;
+          if (vn < 0) {
+            var imp = -(1 + 0.8) * vn / 2;
+            ba.vx -= imp * nx;
+            ba.vy -= imp * ny;
+            ba.vz -= imp * nz;
+            bb.vx += imp * nx;
+            bb.vy += imp * ny;
+            bb.vz += imp * nz;
+          }
+        }
+      }
+
+      var below = [];
+      for (var e = 0; e < balls.length; e++) {
+        if (balls[e].alive && balls[e].z - balls[e].r < r.voidZ) below.push(balls[e]);
+      }
+      below.sort(function (a, b) { return a.z - b.z; });
+      for (var k = 0; k < below.length; k++) {
+        if (r.alive <= 1) break;
+        var gone = below[k];
+        gone.alive = false;
+        r.alive -= 1;
+        r.eliminated += 1;
+        r.events.push({ type: 'eliminate', x: gone.x, y: gone.y, z: gone.z, hue: gone.hue, id: gone.id });
+      }
+
+      if (r.alive <= 1 || t >= RACE3D.maxTime) {
+        var winner = null;
+        for (var w = 0; w < balls.length; w++) {
+          if (balls[w].alive && (!winner || balls[w].z > winner.z)) winner = balls[w];
+        }
+        if (winner) finishRace3D(t, r, winner);
+        return getState();
+      }
+      return getState();
+    }
+
+    function race3dSnapshot() {
+      var r = state.race3d;
+      if (!r) return null;
+      return {
+        elapsed: state.time,
+        alive: r.alive,
+        total: RACE3D.total,
+        eliminated: RACE3D.total - r.alive,
+        ballRadius: RACE3D.ballRadius,
+        voidZ: r.voidZ,
+        bounds: RACE3D.bounds,
+        balls: r.balls.filter(function (b) { return b.alive; }).map(function (b) {
+          return { id: b.id, hue: b.hue, x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, r: b.r };
+        }),
+        pegs: RACE3D.pegs,
+        bumpers: r.bumpers.map(function (b) {
+          return { x: b.x, y: b.y, z: b.z, r: b.r };
+        }),
+        spinners: r.spinners.map(function (s) {
+          return { x: s.x, y: s.y, z: s.z, len: s.len, half: s.half, angle: s.angle };
+        }),
+        portals: r.portals.map(function (p) {
+          return { x: p.x, y: p.y, z: p.z, r: p.r, hue: p.hue };
+        }),
+        wells: RACE3D.wells,
+        boosters: RACE3D.boosters,
+        result: r.result,
+        events: r.events.slice()
+      };
+    }
+
     function getState() {
       var balls = state.mode === 'frame' ? state.balls.map(function (b) {
         return { x: b.x, y: b.y, vx: b.vx, vy: b.vy, hue: b.hue, depth: b.depth || 0 };
@@ -626,6 +996,7 @@
         mode: state.mode,
         time: state.time,
         race: state.mode === 'race' ? raceSnapshot() : null,
+        race3d: state.mode === 'race3d' ? race3dSnapshot() : null,
         cycle: state.cycle,
         bar: state.bar,
         beat: state.beat,
@@ -672,7 +1043,7 @@
         }
         return true;
       }
-      if (state.mode === 'race') return false;
+      if (state.mode === 'race' || state.mode === 'race3d') return false;
       return false;
     }
 
@@ -688,6 +1059,7 @@
       update: update,
       updateFrame: updateFrame,
       updateRace: updateRace,
+      updateRace3D: updateRace3D,
       tap: tap,
       autoStep: autoStep,
       getState: getState
@@ -711,6 +1083,7 @@
     LINE: LINE,
     FRAME: LINE,
     RACE: RACE,
+    RACE3D: RACE3D,
     ROOTS: ROOTS
   };
 });

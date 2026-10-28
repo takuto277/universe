@@ -32,12 +32,13 @@
       var dt = lastNow == null ? 1 / 60 : Math.min(0.05, Math.max(0, (now - lastNow) / 1000));
       var frame;
       var audio = root.ExpAudio;
-      if (state.mode === 'race') {
-        frame = game.updateRace(t, dt);
+      if (state.mode === 'race' || state.mode === 'race3d') {
+        frame = state.mode === 'race3d' ? game.updateRace3D(t, dt) : game.updateRace(t, dt);
         if (audio && audio.tick) audio.tick(t);
-        if (audio && frame.race && frame.race.events) {
-          for (var e = 0; e < frame.race.events.length; e++) {
-            var event = frame.race.events[e];
+        var run = state.mode === 'race3d' ? frame.race3d : frame.race;
+        if (audio && run && run.events) {
+          for (var e = 0; e < run.events.length; e++) {
+            var event = run.events[e];
             if (event.type === 'eliminate' && audio.capture) audio.capture(t, frame.root.freq);
             if (event.type === 'winner' && audio.impact) audio.impact();
             if ((event.type === 'bumper' || event.type === 'spinner' || event.type === 'boost') &&
@@ -49,7 +50,8 @@
         }
         if (renderer) {
           renderer.update(dt, frame);
-          renderer.drawRace(frame, t);
+          if (state.mode === 'race3d') renderer.drawRace3D(frame, t);
+          else renderer.drawRace(frame, t);
         }
         if (ui) {
           if (frame.phase === 'finished') ui.render(frame);
@@ -94,12 +96,13 @@
     start: function (mode) { game.start(mode); },
     startFrame: function () { game.start('frame'); },
     startRace: function () { game.start('race'); },
+    startRace3D: function () { game.start('race3d'); },
     autoPlayStep: function () {
       if (game.state.phase === 'start') game.autoStep();
     },
     isDone: function () {
       var s = game.getState();
-      if (s.mode === 'race') return s.phase === 'finished';
+      if (s.mode === 'race' || s.mode === 'race3d') return s.phase === 'finished';
       return s.phase === 'playing' && (s.mode === 'frame' ? s.captures >= 4 : s.cycle >= 2);
     },
     getState: function () { return game.getState(); }

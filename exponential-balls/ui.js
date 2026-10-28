@@ -29,9 +29,11 @@
       modeAuto: $('mode-auto'),
       modeFrame: $('mode-frame'),
       modeRace: $('mode-race'),
+      modeRace3D: $('mode-race3d'),
       modeAutoState: $('mode-auto-state'),
       modeFrameState: $('mode-frame-state'),
       modeRaceState: $('mode-race-state'),
+      modeRace3DState: $('mode-race3d-state'),
       resultOverlay: $('result-overlay'),
       resultTitle: $('result-title'),
       resultSub: $('result-sub'),
@@ -64,16 +66,20 @@
       var autoOn = selectedMode === 'auto';
       var frameOn = selectedMode === 'frame';
       var raceOn = selectedMode === 'race';
-      setText(els.btnStart, raceOn ? 'START RACE' : frameOn ? 'START FRAME' : 'START AUTO');
+      var race3dOn = selectedMode === 'race3d';
+      setText(els.btnStart, race3dOn ? 'START 3D' : raceOn ? 'START RACE' : frameOn ? 'START FRAME' : 'START AUTO');
       setText(els.modeAutoState, autoOn ? 'SELECTED' : 'SELECT');
       setText(els.modeFrameState, frameOn ? 'SELECTED' : 'SELECT');
       setText(els.modeRaceState, raceOn ? 'SELECTED' : 'SELECT');
+      setText(els.modeRace3DState, race3dOn ? 'SELECTED' : 'SELECT');
       toggleClass(els.modeAuto, 'selected', autoOn);
       toggleClass(els.modeFrame, 'selected', frameOn);
       toggleClass(els.modeRace, 'selected', raceOn);
+      toggleClass(els.modeRace3D, 'selected', race3dOn);
       if (els.modeAuto) els.modeAuto.setAttribute('aria-pressed', autoOn ? 'true' : 'false');
       if (els.modeFrame) els.modeFrame.setAttribute('aria-pressed', frameOn ? 'true' : 'false');
       if (els.modeRace) els.modeRace.setAttribute('aria-pressed', raceOn ? 'true' : 'false');
+      if (els.modeRace3D) els.modeRace3D.setAttribute('aria-pressed', race3dOn ? 'true' : 'false');
     }
 
     function render(state) {
@@ -96,7 +102,11 @@
     function update(state) {
       if (!state || state.phase !== 'playing') return;
       if (state.mode === 'race') {
-        updateRace(state);
+        updateRace(state, state.race, 'RACE', 'NO TAP · LAST BALL WINS');
+        return;
+      }
+      if (state.mode === 'race3d') {
+        updateRace(state, state.race3d, 'RACE 3D', 'NO TAP · 3D LAST BALL');
         return;
       }
       setText(els.countLabel, 'BALLS');
@@ -133,8 +143,7 @@
       if (els.barFill && els.barFill.style) els.barFill.style.width = Math.max(0, Math.min(100, progress)).toFixed(2) + '%';
     }
 
-    function updateRace(state) {
-      var race = state.race;
+    function updateRace(state, race, modeName, hint) {
       if (!race) return;
       if (race.alive !== lastCount) {
         setText(els.count, String(race.alive));
@@ -152,8 +161,8 @@
       setText(els.cycle, 'TIME ' + race.elapsed.toFixed(1));
       setText(els.stat, 'OUT ' + race.eliminated);
       setText(els.bpm, state.bpm + ' BPM');
-      setText(els.modeName, 'RACE');
-      setText(els.hint, 'NO TAP · LAST BALL WINS');
+      setText(els.modeName, modeName);
+      setText(els.hint, hint);
       if (els.barFill && els.barFill.style) {
         var progress = Math.max(0, Math.min(100, (race.eliminated / race.total) * 100));
         els.barFill.style.width = progress.toFixed(2) + '%';
@@ -161,7 +170,7 @@
     }
 
     function updateResult(state) {
-      var result = state.race && state.race.result;
+      var result = (state.race && state.race.result) || (state.race3d && state.race3d.result);
       if (!result) return;
       setText(els.resultTitle, 'BALL ' + result.winnerId + ' WINS');
       setText(els.resultSub, result.eliminated + ' balls out. Last ball standing.');
@@ -174,7 +183,7 @@
     }
 
     function selectMode(mode) {
-      selectedMode = mode === 'frame' ? 'frame' : mode === 'race' ? 'race' : 'auto';
+      selectedMode = mode === 'frame' ? 'frame' : mode === 'race' ? 'race' : mode === 'race3d' ? 'race3d' : 'auto';
       updateStart();
     }
 
@@ -197,6 +206,7 @@
     if (els.modeAuto) els.modeAuto.addEventListener('click', function () { selectMode('auto'); });
     if (els.modeFrame) els.modeFrame.addEventListener('click', function () { selectMode('frame'); });
     if (els.modeRace) els.modeRace.addEventListener('click', function () { selectMode('race'); });
+    if (els.modeRace3D) els.modeRace3D.addEventListener('click', function () { selectMode('race3d'); });
     if (els.btnStart) els.btnStart.addEventListener('click', startGame);
 
     function toggleSound() {
@@ -208,10 +218,7 @@
     if (els.btnSound) els.btnSound.addEventListener('click', toggleSound);
     if (els.btnHome) els.btnHome.addEventListener('click', goHome);
     if (els.btnResultHome) els.btnResultHome.addEventListener('click', goHome);
-    if (els.btnRaceAgain) els.btnRaceAgain.addEventListener('click', function () {
-      selectMode('race');
-      startGame();
-    });
+    if (els.btnRaceAgain) els.btnRaceAgain.addEventListener('click', startGame);
 
     if (els.canvas) {
       els.canvas.addEventListener('pointerdown', function (event) {
@@ -223,7 +230,7 @@
         var x = ((event ? event.clientX : 0) - (rect.left || 0));
         var y = ((event ? event.clientY : 0) - (rect.top || 0));
         var state = game.getState();
-        if (state.mode === 'race') return;
+        if (state.mode === 'race' || state.mode === 'race3d') return;
         if (state.mode === 'frame' && game.tap) {
           game.tap(x * state.field.w / w, y * state.field.h / h);
         }
