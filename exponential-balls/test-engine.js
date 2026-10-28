@@ -174,7 +174,7 @@ assert(s.race.result.eliminated === 19 && s.race.result.alive === 1, '結果の�
 
 /* RACE 3D: 20球・3Dギミック・ノータップ・最後の1球 */
 assert(E.RACE3D && E.RACE3D.total === 20, 'RACE3Dの球数が20でない');
-assert(E.RACE3D.bounds.zMax >= 24000, 'RACE3Dの縦が10倍になっていない: ' + E.RACE3D.bounds.zMax);
+assert(E.RACE3D.bounds.zMax >= 4800, 'RACE3Dの縦が2倍になっていない: ' + E.RACE3D.bounds.zMax);
 assert(E.RACE3D.plates.length >= 6 && E.RACE3D.slows.length >= 4 && E.RACE3D.fans.length >= 4, 'RACE3Dの減速ギミックが足りない');
 assert(E.RACE3D.pegs.length > 0 && E.RACE3D.bumpers.length > 0 && E.RACE3D.spinners.length > 0, 'RACE3Dのギミックがない');
 assert(E.RACE3D.portals.length >= 2 && E.RACE3D.wells.length >= 1 && E.RACE3D.boosters.length >= 1, 'RACE3Dのポータル/ウェル/ブースターがない');

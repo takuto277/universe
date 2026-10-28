@@ -164,7 +164,7 @@
   };
 
   (function expandRace3D() {
-    var levels = 10;
+    var levels = 2;
     var span = RACE3D.bounds.zMax - RACE3D.bounds.zMin;
     var keys = ['pegs', 'bumpers', 'spinners', 'portals', 'wells', 'boosters', 'plates', 'slows', 'fans'];
     var originals = {};
