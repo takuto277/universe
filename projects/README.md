@@ -19,6 +19,7 @@
 | `baseball-game` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `gravity-flip` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `jump-rush` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
+| `ken-tsunagi` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `neon-stack` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `observer-game` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `unknown-word-deal` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
