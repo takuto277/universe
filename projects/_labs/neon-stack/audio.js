@@ -37,6 +37,10 @@
   var timer = null;
   var stepIndex = 0;
   var nextStep = 0;
+  var lastBeatAt = 0;
+  var beatInterval = STEP * 4;
+  var biome = 0;
+  var BIOME_TRANSPOSE = [0, 2, -3, 5];
   var api;
 
   function midiToFreq(note) {
@@ -89,22 +93,27 @@
   }
 
   function scheduleStep(index, when) {
+    var shift = BIOME_TRANSPOSE[biome % BIOME_TRANSPOSE.length];
+    if (index % 4 === 0) {
+      lastBeatAt = when;
+      beatInterval = STEP * 4 * (1 - intensity * 0.035);
+    }
     var lead = LEAD[index % LEAD.length];
     var leadVol = 0.055 + intensity * 0.012;
     if (lead) {
-      tone(midiToFreq(lead), when, STEP * 1.4, 'square', leadVol, bgmGain);
+      tone(midiToFreq(lead + shift), when, STEP * 1.4, 'square', leadVol, bgmGain);
       if (intensity >= 2) {
-        tone(midiToFreq(lead + 12), when + STEP * 0.5, STEP * 0.8, 'triangle', 0.025, bgmGain);
+        tone(midiToFreq(lead + shift + 12), when + STEP * 0.5, STEP * 0.8, 'triangle', 0.025, bgmGain);
       }
     }
     if (index % 4 === 0) {
       var bass = BASS[Math.floor(index / 8) % BASS.length];
-      tone(midiToFreq(bass), when, STEP * 3.2, 'triangle', 0.13, bgmGain);
+      tone(midiToFreq(bass + shift), when, STEP * 3.2, 'triangle', 0.13, bgmGain);
     }
     if (index % 4 === 0 || (intensity >= 1 && index % 4 === 2)) kick(when);
     if (intensity >= 1 && index % 2 === 1) hat(when);
     if (intensity >= 2 && index % 8 === 6) {
-      tone(midiToFreq(84), when, STEP * 0.7, 'triangle', 0.026, bgmGain);
+      tone(midiToFreq(84 + shift), when, STEP * 0.7, 'triangle', 0.026, bgmGain);
     }
   }
 
@@ -123,7 +132,9 @@
   function startBgm() {
     if (!ctx || timer) return;
     unlock();
-    nextStep = ctx.currentTime + 0.08;
+    lastBeatAt = ctx.currentTime + 0.08;
+    beatInterval = STEP * 4;
+    nextStep = lastBeatAt;
     stepIndex = 0;
     scheduler();
     if (typeof setInterval === 'function') timer = setInterval(scheduler, 30);
@@ -136,6 +147,16 @@
 
   function setIntensity(value) {
     intensity = Math.max(0, Math.min(3, Number(value) || 0));
+  }
+
+  function setBiome(value) {
+    biome = Math.max(0, Number(value) || 0);
+  }
+
+  function isOnBeat() {
+    if (!ctx || !timer || !beatInterval) return false;
+    var phase = ((ctx.currentTime - lastBeatAt) % beatInterval + beatInterval) % beatInterval / beatInterval;
+    return Math.min(phase, 1 - phase) <= 0.12;
   }
 
   function setMuted(value) {
@@ -168,6 +189,8 @@
     } else if (name === 'miss') {
       tone(180, now, 0.18, 'sawtooth', 0.10, sfxGain);
       tone(120, now + 0.12, 0.3, 'sawtooth', 0.09, sfxGain);
+    } else if (name === 'beat') {
+      tone(1568, now, 0.05, 'sine', 0.035, sfxGain);
     }
   }
 
@@ -199,6 +222,8 @@
     startBgm: startBgm,
     stopBgm: stopBgm,
     setIntensity: setIntensity,
+    setBiome: setBiome,
+    isOnBeat: isOnBeat,
     setMuted: setMuted,
     play: play,
     isMuted: function () { return muted; }

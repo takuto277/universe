@@ -32,6 +32,11 @@
   var MAX_DT = 0.05;
   var MAX_EVENTS = 80;
   var CAMERA_FOCUS = 0.42;
+  var CORE_INTERVAL = 5;
+  var CORE_RATIO = 0.62;
+  var REPAIR_RATIO = 0.06;
+  var BEAT_BONUS = 5;
+  var DAILY_MODIFIERS = ['fast', 'core', 'tight'];
 
   function clamp(v, min, max) {
     return v < min ? min : (v > max ? max : v);
@@ -46,6 +51,20 @@
     return (196 + index * 7) % 360;
   }
 
+  function dailyModifier(key) {
+    var text = String(key || '');
+    var sum = 0;
+    for (var i = 0; i < text.length; i++) {
+      sum = (sum + text.charCodeAt(i) * (i + 1)) % 997;
+    }
+    return DAILY_MODIFIERS[sum % DAILY_MODIFIERS.length];
+  }
+
+  function speedFor(state) {
+    var scale = state.modifier === 'fast' ? 1.12 : 1;
+    return Math.min(MAX_SPEED, (BASE_SPEED + state.height * SPEED_RAMP) * scale);
+  }
+
   function perfectTolerance(width) {
     return Math.max(MIN_PERFECT, width * PERFECT_RATIO);
   }
@@ -53,14 +72,18 @@
   function spawnMoving(state) {
     var top = state.blocks[state.blocks.length - 1];
     var fromLeft = state.dropCount % 2 === 0;
+    var coreEvery = state.modifier === 'core' ? 4 : CORE_INTERVAL;
+    var core = (state.dropCount + 1) % coreEvery === 0;
+    var width = core ? Math.max(42, top.w * CORE_RATIO) : top.w;
     state.moving = {
       x: fromLeft ? -FIELD_HALF : FIELD_HALF,
       y: top.y + BLOCK_HEIGHT,
-      w: top.w,
-      hue: blockHue(state.blocks.length),
+      w: width,
+      hue: core ? 48 : blockHue(state.blocks.length),
+      core: core,
       dir: fromLeft ? 1 : -1
     };
-    state.speed = Math.min(MAX_SPEED, BASE_SPEED + state.height * SPEED_RAMP);
+    state.speed = speedFor(state);
   }
 
   function reset(state) {
@@ -78,6 +101,8 @@
     state.combo = 0;
     state.maxCombo = 0;
     state.perfects = 0;
+    state.repairs = 0;
+    state.beatHits = 0;
     state.dropCount = 0;
     state.speed = BASE_SPEED;
     state.over = false;
@@ -92,9 +117,13 @@
 
   function createGame(options) {
     options = options || {};
+    var dailyKey = options.dailyKey || null;
     var state = {
       viewW: Math.max(240, Number(options.width) || 480),
-      viewH: Math.max(240, Number(options.height) || 640)
+      viewH: Math.max(240, Number(options.height) || 640),
+      daily: !!options.daily,
+      dailyKey: dailyKey,
+      modifier: options.daily ? dailyModifier(dailyKey) : null
     };
     reset(state);
     return state;
@@ -160,13 +189,16 @@
   }
 
   /* ブロックを落とす。戻り値は判定結果で、state 自体も更新する。 */
-  function drop(state) {
+  function drop(state, options) {
     if (!state || state.over || !state.moving) return null;
+    options = options || {};
+    var onBeat = !!options.onBeat;
 
     var top = state.blocks[state.blocks.length - 1];
     var m = state.moving;
     var offset = m.x - top.x;
-    var perfect = Math.abs(offset) <= perfectTolerance(top.w);
+    var tolerance = perfectTolerance(top.w) * (state.modifier === 'tight' ? 0.72 : 1);
+    var perfect = Math.abs(offset) <= tolerance;
     var left = Math.max(m.x - m.w / 2, top.x - top.w / 2);
     var right = Math.min(m.x + m.w / 2, top.x + top.w / 2);
     var overlap = right - left;
@@ -190,17 +222,26 @@
 
     var block;
     var gain;
+    var repair = false;
     if (perfect) {
-      block = {
-        x: top.x,
-        w: top.w,
-        y: m.y,
-        hue: blockHue(state.blocks.length),
-        perfect: true
-      };
       state.combo++;
       if (state.combo > state.maxCombo) state.maxCombo = state.combo;
       state.perfects++;
+      repair = top.w < BLOCK_WIDTH - 0.5 && !!(m.core || state.combo % 3 === 0);
+      var perfectWidth = top.w;
+      if (repair) {
+        perfectWidth = Math.min(BLOCK_WIDTH, top.w + BLOCK_WIDTH * REPAIR_RATIO);
+        state.repairs++;
+      }
+      block = {
+        x: top.x,
+        w: perfectWidth,
+        y: m.y,
+        hue: m.core ? 48 : blockHue(state.blocks.length),
+        perfect: true,
+        core: !!m.core,
+        repair: repair
+      };
       gain = 10 + 10 + state.combo * 5;
     } else {
       var width = overlap;
@@ -209,8 +250,9 @@
         x: center,
         w: width,
         y: m.y,
-        hue: blockHue(state.blocks.length),
-        perfect: false
+        hue: m.core ? 48 : blockHue(state.blocks.length),
+        perfect: false,
+        core: !!m.core
       };
       var cutWidth = m.w - width;
       if (cutWidth > 0.5) {
@@ -221,6 +263,10 @@
       gain = 10;
     }
 
+    if (onBeat) {
+      state.beatHits++;
+      gain += BEAT_BONUS;
+    }
     state.blocks.push(block);
     state.height = state.blocks.length - 1;
     state.score += gain;
@@ -229,7 +275,10 @@
       gain: gain,
       combo: state.combo,
       width: block.w,
-      offset: offset
+      offset: offset,
+      core: !!m.core,
+      repair: repair,
+      beat: onBeat
     };
     pushEvent(state, {
       type: 'place',
@@ -238,7 +287,10 @@
       w: block.w,
       perfect: perfect,
       combo: state.combo,
-      gain: gain
+      gain: gain,
+      core: !!m.core,
+      repair: repair,
+      beat: onBeat
     });
 
     state.dropCount++;
@@ -251,7 +303,10 @@
       gain: gain,
       combo: state.combo,
       width: block.w,
-      x: block.x
+      x: block.x,
+      core: !!m.core,
+      repair: repair,
+      beat: onBeat
     };
   }
 
@@ -271,6 +326,11 @@
       combo: state.combo,
       maxCombo: state.maxCombo,
       perfects: state.perfects,
+      repairs: state.repairs,
+      beatHits: state.beatHits,
+      daily: !!state.daily,
+      dailyKey: state.dailyKey,
+      modifier: state.modifier,
       speed: Math.round(state.speed),
       over: state.over,
       overReason: state.overReason,
@@ -286,14 +346,18 @@
         x: state.moving.x,
         y: state.moving.y,
         w: state.moving.w,
-        dir: state.moving.dir
+        dir: state.moving.dir,
+        core: !!state.moving.core
       } : null,
       lastDrop: state.lastDrop ? {
         perfect: state.lastDrop.perfect,
         gain: state.lastDrop.gain,
         combo: state.lastDrop.combo,
         width: state.lastDrop.width,
-        offset: state.lastDrop.offset
+        offset: state.lastDrop.offset,
+        core: !!state.lastDrop.core,
+        repair: !!state.lastDrop.repair,
+        beat: !!state.lastDrop.beat
       } : null
     };
   }
@@ -305,6 +369,9 @@
     BASE_SPEED: BASE_SPEED,
     MAX_SPEED: MAX_SPEED,
     MIN_OVERLAP: MIN_OVERLAP,
+    CORE_INTERVAL: CORE_INTERVAL,
+    BEAT_BONUS: BEAT_BONUS,
+    dailyModifier: dailyModifier,
     createGame: createGame,
     reset: reset,
     resize: resize,

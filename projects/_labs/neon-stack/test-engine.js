@@ -137,4 +137,28 @@ E.reset(g);
 assert(g.height === 0 && g.score === 0 && !g.over && g.blocks.length === 1, 'リセットで最初から');
 assert(g.cameraY === 0 && g.debris.length === 0, 'カメラと破片も初期化');
 
+/* 12) コア・PERFECT回復・ビート・デイリー */
+var depth = E.createGame();
+depth.moving.x = depth.blocks[0].x + 20;
+E.drop(depth);
+for (i = 0; i < 3; i++) {
+  depth.moving.x = depth.blocks[depth.blocks.length - 1].x;
+  E.drop(depth);
+}
+assert(depth.moving.core === true, '5個目のブロックがコアになる');
+assert(depth.moving.w < depth.blocks[depth.blocks.length - 1].w, 'コアは通常より狭い');
+assert(depth.repairs >= 1, 'PERFECT 3連続で幅が回復する');
+
+var beat = E.createGame();
+beat.moving.x = beat.blocks[0].x;
+var beatResult = E.drop(beat, { onBeat: true });
+assert(beatResult.beat === true && beat.beatHits === 1, 'ビートボーナスが記録される');
+assert(beat.score === 30, 'ビートボーナスがスコアに入る: ' + beat.score);
+assert(E.consumeEvents(beat).some(function (ev) { return ev.type === 'place' && ev.beat; }), 'ビートイベント');
+
+var daily = E.createGame({ daily: true, dailyKey: '2026-10-29' });
+assert(daily.daily === true && daily.dailyKey === '2026-10-29', 'デイリーモードの状態');
+assert(['fast', 'core', 'tight'].indexOf(daily.modifier) >= 0, 'デイリー補正が設定される');
+assert(E.dailyModifier('2026-10-29') === E.dailyModifier('2026-10-29'), 'デイリー補正は日付で固定');
+
 log('engine tests OK (' + passed + ' アサーション)');
