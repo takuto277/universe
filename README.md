@@ -62,6 +62,7 @@ universe/
 │   ├── _labs/                 # 実験・検証・継続開発中のゲーム
 │   │   ├── baseball-game/
 │   │   ├── gravity-flip/
+│   │   ├── neon-stack/
 │   │   ├── observer-game/
 │   │   └── unknown-word-deal/
 │   └── _samples/              # 教材・最小実装
