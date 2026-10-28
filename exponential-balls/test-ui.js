@@ -142,6 +142,7 @@ assert(game.state.phase === 'start', 'RACE HOMEで戻れない');
 assert(hasClass('start-overlay', 'visible'), 'RACE HOME後にスタート画面が出ない');
 assert(text('btn-start') === 'START RACE', 'RACE HOME後の選択が保持されない');
 
+ExponentialEngine.RACE3D.maxTime = 25;
 click('mode-race3d');
 assert(text('btn-start') === 'START 3D' && hasClass('mode-race3d', 'selected'), 'RACE 3Dを選択できない');
 click('btn-start');

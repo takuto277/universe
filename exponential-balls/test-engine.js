@@ -189,6 +189,7 @@ assert(s.race3d.bounds && s.race3d.pegs && s.race3d.wells && s.race3d.boosters, 
 assert(s.race3d.plates && s.race3d.slows && s.race3d.fans, 'RACE3Dの減速ギミック情報がない');
 assert(game.tap(0, 0) === false, 'RACE3Dでタップ介入できてしまう');
 
+E.RACE3D.maxTime = 25;
 var guard3 = 0;
 while (game.state.phase === 'playing' && guard3 < 6000) {
   guard3 += 1;
