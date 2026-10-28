@@ -163,6 +163,27 @@
     ]
   };
 
+  (function expandRace3D() {
+    var levels = 10;
+    var span = RACE3D.bounds.zMax - RACE3D.bounds.zMin;
+    var keys = ['pegs', 'bumpers', 'spinners', 'portals', 'wells', 'boosters', 'plates', 'slows', 'fans'];
+    var originals = {};
+    for (var ok = 0; ok < keys.length; ok++) originals[keys[ok]] = RACE3D[keys[ok]].slice();
+    for (var k = 1; k < levels; k++) {
+      for (var ki = 0; ki < keys.length; ki++) {
+        var list = RACE3D[keys[ki]];
+        var base = originals[keys[ki]];
+        for (var i = 0; i < base.length; i++) {
+          var copy = Object.assign({}, base[i]);
+          copy.z = base[i].z + k * span;
+          list.push(copy);
+        }
+      }
+    }
+    RACE3D.bounds.zMax = RACE3D.bounds.zMin + span * levels;
+    RACE3D.startZ = RACE3D.startZ + (levels - 1) * span;
+  })();
+
   var ROOTS = [
     { name: 'C minor', freq: 130.81, hue: 188 },
     { name: 'E♭ minor', freq: 155.56, hue: 268 },
