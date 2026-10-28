@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05080e" />
+  <meta name="description" content="BLOOM is a vertical audiovisual game where balls double with the music. Choose AUTO, FRAME, or RACE." />
+  <title>BLOOM</title>
+  <link rel="stylesheet" href="style.css?v=20261029-block" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <div class="hud-title">
+          <p class="eyebrow">EXPONENTIAL BLOOM</p>
+          <h1>BLOOM</h1>
+          <p id="mode-name" class="mode-name">AUTO</p>
+        </div>
+        <div class="hud-actions">
+          <button id="btn-home" class="sound-btn" type="button">HOME</button>
+          <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+        </div>
+      </div>
+
+      <div class="count-wrap">
+        <span id="count" class="count">1</span>
+        <span id="count-label" class="count-label">BALLS</span>
+      </div>
+
+      <div class="meta">
+        <span id="cycle">CYCLE 1</span>
+        <span id="stat">BAR 1 / 12</span>
+        <span id="bpm">120 BPM</span>
+      </div>
+      <div class="bar-track"><i id="bar-fill"></i></div>
+      <p id="hint" class="hint">DOUBLE ON EVERY BAR · TAP TO PUSH</p>
+    </div>
+
+    <div id="cam-slider" class="cam-slider is-hidden" role="slider" aria-label="Camera height" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0">
+      <span class="cam-label">CAM</span>
+      <div id="cam-track" class="cam-track"><div id="cam-thumb" class="cam-thumb"></div></div>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">EXPONENTIAL BLOOM</p>
+        <h1>BLOOM</h1>
+        <p class="lead">Double, catch, survive, or go 3D. Pick a mode to start.</p>
+
+        <p class="mode-prompt">SELECT MODE</p>
+        <div class="mode-grid" role="group" aria-label="Game mode">
+          <button id="mode-auto" class="mode-card selected" type="button" aria-pressed="true">
+            <span class="mode-head"><span class="mode-tag">AUTO</span><span id="mode-auto-state" class="mode-play">SELECTED</span></span>
+            <span class="mode-title">BAR BY BAR</span>
+            <span class="mode-desc">A new ball every bar, locked to the beat. 1 to 2,048 in 12 bars.</span>
+          </button>
+          <button id="mode-frame" class="mode-card" type="button" aria-pressed="false">
+            <span class="mode-head"><span class="mode-tag">FRAME</span><span id="mode-frame-state" class="mode-play">SELECT</span></span>
+            <span class="mode-title">TOUCH &amp; DOUBLE</span>
+            <span class="mode-desc">Balls drift in all directions. Touch the top line to split one into two. The copies dive back down and darken.</span>
+          </button>
+          <button id="mode-race" class="mode-card" type="button" aria-pressed="false">
+            <span class="mode-head"><span class="mode-tag">RACE</span><span id="mode-race-state" class="mode-play">SELECT</span></span>
+            <span class="mode-title">LAST BALL</span>
+            <span class="mode-desc">20 colored balls. No tap. Pegs, spinners, wells, boosters and the void eliminate them until one is left.</span>
+          </button>
+          <button id="mode-race3d" class="mode-card" type="button" aria-pressed="false">
+            <span class="mode-head"><span class="mode-tag">RACE 3D</span><span id="mode-race3d-state" class="mode-play">SELECT</span></span>
+            <span class="mode-title">BLOCK RACE</span>
+            <span class="mode-desc">20 ability balls roll down a block field. Pick the first to the goal; drag to orbit, slider to travel.</span>
+          </button>
+        </div>
+
+        <button id="btn-start" class="primary big" type="button">START AUTO</button>
+
+        <svg class="start-art" viewBox="0 0 260 150" role="img" aria-label="Balls doubling from one to many">
+          <circle cx="54" cy="94" r="15" fill="#6fd6c3" opacity="0.9" />
+          <circle cx="105" cy="76" r="11" fill="#f4c96b" opacity="0.9" />
+          <circle cx="105" cy="112" r="11" fill="#f4c96b" opacity="0.9" />
+          <circle cx="171" cy="58" r="8" fill="#8fe5d6" />
+          <circle cx="171" cy="82" r="8" fill="#8fe5d6" />
+          <circle cx="171" cy="106" r="8" fill="#8fe5d6" />
+          <circle cx="171" cy="130" r="8" fill="#8fe5d6" />
+          <path d="M64 94 H88 M123 76 H151 M123 112 H151" stroke="#93a6c4" stroke-width="2" stroke-dasharray="3 4" opacity="0.6" />
+          <circle cx="218" cy="82" r="22" fill="none" stroke="#f4c96b" stroke-width="1.5" opacity="0.5" />
+          <circle cx="218" cy="82" r="30" fill="none" stroke="#6fd6c3" stroke-width="1" opacity="0.3" />
+        </svg>
+
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">120 BPM · AUTO/FRAME 24 s · RACE 3D first to goal. Sound on.</p>
+      </div>
+    </div>
+
+    <div id="predict-overlay" class="overlay predict-overlay">
+      <div class="predict-content">
+        <p class="eyebrow">BLOOM RACE 3D</p>
+        <h1>PICK YOUR BALL</h1>
+        <p class="lead">20 balls with different speed, bounce, grip and size. Pick the first to the goal.</p>
+        <div id="predict-grid" class="predict-grid" role="group" aria-label="Pick a ball"></div>
+        <div class="predict-detail">
+          <div class="predict-name"><span id="predict-dot" class="predict-dot"></span><strong id="predict-name">BALL 1</strong></div>
+          <div class="predict-stats">
+            <div><span>SPD</span><strong id="stat-speed">1.00</strong></div>
+            <div><span>BNC</span><strong id="stat-bounce">0.50</strong></div>
+            <div><span>GRP</span><strong id="stat-grip">0.85</strong></div>
+            <div><span>SIZE</span><strong id="stat-size">6.2</strong></div>
+          </div>
+        </div>
+        <button id="btn-predict-start" class="primary big" type="button">START RACE</button>
+        <p id="predict-streak" class="tiny">STREAK 0 · BEST 0</p>
+        <button id="btn-predict-home" class="link-btn" type="button">HOME</button>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay result-overlay">
+      <div class="result-content">
+        <p class="eyebrow">BLOOM RUSH</p>
+        <h1 id="result-title">BALL 7 WINS</h1>
+        <p id="result-sub" class="lead">Last ball standing.</p>
+        <div class="result-times">
+          <div class="result-time"><span>WINNER</span><strong><i id="result-dot" class="result-dot"></i><span id="result-winner">BALL 7</span></strong></div>
+          <div class="result-time"><span>TIME</span><strong id="result-time">0.0s</strong></div>
+        </div>
+        <button id="btn-race-again" class="primary big" type="button">RACE AGAIN</button>
+        <button id="btn-result-home" class="link-btn" type="button">HOME</button>
+        <p class="tiny">20 balls / last one standing</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261029-block"></script>
+  <script src="audio.js?v=20261029-block"></script>
+  <script src="renderer.js?v=20261029-block"></script>
+  <script src="ui.js?v=20261029-block"></script>
+  <script src="game.js?v=20261029-block"></script>
+</body>
+</html>

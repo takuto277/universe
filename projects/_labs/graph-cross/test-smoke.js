@@ -1,6 +1,6 @@
 /* test-smoke.js : 1回プレイして終了画面まで到達するスモークテスト（jsc で実行）
  * 実行例:
- *   cd universe && jsc graph-cross/test-smoke.js
+ *   cd projects/_labs/graph-cross && jsc test-smoke.js
  *   cd universe/graph-cross && jsc test-smoke.js
  */
 function tryLoad(paths) {
@@ -10,14 +10,14 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['content.js', 'graph-cross/content.js']);
-tryLoad(['balance.js', 'graph-cross/balance.js']);
-tryLoad(['gacha.js', 'graph-cross/gacha.js']);
-tryLoad(['engine.js', 'graph-cross/engine.js']);
-tryLoad(['renderer.js', 'graph-cross/renderer.js']);
-tryLoad(['ui.js', 'graph-cross/ui.js']);
-tryLoad(['game.js', 'graph-cross/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['content.js', 'projects/_labs/graph-cross/content.js']);
+tryLoad(['balance.js', 'projects/_labs/graph-cross/balance.js']);
+tryLoad(['gacha.js', 'projects/_labs/graph-cross/gacha.js']);
+tryLoad(['engine.js', 'projects/_labs/graph-cross/engine.js']);
+tryLoad(['renderer.js', 'projects/_labs/graph-cross/renderer.js']);
+tryLoad(['ui.js', 'projects/_labs/graph-cross/ui.js']);
+tryLoad(['game.js', 'projects/_labs/graph-cross/game.js']);
 
 Harness.run({
   name: 'graph-cross',

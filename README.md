@@ -10,7 +10,7 @@ universe は、**ゲームを題材に無人開発基盤を育てるモノレポ
 - **題材・公開物（projects）**: `projects/` のゲーム。`_labs` は実験・検証、`_samples` は教材・最小実装。分類は [projects/README.md](projects/README.md)
 - **実験**: 新機能は隔離ブランチのプレビューで試し、`experiment:keep` / `discard` で判断。手順は [docs/experiments.md](docs/experiments.md)
 - **横断知識（docs）**: `docs/` の運用手順・ADR・学習ログ
-- **移行中**: `graph-cross/` と `exponential-balls/` は進行中ブランチ/直後の変更を優先してルートに残しています。`tools/` はLaunchAgentとの互換性を確認してから `projects/universe-agent/` へ移します
+- **ゲームの配置**: 公開ゲームはすべて `projects/` 配下。旧URLはルートのリダイレクトで維持しています。`tools/` は稼働中のplatformとしてルートに残しています
 
 役割の決定理由と移行方針は [ADR 0010](docs/decisions/0010-monorepo-role.md) に記録しています。
 
@@ -61,14 +61,16 @@ universe/
 ├── projects/
 │   ├── _labs/                 # 実験・検証・継続開発中のゲーム
 │   │   ├── baseball-game/
+│   │   ├── exponential-balls/
+│   │   ├── graph-cross/
 │   │   ├── gravity-flip/
+│   │   ├── jump-rush/
+│   │   ├── ken-tsunagi/
 │   │   ├── neon-stack/
 │   │   ├── observer-game/
 │   │   └── unknown-word-deal/
 │   └── _samples/              # 教材・最小実装
 │       └── janken-game/
-├── graph-cross/               # 移行待ち（進行中ブランチを優先）
-├── exponential-balls/         # 移行待ち（PR #148 マージ済み）
 ├── .opencode/                 # エージェント・コマンド・スキル
 ├── docs/                      # 開発・学習ドキュメント
 └── tools/                     # 無人開発基盤・共通テストハーネス

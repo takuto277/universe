@@ -90,7 +90,7 @@ exponential-balls/
 ## テスト
 
 ```sh
-cd exponential-balls
+cd projects/_labs/exponential-balls
 jsc test-engine.js
 jsc test-audio.js
 jsc test-ui.js

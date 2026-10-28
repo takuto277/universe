@@ -1,6 +1,6 @@
 /* test-engine.js : BLOOM の時間・小節・AUTO/FRAME の検証（jsc で実行）
  * 実行例:
- *   cd exponential-balls && jsc test-engine.js
+ *   cd projects/_labs/exponential-balls && jsc test-engine.js
  */
 var E;
 try {

@@ -4,8 +4,6 @@ on:
   pull_request:
     paths:
       - "projects/**"
-      - "graph-cross/**"
-      - "exponential-balls/**"
       - "apps.json"
       - "index.html"
       - "tools/playtest/**"

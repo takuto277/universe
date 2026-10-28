@@ -6,9 +6,9 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['content.js', 'graph-cross/content.js']);
-tryLoad(['balance.js', 'graph-cross/balance.js']);
-tryLoad(['gacha.js', 'graph-cross/gacha.js']);
+tryLoad(['content.js', 'projects/_labs/graph-cross/content.js']);
+tryLoad(['balance.js', 'projects/_labs/graph-cross/balance.js']);
+tryLoad(['gacha.js', 'projects/_labs/graph-cross/gacha.js']);
 
 var C = GraphContent;
 var B = GraphBalance;

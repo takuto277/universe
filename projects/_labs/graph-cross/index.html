@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <title>グラフクロス - 曲線交差アクション</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+      <div class="stat"><span>BEST</span><b id="best">0</b></div>
+      <div class="stat"><span>COMBO</span><b id="combo">-</b></div>
+      <div class="stat life"><span>LIFE</span><b id="life">●●●</b></div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="960" height="560"></canvas>
+      <div id="stage-actions">
+        <button id="btn-pause" class="pause-btn hidden" type="button">PAUSE</button>
+        <button id="btn-exit" class="exit-btn hidden" type="button">QUIT (Esc)</button>
+      </div>
+      <div id="stage-info">
+        <span id="stage-label">STAGE 1</span>
+        <div class="stage-bar"><i id="stage-fill"></i></div>
+        <span id="stage-note">敵 0/8</span>
+      </div>
+      <div id="stage-banner"></div>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <h1>グラフクロス</h1>
+          <p class="subtitle">曲線を交差させろ! グラフ・アクション</p>
+          <ul class="rules compact-rules">
+            <li>曲線を敵に交差させて爆破。角度/弱点/連続 <b>MULTI</b> でスコアアップ</li>
+            <li>一定数倒すとボス。クリアで <b>同じジャンル</b> の関数と入れ替え+強化を選択</li>
+            <li>アイテムで非対称グラフ追加。ストレス解消は <b>ライフ∞・敵大量</b></li>
+          </ul>
+          <div id="deck-summary" class="deck-summary"></div>
+          <div class="start-actions">
+            <button id="btn-start" class="primary" type="button">このデッキではじめる</button>
+            <button id="btn-stress" class="stress-cta" type="button">ストレス解消モード</button>
+          </div>
+          <div class="start-sub-actions">
+            <button id="btn-build" class="secondary build-btn" type="button">デッキを組む</button>
+            <button id="btn-tutorial" class="secondary tutorial-btn" type="button">はじめての遊び方</button>
+            <button id="btn-gacha" class="secondary gacha-btn" type="button">関数ガチャ <b id="gacha-points">300</b></button>
+          </div>
+          <p class="tiny">1〜3: 関数切替 / Space・Enter: 開始・再戦 / ストレス解消: ライフ∞・敵大量</p>
+          <div id="deck-builder" class="hidden">
+          <div id="deck-picker">
+            <div class="deck-head">デッキを選べ <span id="deck-count">3/3</span></div>
+            <div id="deck-cards">
+              <button id="card-hold" class="deck-card" type="button"><b>y = 0</b><span>キープ</span></button>
+              <button id="card-up" class="deck-card" type="button"><b>y = x/2</b><span>ゆるく上へ / 直線</span></button>
+              <button id="card-down" class="deck-card" type="button"><b>y = -x/2</b><span>ゆるく下へ / 直線</span></button>
+              <button id="card-steepUp" class="deck-card" type="button"><b>y = 2x</b><span>急上昇 / 直線</span></button>
+              <button id="card-steepDown" class="deck-card" type="button"><b>y = -2x</b><span>急下降 / 直線</span></button>
+              <button id="card-quad" class="deck-card" type="button"><b>y = x²</b><span>上カーブ / 累乗</span></button>
+              <button id="card-quadDown" class="deck-card" type="button"><b>y = -x²</b><span>下カーブ / 累乗</span></button>
+              <button id="card-wave" class="deck-card" type="button"><b>y = sin x</b><span>ウェーブ / 波</span></button>
+              <button id="card-expo" class="deck-card" type="button"><b>y = e^x - 1</b><span>指数カーブ / 累乗</span></button>
+              <button id="card-log" class="deck-card" type="button"><b>y = ln(x+1)</b><span>対数カーブ / 累乗</span></button>
+              <button id="card-sigmoid" class="deck-card" type="button"><b>y = sigmoid(x)</b><span>Sカーブ / 波</span></button>
+              <button id="card-gauss" class="deck-card" type="button"><b>y = e^{-x²}</b><span>山カーブ / 波</span></button>
+              <button id="card-easeDown" class="deck-card" type="button"><b>y = -1 + e^{-x}</b><span>減速下降 / 累乗</span></button>
+              <button id="card-fusion" class="deck-card hidden" type="button"><b>y = fusion</b><span>2関数の合成</span></button>
+            </div>
+          </div>
+          <div id="fusion-panel">
+            <div class="deck-head">関数合成 <span class="tune-hint">2つを重ねて1枚のカードに</span></div>
+            <div class="fusion-controls">
+              <select id="fusion-primary" class="tune-select"></select>
+              <span class="fusion-plus">+</span>
+              <select id="fusion-secondary" class="tune-select"></select>
+              <button id="btn-fuse" class="secondary fusion-btn" type="button">合成</button>
+            </div>
+            <div id="fusion-preview" class="fusion-preview hidden"></div>
+            <div id="fusion-note" class="hud-note">2つの関数を選んで合成できます。</div>
+          </div>
+          <div id="tune-panel">
+            <div class="deck-head">関数をつくる <span class="tune-hint">スライダーで軌道が変わります</span></div>
+            <div id="tune-rows">
+              <div class="tune-row" id="tune-row-quad">
+                <div class="tune-head"><span class="tune-tag">累乗</span><span class="tune-formula" id="tune-quad-formula">y = x²</span></div>
+                <div class="tune-sliders">
+                  <label class="tune-slider"><span>a</span><input id="tune-quad-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-quad-a-val">1</b></label>
+                  <label class="tune-slider"><span>b</span><input id="tune-quad-b" type="range" min="-1.5" max="1.5" step="0.1" value="0" /><b id="tune-quad-b-val">0</b></label>
+                  <label class="tune-slider"><span>p</span><input id="tune-quad-p" type="range" min="2" max="6" step="1" value="2" /><b id="tune-quad-p-val">2</b></label>
+                </div>
+              </div>
+              <div class="tune-row" id="tune-row-quadDown">
+                <div class="tune-head"><span class="tune-tag">累乗</span><span class="tune-formula" id="tune-quadDown-formula">y = -x²</span></div>
+                <div class="tune-sliders">
+                  <label class="tune-slider"><span>a</span><input id="tune-quadDown-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-quadDown-a-val">1</b></label>
+                  <label class="tune-slider"><span>b</span><input id="tune-quadDown-b" type="range" min="-1.5" max="1.5" step="0.1" value="0" /><b id="tune-quadDown-b-val">0</b></label>
+                  <label class="tune-slider"><span>p</span><input id="tune-quadDown-p" type="range" min="2" max="6" step="1" value="2" /><b id="tune-quadDown-p-val">2</b></label>
+                </div>
+              </div>
+              <div class="tune-row" id="tune-row-wave">
+                <div class="tune-head"><span class="tune-tag">波</span><span class="tune-formula" id="tune-wave-formula">y = sin(x)</span><select id="tune-wave-shape" class="tune-select" title="波の形"><option value="0">sin</option><option value="1">cos</option><option value="2">三角</option><option value="3">角丸</option><option value="4">減衰</option><option value="5">のこぎり</option><option value="6">矩形</option><option value="7">スパイク</option></select></div>
+                <div class="tune-sliders">
+                  <label class="tune-slider"><span>a</span><input id="tune-wave-a" type="range" min="0.4" max="2" step="0.2" value="1" /><b id="tune-wave-a-val">1</b></label>
+                  <label class="tune-slider"><span>b</span><input id="tune-wave-b" type="range" min="0.5" max="2.5" step="0.25" value="1" /><b id="tune-wave-b-val">1</b></label>
+                  <label class="tune-slider"><span>c</span><input id="tune-wave-c" type="range" min="-3" max="3" step="0.2" value="0" /><b id="tune-wave-c-val">0</b></label>
+                </div>
+              </div>
+            </div>
+            <div id="tune-empty">x² / -x² / sin x を選ぶと関数をつくれます</div>
+            <div id="tune-preview-wrap">
+              <canvas id="tune-preview" width="560" height="92"></canvas>
+              <div id="tune-desc">スライダーを動かすと、この先の軌道がプレビューされます。</div>
+            </div>
+          </div>
+          </div>
+        </section>
+
+        <section id="screen-clear" class="screen clear-screen">
+          <h2 class="clear-title" id="clear-title">STAGE CLEAR</h2>
+          <div class="clear-stage" id="clear-stage">STAGE 1</div>
+          <div class="end-score"><span>SCORE</span><b id="clear-score">0</b></div>
+          <div class="end-stats">
+            <div><span>BONUS</span><b id="clear-bonus">+0</b></div>
+            <div><span>LIFE</span><b id="clear-life">●●●</b></div>
+          </div>
+          <div id="upgrade-choices">
+            <button id="upgrade-0" class="upgrade-card" type="button"><em>1</em><b id="upgrade-0-title">UPGRADE</b><span id="upgrade-0-desc"></span></button>
+            <button id="upgrade-1" class="upgrade-card" type="button"><em>2</em><b id="upgrade-1-title">UPGRADE</b><span id="upgrade-1-desc"></span></button>
+            <button id="upgrade-2" class="upgrade-card" type="button"><em>3</em><b id="upgrade-2-title">UPGRADE</b><span id="upgrade-2-desc"></span></button>
+          </div>
+          <div id="deck-swap" class="hidden"></div>
+          <div id="run-upgrades">RUN UPGRADES: NONE</div>
+          <p id="clear-gacha" class="tiny"></p>
+          <p class="tiny" id="clear-hint">1–3 / CHOOSE AN UPGRADE AND CONTINUE</p>
+        </section>
+
+        <section id="screen-gacha" class="screen gacha-screen">
+          <div class="gacha-shell">
+            <header class="gacha-header">
+              <div class="gacha-heading">
+                <div class="gacha-kicker">FUNCTION ARCHIVE / LOCAL SUMMON</div>
+                <h2 class="gacha-title">GACHA</h2>
+                <p class="gacha-sub" id="gacha-reward">ステージクリアで関数ポイント +100</p>
+              </div>
+              <div class="gacha-wallet">
+                <span>FUNCTION POINTS</span>
+                <b id="gacha-points-large">300</b>
+                <small>1回 100pt</small>
+              </div>
+            </header>
+            <div class="gacha-dashboard">
+              <section class="gacha-controls">
+                <div id="gacha-rates" class="gacha-rates"></div>
+                <p id="gacha-pity" class="gacha-pity"></p>
+                <button id="btn-gacha-roll" class="gacha-roll" type="button">1回まわす (100)</button>
+                <p class="tiny gacha-note">全解放までは未所持の関数だけが出現します</p>
+              </section>
+              <section id="gacha-result" class="gacha-result"></section>
+            </div>
+            <div class="gacha-collection-head">
+              <span>COLLECTION</span>
+              <b id="gacha-collection-count">3 / 13</b>
+            </div>
+            <div id="gacha-collection" class="gacha-collection"></div>
+            <footer class="gacha-footer">
+              <button id="btn-gacha-close" class="secondary gacha-close" type="button">スタートへ</button>
+            </footer>
+          </div>
+        </section>
+
+        <section id="screen-pause" class="screen pause-screen">
+          <div class="pause-card">
+            <span class="pause-kicker">GAME PAUSED</span>
+            <h2 class="pause-title">PAUSED</h2>
+            <p class="pause-desc">Take a break. Resume and continue from here.</p>
+            <button id="btn-resume" class="primary" type="button">RESUME</button>
+            <button id="btn-pause-retry" class="secondary hidden" type="button">RETRY STAGE</button>
+            <button id="btn-pause-exit" class="secondary" type="button">TO TITLE</button>
+            <p class="tiny">P / Esc: RESUME</p>
+          </div>
+        </section>
+
+        <section id="screen-ending" class="screen ending-screen">
+          <span class="ending-kicker">FINAL STAGE CLEAR</span>
+          <h2 class="ending-title">FIN.</h2>
+          <p class="ending-sub">You cleared the final stage.</p>
+          <div class="end-score"><span>FINAL SCORE</span><b id="ending-score">0</b></div>
+          <div class="end-stats">
+            <div><span>BEST</span><b id="ending-best">0</b></div>
+            <div><span>MAX COMBO</span><b id="ending-combo">x0</b></div>
+            <div><span>STAGE</span><b id="ending-stage">10</b></div>
+            <div><span>X</span><b id="ending-x">0</b></div>
+          </div>
+          <div class="end-actions">
+            <button id="btn-ending-again" class="primary" type="button">PLAY AGAIN</button>
+            <button id="btn-ending-title" class="secondary" type="button">TITLE</button>
+          </div>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <h2 class="end-title">GAME OVER</h2>
+          <div class="end-score"><span>SCORE</span><b id="end-score">0</b></div>
+          <div class="end-stats">
+            <div><span>BEST</span><b id="end-best">0</b></div>
+            <div><span>MAX COMBO</span><b id="end-combo">x0</b></div>
+            <div><span>STAGE</span><b id="end-stage">1</b></div>
+            <div><span>X</span><b id="end-x">0</b></div>
+          </div>
+          <div class="end-actions">
+            <button id="btn-rescue" class="rescue-cta hidden" type="button">RESCUE: CHANGE FUNCTION</button>
+            <button id="btn-retry" class="primary" type="button">RETRY STAGE</button>
+            <button id="btn-again" class="secondary" type="button">RESTART RUN</button>
+            <button id="btn-deck" class="secondary" type="button">CHANGE DECK</button>
+          </div>
+          <p class="tiny">R: RETRY STAGE / SPACE·ENTER: RESTART RUN</p>
+        </section>
+
+        <section id="screen-rescue" class="screen rescue-screen">
+          <span class="rescue-kicker">RESCUE / ONE PER RUN</span>
+          <h2 class="rescue-title">CHANGE A FUNCTION</h2>
+          <p class="rescue-sub">Replace one function and retry this stage from the beginning.</p>
+          <div id="rescue-choices" class="rescue-choices">
+            <button id="rescue-0" class="upgrade-card" type="button"><em>1</em><b>FUNCTION</b><span></span></button>
+            <button id="rescue-1" class="upgrade-card" type="button"><em>2</em><b>FUNCTION</b><span></span></button>
+            <button id="rescue-2" class="upgrade-card" type="button"><em>3</em><b>FUNCTION</b><span></span></button>
+          </div>
+          <button id="btn-rescue-back" class="secondary" type="button">BACK</button>
+        </section>
+      </div>
+      <aside id="tutorial-panel" class="hidden" aria-live="polite">
+        <div class="tutorial-head">
+          <span class="tutorial-kicker">TUTORIAL</span>
+          <span id="tutorial-count">1 / 3</span>
+        </div>
+        <div class="tutorial-main">
+          <div id="tutorial-visual" class="tutorial-visual" aria-hidden="true"></div>
+          <div class="tutorial-copy">
+            <h3 id="tutorial-title">関数を切り替えよう</h3>
+            <p id="tutorial-desc"></p>
+            <p id="tutorial-tip" class="tutorial-tip"></p>
+          </div>
+        </div>
+        <div class="tutorial-actions">
+          <button id="btn-tutorial-skip" class="tutorial-skip" type="button">スキップ</button>
+          <button id="btn-tutorial-start" class="tutorial-start hidden" type="button">このデッキではじめる</button>
+          <button id="btn-tutorial-back" class="tutorial-back hidden" type="button">スタートへ</button>
+        </div>
+      </aside>
+    </main>
+
+    <footer id="controlbar">
+      <div id="mode-buttons">
+        <button id="slot-0" class="mode-btn" type="button"><b>y = 0</b><span>キープ</span><em>1</em></button>
+        <button id="slot-1" class="mode-btn" type="button"><b>y = x/2</b><span>上へ</span><em>2</em></button>
+        <button id="slot-2" class="mode-btn" type="button"><b>y = sin x</b><span>ウェーブ</span><em>3</em></button>
+        <button id="slot-3" class="mode-btn hidden" type="button"><b>-</b><span>空き</span><em>4</em></button>
+      </div>
+      <div id="tipbar">
+        <span id="tip">画面タップ / 1〜3 で関数切替 &nbsp;·&nbsp; 曲線で敵を迎え撃て</span>
+        <button id="btn-sound" type="button">音 ON</button>
+      </div>
+    </footer>
+  </div>
+
+  <script src="content.js"></script>
+  <script src="balance.js"></script>
+  <script src="gacha.js"></script>
+  <script src="engine.js"></script>
+  <script src="audio.js"></script>
+  <script src="renderer.js"></script>
+  <script src="ui.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

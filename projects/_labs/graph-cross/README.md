@@ -4,7 +4,7 @@ x が自動で進むグラフの上で、関数を切り替えながら自分の
 
 ## 遊ぶ
 
-universe のルートで次を実行し、http://localhost:8000/graph-cross/ を開きます。
+universe のルートで次を実行し、http://localhost:8000/projects/_labs/graph-cross/ を開きます。
 
 ```sh
 python3 -m http.server 8000
@@ -141,7 +141,7 @@ python3 -m http.server 8000
 関数の軌道メトリクスを測る簡易ツールがあります。
 
 ```sh
-cd graph-cross
+cd projects/_labs/graph-cross
 jsc evaluate-functions.js
 ```
 
@@ -158,7 +158,7 @@ universe のルートで実行します。
 個別に実行する場合:
 
 ```sh
-cd graph-cross
+cd projects/_labs/graph-cross
 jsc test-engine.js
 jsc test-smoke.js
 ```
