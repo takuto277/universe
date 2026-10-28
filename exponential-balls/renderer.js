@@ -587,17 +587,20 @@
       if (!ctx || !state || !state.race3d || !state.field) return;
       var race = state.race3d;
       var hue = state.root ? state.root.hue : 188;
+      function boardZ(y) { return race.board.z0 - race.board.slope * y; }
+
       var focal = 620;
-      var focusZ = 260 + (1 - camFocusNorm) * (race.bounds.zMax - 520);
-      var radius = 700;
+      var focusY = race.goalY * camFocusNorm;
+      var focusZ = boardZ(focusY) + 110;
+      var radius = 620;
       var elev = camElev;
       var horizontal = Math.cos(elev) * radius;
       var cam = {
         x: Math.sin(camYaw) * horizontal,
-        y: -Math.cos(camYaw) * horizontal,
+        y: focusY - Math.cos(camYaw) * horizontal,
         z: focusZ + Math.sin(elev) * radius
       };
-      var target = { x: 0, y: 0, z: focusZ };
+      var target = { x: 0, y: focusY, z: focusZ };
       var fx = target.x - cam.x;
       var fy = target.y - cam.y;
       var fz = target.z - cam.z;
@@ -638,238 +641,105 @@
         ctx.stroke();
       }
 
-      function ring3D(center, ax, ay, radius, color, widthPx, fillColor) {
+      function poly3(points, fill, stroke, widthPx) {
         var pts = [];
-        for (var ri = 0; ri < 28; ri++) {
-          var a = ri / 28 * Math.PI * 2;
-          var p = {
-            x: center.x + ax.x * Math.cos(a) * radius + ay.x * Math.sin(a) * radius,
-            y: center.y + ax.y * Math.cos(a) * radius + ay.y * Math.sin(a) * radius,
-            z: center.z + ax.z * Math.cos(a) * radius + ay.z * Math.sin(a) * radius
-          };
-          var pr = project(p);
-          if (pr) pts.push(pr);
+        for (var i = 0; i < points.length; i++) {
+          var p = project(points[i]);
+          if (p) pts.push(p);
         }
-        if (pts.length < 2) return;
+        if (pts.length < 3) return;
         ctx.beginPath();
         ctx.moveTo(pts[0].x, pts[0].y);
-        for (var pi = 1; pi < pts.length; pi++) ctx.lineTo(pts[pi].x, pts[pi].y);
+        for (var j = 1; j < pts.length; j++) ctx.lineTo(pts[j].x, pts[j].y);
         ctx.closePath();
-        if (fillColor) { ctx.fillStyle = fillColor; ctx.fill(); }
-        ctx.strokeStyle = color;
-        ctx.lineWidth = widthPx || 1;
-        ctx.stroke();
+        if (fill) { ctx.fillStyle = fill; ctx.fill(); }
+        if (stroke) { ctx.strokeStyle = stroke; ctx.lineWidth = widthPx || 1; ctx.stroke(); }
+      }
+
+      function drawBox(block) {
+        var bx = block.x;
+        var by = block.y;
+        var base = boardZ(by);
+        var x0 = bx - block.w / 2;
+        var x1 = bx + block.w / 2;
+        var y0 = by - block.d / 2;
+        var y1 = by + block.d / 2;
+        var z0 = base;
+        var z1 = base + block.h;
+        var top = 'rgba(224, 232, 246, 0.34)';
+        var front = 'rgba(188, 201, 222, 0.24)';
+        var side = 'rgba(156, 171, 196, 0.20)';
+        poly3([{ x: x0, y: y0, z: z1 }, { x: x1, y: y0, z: z1 }, { x: x1, y: y1, z: z1 }, { x: x0, y: y1, z: z1 }], top, 'rgba(235,240,250,0.4)', 1);
+        poly3([{ x: x0, y: y0, z: z0 }, { x: x1, y: y0, z: z0 }, { x: x1, y: y0, z: z1 }, { x: x0, y: y0, z: z1 }], front, 'rgba(220,230,245,0.2)', 1);
+        poly3([{ x: x1, y: y0, z: z0 }, { x: x1, y: y1, z: z0 }, { x: x1, y: y1, z: z1 }, { x: x1, y: y0, z: z1 }], side, 'rgba(220,230,245,0.18)', 1);
       }
 
       background(hue);
       ctx.globalCompositeOperation = 'lighter';
 
-      for (var ev = 0; ev < race.events.length; ev++) {
-        var evt = race.events[ev];
-        var ep = project(evt);
-        if (!ep) continue;
-        if (evt.type === 'bumper') {
-          flash = Math.max(flash, 0.14);
-          waves.push({ x: ep.x, y: ep.y, r: 4, speed: 220, life: 1, hue: evt.hue, width: 2 });
-        } else if (evt.type === 'spinner') {
-          waves.push({ x: ep.x, y: ep.y, r: 3, speed: 180, life: 1, hue: evt.hue, width: 1.5 });
-        } else if (evt.type === 'boost') {
-          flash = Math.max(flash, 0.18);
-          waves.push({ x: ep.x, y: ep.y, r: 5, speed: 260, life: 1, hue: evt.hue, width: 2.5 });
-        } else if (evt.type === 'plate') {
-          waves.push({ x: ep.x, y: ep.y, r: 8, speed: 220, life: 1, hue: 48, width: 2 });
-        } else if (evt.type === 'eliminate') {
-          flash = Math.max(flash, 0.24);
-          waves.push({ x: ep.x, y: ep.y, r: 4, speed: 180, life: 1, hue: evt.hue, width: 2 });
-        } else if (evt.type === 'portal') {
-          waves.push({ x: ep.x, y: ep.y, r: 6, speed: 240, life: 1, hue: evt.hue, width: 2 });
-        } else if (evt.type === 'winner') {
-          flash = 0.65;
-          waves.push({ x: ep.x, y: ep.y, r: 24, speed: 400, life: 1, hue: evt.hue, width: 4 });
-        }
-      }
+      var xh = race.board.xHalf;
+      var gy = race.goalY;
+      poly3([
+        { x: -xh, y: 0, z: boardZ(0) }, { x: xh, y: 0, z: boardZ(0) },
+        { x: xh, y: gy, z: boardZ(gy) }, { x: -xh, y: gy, z: boardZ(gy) }
+      ], 'rgba(20, 28, 40, 0.5)', 'rgba(210, 222, 242, 0.18)', 1.5);
 
-      var B = race.bounds;
-      var steel = 'rgba(218, 228, 244, 0.34)';
-      var steelSoft = 'rgba(218, 228, 244, 0.16)';
       var gridCol = 'rgba(190, 205, 225, 0.10)';
-      var hazard = 'rgba(235, 240, 250, 0.22)';
-      var corners = [
-        { x: -B.x, y: B.y, z: 0 }, { x: B.x, y: B.y, z: 0 },
-        { x: B.x, y: B.y, z: B.zMax }, { x: -B.x, y: B.y, z: B.zMax },
-        { x: -B.x, y: -B.y, z: 0 }, { x: B.x, y: -B.y, z: 0 },
-        { x: B.x, y: -B.y, z: B.zMax }, { x: -B.x, y: -B.y, z: B.zMax }
-      ];
-      var voidY = race.voidZ;
-      ctx.globalCompositeOperation = 'source-over';
-      var floor = project({ x: 0, y: 0, z: voidY });
-      if (floor) {
-        var fg = ctx.createLinearGradient(0, floor.y - 30, 0, height);
-        fg.addColorStop(0, 'rgba(4, 8, 14, 0.12)');
-        fg.addColorStop(0.45, 'rgba(210, 222, 240, 0.08)');
-        fg.addColorStop(1, 'rgba(4, 8, 14, 0.9)');
-        ctx.fillStyle = fg;
-        ctx.fillRect(0, 0, width, height);
+      for (var gyi = 0; gyi <= gy; gyi += 250) {
+        line3({ x: -xh, y: gyi, z: boardZ(gyi) }, { x: xh, y: gyi, z: boardZ(gyi) }, gridCol, 1);
       }
-      ctx.globalCompositeOperation = 'lighter';
+      for (var gxi = -xh; gxi <= xh; gxi += 50) {
+        line3({ x: gxi, y: 0, z: boardZ(0) }, { x: gxi, y: gy, z: boardZ(gy) }, gridCol, 1);
+      }
+      line3({ x: -xh, y: 0, z: boardZ(0) }, { x: -xh, y: gy, z: boardZ(gy) }, 'rgba(220,230,245,0.25)', 1.5);
+      line3({ x: xh, y: 0, z: boardZ(0) }, { x: xh, y: gy, z: boardZ(gy) }, 'rgba(220,230,245,0.25)', 1.5);
+      line3({ x: -xh, y: gy, z: boardZ(gy) }, { x: xh, y: gy, z: boardZ(gy) }, 'rgba(245,248,255,0.55)', 2.5);
 
-      for (var gx = -B.x; gx <= B.x; gx += 55) {
-        line3({ x: gx, y: -B.y, z: voidY }, { x: gx, y: B.y, z: voidY }, gridCol, 1);
-      }
-      for (var gy = -B.y; gy <= B.y; gy += 50) {
-        line3({ x: -B.x, y: gy, z: voidY }, { x: B.x, y: gy, z: voidY }, gridCol, 1);
-      }
-      line3(corners[0], corners[1], hazard, 2);
-      line3(corners[1], corners[2], steelSoft, 1);
-      line3(corners[2], corners[3], steelSoft, 1);
-      line3(corners[3], corners[0], steelSoft, 1);
-      line3(corners[0], corners[4], steelSoft, 1);
-      line3(corners[1], corners[5], steelSoft, 1);
-      line3(corners[3], corners[7], steelSoft, 1);
-      line3(corners[2], corners[6], steelSoft, 1);
-      line3(corners[4], corners[5], steelSoft, 1);
-      line3(corners[5], corners[6], steelSoft, 1);
-      line3(corners[6], corners[7], steelSoft, 1);
-      line3(corners[7], corners[4], steelSoft, 1);
+      for (var bi = 0; bi < race.blocks.length; bi++) drawBox(race.blocks[bi]);
 
-      for (var wl = 0; wl < race.wells.length; wl++) {
-        var well = race.wells[wl];
-        var wp = project(well);
-        if (!wp) continue;
-        ctx.globalCompositeOperation = 'lighter';
-        ring3D(well, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, well.r, steelSoft, 1);
-        ring3D(well, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, well.r, steelSoft, 1);
-        ring3D(well, { x: 0, y: 1, z: 0 }, { x: 0, y: 0, z: 1 }, well.r, steelSoft, 1);
+      var indexed = [];
+      for (var i = 0; i < race.balls.length; i++) {
+        var b = race.balls[i];
+        var bp = project(b);
+        if (bp) indexed.push({ b: b, p: bp });
       }
-
-      for (var bst = 0; bst < race.boosters.length; bst++) {
-        var boost = race.boosters[bst];
-        var bp = project(boost);
-        if (!bp) continue;
-        var dir = Math.sqrt(boost.vx * boost.vx + boost.vy * boost.vy + boost.vz * boost.vz) || 1;
-        var tip = project({ x: boost.x + boost.vx / dir * 34, y: boost.y + boost.vy / dir * 34, z: boost.z + boost.vz / dir * 34 });
-        if (tip) {
-          line3(boost, { x: boost.x + boost.vx / dir * 34, y: boost.y + boost.vy / dir * 34, z: boost.z + boost.vz / dir * 34 }, steel, 2);
-          ctx.fillStyle = steel;
-          ctx.beginPath();
-          ctx.arc(tip.x, tip.y, 3, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      for (var po = 0; po < race.portals.length; po++) {
-        var portal = race.portals[po];
-        var pp = project(portal);
-        if (!pp) continue;
-        ring3D(portal, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, portal.r, steel, 2);
-        ring3D(portal, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, portal.r * 0.62, steelSoft, 1);
-      }
-
-      for (var peg = 0; peg < race.pegs.length; peg++) {
-        var pegP = project(race.pegs[peg]);
-        if (!pegP) continue;
-        ctx.fillStyle = steelSoft;
-        ctx.beginPath();
-        ctx.arc(pegP.x, pegP.y, Math.max(1.5, 5 * pegP.scale), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      for (var bump = 0; bump < race.bumpers.length; bump++) {
-        var bumper = race.bumpers[bump];
-        var bmp = project(bumper);
-        if (!bmp) continue;
-        ring3D(bumper, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, bumper.r, steel, 2);
-        ctx.fillStyle = steelSoft;
-        ctx.beginPath();
-        ctx.arc(bmp.x, bmp.y, Math.max(1.5, 4 * bmp.scale), 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      for (var sp = 0; sp < race.spinners.length; sp++) {
-        var spin = race.spinners[sp];
-        var cosA = Math.cos(spin.angle);
-        var sinA = Math.sin(spin.angle);
-        var e1 = project({ x: spin.x - cosA * spin.len, y: spin.y - sinA * spin.len, z: spin.z });
-        var e2 = project({ x: spin.x + cosA * spin.len, y: spin.y + sinA * spin.len, z: spin.z });
-        if (e1 && e2) {
-          ctx.strokeStyle = steel;
-          ctx.lineWidth = 2;
-          ctx.beginPath();
-          ctx.moveTo(e1.x, e1.y);
-          ctx.lineTo(e2.x, e2.y);
-          ctx.stroke();
-        }
-      }
-
-      for (var sl = 0; sl < race.slows.length; sl++) {
-        var slow = race.slows[sl];
-        var sp = project(slow);
-        if (!sp) continue;
-        ring3D(slow, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, slow.r, 'rgba(218, 228, 244, 0.08)', 1);
-        ring3D(slow, { x: 1, y: 0, z: 0 }, { x: 0, y: 0, z: 1 }, slow.r, 'rgba(218, 228, 244, 0.08)', 1);
-      }
-
-      for (var pl = 0; pl < race.plates.length; pl++) {
-        var plate = race.plates[pl];
-        ring3D(plate, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, plate.r, steel, 1.5, 'rgba(218, 228, 244, 0.08)');
-      }
-
-      for (var fn = 0; fn < race.fans.length; fn++) {
-        var fan = race.fans[fn];
-        var fp = project(fan);
-        if (!fp) continue;
-        ring3D(fan, { x: 1, y: 0, z: 0 }, { x: 0, y: 1, z: 0 }, fan.r, steelSoft, 1.5);
-        line3(fan, { x: fan.x, y: fan.y, z: fan.z + 26 }, steel, 1.5);
-        var ftip = project({ x: fan.x, y: fan.y, z: fan.z + 26 });
-        if (ftip) {
-          ctx.fillStyle = steel;
-          ctx.beginPath();
-          ctx.arc(ftip.x, ftip.y, 2.5, 0, Math.PI * 2);
-          ctx.fill();
-        }
-      }
-
-      var drawBalls = race.balls.slice().sort(function (a, b) {
-        var pa = project(a);
-        var pb = project(b);
-        return (pa ? pa.depth : 0) - (pb ? pb.depth : 0);
-      });
-      for (var i = 0; i < drawBalls.length; i++) {
-        var ball = drawBalls[i];
-        var bp2 = project(ball);
-        if (!bp2) continue;
-        var r = Math.max(2, ball.r * bp2.scale);
-        var glow = ctx.createRadialGradient(bp2.x, bp2.y, 0, bp2.x, bp2.y, r * 3);
+      indexed.sort(function (a, b) { return b.p.depth - a.p.depth; });
+      for (var ii = 0; ii < indexed.length; ii++) {
+        var ball = indexed[ii].b;
+        var p = indexed[ii].p;
+        var r = Math.max(2, ball.r * p.scale);
+        var glow = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3);
         glow.addColorStop(0, 'hsla(' + ball.hue + ', 92%, 68%, 0.3)');
         glow.addColorStop(1, 'hsla(' + ball.hue + ', 90%, 60%, 0)');
         ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(bp2.x, bp2.y, r * 3, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, r * 3, 0, Math.PI * 2);
         ctx.fill();
         ctx.fillStyle = 'hsla(' + ball.hue + ', 92%, 64%, 0.95)';
         ctx.beginPath();
-        ctx.arc(bp2.x, bp2.y, r, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
         ctx.fill();
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.55)';
-        ctx.beginPath();
-        ctx.arc(bp2.x - r * 0.25, bp2.y - r * 0.25, r * 0.3, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      if (race.result) {
-        for (var wb = 0; wb < race.balls.length; wb++) {
-          if (race.balls[wb].id !== race.result.winnerId) continue;
-          var wp2 = project(race.balls[wb]);
-          if (!wp2) continue;
-          ctx.strokeStyle = 'hsla(' + race.result.winnerHue + ', 95%, 76%, 0.75)';
-          ctx.lineWidth = 2;
+        if (race.prediction != null && Number(race.prediction) === ball.id) {
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.lineWidth = 1.5;
           ctx.beginPath();
-          ctx.arc(wp2.x, wp2.y, 18 + Math.sin(t * 5) * 3, 0, Math.PI * 2);
+          ctx.arc(p.x, p.y, r + 4, 0, Math.PI * 2);
           ctx.stroke();
         }
       }
 
-      drawWaves(hue);
+      if (race.result) {
+        for (var wi = 0; wi < race.balls.length; wi++) {
+          if (race.balls[wi].id !== race.result.winnerId) continue;
+          var wp = project(race.balls[wi]);
+          if (!wp) continue;
+          ctx.strokeStyle = 'hsla(' + race.result.winnerHue + ', 95%, 76%, 0.75)';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.arc(wp.x, wp.y, 18 + Math.sin(t * 5) * 3, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
     }
 
     resize();

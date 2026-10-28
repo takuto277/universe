@@ -172,22 +172,25 @@ assert(s.race.result.time > 0 && s.race.result.time <= E.RACE.maxTime, '勝者�
 assert(s.race.result.eliminated === 19 && s.race.result.alive === 1, '結果の脱落数が不正');
 
 
-/* RACE 3D: 20球・3Dギミック・ノータップ・最後の1球 */
+/* RACE 3D: 積み木コース・能力差・予想・最初のゴール */
 assert(E.RACE3D && E.RACE3D.total === 20, 'RACE3Dの球数が20でない');
-assert(E.RACE3D.bounds.zMax >= 4800, 'RACE3Dの縦が2倍になっていない: ' + E.RACE3D.bounds.zMax);
-assert(E.RACE3D.plates.length >= 6 && E.RACE3D.slows.length >= 4 && E.RACE3D.fans.length >= 4, 'RACE3Dの減速ギミックが足りない');
-assert(E.RACE3D.pegs.length > 0 && E.RACE3D.bumpers.length > 0 && E.RACE3D.spinners.length > 0, 'RACE3Dのギミックがない');
-assert(E.RACE3D.portals.length >= 2 && E.RACE3D.wells.length >= 1 && E.RACE3D.boosters.length >= 1, 'RACE3Dのポータル/ウェル/ブースターがない');
+assert(E.RACE3D.preview.length === 20, 'RACE3Dの予想用プレビューが20個でない');
+assert(E.RACE3D.types.length >= 4, 'RACE3Dの能力タイプが足りない');
+assert(E.RACE3D.blocks.length >= 3 && E.RACE3D.goalY > 0, 'RACE3Dのコースがない');
+assert(E.RACE3D.board && E.RACE3D.board.slope > 0 && E.RACE3D.board.xHalf > 0, 'RACE3Dのボードがない');
 
 game = E.createGame();
 game.start('race3d');
 assert(game.state.phase === 'playing' && game.state.mode === 'race3d', 'RACE3D開始状態が不正');
 s = game.getState();
-assert(s.race3d && s.race3d.alive === 20 && s.race3d.total === 20, 'RACE3Dの初期球数が不正');
-assert(s.race3d.balls.length === 20 && s.race3d.balls[0].z > 0, 'RACE3Dの3Dボールが不正');
-assert(s.race3d.bounds && s.race3d.pegs && s.race3d.wells && s.race3d.boosters, 'RACE3Dの3Dコース情報がない');
-assert(s.race3d.plates && s.race3d.slows && s.race3d.fans, 'RACE3Dの減速ギミック情報がない');
+assert(s.race3d && s.race3d.total === 20 && s.race3d.balls.length === 20, 'RACE3Dの初期ボールが20個でない');
+assert(s.race3d.board && s.race3d.blocks.length >= 3 && s.race3d.goalY > 0, 'RACE3Dのコース情報がない');
+assert(s.race3d.prediction === null, 'RACE3Dの初期予想がnullでない');
+assert(s.race3d.balls[0].y > 0 && s.race3d.positions[s.race3d.balls[0].id] >= 1, 'RACE3Dの位置情報が不正');
 assert(game.tap(0, 0) === false, 'RACE3Dでタップ介入できてしまう');
+assert(game.setPrediction(7) === true, 'RACE3Dの予想を設定できない');
+s = game.getState();
+assert(s.race3d.prediction === 7, 'RACE3Dの予想が反映されない');
 
 E.RACE3D.maxTime = 25;
 var guard3 = 0;
@@ -195,10 +198,11 @@ while (game.state.phase === 'playing' && guard3 < 6000) {
   guard3 += 1;
   s = game.updateRace3D(guard3 / 60, 1 / 60);
 }
-assert(s.phase === 'finished' && s.race3d.result, 'RACE3Dが最後の1球で終了しない');
-assert(s.race3d.alive === 1 && s.race3d.balls.length === 1, 'RACE3Dが最後の1球になっていない');
-assert(s.race3d.eliminated === 19, 'RACE3Dで19球が脱落していない');
+assert(s.phase === 'finished' && s.race3d.result, 'RACE3Dがゴールで終了しない');
 assert(s.race3d.result.winnerId >= 1 && s.race3d.result.winnerId <= 20, 'RACE3Dの勝者IDが不正');
 assert(s.race3d.result.time > 0 && s.race3d.result.time <= E.RACE3D.maxTime, 'RACE3Dの勝者タイムが不正');
+assert(s.race3d.result.predicted === 7, 'RACE3Dの結果に予想が入っていない');
+assert(typeof s.race3d.result.predictedWon === 'boolean', 'RACE3Dの予想的中フラグがない');
+assert(s.race3d.balls.length === 20, 'RACE3Dのボールが消えている');
 
 log('engine tests OK (' + passed + ' assertions)');

@@ -502,3 +502,129 @@ h1, p { margin: 0; }
   background: var(--gold);
   box-shadow: 0 0 12px rgba(244, 201, 107, 0.65);
 }
+
+/* ---------- RACE 3D prediction ---------- */
+
+.predict-overlay { align-items: flex-start; overflow-y: auto; }
+
+.predict-content {
+  width: min(380px, 100%);
+  padding: 18px 0 26px;
+  text-align: center;
+}
+
+.predict-content h1 {
+  margin-top: 3px;
+  font-size: clamp(30px, 8vw, 42px);
+  line-height: 1.05;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+
+.predict-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 12px;
+}
+
+.predict-ball {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 7px 3px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 10px;
+  background: rgba(9, 15, 25, 0.72);
+}
+
+.predict-ball.selected {
+  border-color: rgba(244, 201, 107, 0.8);
+  background: rgba(244, 201, 107, 0.10);
+  box-shadow: inset 0 0 0 1px rgba(244, 201, 107, 0.18);
+}
+
+.predict-ball i {
+  display: block;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  box-shadow: 0 0 8px rgba(255, 255, 255, 0.18);
+}
+
+.predict-ball span {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.predict-ball small {
+  font-size: 7px;
+  letter-spacing: 0.06em;
+  color: var(--faint);
+}
+
+.predict-detail {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(9, 15, 25, 0.72);
+}
+
+.predict-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  font-size: 14px;
+  letter-spacing: 0.06em;
+}
+
+.predict-dot {
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.25);
+}
+
+.predict-stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 5px;
+}
+
+.predict-stats div {
+  padding: 5px 3px;
+  border-radius: 7px;
+  background: rgba(255, 255, 255, 0.035);
+}
+
+.predict-stats span {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 0.12em;
+  color: var(--faint);
+}
+
+.predict-stats strong {
+  display: block;
+  margin-top: 1px;
+  font-size: 12px;
+  color: var(--gold);
+  font-variant-numeric: tabular-nums;
+}
+
+.predict-content .primary.big { margin-top: 10px; }
+
+@media (max-height: 620px) {
+  .predict-content { padding: 14px 0 20px; }
+  .predict-content h1 { font-size: 28px; }
+  .predict-grid { gap: 4px; }
+  .predict-ball { padding: 5px 2px; }
+  .predict-ball i { width: 14px; height: 14px; }
+}

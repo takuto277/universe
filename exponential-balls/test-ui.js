@@ -146,11 +146,24 @@ ExponentialEngine.RACE3D.maxTime = 25;
 click('mode-race3d');
 assert(text('btn-start') === 'START 3D' && hasClass('mode-race3d', 'selected'), 'RACE 3Dを選択できない');
 click('btn-start');
+assert(game.state.phase === 'start', 'RACE 3Dの予想画面でゲームが始まってしまう');
+assert(hasClass('predict-overlay', 'visible'), 'RACE 3Dの予想画面が出ない');
+assert(!hasClass('start-overlay', 'visible'), '予想画面でスタート画面が残る');
+assert(hasClass('hud', 'is-hidden'), '予想画面でHUDが出ている');
+
+ui.selectBall(7);
+assert(text('predict-name').indexOf('BALL 7') === 0, '予想ボールの詳細が不正: ' + text('predict-name'));
+assert(text('stat-speed').length > 0 && text('stat-bounce').length > 0, '能力値が出ていない');
+
+click('btn-predict-start');
 assert(game.state.phase === 'playing' && game.state.mode === 'race3d', 'RACE 3Dで開始できない');
+assert(game.getState().race3d.prediction === 7, '予想がゲームに渡っていない');
+ui.update(game.getState());
 assert(text('mode-name') === 'RACE 3D', 'HUDのモードがRACE 3Dでない');
-assert(text('count-label') === 'ALIVE', 'RACE 3DのカウントラベルがALIVEでない');
-assert(text('count') === '20', 'RACE 3Dの初期球数が20でない: ' + text('count'));
-assert(text('cycle') === 'TIME 0.0', 'RACE 3DのTIME表示が不正');
+assert(text('count-label') === 'POS', 'RACE 3DのカウントラベルがPOSでない');
+assert(text('count').charAt(0) === '#', 'RACE 3Dの順位表示が不正: ' + text('count'));
+assert(text('cycle').indexOf('TIME ') === 0, 'RACE 3DのTIME表示が不正');
+assert(text('stat') === 'PICK #7', 'RACE 3DのPICK表示が不正: ' + text('stat'));
 assert(text('hint') === 'DRAG TO ORBIT · SLIDER TO TRAVEL', 'RACE 3Dのヒントが不正');
 assert(!hasClass('cam-slider', 'is-hidden'), 'RACE 3Dでカメラスライダーが出ない');
 
@@ -169,10 +182,6 @@ assert(camAfter.yaw !== camBefore.yaw || camAfter.elev !== camBefore.elev, 'RACE
 pointerUp('canvas');
 assert(JSON.stringify(game.getState().race3d.balls) === race3dBefore, 'RACE 3Dでドラッグ介入できてしまう');
 
-game.updateRace3D(0.5, 1 / 60);
-ui.update(game.getState());
-assert(text('count') === '20', 'RACE 3Dの初期生存数が変わった');
-
 var guard3d = 0;
 while (game.state.phase === 'playing' && guard3d < 6000) {
   game.updateRace3D(guard3d / 60, 1 / 60);
@@ -180,16 +189,18 @@ while (game.state.phase === 'playing' && guard3d < 6000) {
 }
 ui.render(game.getState());
 assert(hasClass('result-overlay', 'visible'), 'RACE 3Dの結果画面が出ていない');
-assert(/^BALL \d+ WINS$/.test(text('result-title')), 'RACE 3Dの勝者タイトルが不正');
+assert(/^(YOUR BALL WINS|BALL \d+ WINS)$/.test(text('result-title')), 'RACE 3Dの勝者タイトルが不正: ' + text('result-title'));
+assert(text('result-sub').indexOf('You picked BALL 7') === 0, 'RACE 3Dの予想結果が不正: ' + text('result-sub'));
 assert(text('result-winner') === 'BALL ' + game.state.race3d.result.winnerId, 'RACE 3Dの勝者表示が不正');
 assert(/s$/.test(text('result-time')), 'RACE 3Dの勝者タイム表示が不正');
 
 click('btn-race-again');
-assert(game.state.phase === 'playing' && game.state.mode === 'race3d', 'RACE 3D AGAINで再開できない');
+assert(hasClass('predict-overlay', 'visible'), 'RACE 3D AGAINで予想画面に戻らない');
 assert(hasClass('result-overlay', 'visible') === false, 'RACE 3D再開後も結果画面が残る');
 
-click('btn-home');
+click('btn-predict-home');
 assert(game.state.phase === 'start', 'RACE 3D HOMEで戻れない');
+assert(hasClass('start-overlay', 'visible'), 'RACE 3D HOME後にスタート画面が出ない');
 assert(text('btn-start') === 'START 3D', 'RACE 3D HOME後の選択が保持されない');
 assert(hasClass('cam-slider', 'is-hidden'), 'HOME後もカメラスライダーが残る');
 

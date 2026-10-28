@@ -47,7 +47,7 @@
       "path": "exponential-balls/",
       "tag": "GAME",
       "title": "BLOOM",
-      "description": "ボールが2,048まで倍々に増えるAUTO、上部ラインで2個に増えるFRAME、20色の球がギミックを抜けて最後の1球を決めるノータップRACE、それを3Dタワーで見るRACE 3Dの4モードを載せた縦画面オーディオビジュアル。AUTO/FRAMEはタップで押し返し。120 BPMのプロシージャル音楽。"
+      "description": "ボールが2,048まで倍々に増えるAUTO、上部ラインで2個に増えるFRAME、20色の球がギミックを抜けて最後の1球を決めるノータップRACE、20球の能力差と予想を楽しむ積み木レースRACE 3Dの4モードを載せた縦画面オーディオビジュアル。AUTO/FRAMEはタップで押し返し。120 BPMのプロシージャル音楽。"
     },
     {
       "id": "neon-stack",
