@@ -180,6 +180,23 @@
           </div>
         </section>
 
+        <section id="screen-ending" class="screen ending-screen">
+          <span class="ending-kicker">FINAL STAGE CLEAR</span>
+          <h2 class="ending-title">FIN.</h2>
+          <p class="ending-sub">You cleared the final stage.</p>
+          <div class="end-score"><span>FINAL SCORE</span><b id="ending-score">0</b></div>
+          <div class="end-stats">
+            <div><span>BEST</span><b id="ending-best">0</b></div>
+            <div><span>MAX COMBO</span><b id="ending-combo">x0</b></div>
+            <div><span>STAGE</span><b id="ending-stage">10</b></div>
+            <div><span>X</span><b id="ending-x">0</b></div>
+          </div>
+          <div class="end-actions">
+            <button id="btn-ending-again" class="primary" type="button">PLAY AGAIN</button>
+            <button id="btn-ending-title" class="secondary" type="button">TITLE</button>
+          </div>
+        </section>
+
         <section id="screen-end" class="screen">
           <h2 class="end-title">GAME OVER</h2>
           <div class="end-score"><span>SCORE</span><b id="end-score">0</b></div>
@@ -190,11 +207,24 @@
             <div><span>X</span><b id="end-x">0</b></div>
           </div>
           <div class="end-actions">
+            <button id="btn-rescue" class="rescue-cta hidden" type="button">RESCUE: CHANGE FUNCTION</button>
             <button id="btn-retry" class="primary" type="button">RETRY STAGE</button>
             <button id="btn-again" class="secondary" type="button">RESTART RUN</button>
             <button id="btn-deck" class="secondary" type="button">CHANGE DECK</button>
           </div>
           <p class="tiny">R: RETRY STAGE / SPACE·ENTER: RESTART RUN</p>
+        </section>
+
+        <section id="screen-rescue" class="screen rescue-screen">
+          <span class="rescue-kicker">RESCUE / ONE PER RUN</span>
+          <h2 class="rescue-title">CHANGE A FUNCTION</h2>
+          <p class="rescue-sub">Replace one function and retry this stage from the beginning.</p>
+          <div id="rescue-choices" class="rescue-choices">
+            <button id="rescue-0" class="upgrade-card" type="button"><em>1</em><b>FUNCTION</b><span></span></button>
+            <button id="rescue-1" class="upgrade-card" type="button"><em>2</em><b>FUNCTION</b><span></span></button>
+            <button id="rescue-2" class="upgrade-card" type="button"><em>3</em><b>FUNCTION</b><span></span></button>
+          </div>
+          <button id="btn-rescue-back" class="secondary" type="button">BACK</button>
         </section>
       </div>
       <aside id="tutorial-panel" class="hidden" aria-live="polite">

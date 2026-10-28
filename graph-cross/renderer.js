@@ -281,7 +281,7 @@
       ctx.font = '900 13px ui-monospace, Menlo, monospace';
       var labelY = E.rivalY(boss, 0) - 18;
       if (labelY < state.top + 12) labelY = E.rivalY(boss, 0) + 24;
-      ctx.fillText('BOSS P' + (boss.phase || 1) + ' / WEAK:' + (C.FAMILY_LABELS_EN[boss.family] || '—'), boss.x + 8, labelY);
+      ctx.fillText((boss.final ? 'FINAL BOSS' : 'BOSS') + ' P' + (boss.phase || 1) + ' / WEAK:' + (C.FAMILY_LABELS_EN[boss.family] || '—'), boss.x + 8, labelY);
     }
 
     function drawBossAttacks(state, time) {

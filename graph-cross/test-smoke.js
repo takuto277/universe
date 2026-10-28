@@ -48,7 +48,13 @@ Harness.run({
       h.assert(state.hp === 0, 'HPが0でない: ' + state.hp);
       h.assert(els['screen-end'] && els['screen-end'].classList.contains('visible'), '終了画面が出ていない');
       h.assert(els['btn-retry'] && !els['btn-retry'].classList.contains('hidden'), 'ステージやり直しボタンが出ていない');
+      h.assert(els['btn-rescue'] && !els['btn-rescue'].classList.contains('hidden'), '救済ボタンが出ていない');
       h.assert(els['life'] && els['life'].textContent.indexOf('●') < 0, 'ライフ表示が0になっていない: ' + els['life'].textContent);
+      if (els['btn-rescue'] && els['btn-rescue'].listeners.click && els['btn-rescue'].listeners.click[0]) {
+        els['btn-rescue'].listeners.click[0]();
+        h.assert(els['screen-rescue'] && els['screen-rescue'].classList.contains('visible'), '救済画面が出ていない');
+        h.assert(els['rescue-0'] && !els['rescue-0'].classList.contains('hidden'), '救済候補が出ていない');
+      }
       var retry = els['btn-retry'];
       h.assert(retry.listeners.click && retry.listeners.click.length > 0, 'リトライのクリック配線がない');
       retry.listeners.click[0]({});

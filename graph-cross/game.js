@@ -15,7 +15,7 @@
   var audio = AU ? AU.create() : null;
   var state = null;
   var checkpoint = null;
-  var view = { phase: 'idle', deathAt: 0, clearAt: 0, upgradeIds: [], pendingSlot: false, slotChoices: [], pendingDeckSwap: false };
+  var view = { phase: 'idle', deathAt: 0, clearAt: 0, endingAt: 0, upgradeIds: [], pendingSlot: false, slotChoices: [], pendingDeckSwap: false, rescueSlot: -1, rescueChoices: [] };
   var tutorial = { active: false, step: 0, total: 3, completed: false, targetTimer: 0, itemTimer: 0 };
   var paused = false;
   var viewW = 960;
@@ -169,7 +169,7 @@
       } else if (ev.type === 'bossSpawn') {
         spawnParticles(ev.x, ev.y, 32, ['#ff4d8d', '#ffd166', '#ffffff'], 280, 0.9);
         addRing(ev.x, ev.y, 'rgba(255, 77, 141, 0.95)', 90, 0.6);
-        addLabel(ev.x - 60, ev.y - 20, 'BOSS', '#ff4d8d', 30);
+        addLabel(ev.x - 60, ev.y - 20, ev.final ? 'FINAL BOSS' : 'BOSS', '#ff4d8d', 30);
         shake = 1;
         flash = 0.45;
         flashColor = '255, 77, 141';
@@ -247,6 +247,19 @@
         flash = 0.4;
         flashColor = '255, 77, 141';
         if (audio) audio.play('miss');
+      } else if (ev.type === 'runComplete') {
+        spawnParticles(viewW * 0.5, viewH * 0.45, 90, ['#ffd166', '#5ff0ff', '#ffffff', '#ff7ad9'], 420, 1.4);
+        addRing(viewW * 0.5, viewH * 0.45, 'rgba(255, 209, 102, 0.95)', 220, 0.9);
+        addLabel(viewW * 0.5 - 90, viewH * 0.3, 'FINAL STAGE CLEAR', '#ffd166', 30);
+        addLabel(viewW * 0.5 - 40, viewH * 0.42, '+' + ev.bonus, '#9ffaff', 18);
+        shake = 1;
+        flash = 0.7;
+        flashColor = '255, 240, 190';
+        if (audio) {
+          audio.setIntensity(0);
+          audio.stopBgm();
+          audio.play('clear');
+        }
       } else if (ev.type === 'stageClear') {
         spawnParticles(ev.x, ev.y, 60, ['#ffd166', '#5ff0ff', '#ffffff', '#ff7ad9'], 380, 1.2);
         addRing(ev.x, ev.y, 'rgba(255, 209, 102, 0.95)', 150, 0.8);
@@ -326,6 +339,7 @@
     view.phase = 'run';
     view.deathAt = 0;
     view.clearAt = 0;
+    view.endingAt = 0;
     view.upgradeIds = [];
     view.pendingSlot = false;
     view.slotChoices = [];
@@ -498,12 +512,79 @@
     ui.setTutorialMode(false);
     ui.setPauseVisible(false);
     view.phase = 'idle';
+    view.endingAt = 0;
     view.upgradeIds = [];
     view.pendingSlot = false;
     view.slotChoices = [];
     view.pendingDeckSwap = false;
+    view.rescueSlot = -1;
+    view.rescueChoices = [];
     clearEffects();
     ui.showStart();
+  }
+
+  function showEnding() {
+    paused = false;
+    tutorial.active = false;
+    ui.hideTutorial();
+    ui.setTutorialMode(false);
+    ui.setPauseVisible(false);
+    view.phase = 'endingDone';
+    if (audio) {
+      audio.setIntensity(0);
+      audio.stopBgm();
+    }
+    ui.showEnding(state);
+  }
+
+  function rescueCandidates() {
+    if (!checkpoint || !state) return [];
+    var unlocked = state.unlocked || ui.getUnlocked();
+    var out = [];
+    for (var i = 0; i < unlocked.length; i++) {
+      var key = unlocked[i];
+      if (C.MODES[key] && key !== 'fusion' && checkpoint.deck.indexOf(key) < 0) out.push(key);
+    }
+    return out;
+  }
+
+  function openRescue() {
+    if (!checkpoint || checkpoint.rescueUsed || !state) return;
+    var pool = rescueCandidates();
+    if (!pool.length) return;
+    var picks = [];
+    while (picks.length < 3 && pool.length) {
+      var index = Math.floor(Math.random() * pool.length) % pool.length;
+      picks.push(pool.splice(index, 1)[0]);
+    }
+    var slot = checkpoint.deck.indexOf(state.mode);
+    if (slot < 0) slot = 0;
+    view.rescueSlot = slot;
+    view.rescueChoices = picks;
+    ui.showRescueChoices(state, picks);
+  }
+
+  function pickRescue(index) {
+    if (!checkpoint || !state) return;
+    var key = view.rescueChoices[index];
+    if (!key || !C.MODES[key]) return;
+    checkpoint.deck[view.rescueSlot] = key;
+    checkpoint.deckParams = checkpoint.deckParams || {};
+    if (C.PARAM_SPECS[key]) {
+      var all = E.normalizeParams(checkpoint.deckParams);
+      checkpoint.deckParams[key] = all[key];
+    }
+    checkpoint.rescueUsed = true;
+    state.rescueUsed = true;
+    view.rescueSlot = -1;
+    view.rescueChoices = [];
+    ui.hideScreens();
+    retryStage();
+  }
+
+  function backFromRescue() {
+    if (!state) return;
+    ui.showEnd(state, !!checkpoint, !!(checkpoint && !checkpoint.rescueUsed));
   }
 
   function showEnd() {
@@ -518,7 +599,7 @@
       audio.stopBgm();
       audio.play('over');
     }
-    ui.showEnd(state, !!checkpoint);
+    ui.showEnd(state, !!checkpoint, !!(checkpoint && !checkpoint.rescueUsed));
   }
 
   function showClear() {
@@ -640,6 +721,11 @@
         return;
       }
     }
+    if (view.phase === 'endingDone' && (k === ' ' || k === 'Enter')) {
+      if (e.preventDefault) e.preventDefault();
+      beginRun('normal');
+      return;
+    }
     if (view.phase === 'over' && (k === 'r' || k === 'R')) {
       retryStage();
       return;
@@ -696,7 +782,11 @@
         lastCombo = state.combo;
         if (audio) audio.setIntensity(Math.min(3, Math.floor(state.combo / 2)));
       }
-      if (state.stageCleared) {
+      if (state.runComplete) {
+        view.phase = 'ending';
+        view.endingAt = ts;
+        ui.updateSlots(state, 'over');
+      } else if (state.stageCleared) {
         view.phase = 'clearing';
         view.clearAt = ts;
         ui.updateSlots(state, 'clearing');
@@ -711,6 +801,8 @@
       if (ts - view.deathAt > 700) showEnd();
     } else if (view.phase === 'clearing' && state && state.stageCleared) {
       if (ts - view.clearAt > 900) showClear();
+    } else if (view.phase === 'ending' && state && state.runComplete) {
+      if (ts - view.endingAt > 900) showEnding();
     }
 
     if (!paused && tutorial.active && !tutorial.completed && view.phase === 'run') {
@@ -748,6 +840,11 @@
         onResume: resumeGame,
         onPauseRetry: pauseRetry,
         onPauseExit: showStart,
+        onEndingAgain: function () { beginRun('normal'); },
+        onEndingTitle: showStart,
+        onRescue: openRescue,
+        onRescuePick: pickRescue,
+        onRescueBack: backFromRescue,
         onExit: showStart,
         onRetry: retryStage,
         onBackToDeck: showStart,
@@ -782,7 +879,8 @@
         autoPlayStep: function () {},
         isDone: function () {
           return !!(state && ((state.over && view.phase === 'over') ||
-            (state.stageCleared && view.phase === 'clear')));
+            (state.stageCleared && view.phase === 'clear') ||
+            (state.runComplete && view.phase === 'endingDone')));
         },
         getState: function () {
           if (!state) return { phase: view.phase, over: false, score: 0, best: ui.getBest() };
