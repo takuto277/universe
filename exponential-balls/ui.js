@@ -40,6 +40,9 @@
       resultWinner: $('result-winner'),
       resultDot: $('result-dot'),
       resultTime: $('result-time'),
+      camSlider: $('cam-slider'),
+      camTrack: $('cam-track'),
+      camThumb: $('cam-thumb'),
       btnRaceAgain: $('btn-race-again'),
       btnResultHome: $('btn-result-home'),
       canvas: $('canvas')
@@ -52,6 +55,8 @@
     var lastMode = '';
     var bumpTimer = null;
     var drag = null;
+    var camNorm = 0.05;
+    var camDrag = false;
 
     function soundOn() {
       return root.ExpAudio ? root.ExpAudio.isEnabled() : true;
@@ -83,11 +88,32 @@
       if (els.modeRace3D) els.modeRace3D.setAttribute('aria-pressed', race3dOn ? 'true' : 'false');
     }
 
+    function updateCamSlider() {
+      if (els.camThumb && els.camThumb.style) els.camThumb.style.top = (camNorm * 100).toFixed(2) + '%';
+      if (els.camSlider) els.camSlider.setAttribute('aria-valuenow', camNorm.toFixed(2));
+    }
+
+    function setCamFromEvent(event) {
+      if (!els.camTrack) return;
+      var rect = els.camTrack.getBoundingClientRect ? els.camTrack.getBoundingClientRect() : { top: 0, height: 1 };
+      var h = rect.height || 1;
+      var y = (event ? event.clientY : 0) - (rect.top || 0);
+      camNorm = Math.max(0, Math.min(1, y / h));
+      if (renderer && renderer.setFocusNorm) renderer.setFocusNorm(camNorm);
+      updateCamSlider();
+    }
+
     function render(state) {
       var phase = state.phase;
       toggleClass(els.startOverlay, 'visible', phase === 'start');
       toggleClass(els.hud, 'is-hidden', phase !== 'playing');
       toggleClass(els.resultOverlay, 'visible', phase === 'finished');
+      var showSlider = phase === 'playing' && state.mode === 'race3d';
+      toggleClass(els.camSlider, 'is-hidden', !showSlider);
+      if (showSlider) {
+        if (renderer && renderer.setFocusNorm) renderer.setFocusNorm(camNorm);
+        updateCamSlider();
+      }
       if (phase === 'playing') {
         update(state);
       } else if (phase === 'finished') {
@@ -107,7 +133,7 @@
         return;
       }
       if (state.mode === 'race3d') {
-        updateRace(state, state.race3d, 'RACE 3D', 'DRAG TO ORBIT · UP/DOWN TO TILT');
+        updateRace(state, state.race3d, 'RACE 3D', 'DRAG TO ORBIT · SLIDER TO TRAVEL');
         return;
       }
       setText(els.countLabel, 'BALLS');
@@ -193,6 +219,7 @@
       if (root.ExpAudio) root.ExpAudio.start();
       updateSound();
       if (renderer && renderer.clear) renderer.clear();
+      if (selectedMode === 'race3d' && renderer && renderer.setFocusNorm) renderer.setFocusNorm(camNorm);
       game.start(selectedMode);
     }
 
@@ -259,6 +286,26 @@
       function endDrag() { drag = null; }
       els.canvas.addEventListener('pointerup', endDrag);
       els.canvas.addEventListener('pointercancel', endDrag);
+    }
+
+    if (els.camSlider) {
+      els.camSlider.addEventListener('pointerdown', function (event) {
+        if (game.state.phase !== 'playing' || game.state.mode !== 'race3d') return;
+        camDrag = true;
+        if (els.camSlider.setPointerCapture && event && event.pointerId != null) {
+          try { els.camSlider.setPointerCapture(event.pointerId); } catch (e) { }
+        }
+        setCamFromEvent(event);
+        if (event && event.preventDefault) event.preventDefault();
+      });
+      els.camSlider.addEventListener('pointermove', function (event) {
+        if (!camDrag) return;
+        setCamFromEvent(event);
+        if (event && event.preventDefault) event.preventDefault();
+      });
+      function endCamDrag() { camDrag = false; }
+      els.camSlider.addEventListener('pointerup', endCamDrag);
+      els.camSlider.addEventListener('pointercancel', endCamDrag);
     }
 
     if (root.addEventListener) {

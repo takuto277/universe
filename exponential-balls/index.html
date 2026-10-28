@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#05080e" />
   <meta name="description" content="BLOOM is a vertical audiovisual game where balls double with the music. Choose AUTO, FRAME, or RACE." />
   <title>BLOOM</title>
-  <link rel="stylesheet" href="style.css?v=20261028-3d2" />
+  <link rel="stylesheet" href="style.css?v=20261028-3d3" />
 </head>
 <body>
   <div id="app">
@@ -39,6 +39,11 @@
       <p id="hint" class="hint">DOUBLE ON EVERY BAR · TAP TO PUSH</p>
     </div>
 
+    <div id="cam-slider" class="cam-slider is-hidden" role="slider" aria-label="Camera height" aria-valuemin="0" aria-valuemax="1" aria-valuenow="0.05">
+      <span class="cam-label">CAM</span>
+      <div id="cam-track" class="cam-track"><div id="cam-thumb" class="cam-thumb"></div></div>
+    </div>
+
     <div id="start-overlay" class="overlay visible">
       <div class="start-content">
         <p class="eyebrow">EXPONENTIAL BLOOM</p>
@@ -65,7 +70,7 @@
           <button id="mode-race3d" class="mode-card" type="button" aria-pressed="false">
             <span class="mode-head"><span class="mode-tag">RACE 3D</span><span id="mode-race3d-state" class="mode-play">SELECT</span></span>
             <span class="mode-title">VOID 3D</span>
-            <span class="mode-desc">The last-ball survival in a 3x tower. Drag to orbit the camera; drag up/down to tilt.</span>
+            <span class="mode-desc">The last-ball survival in a 3x tower. Drag to orbit the camera; use the right slider to travel up/down.</span>
           </button>
         </div>
 
@@ -105,10 +110,10 @@
     </div>
   </div>
 
-  <script src="engine.js?v=20261028-3d2"></script>
-  <script src="audio.js?v=20261028-3d2"></script>
-  <script src="renderer.js?v=20261028-3d2"></script>
-  <script src="ui.js?v=20261028-3d2"></script>
-  <script src="game.js?v=20261028-3d2"></script>
+  <script src="engine.js?v=20261028-3d3"></script>
+  <script src="audio.js?v=20261028-3d3"></script>
+  <script src="renderer.js?v=20261028-3d3"></script>
+  <script src="ui.js?v=20261028-3d3"></script>
+  <script src="game.js?v=20261028-3d3"></script>
 </body>
 </html>
