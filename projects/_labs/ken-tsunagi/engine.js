@@ -45,6 +45,7 @@
     activeTop: 0.015,
     dropSpeed: 0.55,
     mergeGap: 0.021,
+    bridgeGap: 0.24,
     overflowGrace: 0.5,
     finishLimit: 60,
     maxHints: 3,
@@ -240,11 +241,12 @@
     return false;
   }
 
-  function circleGap(a, b) {
+  function circleGap(a, b, limit) {
+    if (limit == null) limit = WORLD.mergeGap;
     var ab = a.bounds;
     var bb = b.bounds;
-    if (ab.maxX + WORLD.mergeGap < bb.minX || bb.maxX + WORLD.mergeGap < ab.minX ||
-        ab.maxY + WORLD.mergeGap < bb.minY || bb.maxY + WORLD.mergeGap < ab.minY) {
+    if (ab.maxX + limit < bb.minX || bb.maxX + limit < ab.minX ||
+        ab.maxY + limit < bb.minY || bb.maxY + limit < ab.minY) {
       return Infinity;
     }
     var best = Infinity;
@@ -335,7 +337,8 @@
         var a = s.bodies[i];
         var b = s.bodies[j];
         if (!adjacent(a, b)) continue;
-        if (bridgeBetween(a, b) || circleGap(a, b) <= WORLD.mergeGap) return [a, b];
+        var gap = bridgeBetween(a, b) ? WORLD.bridgeGap : WORLD.mergeGap;
+        if (circleGap(a, b, gap) <= gap) return [a, b];
       }
     }
     return null;

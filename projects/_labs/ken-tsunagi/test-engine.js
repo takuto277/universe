@@ -115,6 +115,19 @@ assert(s.phase === 'over' && s.reason === 'overflow', '箱あふれにならな�
 E.world.gravity = oldG;
 
 s = E.createRun();
+var bridgeGravity = E.world.gravity;
+E.world.gravity = 0;
+var kago = E.addPiece(s, 46, 0.2, 0.5);
+var oki = E.addPiece(s, 47, 0.85, 0.5);
+tickLoop(s, 3);
+assert(s.bodies.length === 2, '橋でつながる県が離れたままでも合体してしまう');
+oki.x = kago.x + (E.byCode[47].center[0] - E.byCode[46].center[0]);
+oki.y = kago.y + (E.byCode[47].center[1] - E.byCode[46].center[1]);
+tickLoop(s, 3);
+assert(s.bodies.length === 1 && s.bodies[0].members.length === 2, '近づけた橋の県が合体しない');
+E.world.gravity = bridgeGravity;
+
+s = E.createRun();
 var ref = E.byCode[1];
 var clearGravity = E.world.gravity;
 E.world.gravity = 0;
