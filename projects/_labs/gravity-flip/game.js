@@ -61,6 +61,7 @@
 
   function beginRun() {
     state = E.createGame({ width: viewW, height: viewH });
+    if (els.endNewBest) els.endNewBest.classList.add('hidden');
     view.phase = 'run';
     view.autoFlipped = false;
     view.deathAt = 0;
@@ -76,9 +77,13 @@
   function showEnd() {
     view.phase = 'over';
     var snap = E.snapshot(state);
-    if (snap.score > best) {
+    var isNewBest = snap.score > best;
+    if (isNewBest) {
       best = snap.score;
       saveBest(best);
+    }
+    if (els.endNewBest) {
+      els.endNewBest.classList.toggle('hidden', !isNewBest);
     }
     if (els.endScore) els.endScore.textContent = String(snap.score);
     if (els.endBest) els.endBest.textContent = String(best);
@@ -509,6 +514,8 @@
     els.endBest = $('end-best');
     els.endDistance = $('end-distance');
     els.endCoins = $('end-coins');
+    els.endNewBest = $('end-new-best');
+    if (els.endNewBest) els.endNewBest.textContent = 'NEW BEST!';
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
