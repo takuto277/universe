@@ -237,13 +237,33 @@ body {
 .end-stats b { font-size: 17px; }
 
 #tip {
-  text-align: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
   color: var(--muted);
   font-size: 12px;
-  white-space: nowrap;
+  min-width: 0;
+}
+#tip span {
   overflow: hidden;
   text-overflow: ellipsis;
+  white-space: nowrap;
 }
+.sound {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(16, 10, 34, 0.9);
+  color: var(--muted);
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+  min-height: 32px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.sound:hover { color: var(--cyan); border-color: rgba(87, 246, 255, 0.5); }
 
 @media (max-width: 640px) {
   #app { padding: 8px 8px calc(10px + env(safe-area-inset-bottom)); gap: 7px; }

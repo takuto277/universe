@@ -9,7 +9,7 @@ universe では、思いつきの機能をいきなり `main` へ入れず、**�
 2. **実装**: 人間が `experiment:ready` を付けると、実験ランナーが5分以内に拾います
    - 手動で始める場合: `./tools/experiment.sh <Issue番号>`
    - `experiment/issue-<番号>` ブランチでAIが実装し、テスト後にPRを作ります
-3. **プレビュー**: `experiment/**` ブランチのpushでGitHub Actionsが自動デプロイ
+3. **プレビュー**: `experiment/**` ブランチのPR作成・更新でGitHub Actionsが自動デプロイ
    - URL: `https://takuto277.github.io/universe-preview/experiments/<slug>/`
    - PRにURLがコメントされます
    - GitHub Actionsが実ブラウザ（Playwright）で全アプリを自動プレイし、スクリーンショットを保存します

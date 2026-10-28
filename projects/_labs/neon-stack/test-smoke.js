@@ -11,6 +11,7 @@ function tryLoad(paths) {
 }
 
 tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['audio.js', 'projects/_labs/neon-stack/audio.js']);
 tryLoad(['engine.js', 'projects/_labs/neon-stack/engine.js']);
 tryLoad(['game.js', 'projects/_labs/neon-stack/game.js']);
 
@@ -19,6 +20,7 @@ Harness.run({
   maxSteps: 20000,
   afterDone: 200,
   check: function (state, h) {
+    h.assert(typeof NeonStackAudio === 'object', 'audio.js が読み込まれていない');
     if (!state) { h.assert(false, '状態が取得できない'); return; }
     h.assert(state.over === true, '外れたのにゲームオーバーになっていない');
     h.assert(state.phase === 'over', 'リザルト画面待ちのまま: phase=' + state.phase);

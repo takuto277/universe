@@ -29,6 +29,7 @@
             <li>下のブロックと重なった幅だけが残る。完全に外れたら終了</li>
             <li>中心付近で落とすと <b>PERFECT</b>。幅をキープしてコンボとボーナス</li>
             <li>高くなるほど速くなる。カメラが塔を追いかける</li>
+            <li>BGMと効果音つき。右下の「音 ON/OFF」で切り替え</li>
             <li>ベストスコアはブラウザに保存される。まずは高さ10を目指せ!</li>
           </ul>
           <button id="btn-start" class="primary" type="button">はじめる</button>
@@ -50,9 +51,13 @@
       </div>
     </main>
 
-    <footer id="tip">クリック / タップ / Space で落とす &nbsp;·&nbsp; 中心を狙って PERFECT を重ねよう</footer>
+    <footer id="tip">
+      <span>クリック / タップ / Space で落とす &nbsp;·&nbsp; 中心を狙って PERFECT を重ねよう</span>
+      <button id="btn-sound" class="sound" type="button" aria-label="音のON/OFF">音 ON</button>
+    </footer>
   </div>
 
+  <script src="audio.js"></script>
   <script src="engine.js"></script>
   <script src="game.js"></script>
 </body>

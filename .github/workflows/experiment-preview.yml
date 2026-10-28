@@ -1,9 +1,6 @@
 name: Experiment preview
 
 on:
-  push:
-    branches:
-      - "experiment/**"
   pull_request:
     types: [opened, synchronize, reopened]
     branches:
@@ -14,17 +11,17 @@ permissions:
   pull-requests: write
 
 concurrency:
-  group: experiment-preview-${{ github.event.pull_request.head.ref || github.ref_name }}
+  group: experiment-preview-${{ github.head_ref }}
   cancel-in-progress: true
 
 jobs:
   preview:
-    if: github.event_name == 'push' || (startsWith(github.head_ref, 'experiment/') && github.event.pull_request.head.repo.full_name == github.repository)
+    if: startsWith(github.head_ref, 'experiment/') && github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     outputs:
       url: ${{ steps.deploy.outputs.url }}
     env:
-      BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
+      BRANCH: ${{ github.head_ref }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
     steps:
       - uses: actions/checkout@v7
