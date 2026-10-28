@@ -1,6 +1,6 @@
 /* test-race-smoke.js : BLOOM RACE（20球・ノータップ・最後の1球）の自動再生
  * 実行例:
- *   cd exponential-balls && jsc test-race-smoke.js
+ *   cd projects/_labs/exponential-balls && jsc test-race-smoke.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -9,12 +9,12 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['engine.js', 'exponential-balls/engine.js']);
-tryLoad(['audio.js', 'exponential-balls/audio.js']);
-tryLoad(['renderer.js', 'exponential-balls/renderer.js']);
-tryLoad(['ui.js', 'exponential-balls/ui.js']);
-tryLoad(['game.js', 'exponential-balls/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_labs/exponential-balls/engine.js']);
+tryLoad(['audio.js', 'projects/_labs/exponential-balls/audio.js']);
+tryLoad(['renderer.js', 'projects/_labs/exponential-balls/renderer.js']);
+tryLoad(['ui.js', 'projects/_labs/exponential-balls/ui.js']);
+tryLoad(['game.js', 'projects/_labs/exponential-balls/game.js']);
 
 if (!globalThis.__GAME__ || typeof globalThis.__GAME__.startRace !== 'function') {
   throw new Error('startRace がない');

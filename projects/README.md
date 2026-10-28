@@ -21,12 +21,13 @@
 | `jump-rush` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `ken-tsunagi` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `neon-stack` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
+| `graph-cross` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
+| `exponential-balls` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `observer-game` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `unknown-word-deal` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `janken-game` | `_samples/` | 最初の最小実装。教材・検証用として維持する |
 
 ## 移行メモ
 
-- `graph-cross/` は複数の進行中ブランチがあるため、ルートに残しています。収束後に `projects/_labs/graph-cross/` へ移動します。
-- `exponential-balls/` は PR #148 でマージ済みです。落ち着いてから `projects/_labs/` へ移動します。
-- `tools/` は稼働中の無人開発基盤です。LaunchAgent と既存パスへの影響を避けるため、互換ラッパーを用意してから `projects/universe-agent/` へ移行します。
+- ゲームはすべて `projects/` 配下に移動済みです。旧URLはルートのリダイレクトで維持しています。
+- `tools/` は稼働中の無人開発基盤としてルートに残しています。LaunchAgent と既存パスへの影響を避けるため、必要になった段階で互換ラッパーと一緒に移行します。

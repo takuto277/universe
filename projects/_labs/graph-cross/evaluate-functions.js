@@ -5,7 +5,7 @@
  *   - レアリティやガチャ排出率を決める前の材料にする
  *
  * 実行:
- *   cd graph-cross && jsc evaluate-functions.js
+ *   cd projects/_labs/graph-cross && jsc evaluate-functions.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {

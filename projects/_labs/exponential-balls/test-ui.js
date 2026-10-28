@@ -1,6 +1,6 @@
 /* test-ui.js : モード選択・START・HOME・HUDの検証（jsc で実行）
  * 実行例:
- *   cd exponential-balls && jsc test-ui.js
+ *   cd projects/_labs/exponential-balls && jsc test-ui.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -9,11 +9,11 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['engine.js', 'exponential-balls/engine.js']);
-tryLoad(['audio.js', 'exponential-balls/audio.js']);
-tryLoad(['renderer.js', 'exponential-balls/renderer.js']);
-tryLoad(['ui.js', 'exponential-balls/ui.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_labs/exponential-balls/engine.js']);
+tryLoad(['audio.js', 'projects/_labs/exponential-balls/audio.js']);
+tryLoad(['renderer.js', 'projects/_labs/exponential-balls/renderer.js']);
+tryLoad(['ui.js', 'projects/_labs/exponential-balls/ui.js']);
 
 var passed = 0;
 function assert(cond, m) {

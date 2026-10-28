@@ -1,6 +1,6 @@
 /* test-audio.js : WebAudioのスケジューラが安全に鳴るか（jsc で実行）
  * 実行例:
- *   cd exponential-balls && jsc test-audio.js
+ *   cd projects/_labs/exponential-balls && jsc test-audio.js
  */
 load('audio.js');
 

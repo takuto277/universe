@@ -21,8 +21,11 @@ https://takuto277.github.io/universe/projects/_samples/janken-game/
 https://takuto277.github.io/universe/projects/_labs/gravity-flip/
 https://takuto277.github.io/universe/projects/_labs/unknown-word-deal/
 https://takuto277.github.io/universe/projects/_labs/observer-game/
-https://takuto277.github.io/universe/graph-cross/
-https://takuto277.github.io/universe/exponential-balls/
+https://takuto277.github.io/universe/projects/_labs/neon-stack/
+https://takuto277.github.io/universe/projects/_labs/jump-rush/
+https://takuto277.github.io/universe/projects/_labs/ken-tsunagi/
+https://takuto277.github.io/universe/projects/_labs/graph-cross/
+https://takuto277.github.io/universe/projects/_labs/exponential-balls/
 ```
 
 アプリのディレクトリ名は公開 URL の一部です。名前を変えるとブックマークや外部リンクが壊れるため、旧パスにはリダイレクトを置いています。
@@ -33,6 +36,8 @@ https://takuto277.github.io/universe/exponential-balls/
 /universe/gravity-flip/      -> /universe/projects/_labs/gravity-flip/
 /universe/unknown-word-deal/ -> /universe/projects/_labs/unknown-word-deal/
 /universe/observer-game/     -> /universe/projects/_labs/observer-game/
+/universe/graph-cross/       -> /universe/projects/_labs/graph-cross/
+/universe/exponential-balls/ -> /universe/projects/_labs/exponential-balls/
 ```
 
 ## ローカル確認

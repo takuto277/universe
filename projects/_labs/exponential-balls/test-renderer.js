@@ -1,6 +1,6 @@
 /* test-renderer.js : AUTOの分裂・タップ・リセットとFRAME描画の検証（jsc で実行）
  * 実行例:
- *   cd exponential-balls && jsc test-renderer.js
+ *   cd projects/_labs/exponential-balls && jsc test-renderer.js
  */
 function tryLoad(paths) {
   for (var i = 0; i < paths.length; i++) {
@@ -9,8 +9,8 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['renderer.js', 'exponential-balls/renderer.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['renderer.js', 'projects/_labs/exponential-balls/renderer.js']);
 
 var passed = 0;
 function assert(cond, m) {

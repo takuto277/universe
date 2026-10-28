@@ -6,14 +6,14 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 
-tryLoad(['../tools/harness.js', 'tools/harness.js']);
-tryLoad(['content.js', 'graph-cross/content.js']);
-tryLoad(['balance.js', 'graph-cross/balance.js']);
-tryLoad(['gacha.js', 'graph-cross/gacha.js']);
-tryLoad(['engine.js', 'graph-cross/engine.js']);
-tryLoad(['renderer.js', 'graph-cross/renderer.js']);
-tryLoad(['ui.js', 'graph-cross/ui.js']);
-tryLoad(['game.js', 'graph-cross/game.js']);
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['content.js', 'projects/_labs/graph-cross/content.js']);
+tryLoad(['balance.js', 'projects/_labs/graph-cross/balance.js']);
+tryLoad(['gacha.js', 'projects/_labs/graph-cross/gacha.js']);
+tryLoad(['engine.js', 'projects/_labs/graph-cross/engine.js']);
+tryLoad(['renderer.js', 'projects/_labs/graph-cross/renderer.js']);
+tryLoad(['ui.js', 'projects/_labs/graph-cross/ui.js']);
+tryLoad(['game.js', 'projects/_labs/graph-cross/game.js']);
 
 var GAME = globalThis.__GAME__;
 var sawSwitch = false;
