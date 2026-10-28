@@ -32,7 +32,9 @@ import sys
 root = pathlib.Path(sys.argv[1])
 paths = sorted((root / "tools").glob("pr_*.py"))
 paths += [root / "tools/agent_runner.py", root / "tools/test_agent_runner.py",
-          root / "tools/check_skills.py", root / "tools/test_skills.py"]
+          root / "tools/check_skills.py", root / "tools/test_skills.py",
+          root / "tools/playtest/playtest.py",
+          root / "tools/playtest/serve.py"]
 for path in paths:
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 print("pr scripts compile OK")

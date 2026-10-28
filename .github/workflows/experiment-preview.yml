@@ -21,6 +21,8 @@ jobs:
   preview:
     if: github.event_name == 'push' || (startsWith(github.head_ref, 'experiment/') && github.event.pull_request.head.repo.full_name == github.repository)
     runs-on: ubuntu-latest
+    outputs:
+      url: ${{ steps.deploy.outputs.url }}
     env:
       BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
       PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -44,6 +46,7 @@ jobs:
           printf 'User-agent: *\nDisallow: /\n' >"$RUNNER_TEMP/site/robots.txt"
 
       - name: Deploy to preview site
+        id: deploy
         env:
           PREVIEW_DEPLOY_KEY: ${{ secrets.PREVIEW_DEPLOY_KEY }}
         run: |
@@ -87,7 +90,9 @@ jobs:
             done
             [ "$pushed" = 1 ]
           fi
-          echo "PREVIEW_URL=https://takuto277.github.io/universe-preview/experiments/$slug/" >>"$GITHUB_ENV"
+          url="https://takuto277.github.io/universe-preview/experiments/$slug/"
+          echo "PREVIEW_URL=$url" >>"$GITHUB_ENV"
+          echo "url=$url" >>"$GITHUB_OUTPUT"
 
       - name: Comment preview URL
         if: env.PR_NUMBER != ''
@@ -96,3 +101,35 @@ jobs:
         run: |
           gh pr comment "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" \
             --body "実験プレビュー: $PREVIEW_URL"
+
+  playtest:
+    needs: preview
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/playtest/requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Play preview in Chromium
+        run: |
+          python tools/playtest/playtest.py \
+            --base-url "${{ needs.preview.outputs.url }}" \
+            --all \
+            --seconds 4 \
+            --screenshots "$RUNNER_TEMP/playtest-screenshots"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: experiment-playtest-screenshots
+          path: ${{ runner.temp }}/playtest-screenshots
+          if-no-files-found: ignore

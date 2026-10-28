@@ -12,6 +12,7 @@ universe では、思いつきの機能をいきなり `main` へ入れず、**�
 3. **プレビュー**: `experiment/**` ブランチのpushでGitHub Actionsが自動デプロイ
    - URL: `https://takuto277.github.io/universe-preview/experiments/<slug>/`
    - PRにURLがコメントされます
+   - GitHub Actionsが実ブラウザ（Playwright）で全アプリを自動プレイし、スクリーンショットを保存します
    - 実験PRには自動で `experiment:preview` と `do-not-merge` が付き、watcherはマージしません
 4. **ジャッジ**: スマホなどで実際に触り、PRへラベルを付ける
    - `experiment:keep`: 採用。`do-not-merge` が外れ、通常のAIレビュー/五点ゲートへ進む

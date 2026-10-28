@@ -1,0 +1,58 @@
+name: Browser playtest
+
+on:
+  pull_request:
+    paths:
+      - "projects/**"
+      - "graph-cross/**"
+      - "exponential-balls/**"
+      - "apps.json"
+      - "index.html"
+      - "tools/playtest/**"
+      - ".github/workflows/browser-playtest.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  playtest:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install Playwright
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r tools/playtest/requirements.txt
+          python -m playwright install --with-deps chromium
+
+      - name: Play all apps in Chromium
+        run: |
+          set -euo pipefail
+          python3 tools/playtest/serve.py --directory . --port 8000 >/tmp/playtest-http.log 2>&1 &
+          server=$!
+          trap 'kill "$server" 2>/dev/null || true' EXIT
+          for _ in $(seq 1 20); do
+            if curl -fsS http://127.0.0.1:8000/ >/dev/null; then
+              break
+            fi
+            sleep 1
+          done
+          python tools/playtest/playtest.py \
+            --base-url http://127.0.0.1:8000 \
+            --all \
+            --seconds 4 \
+            --screenshots "$RUNNER_TEMP/playtest-screenshots"
+
+      - name: Upload screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playtest-screenshots
+          path: ${{ runner.temp }}/playtest-screenshots
+          if-no-files-found: ignore

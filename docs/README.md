@@ -13,6 +13,7 @@ universe の開発・公開・学習に関するドキュメントです。目�
 | Issue をキューにして実装まで無人で進める | [無人実装ランナー](unattended-agents.md) |
 | PR のレビューとマージを自動化する | [PR の自動レビューと自動マージ](auto-pr.md) |
 | テストの書き方と実行方法を知る | [テスト](testing.md) |
+| 実ブラウザでゲームを自動プレイする | [ブラウザ自動プレイ](browser-playtest.md) |
 | GitHub Pages への公開と URL の扱いを知る | [公開](deployment.md) |
 | リポジトリの役割と移行方針を知る | [0010 universe を「無人開発基盤のモノレポ」と定義する](decisions/0010-monorepo-role.md) |
 | 静的モノレポの原則を知る | [0001 universe を静的モノレポとして維持する](decisions/0001-universe-as-static-monorepo.md) |
