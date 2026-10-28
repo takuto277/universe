@@ -124,6 +124,18 @@
         "日本地図"
       ],
       "thumbnail": "projects/_labs/ken-tsunagi/thumb.jpg"
+    },
+    {
+      "id": "oto-no-ie",
+      "path": "projects/_labs/oto-no-ie/",
+      "tag": "GAME",
+      "title": "音の家",
+      "description": "目が見えない住人に鈴の音で道を教える音響パズル。壁と閉じた扉は音を遮り、ガラスは音だけ通す。部屋に最大3つの鈴を置き、音が届く範囲につないで出口へ導く全5室。開いた扉と閉じた扉、鈴の順番、音の波紋、スマホ操作対応。",
+      "tags": [
+        "音響",
+        "パズル"
+      ],
+      "thumbnail": "projects/_labs/oto-no-ie/thumb.jpg"
     }
   ]
 }
