@@ -12,17 +12,19 @@ tryLoad(['game.js', 'projects/_labs/ken-tsunagi/game.js']);
 
 Harness.run({
   name: 'ken-tsunagi',
-  maxSteps: 1200,
+  maxSteps: 8000,
   afterDone: 180,
   check: function (state, h) {
     if (!state) { h.assert(false, '状態が取得できない'); return; }
-    h.assert(state.cleared === true, '47県そろってもクリアにならない: phase=' + state.phase);
+    h.assert(state.cleared === true, '47県が1つになってもクリアにならない: phase=' + state.phase);
     h.assert(state.phase === 'clear', 'クリア画面待ちのまま: phase=' + state.phase);
-    h.assert(state.placedCount === state.total, '47県そろっていない: ' + state.placedCount);
-    h.assert(state.score > 5000, 'スコアが伸びていない: ' + state.score);
+    h.assert(state.largest === 47 && state.total === 47, '47県がつながっていない: ' + state.largest);
+    h.assert(state.merges === 46, '合体回数が46ではない: ' + state.merges);
+    h.assert(state.bodyCount === 1, '箱に複数の島が残っている: ' + state.bodyCount);
+    h.assert(state.score > 15000, 'スコアが伸びていない: ' + state.score);
+    h.assert(state.clearBonus > 0, 'クリアボーナスがない');
     h.assert(state.best && state.best.score >= state.score, 'ベストスコアが更新されていない');
     h.assert(state.best && state.best.time > 0, 'ベストタイムが記録されていない');
-    h.assert(state.finishTime > 0 && state.clearBonus > 0, 'クリアタイムかボーナスが不正');
 
     var els = h.elements;
     h.assert(els['screen-clear'] && els['screen-clear'].classList.contains('visible'), 'クリア画面が出ていない');
@@ -34,7 +36,7 @@ Harness.run({
     h.assert(els['clear-time'] && els['clear-time'].textContent.length > 3, 'クリアタイムが表示されない');
   },
   summary: function (state) {
-    print('  最終: ' + state.score + '点 / ' + state.placedCount + '/' + state.total +
-      ' / ' + state.finishTime.toFixed(1) + 's / 最大コンボ' + state.bestCombo);
+    print('  最終: ' + state.score + '点 / ' + state.largest + '/' + state.total +
+      ' / ' + state.elapsed.toFixed(1) + 's / 合体' + state.merges + '回');
   }
 });
