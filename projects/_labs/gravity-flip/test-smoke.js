@@ -32,6 +32,8 @@ Harness.run({
     h.assert(els['screen-end'] && els['screen-end'].classList.contains('visible'), '終了画面が出ていない');
     h.assert(els['screen-start'] && !els['screen-start'].classList.contains('visible'), '開始画面が残っている');
     h.assert(els['score'] && els['score'].textContent === String(state.score), 'HUDのスコアが一致しない');
+    h.assert(els['end-new-best'] && !els['end-new-best'].classList.contains('hidden'), 'NEW BEST表示が出ていない');
+    h.assert(els['end-new-best'].textContent.indexOf('NEW BEST') >= 0, 'NEW BESTの文言が不正');
   },
   summary: function (state) {
     print('  最終: ' + state.score + '点 / ' + state.distance + 'm / コイン' + state.coins +
