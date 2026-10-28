@@ -1,4 +1,4 @@
-/* ui.js : BLOOM のHUD・モード選択・スタート画面・レース結果 */
+/* ui.js : BLOOM のHUD・モード選択・予想・レース結果 */
 (function (root) {
   'use strict';
 
@@ -12,39 +12,25 @@
 
   function create(game, renderer) {
     var els = {
-      hud: $('hud'),
-      count: $('count'),
-      countLabel: $('count-label'),
-      cycle: $('cycle'),
-      stat: $('stat'),
-      bpm: $('bpm'),
-      barFill: $('bar-fill'),
-      modeName: $('mode-name'),
-      hint: $('hint'),
-      btnHome: $('btn-home'),
-      btnMute: $('btn-mute'),
-      startOverlay: $('start-overlay'),
-      btnStart: $('btn-start'),
-      btnSound: $('btn-sound'),
-      modeAuto: $('mode-auto'),
-      modeFrame: $('mode-frame'),
-      modeRace: $('mode-race'),
-      modeRace3D: $('mode-race3d'),
-      modeAutoState: $('mode-auto-state'),
-      modeFrameState: $('mode-frame-state'),
-      modeRaceState: $('mode-race-state'),
+      hud: $('hud'), count: $('count'), countLabel: $('count-label'), cycle: $('cycle'),
+      stat: $('stat'), bpm: $('bpm'), barFill: $('bar-fill'), modeName: $('mode-name'),
+      hint: $('hint'), btnHome: $('btn-home'), btnMute: $('btn-mute'),
+      startOverlay: $('start-overlay'), btnStart: $('btn-start'), btnSound: $('btn-sound'),
+      modeAuto: $('mode-auto'), modeFrame: $('mode-frame'), modeRace: $('mode-race'),
+      modeRace3D: $('mode-race3d'), modeAutoState: $('mode-auto-state'),
+      modeFrameState: $('mode-frame-state'), modeRaceState: $('mode-race-state'),
       modeRace3DState: $('mode-race3d-state'),
-      resultOverlay: $('result-overlay'),
-      resultTitle: $('result-title'),
-      resultSub: $('result-sub'),
-      resultWinner: $('result-winner'),
-      resultDot: $('result-dot'),
-      resultTime: $('result-time'),
-      camSlider: $('cam-slider'),
-      camTrack: $('cam-track'),
-      camThumb: $('cam-thumb'),
-      btnRaceAgain: $('btn-race-again'),
-      btnResultHome: $('btn-result-home'),
+      predictOverlay: $('predict-overlay'), predictGrid: $('predict-grid'),
+      predictDot: $('predict-dot'), predictName: $('predict-name'),
+      statSpeed: $('stat-speed'), statBounce: $('stat-bounce'),
+      statGrip: $('stat-grip'), statSize: $('stat-size'),
+      predictStreak: $('predict-streak'), btnPredictStart: $('btn-predict-start'),
+      btnPredictHome: $('btn-predict-home'),
+      resultOverlay: $('result-overlay'), resultTitle: $('result-title'),
+      resultSub: $('result-sub'), resultWinner: $('result-winner'),
+      resultDot: $('result-dot'), resultTime: $('result-time'),
+      camSlider: $('cam-slider'), camTrack: $('cam-track'), camThumb: $('cam-thumb'),
+      btnRaceAgain: $('btn-race-again'), btnResultHome: $('btn-result-home'),
       canvas: $('canvas')
     };
 
@@ -57,6 +43,29 @@
     var drag = null;
     var camNorm = 0;
     var camDrag = false;
+    var predicting = false;
+    var pickedBall = 1;
+    var predictBuilt = false;
+    var predictButtons = {};
+    var preview = (root.ExponentialEngine && root.ExponentialEngine.RACE3D)
+      ? root.ExponentialEngine.RACE3D.preview : [];
+    var streak = 0;
+    var best = 0;
+    var resultRecorded = false;
+
+    try {
+      streak = Number(root.localStorage && root.localStorage.getItem('bloom-race3d-streak')) || 0;
+      best = Number(root.localStorage && root.localStorage.getItem('bloom-race3d-best')) || 0;
+    } catch (e) { }
+
+    function saveStreak() {
+      try {
+        if (root.localStorage) {
+          root.localStorage.setItem('bloom-race3d-streak', String(streak));
+          root.localStorage.setItem('bloom-race3d-best', String(best));
+        }
+      } catch (e) { }
+    }
 
     function soundOn() {
       return root.ExpAudio ? root.ExpAudio.isEnabled() : true;
@@ -103,7 +112,77 @@
       updateCamSlider();
     }
 
+    function getSpec(id) {
+      for (var i = 0; i < preview.length; i++) if (preview[i].id === id) return preview[i];
+      return preview[0] || null;
+    }
+
+    function buildPredictGrid() {
+      if (predictBuilt || !els.predictGrid) return;
+      predictBuilt = true;
+      for (var i = 0; i < preview.length; i++) {
+        var spec = preview[i];
+        var btn = document.createElement('button');
+        btn.type = 'button';
+        btn.classList.add('predict-ball');
+        btn.setAttribute('aria-pressed', 'false');
+        var dot = document.createElement('i');
+        if (dot.style) dot.style.background = 'hsl(' + spec.hue + ', 92%, 64%)';
+        var label = document.createElement('span');
+        label.textContent = String(spec.id);
+        var type = document.createElement('small');
+        type.textContent = spec.type;
+        btn.appendChild(dot);
+        btn.appendChild(label);
+        btn.appendChild(type);
+        (function (id) {
+          btn.addEventListener('click', function () { selectBall(id); });
+        })(spec.id);
+        predictButtons[spec.id] = btn;
+        els.predictGrid.appendChild(btn);
+      }
+    }
+
+    function selectBall(id) {
+      pickedBall = Number(id);
+      for (var key in predictButtons) {
+        var btn = predictButtons[key];
+        var on = Number(key) === pickedBall;
+        toggleClass(btn, 'selected', on);
+        if (btn) btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+      }
+      var spec = getSpec(pickedBall);
+      if (!spec) return;
+      setText(els.predictName, 'BALL ' + spec.id + ' · ' + spec.type);
+      if (els.predictDot && els.predictDot.style) {
+        els.predictDot.style.background = 'hsl(' + spec.hue + ', 92%, 64%)';
+        els.predictDot.style.boxShadow = '0 0 10px hsla(' + spec.hue + ', 92%, 64%, 0.7)';
+      }
+      setText(els.statSpeed, spec.speed.toFixed(2));
+      setText(els.statBounce, spec.bounce.toFixed(2));
+      setText(els.statGrip, spec.grip.toFixed(2));
+      setText(els.statSize, spec.size.toFixed(1));
+      if (els.predictStreak) setText(els.predictStreak, 'STREAK ' + streak + ' · BEST ' + best);
+    }
+
+    function openPrediction() {
+      predicting = true;
+      resultRecorded = false;
+      buildPredictGrid();
+      selectBall(pickedBall || 1);
+      render(game.getState());
+    }
+
     function render(state) {
+      if (predicting) {
+        toggleClass(els.startOverlay, 'visible', false);
+        toggleClass(els.hud, 'is-hidden', true);
+        toggleClass(els.resultOverlay, 'visible', false);
+        toggleClass(els.predictOverlay, 'visible', true);
+        toggleClass(els.camSlider, 'is-hidden', true);
+        return;
+      }
+      toggleClass(els.predictOverlay, 'visible', false);
       var phase = state.phase;
       toggleClass(els.startOverlay, 'visible', phase === 'start');
       toggleClass(els.hud, 'is-hidden', phase !== 'playing');
@@ -128,14 +207,8 @@
 
     function update(state) {
       if (!state || state.phase !== 'playing') return;
-      if (state.mode === 'race') {
-        updateRace(state, state.race, 'RACE', 'NO TAP · LAST BALL WINS');
-        return;
-      }
-      if (state.mode === 'race3d') {
-        updateRace(state, state.race3d, 'RACE 3D', 'DRAG TO ORBIT · SLIDER TO TRAVEL');
-        return;
-      }
+      if (state.mode === 'race3d') { updateRace3D(state); return; }
+      if (state.mode === 'race') { updateRace(state); return; }
       setText(els.countLabel, 'BALLS');
       if (state.count !== lastCount) {
         setText(els.count, formatCount(state.count));
@@ -153,13 +226,8 @@
         setText(els.cycle, 'CYCLE ' + (state.cycle + 1));
         lastCycle = state.cycle;
       }
-      var stat = state.mode === 'frame'
-        ? 'DOUBLES ' + (state.captures || 0)
-        : 'BAR ' + (state.bar + 1) + ' / ' + state.barsPerCycle;
-      if (stat !== lastStat) {
-        setText(els.stat, stat);
-        lastStat = stat;
-      }
+      var stat = state.mode === 'frame' ? 'DOUBLES ' + (state.captures || 0) : 'BAR ' + (state.bar + 1) + ' / ' + state.barsPerCycle;
+      if (stat !== lastStat) { setText(els.stat, stat); lastStat = stat; }
       if (state.mode !== lastMode) {
         setText(els.modeName, state.mode === 'frame' ? 'FRAME' : 'AUTO');
         setText(els.hint, state.mode === 'frame' ? 'TOUCH THE LINE · TAP TO PUSH' : 'DOUBLE ON EVERY BAR · TAP TO PUSH');
@@ -170,10 +238,33 @@
       if (els.barFill && els.barFill.style) els.barFill.style.width = Math.max(0, Math.min(100, progress)).toFixed(2) + '%';
     }
 
-    function updateRace(state, race, modeName, hint) {
+    function updateRace(state) {
+      var race = state.race;
       if (!race) return;
+      setText(els.countLabel, 'ALIVE');
       if (race.alive !== lastCount) {
         setText(els.count, String(race.alive));
+        lastCount = race.alive;
+      }
+      setText(els.cycle, 'TIME ' + race.elapsed.toFixed(1));
+      setText(els.stat, 'OUT ' + race.eliminated);
+      setText(els.bpm, state.bpm + ' BPM');
+      setText(els.modeName, 'RACE');
+      setText(els.hint, 'NO TAP · LAST BALL WINS');
+      if (els.barFill && els.barFill.style) {
+        els.barFill.style.width = Math.max(0, Math.min(100, (race.eliminated / race.total) * 100)).toFixed(2) + '%';
+      }
+    }
+
+    function updateRace3D(state) {
+      var race = state.race3d;
+      if (!race) return;
+      var pick = race.prediction;
+      var pos = pick && race.positions ? race.positions[pick] : 0;
+      var picked = null;
+      for (var i = 0; i < race.balls.length; i++) if (race.balls[i].id === Number(pick)) picked = race.balls[i];
+      if (pos !== lastCount) {
+        setText(els.count, pos ? '#' + pos : '--');
         if (els.count && els.count.classList) {
           els.count.classList.remove('bump');
           if (bumpTimer) clearTimeout(bumpTimer);
@@ -182,30 +273,51 @@
             if (els.count) els.count.classList.remove('bump');
           }, 190);
         }
-        lastCount = race.alive;
+        lastCount = pos;
       }
-      setText(els.countLabel, 'ALIVE');
+      setText(els.countLabel, 'POS');
       setText(els.cycle, 'TIME ' + race.elapsed.toFixed(1));
-      setText(els.stat, 'OUT ' + race.eliminated);
+      setText(els.stat, 'PICK ' + (pick ? '#' + pick : '--'));
       setText(els.bpm, state.bpm + ' BPM');
-      setText(els.modeName, modeName);
-      setText(els.hint, hint);
+      setText(els.modeName, 'RACE 3D');
+      setText(els.hint, 'DRAG TO ORBIT · SLIDER TO TRAVEL');
       if (els.barFill && els.barFill.style) {
-        var progress = Math.max(0, Math.min(100, (race.eliminated / race.total) * 100));
+        var progress = picked ? Math.max(0, Math.min(100, (picked.y / race.goalY) * 100)) : 0;
         els.barFill.style.width = progress.toFixed(2) + '%';
       }
     }
 
     function updateResult(state) {
-      var result = (state.race && state.race.result) || (state.race3d && state.race3d.result);
-      if (!result) return;
-      setText(els.resultTitle, 'BALL ' + result.winnerId + ' WINS');
-      setText(els.resultSub, result.eliminated + ' balls out. Last ball standing.');
-      setText(els.resultWinner, 'BALL ' + result.winnerId);
-      setText(els.resultTime, result.time.toFixed(1) + 's');
+      if (state.race3d && state.race3d.result) {
+        var r3 = state.race3d.result;
+        if (!resultRecorded) {
+          resultRecorded = true;
+          if (r3.predictedWon) streak += 1; else streak = 0;
+          best = Math.max(best, streak);
+          saveStreak();
+          if (els.predictStreak) setText(els.predictStreak, 'STREAK ' + streak + ' · BEST ' + best);
+        }
+        setText(els.resultTitle, r3.predictedWon ? 'YOUR BALL WINS' : 'BALL ' + r3.winnerId + ' WINS');
+        setText(els.resultSub, r3.predicted != null
+          ? 'You picked BALL ' + r3.predicted + ' · Streak ' + streak + ' · Best ' + best
+          : 'First to the goal.');
+        setText(els.resultWinner, 'BALL ' + r3.winnerId);
+        setText(els.resultTime, r3.time.toFixed(1) + 's');
+        if (els.resultDot && els.resultDot.style) {
+          els.resultDot.style.background = 'hsl(' + r3.winnerHue + ', 92%, 64%)';
+          els.resultDot.style.boxShadow = '0 0 12px hsla(' + r3.winnerHue + ', 92%, 64%, 0.65)';
+        }
+        return;
+      }
+      var r2 = state.race && state.race.result;
+      if (!r2) return;
+      setText(els.resultTitle, 'BALL ' + r2.winnerId + ' WINS');
+      setText(els.resultSub, r2.eliminated + ' balls out. Last ball standing.');
+      setText(els.resultWinner, 'BALL ' + r2.winnerId);
+      setText(els.resultTime, r2.time.toFixed(1) + 's');
       if (els.resultDot && els.resultDot.style) {
-        els.resultDot.style.background = 'hsl(' + result.winnerHue + ', 92%, 64%)';
-        els.resultDot.style.boxShadow = '0 0 12px hsla(' + result.winnerHue + ', 92%, 64%, 0.65)';
+        els.resultDot.style.background = 'hsl(' + r2.winnerHue + ', 92%, 64%)';
+        els.resultDot.style.boxShadow = '0 0 12px hsla(' + r2.winnerHue + ', 92%, 64%, 0.65)';
       }
     }
 
@@ -216,14 +328,27 @@
 
     function startGame() {
       if (game.state.phase === 'playing') return;
+      if (selectedMode === 'race3d') { openPrediction(); return; }
       if (root.ExpAudio) root.ExpAudio.start();
       updateSound();
       if (renderer && renderer.clear) renderer.clear();
-      if (selectedMode === 'race3d' && renderer && renderer.setFocusNorm) renderer.setFocusNorm(camNorm);
       game.start(selectedMode);
     }
 
+    function startPredicted() {
+      if (!predicting) return;
+      predicting = false;
+      if (root.ExpAudio) root.ExpAudio.start();
+      updateSound();
+      if (renderer && renderer.clear) renderer.clear();
+      if (renderer && renderer.setFocusNorm) renderer.setFocusNorm(camNorm);
+      game.start('race3d');
+      if (game.setPrediction) game.setPrediction(pickedBall);
+      resultRecorded = false;
+    }
+
     function goHome() {
+      predicting = false;
       if (root.ExpAudio) root.ExpAudio.stop();
       if (renderer && renderer.clear) renderer.clear();
       game.reset();
@@ -236,6 +361,8 @@
     if (els.modeRace) els.modeRace.addEventListener('click', function () { selectMode('race'); });
     if (els.modeRace3D) els.modeRace3D.addEventListener('click', function () { selectMode('race3d'); });
     if (els.btnStart) els.btnStart.addEventListener('click', startGame);
+    if (els.btnPredictStart) els.btnPredictStart.addEventListener('click', startPredicted);
+    if (els.btnPredictHome) els.btnPredictHome.addEventListener('click', goHome);
 
     function toggleSound() {
       if (root.ExpAudio) root.ExpAudio.toggleMute();
@@ -266,9 +393,7 @@
           }
           return;
         }
-        if (state.mode === 'frame' && game.tap) {
-          game.tap(x * state.field.w / w, y * state.field.h / h);
-        }
+        if (state.mode === 'frame' && game.tap) game.tap(x * state.field.w / w, y * state.field.h / h);
         if (renderer && renderer.tap) renderer.tap(x, y);
         if (root.ExpAudio && root.ExpAudio.tap) root.ExpAudio.tap();
       });
@@ -317,15 +442,13 @@
     game.onChange(render);
     updateStart();
     updateSound();
+    buildPredictGrid();
     render(game.getState());
 
     return {
-      render: render,
-      update: update,
-      updateSound: updateSound,
-      updateStart: updateStart,
-      selectMode: selectMode,
-      startGame: startGame
+      render: render, update: update, updateSound: updateSound, updateStart: updateStart,
+      selectMode: selectMode, startGame: startGame, selectBall: selectBall,
+      openPrediction: openPrediction, startPredicted: startPredicted
     };
   }
 

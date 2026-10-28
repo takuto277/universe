@@ -109,41 +109,36 @@ renderer.drawRace(raceState, 5.4);
 var race3dState = {
   mode: 'race3d', root: { hue: 188 }, cycle: 0, bar: 0, beat: 0, field: { w: 390, h: 844 },
   race3d: {
-    elapsed: 2.2, alive: 3, total: 20, eliminated: 17, ballRadius: 6.5, voidZ: 0,
-    bounds: { x: 165, y: 125, zMin: 0, zMax: 820 },
-    balls: [
-      { id: 1, hue: 0, x: -40, y: 20, z: 500, vx: 10, vy: 5, vz: -40, r: 6.5 },
-      { id: 7, hue: 108, x: 60, y: -30, z: 320, vx: -20, vy: 10, vz: -60, r: 6.5 },
-      { id: 15, hue: 252, x: 20, y: 80, z: 180, vx: 12, vy: -8, vz: -80, r: 6.5 }
+    elapsed: 5.2, total: 20, goalY: 5000,
+    board: { xHalf: 175, z0: 900, slope: 0.16 },
+    blocks: [
+      { x: -60, y: 760, w: 150, d: 24, h: 34 },
+      { x: 70, y: 1300, w: 170, d: 24, h: 30 }
     ],
-    pegs: [{ x: 0, y: 0, z: 600 }, { x: -60, y: 30, z: 400 }],
-    bumpers: [{ x: 0, y: 0, z: 560, r: 18 }],
-    spinners: [{ x: 0, y: 0, z: 600, len: 70, half: 4, angle: 0.5 }],
-    portals: [{ x: -120, y: 0, z: 470, r: 14, hue: 195 }, { x: 120, y: 0, z: 150, r: 14, hue: 40 }],
-    wells: [{ x: -80, y: -60, z: 500, r: 60 }],
-    boosters: [{ x: 0, y: -100, z: 690, r: 24, vx: 0, vy: 80, vz: -120 }],
-    plates: [{ x: -60, y: 0, z: 2040, r: 62, bounce: 0.58 }],
-    slows: [{ x: -40, y: 30, z: 1960, r: 92 }],
-    fans: [{ x: 40, y: 30, z: 1880, r: 58, power: 120 }],
+    prediction: 7,
+    positions: { 1: 2, 7: 1, 15: 3 },
+    balls: [
+      { id: 1, hue: 0, type: 'BOLT', x: -60, y: 1200, z: 740, vx: 0, vy: 40, vz: -10, r: 6.2, finished: false, position: 2 },
+      { id: 7, hue: 108, type: 'SPRING', x: 50, y: 1600, z: 680, vx: 0, vy: 50, vz: -10, r: 6.4, finished: false, position: 1 },
+      { id: 15, hue: 252, type: 'ANCHOR', x: 20, y: 900, z: 800, vx: 0, vy: 30, vz: -10, r: 8, finished: false, position: 3 }
+    ],
     result: null,
-    events: [{ type: 'eliminate', x: 0, y: 0, z: 0, hue: 36, id: 3 }]
+    events: []
   }
 };
-renderer.update(1 / 60, race3dState);
+var beforeRace = renderer.state().length;
 var camBefore = renderer.camera();
 renderer.orbit(12, 8);
 renderer.setFocusNorm(0.45);
 var camAfter = renderer.camera();
 assert(camAfter.yaw !== camBefore.yaw || camAfter.elev !== camBefore.elev, 'RACE3Dのカメラを動かせない');
-assert(camAfter.focusNorm === 0.45, 'RACE3Dのカメラ高さを変えられない');
-renderer.drawRace3D(race3dState, 2.2);
+assert(camAfter.focusNorm === 0.45, 'RACE3Dのカメラ位置を変えられない');
+renderer.update(1 / 60, race3dState);
+renderer.drawRace3D(race3dState, 5.2);
 assert(renderer.state().length === beforeRace, 'RACE3D描画でAUTOの状態が壊れる');
 
-race3dState.race3d.alive = 1;
-race3dState.race3d.balls = [{ id: 7, hue: 108, x: 20, y: 0, z: 150, vx: 0, vy: 0, vz: 0, r: 6.5 }];
-race3dState.race3d.result = { winnerId: 7, winnerHue: 108, time: 2.4, total: 20, eliminated: 19, alive: 1 };
-race3dState.race3d.events = [{ type: 'winner', x: 20, y: 0, z: 150, hue: 108, id: 7 }];
+race3dState.race3d.result = { winnerId: 7, winnerHue: 108, winnerType: 'SPRING', time: 5.4, total: 20, predicted: 7, predictedWon: true };
 renderer.update(1 / 60, race3dState);
-renderer.drawRace3D(race3dState, 2.4);
+renderer.drawRace3D(race3dState, 5.4);
 
 print('renderer tests OK (' + passed + ' assertions)');

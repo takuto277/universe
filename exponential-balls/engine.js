@@ -81,107 +81,44 @@
   var RACE3D = {
     total: 20,
     ballRadius: 6.5,
-    gravity: 180,
-    damping: 0.9995,
-    maxSpeed: 520,
-    bounds: { x: 165, y: 125, zMin: 0, zMax: 2460 },
-    startZ: 2190,
-    voidZ: 0,
-    suddenDeath: 55,
-    riseSpeed: 20,
-    maxTime: 90,
-    pegs: [
-      { x: -110, y: -80, z: 2100 }, { x: 0, y: -90, z: 2070 }, { x: 110, y: -80, z: 2100 },
-      { x: -70, y: 20, z: 1950 }, { x: 70, y: 20, z: 1950 }, { x: 0, y: 100, z: 1920 },
-      { x: -130, y: -40, z: 1780 }, { x: 0, y: -10, z: 1760 }, { x: 130, y: -40, z: 1780 },
-      { x: -80, y: 80, z: 1580 }, { x: 80, y: 80, z: 1580 }, { x: 0, y: -100, z: 1550 },
-      { x: -120, y: 30, z: 1320 }, { x: 0, y: 30, z: 1300 }, { x: 120, y: 30, z: 1320 },
-      { x: -60, y: -70, z: 1080 }, { x: 60, y: -70, z: 1080 }, { x: 0, y: 80, z: 1050 },
-      { x: -110, y: 40, z: 840 }, { x: 0, y: -20, z: 820 }, { x: 110, y: 40, z: 840 },
-      { x: -70, y: -80, z: 600 }, { x: 70, y: -80, z: 600 }, { x: 0, y: 70, z: 570 },
-      { x: -100, y: 20, z: 360 }, { x: 100, y: 20, z: 360 }, { x: 0, y: -50, z: 300 }
+    gravity: 320,
+    rollAccel: 30,
+    maxTime: 45,
+    goalY: 5000,
+    startY: 90,
+    board: { xHalf: 175, z0: 900, slope: 0.16 },
+    blocks: [
+      { x: -60, y: 760, w: 150, d: 24, h: 34 },
+      { x: 70, y: 1300, w: 170, d: 24, h: 30 },
+      { x: -40, y: 1840, w: 140, d: 24, h: 38 },
+      { x: 80, y: 2380, w: 160, d: 24, h: 34 },
+      { x: -80, y: 2920, w: 150, d: 24, h: 30 },
+      { x: 50, y: 3460, w: 170, d: 24, h: 38 },
+      { x: -50, y: 4000, w: 160, d: 24, h: 34 }
     ],
-    bumpers: [
-      { x: -90, y: -40, z: 2000, baseX: -90, amp: 30, speed: 1.8, phase: 0, r: 16 },
-      { x: 90, y: 40, z: 1660, baseX: 90, amp: 34, speed: 2.2, phase: 1.7, r: 16 },
-      { x: 0, y: 0, z: 1380, baseX: 0, amp: 54, speed: 1.4, phase: 2.4, r: 18 },
-      { x: -90, y: 50, z: 920, baseX: -90, amp: 36, speed: 2.0, phase: 0.7, r: 16 },
-      { x: 80, y: -40, z: 480, baseX: 80, amp: 44, speed: 2.4, phase: 2.9, r: 18 }
+    types: [
+      { name: 'BOLT', speed: 1.18, bounce: 0.5, grip: 0.85, size: 6.2 },
+      { name: 'SPRING', speed: 0.95, bounce: 0.88, grip: 0.8, size: 6.4 },
+      { name: 'ANCHOR', speed: 0.84, bounce: 0.42, grip: 1.15, size: 8 },
+      { name: 'COMET', speed: 1.1, bounce: 0.62, grip: 0.7, size: 5.5 },
+      { name: 'PULSE', speed: 1.0, bounce: 0.74, grip: 0.95, size: 7 }
     ],
-    spinners: [
-      { x: 0, y: 0, z: 2180, len: 70, half: 4, angle: 0, speed: 4.0 },
-      { x: -40, y: 40, z: 1870, len: 55, half: 4, angle: 1.1, speed: -4.6 },
-      { x: 40, y: -40, z: 1500, len: 58, half: 4, angle: 2.2, speed: 4.2 },
-      { x: 0, y: 0, z: 1210, len: 62, half: 4, angle: 0.7, speed: -4.0 },
-      { x: -60, y: 20, z: 860, len: 48, half: 4, angle: 2.7, speed: 4.8 },
-      { x: 60, y: -20, z: 430, len: 50, half: 4, angle: 1.5, speed: -4.4 }
-    ],
-    portals: [
-      { x: -120, y: 0, z: 2020, r: 14, target: 1, hue: 195 },
-      { x: 120, y: 0, z: 1480, r: 14, target: 0, hue: 40 },
-      { x: 0, y: -100, z: 1120, r: 14, target: 3, hue: 280 },
-      { x: 0, y: 100, z: 500, r: 14, target: 2, hue: 330 }
-    ],
-    wells: [
-      { x: -80, y: -60, z: 1740, r: 60, strength: 140 },
-      { x: 80, y: 60, z: 1280, r: 60, strength: 170 },
-      { x: -70, y: 50, z: 760, r: 55, strength: 160 },
-      { x: 80, y: -50, z: 340, r: 55, strength: 180 }
-    ],
-    boosters: [
-      { x: 0, y: -100, z: 2120, r: 24, vx: 0, vy: 80, vz: -120, power: 240 },
-      { x: -130, y: 80, z: 1420, r: 24, vx: 140, vy: -40, vz: -60, power: 220 },
-      { x: 130, y: -80, z: 700, r: 24, vx: -120, vy: 60, vz: -80, power: 230 }
-    ],
-    plates: [
-      { x: -60, y: 0, z: 2040, r: 62, bounce: 0.58 },
-      { x: 70, y: -30, z: 1810, r: 58, bounce: 0.62 },
-      { x: -30, y: 60, z: 1590, r: 66, bounce: 0.55 },
-      { x: 60, y: 40, z: 1350, r: 60, bounce: 0.6 },
-      { x: -70, y: -40, z: 1140, r: 64, bounce: 0.56 },
-      { x: 30, y: 30, z: 940, r: 62, bounce: 0.62 },
-      { x: -50, y: -30, z: 720, r: 60, bounce: 0.58 },
-      { x: 60, y: 30, z: 510, r: 64, bounce: 0.6 },
-      { x: 0, y: 0, z: 260, r: 68, bounce: 0.56 }
-    ],
-    slows: [
-      { x: -40, y: 30, z: 1960, r: 92 },
-      { x: 50, y: -40, z: 1710, r: 96 },
-      { x: -60, y: -20, z: 1450, r: 90 },
-      { x: 60, y: 30, z: 1180, r: 94 },
-      { x: -40, y: 40, z: 900, r: 92 },
-      { x: 50, y: -30, z: 640, r: 96 },
-      { x: 0, y: 0, z: 380, r: 100 }
-    ],
-    fans: [
-      { x: 40, y: 30, z: 1880, r: 58, power: 120 },
-      { x: -50, y: -30, z: 1620, r: 62, power: 130 },
-      { x: 50, y: -40, z: 1320, r: 58, power: 120 },
-      { x: -40, y: 40, z: 1050, r: 62, power: 130 },
-      { x: 40, y: 30, z: 780, r: 58, power: 120 },
-      { x: -30, y: -30, z: 540, r: 60, power: 130 }
-    ]
+    preview: []
   };
 
-  (function expandRace3D() {
-    var levels = 2;
-    var span = RACE3D.bounds.zMax - RACE3D.bounds.zMin;
-    var keys = ['pegs', 'bumpers', 'spinners', 'portals', 'wells', 'boosters', 'plates', 'slows', 'fans'];
-    var originals = {};
-    for (var ok = 0; ok < keys.length; ok++) originals[keys[ok]] = RACE3D[keys[ok]].slice();
-    for (var k = 1; k < levels; k++) {
-      for (var ki = 0; ki < keys.length; ki++) {
-        var list = RACE3D[keys[ki]];
-        var base = originals[keys[ki]];
-        for (var i = 0; i < base.length; i++) {
-          var copy = Object.assign({}, base[i]);
-          copy.z = base[i].z + k * span;
-          list.push(copy);
-        }
-      }
+  (function buildRACE3DPreview() {
+    for (var i = 0; i < RACE3D.total; i++) {
+      var type = RACE3D.types[i % RACE3D.types.length];
+      RACE3D.preview.push({
+        id: i + 1,
+        hue: (i * 18) % 360,
+        type: type.name,
+        speed: type.speed,
+        bounce: type.bounce,
+        grip: type.grip,
+        size: type.size
+      });
     }
-    RACE3D.bounds.zMax = RACE3D.bounds.zMin + span * levels;
-    RACE3D.startZ = RACE3D.startZ + (levels - 1) * span;
   })();
 
   var ROOTS = [
@@ -726,119 +663,94 @@
       };
     }
 
+    function boardZ(y) {
+      return RACE3D.board.z0 - RACE3D.board.slope * y;
+    }
+
     function createRace3DState() {
       var balls = [];
-      for (var i = 0; i < RACE3D.total; i++) {
+      for (var i = 0; i < RACE3D.preview.length; i++) {
+        var spec = RACE3D.preview[i];
+        var row = Math.floor(i / 5);
+        var col = i % 5;
         balls.push({
-          id: i + 1,
-          hue: (i * 18) % 360,
-          x: rnd(-130, 130),
-          y: rnd(-100, 100),
-          z: RACE3D.startZ + rnd(-10, 20),
-          vx: rnd(-70, 70),
-          vy: rnd(-50, 50),
-          vz: rnd(-30, 0),
-          r: RACE3D.ballRadius,
-          alive: true,
-          portalCd: 0,
-          portalUses: 0,
-          boostCd: 0
+          id: spec.id,
+          hue: spec.hue,
+          type: spec.type,
+          speed: spec.speed,
+          bounce: spec.bounce,
+          grip: spec.grip,
+          x: -120 + col * 60 + rnd(-8, 8),
+          y: RACE3D.startY + row * 9 + rnd(-2, 2),
+          z: boardZ(RACE3D.startY) + spec.size,
+          vx: rnd(-15, 15),
+          vy: 0,
+          vz: 0,
+          r: spec.size,
+          finished: false
         });
       }
       return {
-        alive: RACE3D.total,
+        prediction: null,
         balls: balls,
-        eliminated: 0,
-        voidZ: RACE3D.voidZ,
-        events: [],
+        goals: [],
         result: null,
-        bumpers: RACE3D.bumpers.map(function (b) {
-          return { x: b.x, y: b.y, z: b.z, baseX: b.baseX, amp: b.amp, speed: b.speed, phase: b.phase, r: b.r };
-        }),
-        spinners: RACE3D.spinners.map(function (s) {
-          return { x: s.x, y: s.y, z: s.z, len: s.len, half: s.half, angle: s.angle, speed: s.speed };
-        }),
-        portals: RACE3D.portals.map(function (p) {
-          return { x: p.x, y: p.y, z: p.z, r: p.r, target: p.target, hue: p.hue };
-        })
+        events: [],
+        elapsed: 0
       };
     }
 
+    function setPrediction(id) {
+      if (!state.race3d) return false;
+      state.race3d.prediction = id == null ? null : Number(id);
+      return true;
+    }
+
     function finishRace3D(t, r, winner) {
-      r.alive = 1;
       r.result = {
         winnerId: winner.id,
         winnerHue: winner.hue,
+        winnerType: winner.type,
         time: Math.min(t, RACE3D.maxTime),
         total: RACE3D.total,
-        eliminated: RACE3D.total - 1,
-        alive: 1
+        predicted: r.prediction,
+        predictedWon: r.prediction != null && Number(r.prediction) === winner.id
       };
       for (var i = 0; i < r.balls.length; i++) {
-        if (r.balls[i] !== winner) r.balls[i].alive = false;
+        if (r.balls[i] !== winner) r.balls[i].finished = true;
       }
-      winner.alive = true;
-      r.events.push({ type: 'winner', x: winner.x, y: winner.y, z: winner.z, hue: winner.hue, id: winner.id });
+      winner.finished = true;
       state.phase = 'finished';
       state.time = Math.min(t, RACE3D.maxTime);
     }
 
-    function bounceSphere3D(b, cx, cy, cz, cr, rest, boost) {
+    function collideBlock3D(b, block) {
+      var base = boardZ(block.y);
+      var minX = block.x - block.w / 2;
+      var maxX = block.x + block.w / 2;
+      var minY = block.y - block.d / 2;
+      var maxY = block.y + block.d / 2;
+      var cx = Math.max(minX, Math.min(b.x, maxX));
+      var cy = Math.max(minY, Math.min(b.y, maxY));
+      var cz = Math.max(base, Math.min(b.z, base + block.h));
       var dx = b.x - cx;
       var dy = b.y - cy;
       var dz = b.z - cz;
-      var d = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      var min = b.r + cr;
-      if (d >= min) return false;
-      var nx = dx / (d || 1);
-      var ny = dy / (d || 1);
-      var nz = dz / (d || 1);
-      b.x = cx + nx * min;
-      b.y = cy + ny * min;
-      b.z = cz + nz * min;
+      var d2 = dx * dx + dy * dy + dz * dz;
+      if (d2 >= b.r * b.r) return false;
+      var d = Math.sqrt(d2) || 1;
+      var nx = dx / d;
+      var ny = dy / d;
+      var nz = dz / d;
+      b.x = cx + nx * b.r;
+      b.y = cy + ny * b.r;
+      b.z = cz + nz * b.r;
       var vn = b.vx * nx + b.vy * ny + b.vz * nz;
       if (vn < 0) {
-        b.vx -= (1 + rest) * vn * nx;
-        b.vy -= (1 + rest) * vn * ny;
-        b.vz -= (1 + rest) * vn * nz;
+        b.vx -= (1 + b.bounce) * vn * nx;
+        b.vy -= (1 + b.bounce) * vn * ny;
+        b.vz -= (1 + b.bounce) * vn * nz;
       }
-      if (boost) {
-        b.vx += nx * boost;
-        b.vy += ny * boost;
-        b.vz += nz * boost;
-      }
-      return true;
-    }
-
-    function collideSpinner3D(b, s) {
-      var ux = Math.cos(s.angle);
-      var uy = Math.sin(s.angle);
-      var dx = b.x - s.x;
-      var dy = b.y - s.y;
-      var along = Math.max(-s.len, Math.min(s.len, dx * ux + dy * uy));
-      var px = s.x + ux * along;
-      var py = s.y + uy * along;
-      var nx = b.x - px;
-      var ny = b.y - py;
-      var nz = b.z - s.z;
-      var d = Math.sqrt(nx * nx + ny * ny + nz * nz);
-      var min = b.r + s.half;
-      if (d >= min) return false;
-      nx = nx / (d || 1);
-      ny = ny / (d || 1);
-      nz = nz / (d || 1);
-      b.x = px + nx * min;
-      b.y = py + ny * min;
-      b.z = s.z + nz * min;
-      var vn = b.vx * nx + b.vy * ny + b.vz * nz;
-      if (vn < 0) {
-        b.vx -= 1.65 * vn * nx;
-        b.vy -= 1.65 * vn * ny;
-        b.vz -= 1.65 * vn * nz;
-      }
-      var tangent = s.speed * along * 0.6;
-      b.vx += -uy * tangent;
-      b.vy += ux * tangent;
       return true;
     }
 
@@ -850,206 +762,49 @@
       dt = Math.min(0.05, dt);
       clock(t);
       var r = state.race3d;
+      r.elapsed = t;
       r.events = [];
-      if (t > RACE3D.suddenDeath) {
-        r.voidZ = Math.min(620, (t - RACE3D.suddenDeath) * RACE3D.riseSpeed);
-      }
-      var si;
-      for (si = 0; si < r.spinners.length; si++) {
-        r.spinners[si].angle += r.spinners[si].speed * dt;
-      }
-      for (var mb = 0; mb < r.bumpers.length; mb++) {
-        r.bumpers[mb].x = r.bumpers[mb].baseX + Math.sin(t * r.bumpers[mb].speed + r.bumpers[mb].phase) * r.bumpers[mb].amp;
-      }
 
-      var balls = r.balls;
-      for (var i = 0; i < balls.length; i++) {
-        var b = balls[i];
-        if (!b.alive) continue;
-        b.portalCd = Math.max(0, b.portalCd - dt);
-        b.boostCd = Math.max(0, b.boostCd - dt);
+      for (var i = 0; i < r.balls.length; i++) {
+        var b = r.balls[i];
+        if (b.finished) continue;
         b.vz -= RACE3D.gravity * dt;
-        b.vx *= RACE3D.damping;
-        b.vy *= RACE3D.damping;
-        b.vz *= RACE3D.damping;
-        var speed = Math.sqrt(b.vx * b.vx + b.vy * b.vy + b.vz * b.vz);
-        if (speed > RACE3D.maxSpeed) {
-          b.vx = b.vx / speed * RACE3D.maxSpeed;
-          b.vy = b.vy / speed * RACE3D.maxSpeed;
-          b.vz = b.vz / speed * RACE3D.maxSpeed;
-        }
+        b.vy += RACE3D.rollAccel * b.speed * dt;
+        var fr = Math.max(0, 1 - 0.24 * b.grip * dt);
+        b.vx *= fr;
+        b.vy *= Math.max(0, 1 - 0.025 * b.grip * dt);
+        b.vz *= 0.999;
         b.x += b.vx * dt;
         b.y += b.vy * dt;
         b.z += b.vz * dt;
 
-        if (b.x - b.r < -RACE3D.bounds.x) { b.x = -RACE3D.bounds.x + b.r; b.vx = Math.abs(b.vx) * 0.86; }
-        if (b.x + b.r > RACE3D.bounds.x) { b.x = RACE3D.bounds.x - b.r; b.vx = -Math.abs(b.vx) * 0.86; }
-        if (b.y - b.r < -RACE3D.bounds.y) { b.y = -RACE3D.bounds.y + b.r; b.vy = Math.abs(b.vy) * 0.86; }
-        if (b.y + b.r > RACE3D.bounds.y) { b.y = RACE3D.bounds.y - b.r; b.vy = -Math.abs(b.vy) * 0.86; }
-        if (b.z + b.r > RACE3D.bounds.zMax) { b.z = RACE3D.bounds.zMax - b.r; b.vz = -Math.abs(b.vz) * 0.86; }
+        if (b.x - b.r < -RACE3D.board.xHalf) { b.x = -RACE3D.board.xHalf + b.r; b.vx = Math.abs(b.vx) * 0.7; }
+        if (b.x + b.r > RACE3D.board.xHalf) { b.x = RACE3D.board.xHalf - b.r; b.vx = -Math.abs(b.vx) * 0.7; }
 
-        for (var p = 0; p < RACE3D.pegs.length; p++) {
-          bounceSphere3D(b, RACE3D.pegs[p].x, RACE3D.pegs[p].y, RACE3D.pegs[p].z, 5, 0.78, 0);
-        }
-        for (var bu = 0; bu < r.bumpers.length; bu++) {
-          if (bounceSphere3D(b, r.bumpers[bu].x, r.bumpers[bu].y, r.bumpers[bu].z, r.bumpers[bu].r, 1.0, 150)) {
-            r.events.push({ type: 'bumper', x: b.x, y: b.y, z: b.z, hue: b.hue });
-          }
-        }
-        for (si = 0; si < r.spinners.length; si++) {
-          if (collideSpinner3D(b, r.spinners[si])) {
-            r.events.push({ type: 'spinner', x: b.x, y: b.y, z: b.z, hue: b.hue });
-          }
-        }
-        for (var wl = 0; wl < RACE3D.wells.length; wl++) {
-          var well = RACE3D.wells[wl];
-          var wdx = well.x - b.x;
-          var wdy = well.y - b.y;
-          var wdz = well.z - b.z;
-          var wd = Math.sqrt(wdx * wdx + wdy * wdy + wdz * wdz);
-          if (wd < well.r && wd > 0) {
-            var pull = well.strength * (1 - wd / well.r);
-            b.vx += (wdx / wd) * pull * dt;
-            b.vy += (wdy / wd) * pull * dt;
-            b.vz += (wdz / wd) * pull * dt;
-            b.vx += (-wdy / wd) * pull * 0.45 * dt;
-            b.vy += (wdx / wd) * pull * 0.45 * dt;
-          }
-        }
-        if (b.boostCd <= 0) {
-          for (var bo = 0; bo < RACE3D.boosters.length; bo++) {
-            var boost = RACE3D.boosters[bo];
-            var bdx = b.x - boost.x;
-            var bdy = b.y - boost.y;
-            var bdz = b.z - boost.z;
-            if (bdx * bdx + bdy * bdy + bdz * bdz < Math.pow(boost.r + b.r, 2)) {
-              b.vx += boost.vx;
-              b.vy += boost.vy;
-              b.vz += boost.vz;
-              b.boostCd = 0.32;
-              r.events.push({ type: 'boost', x: b.x, y: b.y, z: b.z, hue: b.hue });
-              break;
-            }
-          }
-        }
-        for (var po = 0; po < r.portals.length; po++) {
-          var portal = r.portals[po];
-          if (b.portalCd > 0 || b.portalUses >= 2) continue;
-          var pdx = b.x - portal.x;
-          var pdy = b.y - portal.y;
-          var pdz = b.z - portal.z;
-          if (pdx * pdx + pdy * pdy + pdz * pdz < Math.pow(b.r + portal.r, 2)) {
-            var target = r.portals[portal.target];
-            b.x = target.x;
-            b.y = target.y;
-            b.z = target.z;
-            b.vx *= 0.72;
-            b.vy *= 0.72;
-            b.vz = 80;
-            b.portalCd = 0.7;
-            b.portalUses += 1;
-            r.events.push({ type: 'portal', x: target.x, y: target.y, z: target.z, hue: portal.hue });
-            break;
-          }
+        var bz = boardZ(b.y) + b.r;
+        if (b.z < bz) {
+          b.z = bz;
+          if (b.vz < 0) b.vz = -b.vz * b.bounce;
+          b.vy += 8 * dt;
         }
 
-        for (var sw = 0; sw < RACE3D.slows.length; sw++) {
-          var slow = RACE3D.slows[sw];
-          var sdx = b.x - slow.x;
-          var sdy = b.y - slow.y;
-          var sdz = b.z - slow.z;
-          if (sdx * sdx + sdy * sdy + sdz * sdz < slow.r * slow.r) {
-            var slowFactor = Math.max(0, 1 - 2.4 * dt);
-            b.vx *= slowFactor;
-            b.vy *= slowFactor;
-            b.vz *= slowFactor;
-          }
+        for (var bl = 0; bl < RACE3D.blocks.length; bl++) {
+          collideBlock3D(b, RACE3D.blocks[bl]);
         }
-        for (var fn = 0; fn < RACE3D.fans.length; fn++) {
-          var fan = RACE3D.fans[fn];
-          var fdx = b.x - fan.x;
-          var fdy = b.y - fan.y;
-          var fdz = b.z - fan.z;
-          if (fdx * fdx + fdy * fdy + fdz * fdz < fan.r * fan.r) {
-            b.vz += fan.power * dt;
-            b.vx += -fdy * 0.35 * dt;
-            b.vy += fdx * 0.35 * dt;
-          }
-        }
-        for (var pl = 0; pl < RACE3D.plates.length; pl++) {
-          var plate = RACE3D.plates[pl];
-          var pldx = b.x - plate.x;
-          var pldy = b.y - plate.y;
-          if (b.vz < 0 && b.z - b.r < plate.z && b.z + b.r > plate.z - 14 &&
-              pldx * pldx + pldy * pldy < Math.pow(plate.r + b.r, 2)) {
-            b.z = plate.z + b.r;
-            b.vz = Math.abs(b.vz) * plate.bounce + 35;
-            b.vx += rnd(-75, 75);
-            b.vy += rnd(-60, 60);
-            r.events.push({ type: 'plate', x: b.x, y: b.y, z: plate.z, hue: b.hue });
-          }
+
+        if (b.y >= RACE3D.goalY) {
+          r.goals.push(b.id);
+          finishRace3D(t, r, b);
+          return getState();
         }
       }
 
-      for (var a = 0; a < balls.length; a++) {
-        if (!balls[a].alive) continue;
-        for (var c = a + 1; c < balls.length; c++) {
-          if (!balls[c].alive) continue;
-          var ba = balls[a];
-          var bb = balls[c];
-          var ddx = bb.x - ba.x;
-          var ddy = bb.y - ba.y;
-          var ddz = bb.z - ba.z;
-          var dist = Math.sqrt(ddx * ddx + ddy * ddy + ddz * ddz);
-          var minD = ba.r + bb.r;
-          if (dist >= minD || dist <= 0) continue;
-          var nx = ddx / dist;
-          var ny = ddy / dist;
-          var nz = ddz / dist;
-          var overlap = (minD - dist) / 2;
-          ba.x -= nx * overlap;
-          ba.y -= ny * overlap;
-          ba.z -= nz * overlap;
-          bb.x += nx * overlap;
-          bb.y += ny * overlap;
-          bb.z += nz * overlap;
-          var rvx = bb.vx - ba.vx;
-          var rvy = bb.vy - ba.vy;
-          var rvz = bb.vz - ba.vz;
-          var vn = rvx * nx + rvy * ny + rvz * nz;
-          if (vn < 0) {
-            var imp = -(1 + 0.8) * vn / 2;
-            ba.vx -= imp * nx;
-            ba.vy -= imp * ny;
-            ba.vz -= imp * nz;
-            bb.vx += imp * nx;
-            bb.vy += imp * ny;
-            bb.vz += imp * nz;
-          }
+      if (t >= RACE3D.maxTime) {
+        var leader = null;
+        for (var w = 0; w < r.balls.length; w++) {
+          if (!leader || r.balls[w].y > leader.y) leader = r.balls[w];
         }
-      }
-
-      var below = [];
-      for (var e = 0; e < balls.length; e++) {
-        if (balls[e].alive && balls[e].z - balls[e].r < r.voidZ) below.push(balls[e]);
-      }
-      below.sort(function (a, b) { return a.z - b.z; });
-      for (var k = 0; k < below.length; k++) {
-        if (r.alive <= 1) break;
-        var gone = below[k];
-        gone.alive = false;
-        r.alive -= 1;
-        r.eliminated += 1;
-        r.events.push({ type: 'eliminate', x: gone.x, y: gone.y, z: gone.z, hue: gone.hue, id: gone.id });
-      }
-
-      if (r.alive <= 1 || t >= RACE3D.maxTime) {
-        var winner = null;
-        for (var w = 0; w < balls.length; w++) {
-          if (balls[w].alive && (!winner || balls[w].z > winner.z)) winner = balls[w];
-        }
-        if (winner) finishRace3D(t, r, winner);
-        return getState();
+        if (leader) finishRace3D(t, r, leader);
       }
       return getState();
     }
@@ -1057,32 +812,24 @@
     function race3dSnapshot() {
       var r = state.race3d;
       if (!r) return null;
+      var sorted = r.balls.slice().sort(function (a, b) { return b.y - a.y; });
+      var positions = {};
+      for (var si = 0; si < sorted.length; si++) positions[sorted[si].id] = si + 1;
       return {
         elapsed: state.time,
-        alive: r.alive,
         total: RACE3D.total,
-        eliminated: RACE3D.total - r.alive,
-        ballRadius: RACE3D.ballRadius,
-        voidZ: r.voidZ,
-        bounds: RACE3D.bounds,
-        balls: r.balls.filter(function (b) { return b.alive; }).map(function (b) {
-          return { id: b.id, hue: b.hue, x: b.x, y: b.y, z: b.z, vx: b.vx, vy: b.vy, vz: b.vz, r: b.r };
+        goalY: RACE3D.goalY,
+        board: RACE3D.board,
+        blocks: RACE3D.blocks,
+        prediction: r.prediction,
+        positions: positions,
+        balls: r.balls.map(function (b) {
+          return {
+            id: b.id, hue: b.hue, type: b.type, x: b.x, y: b.y, z: b.z,
+            vx: b.vx, vy: b.vy, vz: b.vz, r: b.r, finished: b.finished,
+            position: positions[b.id] || 0
+          };
         }),
-        pegs: RACE3D.pegs,
-        bumpers: r.bumpers.map(function (b) {
-          return { x: b.x, y: b.y, z: b.z, r: b.r };
-        }),
-        spinners: r.spinners.map(function (s) {
-          return { x: s.x, y: s.y, z: s.z, len: s.len, half: s.half, angle: s.angle };
-        }),
-        portals: r.portals.map(function (p) {
-          return { x: p.x, y: p.y, z: p.z, r: p.r, hue: p.hue };
-        }),
-        wells: RACE3D.wells,
-        boosters: RACE3D.boosters,
-        plates: RACE3D.plates,
-        slows: RACE3D.slows,
-        fans: RACE3D.fans,
         result: r.result,
         events: r.events.slice()
       };
@@ -1161,6 +908,7 @@
       updateFrame: updateFrame,
       updateRace: updateRace,
       updateRace3D: updateRace3D,
+      setPrediction: setPrediction,
       tap: tap,
       autoStep: autoStep,
       getState: getState

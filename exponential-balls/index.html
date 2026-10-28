@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#05080e" />
   <meta name="description" content="BLOOM is a vertical audiovisual game where balls double with the music. Choose AUTO, FRAME, or RACE." />
   <title>BLOOM</title>
-  <link rel="stylesheet" href="style.css?v=20261029-2x" />
+  <link rel="stylesheet" href="style.css?v=20261029-block" />
 </head>
 <body>
   <div id="app">
@@ -69,8 +69,8 @@
           </button>
           <button id="mode-race3d" class="mode-card" type="button" aria-pressed="false">
             <span class="mode-head"><span class="mode-tag">RACE 3D</span><span id="mode-race3d-state" class="mode-play">SELECT</span></span>
-            <span class="mode-title">VOID 3D</span>
-            <span class="mode-desc">The last-ball survival in a 2x tower. Drag to orbit the camera; use the right slider to travel up/down.</span>
+            <span class="mode-title">BLOCK RACE</span>
+            <span class="mode-desc">20 ability balls roll down a block field. Pick the first to the goal; drag to orbit, slider to travel.</span>
           </button>
         </div>
 
@@ -90,7 +90,28 @@
         </svg>
 
         <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
-        <p class="tiny">120 BPM · AUTO/FRAME 24 s · RACE/3D last ball. Sound on.</p>
+        <p class="tiny">120 BPM · AUTO/FRAME 24 s · RACE 3D first to goal. Sound on.</p>
+      </div>
+    </div>
+
+    <div id="predict-overlay" class="overlay predict-overlay">
+      <div class="predict-content">
+        <p class="eyebrow">BLOOM RACE 3D</p>
+        <h1>PICK YOUR BALL</h1>
+        <p class="lead">20 balls with different speed, bounce, grip and size. Pick the first to the goal.</p>
+        <div id="predict-grid" class="predict-grid" role="group" aria-label="Pick a ball"></div>
+        <div class="predict-detail">
+          <div class="predict-name"><span id="predict-dot" class="predict-dot"></span><strong id="predict-name">BALL 1</strong></div>
+          <div class="predict-stats">
+            <div><span>SPD</span><strong id="stat-speed">1.00</strong></div>
+            <div><span>BNC</span><strong id="stat-bounce">0.50</strong></div>
+            <div><span>GRP</span><strong id="stat-grip">0.85</strong></div>
+            <div><span>SIZE</span><strong id="stat-size">6.2</strong></div>
+          </div>
+        </div>
+        <button id="btn-predict-start" class="primary big" type="button">START RACE</button>
+        <p id="predict-streak" class="tiny">STREAK 0 · BEST 0</p>
+        <button id="btn-predict-home" class="link-btn" type="button">HOME</button>
       </div>
     </div>
 
@@ -110,10 +131,10 @@
     </div>
   </div>
 
-  <script src="engine.js?v=20261029-2x"></script>
-  <script src="audio.js?v=20261029-2x"></script>
-  <script src="renderer.js?v=20261029-2x"></script>
-  <script src="ui.js?v=20261029-2x"></script>
-  <script src="game.js?v=20261029-2x"></script>
+  <script src="engine.js?v=20261029-block"></script>
+  <script src="audio.js?v=20261029-block"></script>
+  <script src="renderer.js?v=20261029-block"></script>
+  <script src="ui.js?v=20261029-block"></script>
+  <script src="game.js?v=20261029-block"></script>
 </body>
 </html>
