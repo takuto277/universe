@@ -357,6 +357,22 @@ class RunnerTest(unittest.TestCase):
         comments = [call["argv"][-1] for call in self.fake.find("gh", "issue", "comment")]
         self.assertTrue(any("pull/99" in body for body in comments))
 
+    def test_experiment_queue_uses_experiment_ready(self):
+        self.happy()
+        self.issue["labels"] = [{"name": "experiment:ready"}]
+        cfg = replace(self.cfg, branch_prefix="experiment/",
+                      queue_label="experiment:ready")
+        runner = ar.Runner(cfg, cmd=self.fake, log=lambda line: None)
+        self.assertEqual(0, runner.run_once())
+        lists = self.fake.find("gh", "issue", "list")
+        self.assertTrue(any("experiment:ready" in call["argv"] for call in lists))
+        argv = self.fake.find("gh", "pr", "create")[0]["argv"]
+        self.assertIn("experiment:preview", argv)
+        self.assertIn("do-not-merge", argv)
+        self.assertIn("experiment:ready", runner._queue_start_remove())
+        self.assertNotIn("agent:failed",
+                         runner._queue_done_remove(include_failed=False))
+
     def test_experiment_pr_gets_preview_and_guard_labels(self):
         self.happy()
         cfg = replace(self.cfg, branch_prefix="experiment/")

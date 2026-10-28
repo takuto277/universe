@@ -194,9 +194,10 @@ launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -A1 UNIV
 | `UNIVERSE_AGENT_FINDINGS_MAX` | `5` | 1回のレビューから Issue 化する指摘の上限 |
 | `UNIVERSE_AGENT_STALL_MINUTES` | `90` | `agent:running` のまま通知するまでの分数(0で無効) |
 | `UNIVERSE_AGENT_DISABLE` | `0` | `1` で実行を止める(pause と同じ) |
-| `UNIVERSE_AGENT_BRANCH_PREFIX` | `agent/` | ブランチ接頭辞 |
+| `UNIVERSE_AGENT_BRANCH_PREFIX` | `agent/` | ブランチ接頭辞（実験ランナーは `experiment/`） |
+| `UNIVERSE_AGENT_QUEUE_LABEL` | `agent:ready` | 実装キュー（実験ランナーは `experiment:ready`） |
 | `GH_BIN` / `GIT_BIN` / `OPENCODE_BIN` | `gh` / `git` / `opencode` | 実行ファイルの差し替え(上級者向け) |
-| `UNIVERSE_AGENT_INTERVAL` | `120` | LaunchAgent の実行間隔(インストール時) |
+| `UNIVERSE_AGENT_INTERVAL` | `120` | LaunchAgent の実行間隔(インストール時。実験ランナーは300) |
 
 ## 運用
 

@@ -28,7 +28,7 @@ gh auth login
 
 `--install` は不足している `gh` だけを Homebrew で導入し、opencode は自動では入れません。Homebrew が無い場合は https://cli.github.com/ から `gh` を入れてください。
 
-`--with-agents` は runner（実装キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、エージェントが実行する builder と verify を sandbox で実行します。setup 自身の `--verify` は sandbox の外で実行されます（sandbox はエージェントが起動する builder / verify に適用されます）。
+`--with-agents` は runner（実装キュー）・experiment runner（実験キュー）・watcher（レビュー/マージ）・planner（週次提案）を登録します。`UNIVERSE_AGENT_SANDBOX=seatbelt` を既定で使い、エージェントが実行する builder と verify を sandbox で実行します。setup 自身の `--verify` は sandbox の外で実行されます（sandbox はエージェントが起動する builder / verify に適用されます）。
 
 LaunchAgent は、人間が作業しているチェックアウトとは別の **main 追従の専用チェックアウト** から動きます。既定は `~/.local/share/universe-automation` です。
 
@@ -79,6 +79,7 @@ Homebrew がある場合、`--install` で不足している `gh` だけを導�
 ./tools/agent.sh status
 ./tools/auto-pr.sh --dry-run
 launchctl print gui/$(id -u)/com.takuto277.universe-agent-runner | grep -E 'state|UNIVERSE'
+launchctl print gui/$(id -u)/com.takuto277.universe-experiment-runner | grep -E 'state|UNIVERSE'
 ```
 
 ## よくあるつまずき

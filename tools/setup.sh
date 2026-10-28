@@ -15,7 +15,7 @@ Usage: tools/setup.sh [--install] [--with-agents] [--verify]
 何も指定しない場合は、必要なコマンドの確認だけを行います。
 
   --install      足りない gh を Homebrew で導入する（brew がある場合のみ）
-  --with-agents  実装ランナー・watcher・planner の LaunchAgent を登録する
+  --with-agents  実装ランナー・実験ランナー・watcher・planner の LaunchAgent を登録する
                  (UNIVERSE_AGENT_SANDBOX=seatbelt を既定で使う)
   --verify       ./tools/verify.sh も実行する
 USAGE
@@ -138,6 +138,7 @@ agent_status() {
   fi
 }
 agent_status universe-agent-runner runner
+agent_status universe-experiment-runner experiment
 agent_status universe-auto-pr watcher
 agent_status universe-agent-planner planner
 
@@ -157,6 +158,7 @@ if [ "$WITH_AGENTS" = "1" ]; then
   printf '\nLaunchAgent を登録します\n'
   SANDBOX="${UNIVERSE_AGENT_SANDBOX:-seatbelt}"
   UNIVERSE_AGENT_SANDBOX="$SANDBOX" "$ROOT/tools/install-agent-runner.sh"
+  UNIVERSE_AGENT_SANDBOX="$SANDBOX" "$ROOT/tools/install-experiment-runner.sh"
   UNIVERSE_AGENT_SANDBOX="$SANDBOX" "$ROOT/tools/install-auto-pr.sh"
   UNIVERSE_AGENT_SANDBOX="$SANDBOX" "$ROOT/tools/install-agent-planner.sh"
 fi

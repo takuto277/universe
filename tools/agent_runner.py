@@ -68,6 +68,7 @@ LABELS = {
     "experiment:preview": ("5319E7", "プレビュー確認待ち"),
     "experiment:keep": ("0E8A16", "実験を採用"),
     "experiment:discard": ("B60205", "実験を破棄"),
+    "do-not-merge": ("B60205", "マージしない"),
 }
 
 
@@ -158,6 +159,7 @@ class Config:
     timeout: int = DEFAULT_TIMEOUT
     verify_timeout: int = DEFAULT_VERIFY_TIMEOUT
     branch_prefix: str = "agent/"
+    queue_label: str = "agent:ready"
     auto_ready_proposals: bool = False
     keep_worktree: bool = False
     notify: bool = True
@@ -191,6 +193,7 @@ class Config:
             verify_timeout=int(os.environ.get(
                 "UNIVERSE_AGENT_VERIFY_TIMEOUT", DEFAULT_VERIFY_TIMEOUT)),
             branch_prefix=os.environ.get("UNIVERSE_AGENT_BRANCH_PREFIX", "agent/"),
+            queue_label=os.environ.get("UNIVERSE_AGENT_QUEUE_LABEL", "agent:ready"),
             auto_ready_proposals=os.environ.get(
                 "UNIVERSE_AGENT_AUTO_READY_PROPOSALS", "0") == "1",
             keep_worktree=os.environ.get("UNIVERSE_AGENT_KEEP_WORKTREE", "0") == "1",
@@ -584,14 +587,14 @@ class Runner:
                 except ValueError as exc:
                     raise TaskError("Issue 一覧の JSON を解釈できません: %s" % exc)
                 ready = [item for item in issues
-                         if "agent:ready" in self._issue_label_names(item)]
+                         if self.cfg.queue_label in self._issue_label_names(item)]
                 ready.sort(key=lambda item: item.get("number", 0))
                 target = ready[0] if ready else None
             if target:
                 self.log("dry-run: Issue #%s「%s」を実装します" %
                          (target.get("number"), target.get("title")))
             else:
-                self.log("dry-run: agent:ready の Issue はありません")
+                self.log("dry-run: %s の Issue はありません" % self.cfg.queue_label)
             return 0
 
         self.ensure_labels()
@@ -603,16 +606,29 @@ class Runner:
                 self.log("Issue #%s は open ではありません" % issue_number)
                 return 1
         else:
-            ready = self.list_issues("agent:ready")
+            ready = self.list_issues(self.cfg.queue_label)
             if not ready:
                 if verbose:
-                    self.log("agent:ready の Issue はありません")
+                    self.log("%s の Issue はありません" % self.cfg.queue_label)
                 return 0
             issue = ready[0]
 
         number = int(issue["number"])
         title = (issue.get("title") or "").strip() or ("issue-%s" % number)
         return self.process(issue, title, verbose=verbose)
+
+    def _queue_start_remove(self) -> List[str]:
+        labels = [self.cfg.queue_label]
+        if self.cfg.queue_label != "agent:ready":
+            labels.append("agent:ready")
+        return labels
+
+    def _queue_done_remove(self, include_failed: bool = True) -> List[str]:
+        labels = ["agent:running"]
+        if include_failed:
+            labels.append("agent:failed")
+        labels.extend(self._queue_start_remove())
+        return labels
 
     def process(self, issue: dict, title: str, verbose: bool = False) -> int:
         cfg = self.cfg
@@ -632,11 +648,12 @@ class Runner:
             if existing_state in ("OPEN", "MERGED"):
                 self.log("Issue #%s: 既存 PR %s があるためスキップ" % (number, existing.get("url")))
                 self.edit_labels(number, add=["agent:done"],
-                                 remove=["agent:running", "agent:ready", "agent:failed"])
+                                 remove=self._queue_done_remove())
                 self.comment(number, "既存の PR があるためスキップしました: %s" % existing.get("url"))
                 return 0
 
-            if not self.edit_labels(number, add=["agent:running"], remove=["agent:ready"]):
+            if not self.edit_labels(number, add=["agent:running"],
+                                    remove=self._queue_start_remove()):
                 raise TaskError("agent:running ラベルを付けられませんでした")
             self._mark_started(number, branch)
             self.comment(number, "無人エージェントが着手しました。\n対象: `%s` (%s)" %
@@ -701,7 +718,7 @@ class Runner:
                 raise TaskError("pause されたため PR 作成前に中断しました")
             url = self.create_pr(number, title, branch, issue_log)
             if not self.edit_labels(number, add=["agent:done"],
-                                    remove=["agent:running", "agent:ready", "agent:failed"]):
+                                    remove=self._queue_done_remove()):
                 self.log("Issue #%s: agent:done の付与に失敗しました" % number)
             self.comment(
                 number,
@@ -734,7 +751,7 @@ class Runner:
         self._append_log(issue_log, "\nFAILED: " + reason + "\n")
         self._clear_started(number)
         self.edit_labels(number, add=["agent:failed"],
-                         remove=["agent:running", "agent:ready"])
+                         remove=self._queue_done_remove(include_failed=False))
         self.comment(
             number,
             "実行に失敗しました。\n\n```\n%s\n```\n\nログ: `%s`" %
@@ -1486,6 +1503,7 @@ class Runner:
         print("model:   %s / agent: %s / planner: %s" %
               (self.cfg.model, self.cfg.agent, self.cfg.planner_agent))
         print("planner model: %s" % (self.cfg.planner_model or self.cfg.model))
+        print("queue label: %s" % self.cfg.queue_label)
         last_planner = "-"
         try:
             for line in self.history_path().read_text(encoding="utf-8").splitlines():
