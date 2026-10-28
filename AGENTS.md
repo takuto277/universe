@@ -15,6 +15,7 @@ python3 tools/check_skills.py # スキルの契約検査
 python3 tools/pr_merge.py --pr <n>  # 五点ゲート + squash merge
 ./tools/agent.sh enqueue "タイトル" --body "依頼内容"  # 無人実装キューに追加
 ./tools/experiment.sh <Issue番号>             # 実験ブランチで実装しプレビューへ
+python3 tools/playtest/playtest.py --help     # 実ブラウザ自動プレイ
 ./tools/agent.sh              # 引数なしで使い方を表示
 ./tools/agent.sh fix --pr <n> # PRのBlockerを自動修正して再レビュー
 ./tools/agent.sh findings --pr <n>  # マージ後レビューのConsiderをIssue化

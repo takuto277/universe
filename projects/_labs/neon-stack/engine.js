@@ -57,6 +57,7 @@
       x: fromLeft ? -FIELD_HALF : FIELD_HALF,
       y: top.y + BLOCK_HEIGHT,
       w: top.w,
+      hue: blockHue(state.blocks.length),
       dir: fromLeft ? 1 : -1
     };
     state.speed = Math.min(MAX_SPEED, BASE_SPEED + state.height * SPEED_RAMP);
