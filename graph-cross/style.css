@@ -1013,6 +1013,62 @@ body {
 @media (prefers-reduced-motion: reduce) {
   .gacha-sigil, .gacha-result-card { animation: none; }
 }
+.ending-screen {
+  background:
+    radial-gradient(ellipse at 50% 20%, rgba(255, 209, 102, 0.16), transparent 58%),
+    linear-gradient(160deg, rgba(9, 17, 30, 0.96), rgba(4, 8, 15, 0.98));
+}
+.ending-kicker {
+  color: var(--gold);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: 3px;
+}
+.ending-title {
+  margin: 0;
+  font-size: clamp(64px, 16vw, 150px);
+  line-height: 0.9;
+  letter-spacing: 5px;
+  background: linear-gradient(100deg, #fff3c9, var(--gold) 45%, var(--pink));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  filter: drop-shadow(0 0 38px rgba(255, 209, 102, 0.25));
+}
+.ending-sub { margin: 0 0 6px; color: var(--muted); font-size: 12px; }
+.rescue-cta {
+  padding: 10px 24px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 209, 102, 0.75);
+  background: linear-gradient(135deg, rgba(255, 209, 102, 0.22), rgba(255, 122, 217, 0.16));
+  color: var(--gold);
+  font-family: inherit;
+  font-size: 14px;
+  font-weight: 900;
+  cursor: pointer;
+  box-shadow: 0 0 24px rgba(255, 209, 102, 0.16);
+}
+.rescue-cta.hidden { display: none; }
+.rescue-screen {
+  background:
+    radial-gradient(ellipse at 50% 15%, rgba(255, 209, 102, 0.12), transparent 60%),
+    rgba(4, 8, 15, 0.95);
+}
+.rescue-kicker { color: var(--gold); font-size: 9px; font-weight: 900; letter-spacing: 2.5px; }
+.rescue-title {
+  margin: 2px 0 0;
+  color: var(--gold);
+  font-size: clamp(30px, 6vw, 56px);
+  letter-spacing: 2px;
+}
+.rescue-sub { margin: 0 0 6px; color: var(--muted); font-size: 11.5px; }
+.rescue-choices {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 9px;
+  width: min(760px, 100%);
+}
+#screen-rescue .hidden { display: none; }
 .end-actions {
 
   display: flex;
@@ -1277,6 +1333,7 @@ body {
   gap: 9px;
   width: min(760px, 100%);
 }
+.upgrade-card.hidden { display: none; }
 .upgrade-card {
   position: relative;
   min-height: 104px;
@@ -1394,6 +1451,7 @@ body {
   .mode-btn em { font-size: 8px; right: 4px; }
   #deck-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   #upgrade-choices { grid-template-columns: 1fr; gap: 6px; }
+  .rescue-choices { grid-template-columns: 1fr; gap: 6px; }
   .upgrade-card { min-height: 0; padding: 9px 10px; }
   .upgrade-card b { font-size: 13px; margin-bottom: 2px; }
   .upgrade-card span { font-size: 10px; }

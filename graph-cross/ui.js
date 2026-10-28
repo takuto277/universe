@@ -301,7 +301,9 @@
           if (els.stageFill) els.stageFill.style.width = '100%';
           if (els.stageNote) els.stageNote.textContent = 'CLEAR!';
         } else if (snap && snap.boss) {
-          els.stageLabel.textContent = 'STAGE ' + stage + ' · BOSS P' + (snap.boss.phase || 1);
+          els.stageLabel.textContent = snap.boss.final
+            ? 'FINAL BOSS P' + (snap.boss.phase || 1)
+            : 'STAGE ' + stage + ' · BOSS P' + (snap.boss.phase || 1);
           if (els.stageFill) els.stageFill.style.width = Math.round(snap.boss.hp / snap.boss.maxHp * 100) + '%';
           if (els.stageNote) els.stageNote.textContent = 'WEAK: ' + (C.FAMILY_LABELS_EN[snap.boss.family] || snap.boss.familyLabel) + ' / HP ' + snap.boss.hp + '/' + snap.boss.maxHp;
         } else {
@@ -811,7 +813,7 @@
     }
 
     function showScreen(name) {
-      var screens = { start: els.screenStart, end: els.screenEnd, clear: els.screenClear, gacha: els.screenGacha, pause: els.screenPause };
+      var screens = { start: els.screenStart, end: els.screenEnd, clear: els.screenClear, gacha: els.screenGacha, pause: els.screenPause, ending: els.screenEnding, rescue: els.screenRescue };
       for (var key in screens) {
         if (Object.prototype.hasOwnProperty.call(screens, key) && screens[key]) {
           screens[key].classList.toggle('visible', key === name);
@@ -945,7 +947,46 @@
       }
     }
 
-    function showEnd(state, canRetry) {
+    function showEnding(state) {
+      tutorialMode = false;
+      hideTutorial();
+      setPauseVisible(false);
+      var snap = E.snapshot(state);
+      recordBest(snap.score);
+      if (els.endingScore) els.endingScore.textContent = String(snap.score);
+      if (els.endingBest) els.endingBest.textContent = String(best);
+      if (els.endingCombo) els.endingCombo.textContent = 'x' + snap.maxCombo;
+      if (els.endingStage) els.endingStage.textContent = String(snap.stage);
+      if (els.endingX) els.endingX.textContent = String(snap.x);
+      showScreen('ending');
+      updateHud(state);
+      updateSlots(state, 'over');
+    }
+
+    function showRescueChoices(state, choices) {
+      if (!els.screenRescue) return;
+      for (var i = 0; i < 3; i++) {
+        var btn = $('rescue-' + i);
+        if (!btn) continue;
+        var key = choices[i];
+        if (!key || !C.MODES[key]) {
+          btn.classList.add('hidden');
+          continue;
+        }
+        var mode = C.MODES[key];
+        btn.classList.remove('hidden');
+        btn.style.setProperty('--mode-color', C.modeColor(key));
+        btn.innerHTML = '<em>' + (i + 1) + '</em>' +
+          modePreviewSvg(key, state ? state.deckParams : selectedParams, state ? state.fusion : selectedFusion) +
+          '<b>' + C.formatModeLabel(key, state ? state.deckParams : selectedParams, state ? state.fusion : selectedFusion) +
+          '</b><span>' + (mode.noteEn || mode.note) + ' / ' +
+          (C.GENRE_LABELS_EN[mode.genre] || '') +
+          (mode.family !== 'none' ? ' / ' + C.FAMILY_LABELS_EN[mode.family] : '') + '</span>';
+      }
+      showScreen('rescue');
+    }
+
+    function showEnd(state, canRetry, canRescue) {
       tutorialMode = false;
       hideTutorial();
       clearSwapHighlight();
@@ -959,6 +1000,7 @@
       if (els.endX) els.endX.textContent = String(snap.x);
       showScreen('end');
       if (els.btnRetry) els.btnRetry.classList.toggle('hidden', !canRetry);
+      if (els.btnRescue) els.btnRescue.classList.toggle('hidden', !canRescue);
       updateHud(state);
       updateSlots(state, 'over');
     }
@@ -1111,9 +1153,20 @@
       els.btnExit = $('btn-exit');
       els.btnPause = $('btn-pause');
       els.screenPause = $('screen-pause');
+      els.screenEnding = $('screen-ending');
+      els.screenRescue = $('screen-rescue');
+      els.btnRescue = $('btn-rescue');
+      els.btnRescueBack = $('btn-rescue-back');
       els.btnResume = $('btn-resume');
       els.btnPauseRetry = $('btn-pause-retry');
       els.btnPauseExit = $('btn-pause-exit');
+      els.endingScore = $('ending-score');
+      els.endingBest = $('ending-best');
+      els.endingCombo = $('ending-combo');
+      els.endingStage = $('ending-stage');
+      els.endingX = $('ending-x');
+      els.btnEndingAgain = $('btn-ending-again');
+      els.btnEndingTitle = $('btn-ending-title');
       els.btnAgain = $('btn-again');
       els.btnRetry = $('btn-retry');
       els.btnDeck = $('btn-deck');
@@ -1262,6 +1315,16 @@
       if (els.btnResume) els.btnResume.addEventListener('click', function () { if (typeof actions.onResume === 'function') actions.onResume(); });
       if (els.btnPauseRetry) els.btnPauseRetry.addEventListener('click', function () { if (typeof actions.onPauseRetry === 'function') actions.onPauseRetry(); });
       if (els.btnPauseExit) els.btnPauseExit.addEventListener('click', function () { if (typeof actions.onPauseExit === 'function') actions.onPauseExit(); });
+      if (els.btnEndingAgain) els.btnEndingAgain.addEventListener('click', function () { if (typeof actions.onEndingAgain === 'function') actions.onEndingAgain(); });
+      if (els.btnEndingTitle) els.btnEndingTitle.addEventListener('click', function () { if (typeof actions.onEndingTitle === 'function') actions.onEndingTitle(); });
+      if (els.btnRescue) els.btnRescue.addEventListener('click', function () { if (typeof actions.onRescue === 'function') actions.onRescue(); });
+      if (els.btnRescueBack) els.btnRescueBack.addEventListener('click', function () { if (typeof actions.onRescueBack === 'function') actions.onRescueBack(); });
+      for (i = 0; i < 3; i++) {
+        (function (index) {
+          var btn = $('rescue-' + index);
+          if (btn) btn.addEventListener('click', function () { if (typeof actions.onRescuePick === 'function') actions.onRescuePick(index); });
+        })(i);
+      }
       if (els.btnRetry) els.btnRetry.addEventListener('click', function () { if (typeof actions.onRetry === 'function') actions.onRetry(); });
       if (els.btnBuild) els.btnBuild.addEventListener('click', toggleDeckBuilder);
       if (els.btnAgain) els.btnAgain.addEventListener('click', function () { if (typeof actions.onStart === 'function') actions.onStart(); });
@@ -1310,12 +1373,14 @@
       setRuntime: setRuntime,
       setPauseVisible: setPauseVisible,
       showPause: showPause,
+      showEnding: showEnding,
       updateHud: updateHud,
       updateSlots: updateSlots,
       updateUpgradeCards: updateUpgradeCards,
       showStart: showStart,
       hideScreens: hideScreens,
       showEnd: showEnd,
+      showRescueChoices: showRescueChoices,
       showClear: showClear,
       showFunctionChoices: showFunctionChoices,
       showDeckSwapChoices: showDeckSwapChoices,

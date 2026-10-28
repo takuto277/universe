@@ -314,6 +314,8 @@
     state.events = [];
     state.over = false;
     state.deathCause = null;
+    state.runComplete = false;
+    state.rescueUsed = false;
     state.reviveUsed = false;
     state.spawnTimer = 0.9;
     state.hits = 0;
@@ -549,7 +551,9 @@
     var familyIndex = (state.stage - 1) % BOSS_FAMILIES.length;
     var family = BOSS_FAMILIES[familyIndex];
     var centerY = (state.top + state.bottom) / 2;
+    var finalBoss = state.stage >= B.FINAL_STAGE;
     var hp = Math.max(B.BOSS_MIN_HP, B.BOSS_BASE_HP + state.stage * B.BOSS_HP_PER_STAGE - (state.bossHpReduction || 0));
+    if (finalBoss) hp = Math.round(hp * B.FINAL_BOSS_HP_MULT);
     var boss = {
       x: state.width + 80,
       len: 500 + state.stage * 30,
@@ -568,8 +572,9 @@
       invuln: 0,
       flash: 0,
       hits: 0,
+      final: finalBoss,
       phase: 1,
-      attackTimer: B.BOSS_ATTACK_FIRST,
+      attackTimer: finalBoss ? 1.5 : B.BOSS_ATTACK_FIRST,
       attackIndex: 0,
       warning: null,
       beamTimer: 0,
@@ -587,12 +592,41 @@
       stage: state.stage,
       family: family,
       familyLabel: FAMILY_LABELS[family],
-      hp: hp
+      hp: hp,
+      final: finalBoss
     });
     return boss;
   }
 
+  function completeRun(state, boss, hitX, hitY) {
+    var bonus = Math.round(B.STAGE_CLEAR_SCORE * state.stage * 2 * (state.scoreMult || 1));
+    state.runComplete = true;
+    state.stageClearBonus = bonus;
+    state.score += bonus;
+    state.boss = null;
+    state.bossShots = [];
+    state.rivals = [];
+    state.combo = 0;
+    state.comboTimer = 0;
+    state.multi = 0;
+    state.multiTimer = 0;
+    state.playerInvuln = 0;
+    pushEvent(state, {
+      type: 'runComplete',
+      x: hitX,
+      y: hitY,
+      stage: state.stage,
+      bonus: bonus,
+      score: state.score,
+      weakness: boss ? boss.family : null
+    });
+  }
+
   function clearStage(state, boss, hitX, hitY) {
+    if (boss && boss.final) {
+      completeRun(state, boss, hitX, hitY);
+      return;
+    }
     var bonus = Math.round(B.STAGE_CLEAR_SCORE * state.stage * (state.scoreMult || 1));
     state.stageCleared = true;
     state.stageClearBonus = bonus;
@@ -626,10 +660,10 @@
     return 3;
   }
 
-  function bossCooldownFor(phase) {
-    if (phase >= 3) return B.BOSS_COOLDOWN_P3;
-    if (phase === 2) return B.BOSS_COOLDOWN_P2;
-    return B.BOSS_COOLDOWN_P1;
+  function bossCooldownFor(boss) {
+    var phase = boss && boss.phase ? boss.phase : 1;
+    var base = phase >= 3 ? B.BOSS_COOLDOWN_P3 : (phase === 2 ? B.BOSS_COOLDOWN_P2 : B.BOSS_COOLDOWN_P1);
+    return boss && boss.final ? base * B.FINAL_BOSS_COOLDOWN_MULT : base;
   }
 
   function damagePlayer(state, x, y, cause) {
@@ -702,7 +736,7 @@
       }
       pushEvent(state, { type: 'bossShots', kind: warning.kind, x: boss.x, y: boss.baseY, count: offsets.length });
     }
-    boss.attackTimer = bossCooldownFor(boss.phase || 1);
+    boss.attackTimer = bossCooldownFor(boss);
   }
 
   function updateBossShots(state, dt) {
@@ -838,7 +872,7 @@
   }
 
   function nextStage(state) {
-    if (!state || !state.stageCleared) return false;
+    if (!state || !state.stageCleared || state.runComplete) return false;
     resetStageState(state, state.stage + 1);
     state.spawnTimer = 1.0;
     state.hp = Math.min(state.maxHp, state.hp + 1);
@@ -1274,7 +1308,7 @@
   }
 
   function update(state, dt) {
-    if (!state || state.over || state.stageCleared) return state;
+    if (!state || state.over || state.stageCleared || state.runComplete) return state;
     dt = clamp(Number(dt) || 0, 0, MAX_DT);
     state.time += dt;
     state.playerInvuln = Math.max(0, (state.playerInvuln || 0) - dt);
@@ -1619,6 +1653,7 @@
       maxCombo: state.maxCombo,
       hits: state.hits,
       misses: state.misses,
+      rescueUsed: !!state.rescueUsed,
       reviveUsed: !!state.reviveUsed,
       time: state.time,
       worldX: state.worldX
@@ -1654,6 +1689,7 @@
     g.maxCombo = checkpoint.maxCombo || 0;
     g.hits = checkpoint.hits || 0;
     g.misses = checkpoint.misses || 0;
+    g.rescueUsed = !!checkpoint.rescueUsed;
     g.reviveUsed = !!checkpoint.reviveUsed;
     g.time = checkpoint.time || 0;
     g.worldX = checkpoint.worldX || 0;
@@ -1701,6 +1737,7 @@
       stageTarget: state.stageTarget,
       stageCleared: state.stageCleared,
       stageClearBonus: state.stageClearBonus,
+      runComplete: !!state.runComplete,
       multi: state.multi,
       multiTimer: state.multiTimer,
       allies: state.allies.length,
@@ -1726,6 +1763,7 @@
         hp: state.boss.hp,
         maxHp: state.boss.maxHp,
         phase: state.boss.phase || 1,
+        final: !!state.boss.final,
         family: state.boss.family,
         familyLabel: FAMILY_LABELS[state.boss.family],
         x: Math.round(state.boss.x)

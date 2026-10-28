@@ -433,6 +433,38 @@ E.update(g, 1 / 60);
 assert(g.boss.hp <= 13 && g.boss.phase >= 2, 'HPが減るとフェーズが上がる');
 assert(E.consumeEvents(g).some(function (e) { return e.type === 'bossPhase'; }), 'bossPhaseイベント');
 
+/* 9b3) 最終ボスとエンディング */
+g = makeGame(9013, ['hold', 'up', 'wave']);
+g.stage = 10;
+g.stageHits = g.stageTarget;
+g.bossCooldown = 0;
+g.rivals = [];
+E.update(g, 1 / 60);
+assert(g.boss && g.boss.final === true, 'STAGE 10は最終ボス');
+var finalMaxHp = g.boss.maxHp;
+g.boss.x = g.headX - 5;
+g.boss.len = 100;
+g.boss.shape = 'line';
+g.boss.amp = 0;
+g.boss.slope = 0;
+g.boss.waves = 1;
+g.boss.baseY = g.y;
+g.boss.centerY = g.y;
+g.boss.family = 'linear';
+g.boss.hp = 1;
+g.boss.maxHp = finalMaxHp;
+g.boss.invuln = 0;
+g.boss.attackTimer = 999;
+g.trail = [
+  { x: g.headX - 5, y: g.y, mode: 'up' },
+  { x: g.headX, y: g.y, mode: 'up' }
+];
+E.update(g, 1 / 60);
+assert(g.runComplete && g.boss === null, '最終ボス撃破でラン完了');
+assert(!g.stageCleared, '最終ボスでは通常のステージクリアにしない');
+assert(E.consumeEvents(g).some(function (e) { return e.type === 'runComplete'; }), 'runCompleteイベント');
+assert(E.nextStage(g) === false, 'ラン完了後は次ステージへ進めない');
+
 /* 9c) ボスを逃がすとライフが減り、再出現待ちになる */
 g = makeGame(901, ['hold', 'up', 'wave']);
 g.stageHits = g.stageTarget;
@@ -861,6 +893,7 @@ g.comboWindow = 3.4;
 g.scoreMult = 1.2;
 g.bossHpReduction = 3;
 g.upgrades = { life: 2 };
+g.rescueUsed = true;
 g.reviveUsed = true;
 g.maxCombo = 9;
 g.time = 42;
@@ -879,6 +912,7 @@ assert(restored.score === 1234 && restored.hp === 2 && restored.maxHp === 4, '�
 assert(restored.hitBonus === 2 && restored.comboWindow === 3.4 && restored.scoreMult === 1.2, '強化値を復元');
 assert(restored.bossHpReduction === 3 && restored.upgrades.life === 2, 'ボス弱体化と強化履歴を復元');
 assert(restored.reviveUsed === true, 'リバイブ使用済みも復元');
+assert(restored.rescueUsed === true, '救済使用済みも復元');
 assert(restored.time === 42 && restored.worldX === 5000, '難易度とx位置を復元');
 assert(restored.combo === 0 && restored.multi === 0 && restored.boss === null, 'ステージ内の状態をリセット');
 assert(!restored.over && !restored.stageCleared, '再開可能な状態');
