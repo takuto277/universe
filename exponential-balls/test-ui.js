@@ -31,6 +31,17 @@ function pointer(id, x, y) {
   var event = { clientX: x, clientY: y, preventDefault: function () { } };
   for (var i = 0; i < list.length; i++) list[i](event);
 }
+function pointerMove(id, x, y) {
+  var el = document.getElementById(id);
+  var list = el.listeners.pointermove || [];
+  var event = { clientX: x, clientY: y, preventDefault: function () { } };
+  for (var i = 0; i < list.length; i++) list[i](event);
+}
+function pointerUp(id) {
+  var el = document.getElementById(id);
+  var list = el.listeners.pointerup || [];
+  for (var i = 0; i < list.length; i++) list[i]({});
+}
 function hasClass(id, name) {
   return document.getElementById(id).classList.contains(name);
 }
@@ -139,11 +150,16 @@ assert(text('mode-name') === 'RACE 3D', 'HUDのモードがRACE 3Dでない');
 assert(text('count-label') === 'ALIVE', 'RACE 3DのカウントラベルがALIVEでない');
 assert(text('count') === '20', 'RACE 3Dの初期球数が20でない: ' + text('count'));
 assert(text('cycle') === 'TIME 0.0', 'RACE 3DのTIME表示が不正');
-assert(text('hint') === 'NO TAP · 3D LAST BALL', 'RACE 3Dのヒントが不正');
+assert(text('hint') === 'DRAG TO ORBIT · UP/DOWN TO TILT', 'RACE 3Dのヒントが不正');
 
 var race3dBefore = JSON.stringify(game.getState().race3d.balls);
+var camBefore = renderer.camera();
 pointer('canvas', 450, 160);
-assert(JSON.stringify(game.getState().race3d.balls) === race3dBefore, 'RACE 3Dでタップ介入できてしまう');
+pointerMove('canvas', 485, 205);
+var camAfter = renderer.camera();
+assert(camAfter.yaw !== camBefore.yaw || camAfter.elev !== camBefore.elev, 'RACE 3Dでドラッグしてもカメラが動かない');
+pointerUp('canvas');
+assert(JSON.stringify(game.getState().race3d.balls) === race3dBefore, 'RACE 3Dでドラッグ介入できてしまう');
 
 game.updateRace3D(0.5, 1 / 60);
 ui.update(game.getState());

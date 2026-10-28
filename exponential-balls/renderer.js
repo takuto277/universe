@@ -11,6 +11,9 @@
     var waves = [];
     var raceTrails = {};
     var particles = [];
+    var camYaw = 0.55;
+    var camElev = 0.5;
+    var camFocusZ = null;
     var flash = 0;
     var beatPulse = 0;
     var radius = 30;
@@ -111,6 +114,9 @@
       waves = [];
       raceTrails = {};
       particles = [];
+      camYaw = 0.55;
+      camElev = 0.5;
+      camFocusZ = null;
       flash = 0;
       beatPulse = 0;
     }
@@ -165,12 +171,19 @@
         }
       }
       if (state && state.mode === 'race3d' && state.race3d) {
+        var lowest = Infinity;
         for (var rb3 = 0; rb3 < state.race3d.balls.length; rb3++) {
           var ball3 = state.race3d.balls[rb3];
+          if (ball3.z < lowest) lowest = ball3.z;
           var trail3 = raceTrails[ball3.id] || (raceTrails[ball3.id] = { hue: ball3.hue, points: [] });
           trail3.hue = ball3.hue;
           trail3.points.push({ x: ball3.x, y: ball3.y, z: ball3.z, life: 1 });
           if (trail3.points.length > 9) trail3.points.shift();
+        }
+        if (lowest < Infinity) {
+          var focusTarget = Math.max(260, Math.min(state.race3d.bounds.zMax - 260, lowest + 220));
+          if (camFocusZ == null) camFocusZ = focusTarget;
+          else camFocusZ += (focusTarget - camFocusZ) * Math.min(1, dt * 2.6);
         }
       }
       for (var key in raceTrails) {
@@ -314,6 +327,15 @@
       drawWaves(hue);
     }
 
+
+    function orbit(dx, dy) {
+      camYaw -= dx * 0.006;
+      camElev = Math.max(0.06, Math.min(1.4, camElev + dy * 0.004));
+    }
+
+    function cameraState() {
+      return { yaw: camYaw, elev: camElev, focusZ: camFocusZ };
+    }
 
     function spawnBurst(x, y, hue, count, power) {
       for (var i = 0; i < count; i++) {
@@ -578,13 +600,16 @@
       var race = state.race3d;
       var hue = state.root ? state.root.hue : 188;
       var focal = 620;
-      var yaw = 0.55 + Math.sin(t * 0.16) * 0.18;
+      var focusZ = camFocusZ == null ? race.bounds.zMax * 0.8 : camFocusZ;
+      var radius = 700;
+      var elev = camElev;
+      var horizontal = Math.cos(elev) * radius;
       var cam = {
-        x: Math.sin(yaw) * 620,
-        y: -Math.cos(yaw) * 620,
-        z: 560
+        x: Math.sin(camYaw) * horizontal,
+        y: -Math.cos(camYaw) * horizontal,
+        z: focusZ + Math.sin(elev) * radius
       };
-      var target = { x: 0, y: 0, z: 350 };
+      var target = { x: 0, y: 0, z: focusZ };
       var fx = target.x - cam.x;
       var fy = target.y - cam.y;
       var fz = target.z - cam.z;
@@ -643,6 +668,9 @@
           spawnBurst(ep.x, ep.y, evt.hue, 7, 180);
           flash = Math.max(flash, 0.18);
           waves.push({ x: ep.x, y: ep.y, r: 5, speed: 260, life: 1, hue: evt.hue, width: 2.5 });
+        } else if (evt.type === 'plate') {
+          spawnBurst(ep.x, ep.y, 48, 7, 140);
+          waves.push({ x: ep.x, y: ep.y, r: 8, speed: 220, life: 1, hue: 48, width: 2 });
         } else if (evt.type === 'eliminate') {
           spawnBurst(ep.x, ep.y, evt.hue, 10, 150);
           flash = Math.max(flash, 0.24);
@@ -783,6 +811,56 @@
         }
       }
 
+      for (var sl = 0; sl < race.slows.length; sl++) {
+        var slow = race.slows[sl];
+        var sp = project(slow);
+        if (!sp) continue;
+        ctx.fillStyle = 'hsla(' + ((hue + 210) % 360) + ', 85%, 66%, 0.05)';
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, slow.r * sp.scale, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'hsla(' + ((hue + 210) % 360) + ', 85%, 72%, 0.16)';
+        ctx.lineWidth = 1;
+        for (var sw = 0; sw < 3; sw++) {
+          ctx.beginPath();
+          ctx.arc(sp.x, sp.y, slow.r * sp.scale * (0.35 + sw * 0.3) + Math.sin(t * 1.7 + sw) * 2, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      for (var pl = 0; pl < race.plates.length; pl++) {
+        var plate = race.plates[pl];
+        var pp = project({ x: plate.x, y: plate.y, z: plate.z });
+        if (!pp) continue;
+        var pr = plate.r * pp.scale;
+        ctx.fillStyle = 'hsla(48, 92%, 68%, 0.12)';
+        ctx.beginPath();
+        ctx.ellipse(pp.x, pp.y, pr, pr * 0.42, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'hsla(48, 95%, 74%, 0.45)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.ellipse(pp.x, pp.y, pr, pr * 0.42, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      for (var fn = 0; fn < race.fans.length; fn++) {
+        var fan = race.fans[fn];
+        var fp = project(fan);
+        if (!fp) continue;
+        ctx.strokeStyle = 'hsla(' + ((hue + 30) % 360) + ', 95%, 72%, 0.28)';
+        ctx.lineWidth = 1.5;
+        ctx.beginPath();
+        ctx.arc(fp.x, fp.y, fan.r * fp.scale, 0, Math.PI * 2);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.moveTo(fp.x, fp.y - 10);
+        ctx.lineTo(fp.x - 5, fp.y - 2);
+        ctx.moveTo(fp.x, fp.y - 10);
+        ctx.lineTo(fp.x + 5, fp.y - 2);
+        ctx.stroke();
+      }
+
       for (var key in raceTrails) {
         var trail = raceTrails[key];
         for (var pt = 0; pt < trail.points.length; pt++) {
@@ -857,6 +935,8 @@
       drawFrame: drawFrame,
       drawRace: drawRace,
       drawRace3D: drawRace3D,
+      orbit: orbit,
+      camera: cameraState,
       tap: tap,
       clear: clear,
       state: function () { return balls; }

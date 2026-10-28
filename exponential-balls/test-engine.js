@@ -174,6 +174,8 @@ assert(s.race.result.eliminated === 19 && s.race.result.alive === 1, '結果の�
 
 /* RACE 3D: 20球・3Dギミック・ノータップ・最後の1球 */
 assert(E.RACE3D && E.RACE3D.total === 20, 'RACE3Dの球数が20でない');
+assert(E.RACE3D.bounds.zMax >= 2400, 'RACE3Dの縦が3倍になっていない: ' + E.RACE3D.bounds.zMax);
+assert(E.RACE3D.plates.length >= 6 && E.RACE3D.slows.length >= 4 && E.RACE3D.fans.length >= 4, 'RACE3Dの減速ギミックが足りない');
 assert(E.RACE3D.pegs.length > 0 && E.RACE3D.bumpers.length > 0 && E.RACE3D.spinners.length > 0, 'RACE3Dのギミックがない');
 assert(E.RACE3D.portals.length >= 2 && E.RACE3D.wells.length >= 1 && E.RACE3D.boosters.length >= 1, 'RACE3Dのポータル/ウェル/ブースターがない');
 
@@ -184,6 +186,7 @@ s = game.getState();
 assert(s.race3d && s.race3d.alive === 20 && s.race3d.total === 20, 'RACE3Dの初期球数が不正');
 assert(s.race3d.balls.length === 20 && s.race3d.balls[0].z > 0, 'RACE3Dの3Dボールが不正');
 assert(s.race3d.bounds && s.race3d.pegs && s.race3d.wells && s.race3d.boosters, 'RACE3Dの3Dコース情報がない');
+assert(s.race3d.plates && s.race3d.slows && s.race3d.fans, 'RACE3Dの減速ギミック情報がない');
 assert(game.tap(0, 0) === false, 'RACE3Dでタップ介入できてしまう');
 
 var guard3 = 0;
