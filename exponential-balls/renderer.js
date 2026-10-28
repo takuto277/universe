@@ -11,7 +11,6 @@
     var waves = [];
     var raceTrails = {};
     var particles = [];
-    var shake = 0;
     var flash = 0;
     var beatPulse = 0;
     var radius = 30;
@@ -112,7 +111,6 @@
       waves = [];
       raceTrails = {};
       particles = [];
-      shake = 0;
       flash = 0;
       beatPulse = 0;
     }
@@ -338,21 +336,17 @@
         var ex = X(evt.x);
         var ey = Y(evt.y);
         if (evt.type === 'bumper') {
-          shake = Math.min(12, shake + 2.5);
           flash = Math.max(flash, 0.16);
           spawnBurst(ex, ey, evt.hue, 5, 120);
           waves.push({ x: ex, y: ey, r: 4, speed: 220, life: 1, hue: evt.hue, width: 2 });
         } else if (evt.type === 'spinner') {
-          shake = Math.min(12, shake + 1.8);
           spawnBurst(ex, ey, evt.hue, 3, 90);
           waves.push({ x: ex, y: ey, r: 3, speed: 180, life: 1, hue: evt.hue, width: 1.5 });
         } else if (evt.type === 'boost') {
-          shake = Math.min(14, shake + 3);
           flash = Math.max(flash, 0.2);
           spawnBurst(ex, ey, evt.hue, 7, 180);
           waves.push({ x: ex, y: ey, r: 5, speed: 260, life: 1, hue: evt.hue, width: 2.5 });
         } else if (evt.type === 'eliminate') {
-          shake = Math.min(16, shake + 4);
           flash = Math.max(flash, 0.28);
           spawnBurst(ex, ey, evt.hue, 10, 150);
           waves.push({ x: ex, y: ey, r: 4, speed: 180, life: 1, hue: evt.hue, width: 2 });
@@ -360,17 +354,11 @@
           spawnBurst(ex, ey, evt.hue, 4, 120);
           waves.push({ x: ex, y: ey, r: 6, speed: 240, life: 1, hue: evt.hue, width: 2 });
         } else if (evt.type === 'winner') {
-          shake = Math.min(24, shake + 10);
           flash = 0.7;
           spawnBurst(ex, ey, evt.hue, 26, 230);
           waves.push({ x: ex, y: ey, r: 24, speed: 400, life: 1, hue: evt.hue, width: 4 });
         }
       }
-
-      ctx.save();
-      var shakeX = (Math.random() * 2 - 1) * shake;
-      var shakeY = (Math.random() * 2 - 1) * shake;
-      ctx.translate(shakeX, shakeY);
 
       ctx.globalCompositeOperation = 'source-over';
       var left = X(race.arena.left);
@@ -574,7 +562,6 @@
       }
 
       drawWaves(hue);
-      ctx.restore();
     }
 
     resize();
