@@ -347,9 +347,9 @@ h1, p { margin: 0; }
 
 .result-content h1 {
   margin-top: 4px;
-  font-size: clamp(38px, 11vw, 52px);
-  line-height: 1;
-  letter-spacing: 0.06em;
+  font-size: clamp(32px, 9vw, 44px);
+  line-height: 1.05;
+  letter-spacing: 0.05em;
   color: var(--text);
   text-shadow: 0 0 28px rgba(244, 201, 107, 0.2);
 }
@@ -378,10 +378,28 @@ h1, p { margin: 0; }
 .result-time strong {
   display: block;
   margin-top: 4px;
-  font-size: 26px;
+  font-size: 22px;
   line-height: 1.1;
   color: var(--gold);
   font-variant-numeric: tabular-nums;
+}
+
+.result-time strong span {
+  display: inline;
+  font-size: inherit;
+  letter-spacing: normal;
+  color: inherit;
+}
+
+.result-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  border-radius: 50%;
+  vertical-align: middle;
+  background: var(--teal);
+  box-shadow: 0 0 10px rgba(111, 214, 195, 0.6);
 }
 
 @keyframes count-bump {

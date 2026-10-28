@@ -43,7 +43,7 @@
       <div class="start-content">
         <p class="eyebrow">EXPONENTIAL BLOOM</p>
         <h1>BLOOM</h1>
-        <p class="lead">Double, catch, or race. Pick a mode to start.</p>
+        <p class="lead">Double, catch, or survive. Pick a mode to start.</p>
 
         <p class="mode-prompt">SELECT MODE</p>
         <div class="mode-grid" role="group" aria-label="Game mode">
@@ -59,8 +59,8 @@
           </button>
           <button id="mode-race" class="mode-card" type="button" aria-pressed="false">
             <span class="mode-head"><span class="mode-tag">RACE</span><span id="mode-race-state" class="mode-play">SELECT</span></span>
-            <span class="mode-title">GHOST RUN</span>
-            <span class="mode-desc">Race a ghost down three gates. Tap behind to surge, ahead to brake, and to the sides to steer.</span>
+            <span class="mode-title">LAST BALL</span>
+            <span class="mode-desc">20 colored balls. No tap. Pegs, spinners, portals and the void eliminate them until one is left.</span>
           </button>
         </div>
 
@@ -80,22 +80,22 @@
         </svg>
 
         <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
-        <p class="tiny">120 BPM · AUTO/FRAME 24 s cycle · RACE 60 s. Sound on.</p>
+        <p class="tiny">120 BPM · AUTO/FRAME 24 s cycle · RACE last ball. Sound on.</p>
       </div>
     </div>
 
     <div id="result-overlay" class="overlay result-overlay">
       <div class="result-content">
         <p class="eyebrow">BLOOM RUSH</p>
-        <h1 id="result-title">FINISH</h1>
-        <p id="result-sub" class="lead">You beat the ghost.</p>
+        <h1 id="result-title">BALL 7 WINS</h1>
+        <p id="result-sub" class="lead">Last ball standing.</p>
         <div class="result-times">
-          <div class="result-time"><span>YOU</span><strong id="result-time">0.0s</strong></div>
-          <div class="result-time"><span>GHOST</span><strong id="result-ghost">0.0s</strong></div>
+          <div class="result-time"><span>WINNER</span><strong><i id="result-dot" class="result-dot"></i><span id="result-winner">BALL 7</span></strong></div>
+          <div class="result-time"><span>TIME</span><strong id="result-time">0.0s</strong></div>
         </div>
         <button id="btn-race-again" class="primary big" type="button">RACE AGAIN</button>
         <button id="btn-result-home" class="link-btn" type="button">HOME</button>
-        <p class="tiny">60 s limit / 3 gates</p>
+        <p class="tiny">20 balls / last one standing</p>
       </div>
     </div>
   </div>
