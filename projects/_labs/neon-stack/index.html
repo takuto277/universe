@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#070312" />
+  <title>ネオンスタック - 1ボタン積み上げ</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="stat"><span>SCORE</span><b id="score">0</b></div>
+      <div class="stat"><span>HEIGHT</span><b id="height">0</b></div>
+      <div class="stat"><span>MAX COMBO</span><b id="combo">0</b></div>
+      <div class="stat"><span>PERFECT</span><b id="perfect">0</b></div>
+      <div class="stat"><span>BEST</span><b id="best">0</b></div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="480" height="640"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <p class="eyebrow">NEON STACK</p>
+          <h1>ネオンスタック</h1>
+          <p class="subtitle">1ボタンで積み上げるネオンアーケード</p>
+          <ul class="rules">
+            <li>左右に往復するブロックを <b>クリック / タップ / Space</b> で落とす</li>
+            <li>下のブロックと重なった幅だけが残る。完全に外れたら終了</li>
+            <li>中心付近で落とすと <b>PERFECT</b>。幅をキープしてコンボとボーナス</li>
+            <li>高くなるほど速くなる。カメラが塔を追いかける</li>
+            <li>ベストスコアはブラウザに保存される。まずは高さ10を目指せ!</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">はじめる</button>
+          <p class="tiny">クリック / タップ / Space で開始・落下</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <h2 class="end-title">GAME OVER</h2>
+          <div class="end-score"><span>SCORE</span><b id="end-score">0</b></div>
+          <div class="end-stats">
+            <div><span>BEST</span><b id="end-best">0</b></div>
+            <div><span>HEIGHT</span><b id="end-height">0</b></div>
+            <div><span>MAX COMBO</span><b id="end-combo">0</b></div>
+            <div><span>PERFECT</span><b id="end-perfect">0</b></div>
+          </div>
+          <button id="btn-again" class="primary" type="button">もう一度あそぶ</button>
+          <p class="tiny">Space / タップでもう一度</p>
+        </section>
+      </div>
+    </main>
+
+    <footer id="tip">クリック / タップ / Space で落とす &nbsp;·&nbsp; 中心を狙って PERFECT を重ねよう</footer>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+</body>
+</html>

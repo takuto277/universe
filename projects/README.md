@@ -18,6 +18,7 @@
 | --- | --- | --- |
 | `baseball-game` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `gravity-flip` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
+| `neon-stack` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `observer-game` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `unknown-word-deal` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `janken-game` | `_samples/` | 最初の最小実装。教材・検証用として維持する |
