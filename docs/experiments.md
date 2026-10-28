@@ -6,13 +6,9 @@ universe では、思いつきの機能をいきなり `main` へ入れず、**�
 
 1. **提案**: 実験Issueを作る（テンプレートは `experiment:proposed`）
    - planner はゲームの新しい遊びの実験案を `experiment:proposed` で提案できます
-2. **実装**: 人間が `experiment:ready` を付けたら、次を実行
-
-   ```sh
-   ./tools/experiment.sh <Issue番号>
-   ```
-
-   `experiment/issue-<番号>` ブランチでAIが実装し、テスト後にPRを作ります。
+2. **実装**: 人間が `experiment:ready` を付けると、実験ランナーが5分以内に拾います
+   - 手動で始める場合: `./tools/experiment.sh <Issue番号>`
+   - `experiment/issue-<番号>` ブランチでAIが実装し、テスト後にPRを作ります
 3. **プレビュー**: `experiment/**` ブランチのpushでGitHub Actionsが自動デプロイ
    - URL: `https://takuto277.github.io/universe-preview/experiments/<slug>/`
    - PRにURLがコメントされます
@@ -42,6 +38,5 @@ universe では、思いつきの機能をいきなり `main` へ入れず、**�
 
 ## 現在の制限
 
-- 実験の実装は `tools/experiment.sh` の手動起動です（常駐ランナーは今後）
 - 提案の自動化はplannerの通常実行に含まれます
 - 同時実験数の上限や予算制限はまだありません

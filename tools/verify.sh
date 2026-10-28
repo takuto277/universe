@@ -18,6 +18,7 @@ for script in \
   "$ROOT/tools/test-auto-pr-retry.sh" \
   "$ROOT/tools/install-agent-runner.sh" \
   "$ROOT/tools/install-agent-planner.sh" \
+  "$ROOT/tools/install-experiment-runner.sh" \
   "$ROOT/tools/auto-pr.sh" \
   "$ROOT/tools/auto-pr-lib.sh" \
   "$ROOT/tools/install-auto-pr.sh" \
