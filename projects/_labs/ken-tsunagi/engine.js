@@ -11,54 +11,74 @@
 
   if (!DATA || !DATA.prefectures) throw new Error('KEN_DATA is required');
 
-  var TIME_LIMIT = 180;
-  var MISS_PENALTY = 2;
-  var HINT_COUNT = 3;
-  var SNAP_TOLERANCE = 0.06;
-  var TOTAL = DATA.prefectures.length;
-
   var PREFECTURES = DATA.prefectures.slice().sort(function (a, b) { return a.code - b.code; });
   var BY_CODE = {};
   var BY_REGION = {};
+  var NEIGHBORS = {};
   var REGION_ORDER = DATA.regions.map(function (r) { return r.id; });
   var REGION_LABEL = {};
   var REGION_COLOR = {};
+  var TOTAL = PREFECTURES.length;
+  var BRIDGES = { '1-2': true, '28-36': true, '33-37': true, '34-38': true, '35-40': true, '46-47': true };
 
   for (var i = 0; i < PREFECTURES.length; i++) {
     var p = PREFECTURES[i];
     BY_CODE[p.code] = p;
+    NEIGHBORS[p.code] = {};
     if (!BY_REGION[p.region]) BY_REGION[p.region] = [];
     BY_REGION[p.region].push(p.code);
+  }
+  for (i = 0; i < PREFECTURES.length; i++) {
+    p = PREFECTURES[i];
+    for (var n = 0; n < p.neighbors.length; n++) NEIGHBORS[p.code][p.neighbors[n]] = true;
   }
   for (i = 0; i < DATA.regions.length; i++) {
     REGION_LABEL[DATA.regions[i].id] = DATA.regions[i].label;
     REGION_COLOR[DATA.regions[i].id] = DATA.regions[i].color;
   }
 
+  var WORLD = {
+    w: 0.928,
+    h: 1.12,
+    gravity: 3.2,
+    maxFall: 2.6,
+    activeTop: 0.015,
+    dropSpeed: 0.55,
+    mergeGap: 0.021,
+    overflowGrace: 0.5,
+    finishLimit: 60,
+    maxHints: 3,
+    maxShakes: 3
+  };
+
+  var BRIDGE_LIMIT = {};
+  (function () {
+    function mapCircleGap(a, b) {
+      var pa = BY_CODE[a];
+      var pb = BY_CODE[b];
+      var best = Infinity;
+      for (var i = 0; i < pa.circles.length; i++) {
+        var ca = pa.circles[i];
+        for (var j = 0; j < pb.circles.length; j++) {
+          var cb = pb.circles[j];
+          var dx = cb[0] - ca[0];
+          var dy = cb[1] - ca[1];
+          var d = Math.sqrt(dx * dx + dy * dy) - ca[2] - cb[2];
+          if (d < best) best = d;
+        }
+      }
+      return best;
+    }
+    for (var key in BRIDGES) {
+      if (!Object.prototype.hasOwnProperty.call(BRIDGES, key)) continue;
+      var codes = key.split('-');
+      var gap = mapCircleGap(Number(codes[0]), Number(codes[1]));
+      BRIDGE_LIMIT[key] = Math.max(WORLD.mergeGap, gap + WORLD.mergeGap);
+    }
+  })();
+
   function clamp(v, min, max) {
     return v < min ? min : (v > max ? max : v);
-  }
-
-  function createRun() {
-    return {
-      phase: 'run',
-      paused: false,
-      timeLeft: TIME_LIMIT,
-      elapsed: 0,
-      finishTime: 0,
-      score: 0,
-      combo: 0,
-      bestCombo: 0,
-      hints: HINT_COUNT,
-      placed: {},
-      placedCount: 0,
-      selectedCode: null,
-      regionFilter: REGION_ORDER[0],
-      events: [],
-      lastPlaced: null,
-      clearBonus: 0,
-      missCount: 0
-    };
   }
 
   function event(s, type, data) {
@@ -68,197 +88,508 @@
     if (s.events.length > 120) s.events.shift();
   }
 
-  function isPlaced(s, code) {
-    return !!s.placed[code];
+  function codeOrder() {
+    var codes = [];
+    for (var i = 0; i < PREFECTURES.length; i++) codes.push(PREFECTURES[i].code);
+    return codes;
   }
 
-  function regionCodes(region) {
-    return BY_REGION[region] || [];
-  }
-
-  function regionRemaining(s, region) {
-    var codes = regionCodes(region);
-    var out = [];
-    for (var i = 0; i < codes.length; i++) if (!s.placed[codes[i]]) out.push(codes[i]);
-    return out;
-  }
-
-  function regionComplete(s, region) {
-    return regionRemaining(s, region).length === 0;
-  }
-
-  function nextRegion(s, after) {
-    var start = REGION_ORDER.indexOf(after);
-    if (start < 0) start = -1;
-    for (var n = 1; n <= REGION_ORDER.length; n++) {
-      var r = REGION_ORDER[(start + n) % REGION_ORDER.length];
-      if (regionRemaining(s, r).length > 0) return r;
-    }
-    return after;
-  }
-
-  function selectRegion(s, region) {
-    if (!s) return false;
-    if (REGION_ORDER.indexOf(region) < 0) return false;
-    s.regionFilter = region;
-    return true;
-  }
-
-  function selectPiece(s, code) {
-    if (!s || s.phase !== 'run' || s.paused) return false;
-    code = Number(code);
-    if (!BY_CODE[code] || isPlaced(s, code)) return false;
-    s.selectedCode = code;
-    s.regionFilter = BY_CODE[code].region;
-    return true;
-  }
-
-  function tray(s, region) {
-    var r = region || s.regionFilter;
-    var codes = regionRemaining(s, r);
-    var out = [];
-    for (var i = 0; i < codes.length; i++) out.push(BY_CODE[codes[i]]);
-    return out;
-  }
-
-  function target(code) {
-    var p = BY_CODE[Number(code)];
-    if (!p) return null;
-    return { x: p.center[0], y: p.center[1] };
-  }
-
-  function tryPlace(s, code, nx, ny) {
-    if (!s || s.phase !== 'run' || s.paused) return { ok: false, reason: 'inactive' };
-    code = Number(code);
+  function spawnYFor(code) {
     var p = BY_CODE[code];
-    if (!p) return { ok: false, reason: 'unknown' };
-    if (isPlaced(s, code)) return { ok: false, reason: 'placed' };
-
-    var tx = p.center[0];
-    var ty = p.center[1];
-    var dx = Number(nx) - tx;
-    var dy = Number(ny) - ty;
-    var dist = Math.sqrt(dx * dx + dy * dy);
-
-    if (!(nx != null) || !(ny != null) || dist > SNAP_TOLERANCE) {
-      s.timeLeft = Math.max(0, s.timeLeft - MISS_PENALTY);
-      s.combo = 0;
-      s.missCount++;
-      event(s, 'miss', { code: code, label: p.label, target: { x: tx, y: ty }, drop: { x: Number(nx), y: Number(ny) }, distance: dist });
-      if (s.timeLeft <= 0) {
-        s.timeLeft = 0;
-        s.phase = 'over';
-        s.finishTime = s.elapsed;
-        s.selectedCode = null;
-        event(s, 'timeout', {});
-      }
-      return {
-        ok: false,
-        reason: 'target',
-        target: { x: tx, y: ty },
-        distance: dist,
-        timeLeft: s.timeLeft
-      };
+    var minY = Infinity;
+    for (var i = 0; i < p.circles.length; i++) {
+      if (p.circles[i][1] < minY) minY = p.circles[i][1];
     }
+    return WORLD.activeTop - (minY - p.center[1]);
+  }
 
-    s.placed[code] = true;
-    s.placedCount++;
-    s.combo++;
-    if (s.combo > s.bestCombo) s.bestCombo = s.combo;
-    if (s.selectedCode === code) s.selectedCode = null;
-
-    var neighbors = 0;
-    for (var i = 0; i < p.neighbors.length; i++) {
-      if (s.placed[p.neighbors[i]]) neighbors++;
+  function activeRange(code) {
+    var p = BY_CODE[code];
+    var minX = Infinity;
+    var maxX = -Infinity;
+    for (var i = 0; i < p.circles.length; i++) {
+      minX = Math.min(minX, p.circles[i][0] - p.circles[i][2]);
+      maxX = Math.max(maxX, p.circles[i][0] + p.circles[i][2]);
     }
-    var complete = regionComplete(s, p.region);
-    var comboGain = Math.max(0, s.combo - 1) * 20;
-    var neighborGain = neighbors * 40;
-    var regionGain = complete ? 500 : 0;
-    var gain = 100 + comboGain + neighborGain + regionGain;
-    s.score += gain;
-
-    var result = {
-      ok: true,
-      code: code,
-      label: p.label,
-      region: p.region,
-      combo: s.combo,
-      neighbors: neighbors,
-      regionComplete: complete,
-      regionGain: regionGain,
-      gain: gain,
-      score: s.score,
-      target: { x: tx, y: ty }
+    return {
+      min: p.center[0] - minX,
+      max: WORLD.w - (maxX - p.center[0])
     };
-    s.lastPlaced = result;
-    event(s, 'place', result);
+  }
 
-    if (complete) event(s, 'region', { region: p.region, label: REGION_LABEL[p.region], gain: regionGain });
+  function clampActive(s) {
+    if (!s.queue.length) return;
+    var r = activeRange(s.queue[0]);
+    s.activeX = clamp(s.activeX, r.min, r.max);
+  }
 
-    if (regionRemaining(s, s.regionFilter).length === 0) {
-      s.regionFilter = nextRegion(s, s.regionFilter);
+  function createRun() {
+    var s = {
+      phase: 'run',
+      paused: false,
+      queue: codeOrder(),
+      activeCode: null,
+      activeX: WORLD.w / 2,
+      bodies: [],
+      nextId: 1,
+      dropped: 0,
+      allDropped: false,
+      finishTimer: 0,
+      elapsed: 0,
+      finishTime: 0,
+      score: 0,
+      merges: 0,
+      hints: WORLD.maxHints,
+      shakes: WORLD.maxShakes,
+      awarded: {},
+      overflowTimer: 0,
+      reason: null,
+      events: []
+    };
+    s.activeCode = s.queue.length ? s.queue[0] : null;
+    clampActive(s);
+    return s;
+  }
+
+  function bodyMass(codes) {
+    var m = 0;
+    for (var i = 0; i < codes.length; i++) m += 0.35 + BY_CODE[codes[i]].area * 90;
+    return Math.max(0.5, m);
+  }
+
+  function updateBody(body) {
+    var ref = BY_CODE[body.ref];
+    var circles = [];
+    var minX = Infinity;
+    var minY = Infinity;
+    var maxX = -Infinity;
+    var maxY = -Infinity;
+    for (var i = 0; i < body.members.length; i++) {
+      var p = BY_CODE[body.members[i]];
+      for (var j = 0; j < p.circles.length; j++) {
+        var c = p.circles[j];
+        var x = body.x + (c[0] - ref.center[0]);
+        var y = body.y + (c[1] - ref.center[1]);
+        circles.push({ x: x, y: y, r: c[2] });
+        if (x - c[2] < minX) minX = x - c[2];
+        if (x + c[2] > maxX) maxX = x + c[2];
+        if (y - c[2] < minY) minY = y - c[2];
+        if (y + c[2] > maxY) maxY = y + c[2];
+      }
     }
+    body.circles = circles;
+    body.bounds = { minX: minX, minY: minY, maxX: maxX, maxY: maxY };
+    body.mass = bodyMass(body.members);
+  }
 
-    if (s.placedCount >= TOTAL) {
+  function addBody(s, code, x, y, vy) {
+    code = Number(code);
+    if (!BY_CODE[code]) return null;
+    var body = {
+      id: s.nextId++,
+      ref: code,
+      members: [code],
+      x: x,
+      y: y,
+      vx: 0,
+      vy: vy == null ? 0 : vy,
+      age: 0,
+      mass: 1,
+      circles: [],
+      bounds: null
+    };
+    updateBody(body);
+    s.bodies.push(body);
+    return body;
+  }
+
+  function clampBody(body) {
+    updateBody(body);
+    var b = body.bounds;
+    if (b.minX < 0) body.x -= b.minX;
+    if (b.maxX > WORLD.w) body.x -= b.maxX - WORLD.w;
+    if (b.maxY > WORLD.h) body.y -= b.maxY - WORLD.h;
+    updateBody(body);
+  }
+
+  function activeWorld(code, x) {
+    return { x: x, y: spawnYFor(code) };
+  }
+
+  function setActiveX(s, x) {
+    if (!s || !s.queue.length || s.phase !== 'run' || s.paused) return;
+    s.activeX = Number(x) || 0;
+    clampActive(s);
+  }
+
+  function moveActive(s, dx) {
+    if (!s || !s.queue.length || s.phase !== 'run' || s.paused) return;
+    s.activeX += Number(dx) || 0;
+    clampActive(s);
+  }
+
+  function dropActive(s) {
+    if (!s || s.phase !== 'run' || s.paused || !s.queue.length) return null;
+    var code = s.queue.shift();
+    var pos = activeWorld(code, s.activeX);
+    var body = addBody(s, code, pos.x, pos.y, WORLD.dropSpeed);
+    s.dropped++;
+    event(s, 'drop', { code: code, label: BY_CODE[code].label, x: pos.x, y: pos.y });
+    s.activeCode = s.queue.length ? s.queue[0] : null;
+    if (!s.queue.length) {
+      s.allDropped = true;
+      s.finishTimer = WORLD.finishLimit;
+      event(s, 'allDropped', {});
+    } else {
+      clampActive(s);
+    }
+    return body;
+  }
+
+  function adjacent(a, b) {
+    for (var i = 0; i < a.members.length; i++) {
+      for (var j = 0; j < b.members.length; j++) {
+        if (NEIGHBORS[a.members[i]][b.members[j]]) return true;
+      }
+    }
+    return false;
+  }
+
+  function bridgeBetween(a, b) {
+    for (var i = 0; i < a.members.length; i++) {
+      for (var j = 0; j < b.members.length; j++) {
+        var x = Math.min(a.members[i], b.members[j]);
+        var y = Math.max(a.members[i], b.members[j]);
+        if (BRIDGES[x + '-' + y]) return true;
+      }
+    }
+    return false;
+  }
+
+  function bridgeLimit(a, b) {
+    var limit = WORLD.mergeGap;
+    for (var i = 0; i < a.members.length; i++) {
+      for (var j = 0; j < b.members.length; j++) {
+        var x = Math.min(a.members[i], b.members[j]);
+        var y = Math.max(a.members[i], b.members[j]);
+        var pairLimit = BRIDGE_LIMIT[x + '-' + y];
+        if (pairLimit && pairLimit > limit) limit = pairLimit;
+      }
+    }
+    return limit;
+  }
+
+  function circleGap(a, b, limit) {
+    if (limit == null) limit = WORLD.mergeGap;
+    var ab = a.bounds;
+    var bb = b.bounds;
+    if (ab.maxX + limit < bb.minX || bb.maxX + limit < ab.minX ||
+        ab.maxY + limit < bb.minY || bb.maxY + limit < ab.minY) {
+      return Infinity;
+    }
+    var best = Infinity;
+    for (var i = 0; i < a.circles.length; i++) {
+      var ca = a.circles[i];
+      for (var j = 0; j < b.circles.length; j++) {
+        var cb = b.circles[j];
+        var dx = cb.x - ca.x;
+        var dy = cb.y - ca.y;
+        var d = Math.sqrt(dx * dx + dy * dy) - ca.r - cb.r;
+        if (d < best) best = d;
+        if (best < -0.05) return best;
+      }
+    }
+    return best;
+  }
+
+  function memberSet(codes) {
+    var set = {};
+    for (var i = 0; i < codes.length; i++) set[codes[i]] = true;
+    return set;
+  }
+
+  function awardRegions(s, body) {
+    var set = memberSet(body.members);
+    var gained = 0;
+    for (var i = 0; i < REGION_ORDER.length; i++) {
+      var region = REGION_ORDER[i];
+      if (s.awarded[region]) continue;
+      var codes = BY_REGION[region];
+      var complete = true;
+      for (var j = 0; j < codes.length; j++) {
+        if (!set[codes[j]]) { complete = false; break; }
+      }
+      if (complete) {
+        s.awarded[region] = true;
+        s.score += 500;
+        gained += 500;
+        event(s, 'region', { region: region, label: REGION_LABEL[region], gain: 500 });
+      }
+    }
+    return gained;
+  }
+
+  function mergeBodies(s, a, b) {
+    var base = a;
+    var other = b;
+    if (b.members.length > a.members.length || (b.members.length === a.members.length && b.y > a.y)) {
+      base = b;
+      other = a;
+    }
+    var massA = a.mass;
+    var massB = b.mass;
+    var vx = (a.vx * massA + b.vx * massB) / (massA + massB);
+    var vy = (a.vy * massA + b.vy * massB) / (massA + massB);
+    base.members = base.members.concat(other.members);
+    base.vx = vx;
+    base.vy = vy;
+    updateBody(base);
+    clampBody(base);
+    s.bodies.splice(s.bodies.indexOf(other), 1);
+    s.merges++;
+    var gain = 120 + (base.members.length - 1) * 25;
+    s.score += gain;
+    var regionGain = awardRegions(s, base);
+    event(s, 'merge', {
+      id: base.id,
+      x: base.x,
+      y: base.y,
+      members: base.members.slice(),
+      count: base.members.length,
+      gain: gain + regionGain,
+      regionGain: regionGain
+    });
+    if (base.members.length >= TOTAL && s.phase === 'run') {
       s.phase = 'clear';
       s.finishTime = s.elapsed;
-      s.clearBonus = Math.ceil(s.timeLeft) * 20;
+      s.clearBonus = Math.ceil(Math.max(0, s.finishTimer)) * 20;
       s.score += s.clearBonus;
-      s.selectedCode = null;
-      event(s, 'clear', {
-        score: s.score,
-        time: s.finishTime,
-        clearBonus: s.clearBonus
-      });
+      event(s, 'clear', { score: s.score, time: s.elapsed, bonus: s.clearBonus });
     }
-    return result;
+    return base;
   }
 
-  function useHint(s) {
-    if (!s || s.phase !== 'run' || s.paused || s.hints <= 0) return null;
-    var code = s.selectedCode;
-    if (!code || isPlaced(s, code)) {
-      var pool = regionRemaining(s, s.regionFilter);
-      if (!pool.length) {
-        for (var r = 0; r < REGION_ORDER.length; r++) {
-          pool = regionRemaining(s, REGION_ORDER[r]);
-          if (pool.length) {
-            s.regionFilter = REGION_ORDER[r];
-            break;
+  function findMergePair(s) {
+    for (var i = 0; i < s.bodies.length; i++) {
+      for (var j = i + 1; j < s.bodies.length; j++) {
+        var a = s.bodies[i];
+        var b = s.bodies[j];
+        if (!adjacent(a, b)) continue;
+        var limit = bridgeBetween(a, b) ? bridgeLimit(a, b) : WORLD.mergeGap;
+        if (circleGap(a, b, limit) <= limit) return [a, b];
+      }
+    }
+    return null;
+  }
+
+  function resolveWalls(body) {
+    var b = body.bounds;
+    if (b.minX < 0) {
+      body.x -= b.minX;
+      if (body.vx < 0) body.vx = -body.vx * 0.15;
+      updateBody(body);
+    }
+    if (body.bounds.maxX > WORLD.w) {
+      body.x -= body.bounds.maxX - WORLD.w;
+      if (body.vx > 0) body.vx = -body.vx * 0.15;
+      updateBody(body);
+    }
+    if (body.bounds.maxY > WORLD.h) {
+      body.y -= body.bounds.maxY - WORLD.h;
+      if (body.vy > 0) body.vy = body.vy > 0.12 ? -body.vy * 0.08 : 0;
+      updateBody(body);
+    }
+  }
+
+  function resolveContact(a, b) {
+    var invA = 1 / a.mass;
+    var invB = 1 / b.mass;
+    var totalInv = invA + invB;
+    for (var i = 0; i < a.circles.length; i++) {
+      var ca = a.circles[i];
+      for (var j = 0; j < b.circles.length; j++) {
+        var cb = b.circles[j];
+        var dx = cb.x - ca.x;
+        var dy = cb.y - ca.y;
+        var dist = Math.sqrt(dx * dx + dy * dy);
+        var radius = ca.r + cb.r;
+        if (dist >= radius || dist < 1e-9) continue;
+        var nx = dx / dist;
+        var ny = dy / dist;
+        var penetration = radius - dist;
+        var push = penetration * 0.72 / totalInv;
+        a.x -= nx * push * invA;
+        a.y -= ny * push * invA;
+        b.x += nx * push * invB;
+        b.y += ny * push * invB;
+        var rvx = b.vx - a.vx;
+        var rvy = b.vy - a.vy;
+        var vn = rvx * nx + rvy * ny;
+        if (vn < 0) {
+          var impulse = -(1.06) * vn / totalInv;
+          a.vx -= nx * impulse * invA;
+          a.vy -= ny * impulse * invA;
+          b.vx += nx * impulse * invB;
+          b.vy += ny * impulse * invB;
+          var tx = -ny;
+          var ty = nx;
+          var vt = rvx * tx + rvy * ty;
+          var jt = -vt * 0.24 / totalInv;
+          a.vx -= tx * jt * invA;
+          a.vy -= ty * jt * invA;
+          b.vx += tx * jt * invB;
+          b.vy += ty * jt * invB;
+        }
+      }
+    }
+    updateBody(a);
+    updateBody(b);
+  }
+
+  function physics(s, dt) {
+    var steps = 2;
+    var h = dt / steps;
+    for (var step = 0; step < steps; step++) {
+      for (var i = 0; i < s.bodies.length; i++) {
+        var body = s.bodies[i];
+        body.age += h;
+        body.vy = Math.min(WORLD.maxFall, body.vy + WORLD.gravity * h);
+        body.vx *= 0.998;
+        body.x += body.vx * h;
+        body.y += body.vy * h;
+        updateBody(body);
+        resolveWalls(body);
+      }
+
+      var guard = 0;
+      var pair;
+      while ((pair = findMergePair(s)) && guard++ < 12) {
+        mergeBodies(s, pair[0], pair[1]);
+        if (s.phase !== 'run') return;
+      }
+
+      for (var iter = 0; iter < 2; iter++) {
+        for (i = 0; i < s.bodies.length; i++) resolveWalls(s.bodies[i]);
+        for (i = 0; i < s.bodies.length; i++) {
+          for (var j = i + 1; j < s.bodies.length; j++) {
+            var a = s.bodies[i];
+            var b = s.bodies[j];
+            var ab = a.bounds;
+            var bb = b.bounds;
+            if (ab.maxX + 0.02 < bb.minX || bb.maxX + 0.02 < ab.minX ||
+                ab.maxY + 0.02 < bb.minY || bb.maxY + 0.02 < ab.minY) continue;
+            resolveContact(a, b);
           }
         }
       }
-      if (!pool.length) return null;
-      code = pool[0];
-      s.selectedCode = code;
-      s.regionFilter = BY_CODE[code].region;
+      for (i = 0; i < s.bodies.length; i++) resolveWalls(s.bodies[i]);
     }
-    s.hints--;
-    var p = BY_CODE[code];
-    var hint = {
-      code: code,
-      label: p.label,
-      region: p.region,
-      target: { x: p.center[0], y: p.center[1] }
-    };
-    event(s, 'hint', hint);
-    return hint;
+  }
+
+  function largestMembers(s) {
+    var largest = 0;
+    for (var i = 0; i < s.bodies.length; i++) {
+      if (s.bodies[i].members.length > largest) largest = s.bodies[i].members.length;
+    }
+    return largest;
+  }
+
+  function topOf(body) {
+    var top = Infinity;
+    for (var i = 0; i < body.circles.length; i++) {
+      var topY = body.circles[i].y - body.circles[i].r;
+      if (topY < top) top = topY;
+    }
+    return top;
+  }
+
+  function checkOverflow(s, dt) {
+    var top = Infinity;
+    for (var i = 0; i < s.bodies.length; i++) {
+      var t = topOf(s.bodies[i]);
+      if (t < top) top = t;
+    }
+    if (top < -0.015) {
+      s.overflowTimer += dt;
+      if (s.overflowTimer >= WORLD.overflowGrace) {
+        s.phase = 'over';
+        s.reason = 'overflow';
+        s.finishTime = s.elapsed;
+        event(s, 'overflow', {});
+      }
+    } else {
+      s.overflowTimer = Math.max(0, s.overflowTimer - dt * 2);
+    }
   }
 
   function tick(s, dt) {
     if (!s || s.phase !== 'run' || s.paused) return s;
-    dt = clamp(Number(dt) || 0, 0, 0.1);
+    dt = clamp(Number(dt) || 0, 0, 0.05);
     s.elapsed += dt;
-    s.timeLeft -= dt;
-    if (s.timeLeft <= 0) {
-      s.timeLeft = 0;
-      s.phase = 'over';
-      s.finishTime = s.elapsed;
-      s.selectedCode = null;
-      event(s, 'timeout', { score: s.score });
+    if (s.allDropped) {
+      s.finishTimer -= dt;
+      if (s.finishTimer <= 0) {
+        s.finishTimer = 0;
+        s.phase = 'over';
+        s.reason = 'timeout';
+        s.finishTime = s.elapsed;
+        event(s, 'timeout', {});
+        return s;
+      }
     }
+    physics(s, dt);
+    if (s.phase === 'run') checkOverflow(s, dt);
     return s;
+  }
+
+  function targetForActive(s) {
+    if (!s || s.phase !== 'run' || !s.queue.length) return null;
+    var code = s.queue[0];
+    var p = BY_CODE[code];
+    var best = null;
+    for (var i = 0; i < s.bodies.length; i++) {
+      var body = s.bodies[i];
+      var ref = BY_CODE[body.ref];
+      var hasNeighbor = false;
+      for (var m = 0; m < body.members.length; m++) {
+        if (NEIGHBORS[code][body.members[m]]) { hasNeighbor = true; break; }
+      }
+      if (!hasNeighbor) continue;
+      if (!best || body.members.length > best.body.members.length) {
+        best = {
+          body: body,
+          x: body.x + (p.center[0] - ref.center[0]),
+          y: body.y + (p.center[1] - ref.center[1])
+        };
+      }
+    }
+    if (!best) return { code: code, x: WORLD.w / 2, y: spawnYFor(code), empty: true };
+    best.code = code;
+    best.empty = false;
+    return best;
+  }
+
+  function useHint(s) {
+    if (!s || s.phase !== 'run' || s.paused || s.hints <= 0) return null;
+    var target = targetForActive(s);
+    if (!target) return null;
+    s.hints--;
+    event(s, 'hint', { code: target.code, x: target.x, y: target.y });
+    return target;
+  }
+
+  function shake(s) {
+    if (!s || s.phase !== 'run' || s.paused || s.shakes <= 0) return false;
+    s.shakes--;
+    for (var i = 0; i < s.bodies.length; i++) {
+      var b = s.bodies[i];
+      b.vx += (Math.random() - 0.5) * 0.9;
+      b.vy -= 0.25 + Math.random() * 0.35;
+      b.x += (Math.random() - 0.5) * 0.02;
+      updateBody(b);
+    }
+    event(s, 'shake', {});
+    return true;
   }
 
   function setPaused(s, paused) {
@@ -272,35 +603,34 @@
       id: 'ken-tsunagi',
       phase: s.phase,
       paused: s.paused,
-      timeLeft: s.timeLeft,
+      cleared: s.phase === 'clear',
+      over: s.phase === 'over',
+      reason: s.reason,
+      score: s.score,
+      activeCode: s.queue.length ? s.queue[0] : null,
+      activeX: s.activeX,
+      queue: s.queue.slice(0, 4),
+      queueLength: s.queue.length,
+      dropped: s.dropped,
+      allDropped: s.allDropped,
+      finishTimer: s.finishTimer,
       elapsed: s.elapsed,
       finishTime: s.finishTime,
-      score: s.score,
-      combo: s.combo,
-      bestCombo: s.bestCombo,
+      clearBonus: s.clearBonus || 0,
       hints: s.hints,
-      placedCount: s.placedCount,
-      total: TOTAL,
-      selectedCode: s.selectedCode,
-      regionFilter: s.regionFilter,
-      clearBonus: s.clearBonus,
-      missCount: s.missCount,
-      lastPlaced: s.lastPlaced,
-      cleared: s.phase === 'clear',
-      over: s.phase === 'over'
+      shakes: s.shakes,
+      merges: s.merges,
+      largest: largestMembers(s),
+      bodyCount: s.bodies.length,
+      awarded: Object.keys(s.awarded),
+      overflow: s.overflowTimer > 0,
+      total: TOTAL
     };
   }
 
   function consumeEvents(s) {
     if (!s) return [];
     return s.events.splice(0, s.events.length);
-  }
-
-  function firstRemaining(s) {
-    for (var i = 0; i < PREFECTURES.length; i++) {
-      if (!s.placed[PREFECTURES[i].code]) return PREFECTURES[i].code;
-    }
-    return null;
   }
 
   return {
@@ -313,24 +643,23 @@
     byCode: BY_CODE,
     byRegion: BY_REGION,
     total: TOTAL,
-    timeLimit: TIME_LIMIT,
-    missPenalty: MISS_PENALTY,
-    hintCount: HINT_COUNT,
-    snapTolerance: SNAP_TOLERANCE,
+    world: WORLD,
     createRun: createRun,
     tick: tick,
-    selectRegion: selectRegion,
-    selectPiece: selectPiece,
-    tray: tray,
-    regionCodes: regionCodes,
-    regionRemaining: regionRemaining,
-    regionComplete: regionComplete,
-    target: target,
-    tryPlace: tryPlace,
+    setActiveX: setActiveX,
+    moveActive: moveActive,
+    dropActive: dropActive,
+    activeWorld: activeWorld,
+    spawnYFor: spawnYFor,
+    activeRange: activeRange,
+    targetForActive: targetForActive,
     useHint: useHint,
+    shake: shake,
     setPaused: setPaused,
     getState: getState,
     consumeEvents: consumeEvents,
-    firstRemaining: firstRemaining
+    addPiece: addBody,
+    topOf: topOf,
+    largestMembers: largestMembers
   };
 });

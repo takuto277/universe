@@ -4,43 +4,43 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#070d1c" />
-  <title>けんつなぎ - 47ピース日本地図パズル</title>
-  <link rel="stylesheet" href="styles.css" />
+  <title>けんつなぎ - 落としてつなげる日本地図パズル</title>
+  <link rel="stylesheet" href="styles.css?v=2" />
 </head>
 <body>
   <main id="app">
     <div id="game-frame">
-      <canvas id="game" width="480" height="800" aria-label="日本地図パズル"></canvas>
+      <canvas id="game" width="480" height="800" aria-label="都道府県を落としてつなげるパズル"></canvas>
 
       <header id="hud">
         <div class="hud-item"><span>SCORE</span><b id="score">0</b></div>
-        <div class="hud-item"><span>TIME</span><b id="time">3:00</b></div>
-        <div class="hud-item"><span>CONNECTED</span><b id="count">0/47</b></div>
+        <div class="hud-item"><span>TIME</span><b id="time">--:--</b></div>
+        <div class="hud-item"><span>LINKED</span><b id="count">0/47</b></div>
       </header>
       <button id="btn-pause" class="icon-btn hidden" type="button" aria-label="ポーズ">Ⅱ</button>
 
       <div id="overlay">
         <section id="screen-title" class="screen visible">
-          <p class="kicker">47 PIECE MAP PUZZLE</p>
+          <p class="kicker">DROP · MERGE · JAPAN</p>
           <h1>けんつなぎ</h1>
-          <p class="subtitle">となりの県が、ぴたっとつながる。</p>
+          <p class="subtitle">落として、くっつけて、日本列島。</p>
           <ul class="rules">
-            <li>地方タブから県を選び、地図の正しい場所へドラッグ</li>
-            <li>県をタップして選び、地図をタップしても置ける</li>
-            <li>隣り合う県がつながるほどコンボとボーナス</li>
-            <li>地方を完成させると +500。ヒントは3回</li>
-            <li>180秒で47都道府県を完成させよう</li>
+            <li>指で左右に動かして、離すと県が箱に落ちる</li>
+            <li>隣り合う県が触れると、地図どおりにぴたっと合体</li>
+            <li>47都道府県を落としたら、60秒以内に日本列島を完成</li>
+            <li>箱からあふれるか、時間切れでゲーム終了</li>
+            <li>ヒント3回 / ゆらす3回。海をこえる県は橋でつながる</li>
           </ul>
           <button id="btn-start" class="primary" type="button">スタート</button>
           <p class="tiny">BEST SCORE <b id="title-best-score">0</b> / BEST TIME <b id="title-best-time">--:--</b></p>
         </section>
 
         <section id="screen-over" class="screen">
-          <p class="kicker">TIME UP</p>
-          <h2 class="result-title">TIME UP</h2>
+          <p class="kicker" id="over-kicker">GAME OVER</p>
+          <h2 class="result-title" id="over-title">TIME UP</h2>
           <div class="result-score"><span>SCORE</span><b id="over-score">0</b></div>
           <div class="result-stats">
-            <div><span>CONNECTED</span><b id="over-count">0/47</b></div>
+            <div><span>LINKED</span><b id="over-count">0/47</b></div>
             <div><span>BEST SCORE</span><b id="over-best-score">0</b></div>
             <div><span>BEST TIME</span><b id="over-best-time">--:--</b></div>
           </div>
@@ -50,7 +50,7 @@
 
         <section id="screen-clear" class="screen">
           <p class="kicker">JAPAN COMPLETE</p>
-          <h2 class="result-title clear">日本地図 完成!</h2>
+          <h2 class="result-title clear">日本列島 完成!</h2>
           <div class="result-score"><span>SCORE</span><b id="clear-score">0</b></div>
           <div class="result-stats">
             <div><span>TIME</span><b id="clear-time">0.0s</b></div>
@@ -71,8 +71,8 @@
       </div>
     </div>
   </main>
-  <script src="data.js"></script>
-  <script src="engine.js"></script>
-  <script src="game.js"></script>
+  <script src="data.js?v=2"></script>
+  <script src="engine.js?v=4"></script>
+  <script src="game.js?v=2"></script>
 </body>
 </html>

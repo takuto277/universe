@@ -6,33 +6,13 @@
   var DATA = root.KEN_DATA;
   if (!E || !DATA) return;
 
-  var C = {
-    VIEW_W: 480,
-    VIEW_H: 800,
-    BEST_KEY: 'ken-tsunagi-best'
-  };
-
-  var BOARD = { x: 16, y: 64, w: 448, h: 476 };
-  var BOARD_PAD = 12;
-  var MAP_SCALE = Math.min((BOARD.w - BOARD_PAD * 2) / DATA.mapW, (BOARD.h - BOARD_PAD * 2) / DATA.mapH);
-  var MAP_W = DATA.mapW * MAP_SCALE;
-  var MAP_H = DATA.mapH * MAP_SCALE;
-  var MAP_X = BOARD.x + (BOARD.w - MAP_W) / 2;
-  var MAP_Y = BOARD.y + (BOARD.h - MAP_H) / 2;
-
-  var HINT_RECT = { x: 22, y: 548, w: 100, h: 44 };
-  var HINT_HIT = { x: 18, y: 540, w: 108, h: 58 };
-  var TAB_Y = 604;
-  var TAB_W = 56;
-  var TAB_H = 46;
-  var TAB_GAP = 2;
-  var TRAY_X = 18;
-  var TRAY_Y = 666;
-  var TILE_W = 84;
-  var TILE_H = 60;
-  var TILE_GAP_X = 4;
-  var TILE_GAP_Y = 6;
-  var COLS = 5;
+  var C = { VIEW_W: 480, VIEW_H: 800, BEST_KEY: 'ken-tsunagi-best' };
+  var BOX = { x: 16, y: 64, w: 448, h: 541 };
+  var SCALE = BOX.w / E.world.w;
+  var FLOOR_Y = BOX.y + E.world.h * SCALE;
+  var PANEL_Y = 608;
+  var HINT_RECT = { x: 20, y: 710, w: 132, h: 60 };
+  var SHAKE_RECT = { x: 160, y: 710, w: 132, h: 60 };
 
   var canvas = null;
   var ctx = null;
@@ -41,17 +21,15 @@
   var best = loadBest();
   var shownScreen = 'screen-title';
   var lastTs = 0;
-  var dpr = 1;
   var scaleX = 1;
   var scaleY = 1;
   var pointer = null;
   var effects = null;
-  var hintUntil = 0;
-  var autoState = { delay: 0 };
+  var hint = null;
+  var autoState = { wait: 0 };
   var ui = { finalized: false };
   var stars = [];
   var motes = [];
-  var tabRects = [];
 
   function nowMs() {
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -118,17 +96,15 @@
       shake: 0,
       flash: 0,
       flashColor: '220, 250, 255',
-      banner: null,
-      confetti: 0,
-      lastGlow: null
+      banner: null
     };
-    hintUntil = 0;
+    hint = null;
   }
 
   function beginRun() {
     game = E.createRun();
     ui.finalized = false;
-    autoState.delay = 0;
+    autoState.wait = 0;
     pointer = null;
     resetEffects();
     setScreen(null);
@@ -150,30 +126,39 @@
   function syncUI() {
     if (els.titleBestScore) els.titleBestScore.textContent = String(best.score);
     if (els.titleBestTime) els.titleBestTime.textContent = formatBestTime(best.time);
-
     if (!game) return;
-    if (els.score) els.score.textContent = String(game.score);
+
+    var st = E.getState(game);
+    if (els.score) els.score.textContent = String(st.score);
+    if (els.count) els.count.textContent = st.largest + '/' + st.total;
     if (els.time) {
-      els.time.textContent = formatClock(Math.ceil(game.timeLeft), false);
-      els.time.classList.toggle('low', game.phase === 'run' && game.timeLeft <= 30);
+      if (st.allDropped) {
+        els.time.textContent = formatClock(Math.ceil(st.finishTimer), false);
+        els.time.classList.toggle('low', st.phase === 'run' && st.finishTimer <= 15);
+      } else {
+        els.time.textContent = '--:--';
+        els.time.classList.remove('low');
+      }
     }
-    if (els.count) els.count.textContent = game.placedCount + '/' + E.total;
 
     var target = null;
-    if (game.phase === 'over') target = 'screen-over';
-    else if (game.phase === 'clear') target = 'screen-clear';
-    else if (game.paused) target = 'screen-pause';
+    if (st.phase === 'over') target = 'screen-over';
+    else if (st.phase === 'clear') target = 'screen-clear';
+    else if (st.paused) target = 'screen-pause';
     setScreen(target);
 
-    if ((game.phase === 'over' || game.phase === 'clear') && !ui.finalized) finalizeBest();
+    if ((st.phase === 'over' || st.phase === 'clear') && !ui.finalized) finalizeBest();
 
-    if (game.phase === 'over' || game.phase === 'clear') {
-      if (els.overScore) els.overScore.textContent = String(game.score);
-      if (els.overCount) els.overCount.textContent = game.placedCount + '/' + E.total;
+    if (st.phase === 'over') {
+      if (els.overKicker) els.overKicker.textContent = st.reason === 'overflow' ? 'BOX FULL' : 'TIME UP';
+      if (els.overTitle) els.overTitle.textContent = st.reason === 'overflow' ? '箱がいっぱい' : 'TIME UP';
+      if (els.overScore) els.overScore.textContent = String(st.score);
+      if (els.overCount) els.overCount.textContent = st.largest + '/' + st.total;
       if (els.overBestScore) els.overBestScore.textContent = String(best.score);
       if (els.overBestTime) els.overBestTime.textContent = formatBestTime(best.time);
-      if (els.clearScore) els.clearScore.textContent = String(game.score);
-      if (els.clearTime) els.clearTime.textContent = formatClock(game.finishTime, true);
+    } else if (st.phase === 'clear') {
+      if (els.clearScore) els.clearScore.textContent = String(st.score);
+      if (els.clearTime) els.clearTime.textContent = formatClock(st.finishTime, true);
       if (els.clearBestScore) els.clearBestScore.textContent = String(best.score);
       if (els.clearBestTime) els.clearBestTime.textContent = formatBestTime(best.time);
     }
@@ -182,8 +167,7 @@
     if (els.titleBestTime) els.titleBestTime.textContent = formatBestTime(best.time);
 
     if (els.pause) {
-      var canPause = game.phase === 'run' && !game.paused;
-      els.pause.classList.toggle('hidden', !canPause);
+      els.pause.classList.toggle('hidden', !(st.phase === 'run' && !st.paused));
     }
   }
 
@@ -191,9 +175,7 @@
     if (!game || game.phase !== 'run' || game.paused) return;
     game.paused = true;
     E.setPaused(game, true);
-    if (pointer) {
-      pointer = null;
-    }
+    pointer = null;
     setScreen('screen-pause');
     syncUI();
   }
@@ -213,35 +195,6 @@
     else pauseGame();
   }
 
-  function mapPoint(pt) {
-    return {
-      x: MAP_X + pt[0] * MAP_SCALE,
-      y: MAP_Y + pt[1] * MAP_SCALE
-    };
-  }
-
-  function centerScreen(p) {
-    return {
-      x: MAP_X + p.center[0] * MAP_SCALE,
-      y: MAP_Y + p.center[1] * MAP_SCALE
-    };
-  }
-
-  function regionCenter(region) {
-    var codes = E.regionCodes(region);
-    var x = 0;
-    var y = 0;
-    var n = 0;
-    for (var i = 0; i < codes.length; i++) {
-      var p = E.byCode[codes[i]];
-      x += p.center[0];
-      y += p.center[1];
-      n++;
-    }
-    if (!n) return { x: MAP_X + MAP_W / 2, y: MAP_Y + MAP_H / 2 };
-    return { x: MAP_X + (x / n) * MAP_SCALE, y: MAP_Y + (y / n) * MAP_SCALE };
-  }
-
   function roundRect(x, y, w, h, r) {
     var rr = Math.max(0, Math.min(r, w / 2, h / 2));
     ctx.beginPath();
@@ -257,16 +210,36 @@
     ctx.closePath();
   }
 
-  function traceRings(p, ox, oy, scale) {
-    var sx = ox == null ? MAP_X : ox;
-    var sy = oy == null ? MAP_Y : oy;
-    var sc = scale == null ? MAP_SCALE : scale;
+  function hexAlpha(hex, alpha) {
+    var h = hex.replace('#', '');
+    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
+    var r = parseInt(h.slice(0, 2), 16);
+    var g = parseInt(h.slice(2, 4), 16);
+    var b = parseInt(h.slice(4, 6), 16);
+    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
+  }
+
+  function mod(n, m) {
+    return ((n % m) + m) % m;
+  }
+
+  function screenOf(bodyX, bodyY, ref, mp) {
+    return {
+      x: BOX.x + (bodyX + mp[0] - ref.center[0]) * SCALE,
+      y: BOX.y + (bodyY + mp[1] - ref.center[1]) * SCALE
+    };
+  }
+
+  function tracePref(p, bodyX, bodyY, ref, offsetX, offsetY) {
+    var ox = offsetX || 0;
+    var oy = offsetY || 0;
     ctx.beginPath();
     for (var i = 0; i < p.rings.length; i++) {
       var ring = p.rings[i];
       for (var j = 0; j < ring.length; j++) {
-        var x = sx + ring[j][0] * sc;
-        var y = sy + ring[j][1] * sc;
+        var s = screenOf(bodyX, bodyY, ref, ring[j]);
+        var x = s.x + ox;
+        var y = s.y + oy;
         if (j === 0) ctx.moveTo(x, y);
         else ctx.lineTo(x, y);
       }
@@ -274,34 +247,65 @@
     }
   }
 
-  function drawMapShape(p, fill, stroke, lineWidth, ox, oy, scale) {
-    traceRings(p, ox, oy, scale);
-    if (fill) {
-      ctx.fillStyle = fill;
-      ctx.fill();
+  function drawPref(p, bodyX, bodyY, ref, fill, stroke, width, ox, oy, shadow) {
+    ctx.save();
+    if (shadow) {
+      ctx.shadowColor = shadow;
+      ctx.shadowBlur = 16;
     }
+    tracePref(p, bodyX, bodyY, ref, ox, oy);
+    ctx.fillStyle = fill;
+    ctx.fill();
+    ctx.shadowBlur = 0;
     if (stroke) {
       ctx.strokeStyle = stroke;
-      ctx.lineWidth = lineWidth || 1;
+      ctx.lineWidth = width || 1;
       ctx.stroke();
     }
+    ctx.restore();
+  }
+
+  function drawMini(p, cx, cy, maxW, maxH, alpha) {
+    var b = p.bbox;
+    var bw = b[2] - b[0];
+    var bh = b[3] - b[1];
+    var sc = Math.min(maxW / bw, maxH / bh);
+    var ox = cx - ((b[0] + b[2]) / 2) * sc;
+    var oy = cy - ((b[1] + b[3]) / 2) * sc;
+    ctx.save();
+    ctx.globalAlpha = alpha == null ? 1 : alpha;
+    ctx.beginPath();
+    for (var i = 0; i < p.rings.length; i++) {
+      var ring = p.rings[i];
+      for (var j = 0; j < ring.length; j++) {
+        var x = ox + ring[j][0] * sc;
+        var y = oy + ring[j][1] * sc;
+        if (j === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.closePath();
+    }
+    ctx.fillStyle = p.color;
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(5, 10, 20, 0.8)';
+    ctx.lineWidth = 0.8;
+    ctx.stroke();
+    ctx.restore();
   }
 
   function drawBackdrop(time) {
     var sky = ctx.createLinearGradient(0, 0, 0, C.VIEW_H);
     sky.addColorStop(0, '#0b1530');
-    sky.addColorStop(0.45, '#081126');
+    sky.addColorStop(0.48, '#081126');
     sky.addColorStop(1, '#04070f');
     ctx.fillStyle = sky;
     ctx.fillRect(0, 0, C.VIEW_W, C.VIEW_H);
-
-    var glow = ctx.createRadialGradient(240, 300, 20, 240, 300, 340);
-    glow.addColorStop(0, 'rgba(47, 92, 150, 0.18)');
+    var glow = ctx.createRadialGradient(240, 310, 20, 240, 310, 350);
+    glow.addColorStop(0, 'rgba(47, 92, 150, 0.16)');
     glow.addColorStop(0.55, 'rgba(20, 50, 100, 0.06)');
     glow.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = glow;
     ctx.fillRect(0, 0, C.VIEW_W, C.VIEW_H);
-
     for (var i = 0; i < stars.length; i++) {
       var s = stars[i];
       var tw = 0.3 + 0.7 * Math.abs(Math.sin(time * s.tw + s.phase));
@@ -318,354 +322,346 @@
     }
   }
 
-  function drawBoard(time) {
+  function drawBox(time) {
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 24;
-    var panel = ctx.createLinearGradient(BOARD.x, BOARD.y, BOARD.x, BOARD.y + BOARD.h);
-    panel.addColorStop(0, '#101f3a');
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 26;
+    var panel = ctx.createLinearGradient(BOX.x, BOX.y, BOX.x, BOX.y + BOX.h);
+    panel.addColorStop(0, '#10203c');
     panel.addColorStop(0.55, '#0a1730');
     panel.addColorStop(1, '#060d1d');
     ctx.fillStyle = panel;
-    roundRect(BOARD.x, BOARD.y, BOARD.w, BOARD.h, 16);
+    roundRect(BOX.x, BOX.y, BOX.w, BOX.h, 16);
     ctx.fill();
     ctx.restore();
-
     ctx.strokeStyle = 'rgba(119, 228, 223, 0.16)';
     ctx.lineWidth = 1;
-    roundRect(BOARD.x + 0.5, BOARD.y + 0.5, BOARD.w - 1, BOARD.h - 1, 16);
+    roundRect(BOX.x + 0.5, BOX.y + 0.5, BOX.w - 1, BOX.h - 1, 16);
     ctx.stroke();
 
     ctx.save();
     ctx.beginPath();
-    roundRect(BOARD.x + 1, BOARD.y + 1, BOARD.w - 2, BOARD.h - 2, 15);
+    roundRect(BOX.x + 1, BOX.y + 1, BOX.w - 2, BOX.h - 2, 15);
     ctx.clip();
-
     ctx.strokeStyle = 'rgba(119, 228, 223, 0.035)';
-    ctx.lineWidth = 1;
-    for (var gx = BOARD.x + 20; gx < BOARD.x + BOARD.w; gx += 28) {
+    for (var gx = BOX.x + 18; gx < BOX.x + BOX.w; gx += 28) {
       ctx.beginPath();
-      ctx.moveTo(gx, BOARD.y);
-      ctx.lineTo(gx, BOARD.y + BOARD.h);
+      ctx.moveTo(gx, BOX.y);
+      ctx.lineTo(gx, BOX.y + BOX.h);
       ctx.stroke();
     }
-    for (var gy = BOARD.y + 20; gy < BOARD.y + BOARD.h; gy += 28) {
+    for (var gy = BOX.y + 18; gy < BOX.y + BOX.h; gy += 28) {
       ctx.beginPath();
-      ctx.moveTo(BOARD.x, gy);
-      ctx.lineTo(BOARD.x + BOARD.w, gy);
+      ctx.moveTo(BOX.x, gy);
+      ctx.lineTo(BOX.x + BOX.w, gy);
       ctx.stroke();
     }
-
-    ctx.strokeStyle = 'rgba(242, 199, 108, 0.18)';
-    ctx.lineWidth = 1;
+    ctx.strokeStyle = 'rgba(242, 199, 108, 0.12)';
     ctx.beginPath();
-    ctx.arc(MAP_X + MAP_W / 2, MAP_Y + MAP_H / 2, MAP_H * 0.53, 0, Math.PI * 2);
+    ctx.arc(BOX.x + BOX.w / 2, BOX.y + BOX.h / 2, 220, 0, Math.PI * 2);
     ctx.stroke();
     ctx.beginPath();
-    ctx.arc(MAP_X + MAP_W / 2, MAP_Y + MAP_H / 2, MAP_H * 0.46, 0, Math.PI * 2);
+    ctx.arc(BOX.x + BOX.w / 2, BOX.y + BOX.h / 2, 178, 0, Math.PI * 2);
     ctx.stroke();
-
-    ctx.fillStyle = 'rgba(242, 199, 108, 0.32)';
+    ctx.fillStyle = 'rgba(242, 199, 108, 0.34)';
     ctx.font = '700 8px ui-monospace, Menlo, monospace';
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
-    ctx.fillText('N', BOARD.x + 14, BOARD.y + 20);
-    ctx.strokeStyle = 'rgba(242, 199, 108, 0.28)';
+    ctx.fillText('N', BOX.x + 14, BOX.y + 16);
+    ctx.strokeStyle = 'rgba(242, 199, 108, 0.3)';
     ctx.beginPath();
-    ctx.moveTo(BOARD.x + 25, BOARD.y + 17);
-    ctx.lineTo(BOARD.x + 25, BOARD.y + 30);
+    ctx.moveTo(BOX.x + 24, BOX.y + 12);
+    ctx.lineTo(BOX.x + 24, BOX.y + 25);
     ctx.stroke();
-    ctx.restore();
 
-    drawMap(time);
+    var danger = game ? game.overflowTimer : 0;
+    ctx.strokeStyle = danger > 0 ? 'rgba(255, 120, 105, ' + (0.55 + 0.35 * Math.sin(time * 9)) + ')' : 'rgba(255, 120, 105, 0.38)';
+    ctx.lineWidth = danger > 0 ? 2 : 1;
+    ctx.setLineDash([8, 8]);
+    ctx.beginPath();
+    ctx.moveTo(BOX.x + 8, BOX.y + 3);
+    ctx.lineTo(BOX.x + BOX.w - 8, BOX.y + 3);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    if (danger > 0) {
+      var warn = ctx.createLinearGradient(0, BOX.y, 0, BOX.y + 38);
+      warn.addColorStop(0, 'rgba(255, 90, 80, 0.24)');
+      warn.addColorStop(1, 'rgba(255, 90, 80, 0)');
+      ctx.fillStyle = warn;
+      ctx.fillRect(BOX.x + 1, BOX.y + 1, BOX.w - 2, 38);
+    }
+    ctx.restore();
   }
 
-  function drawMap(time) {
-    var now = nowMs();
-    var placedAll = game ? game.placed : {};
-
-    for (var i = 0; i < E.prefectures.length; i++) {
-      var p = E.prefectures[i];
-      if (!placedAll[p.code]) continue;
-      var glow = false;
-      if (effects.lastGlow && effects.lastGlow.code === p.code && now < effects.lastGlow.until) glow = true;
-      if (glow) {
-        ctx.save();
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 18;
-        drawMapShape(p, p.color, 'rgba(5, 10, 20, 0.86)', 1.2);
-        ctx.restore();
-      } else {
-        drawMapShape(p, p.color, 'rgba(5, 10, 20, 0.82)', 1.1);
-      }
-      ctx.save();
-      ctx.globalAlpha = 0.5;
-      drawMapShape(p, null, 'rgba(255, 255, 255, 0.22)', 0.7);
-      ctx.restore();
-    }
-
-    var filter = game ? game.regionFilter : null;
-    for (i = 0; i < E.prefectures.length; i++) {
-      var q = E.prefectures[i];
-      if (placedAll[q.code]) continue;
-      var isFilter = q.region === filter;
-      var isHint = hintUntil > now && hintUntilCode === q.code;
-      var isPreview = pointer && pointer.moved && pointer.code === q.code && pointer.overBoard;
-      var fill = isHint ? 'rgba(242, 199, 108, 0.34)' : (isFilter ? hexAlpha(q.color, 0.18) : hexAlpha(q.color, 0.045));
-      var stroke = isHint ? 'rgba(255, 236, 167, 0.96)' : (isFilter ? hexAlpha(q.color, 0.52) : 'rgba(120, 180, 210, 0.12)');
-      if (isPreview) {
-        fill = 'rgba(255, 255, 255, 0.18)';
-        stroke = 'rgba(255, 255, 255, 0.7)';
-      }
-      if (isHint) {
-        var pulse = 0.5 + 0.5 * Math.sin(time * 7);
-        ctx.save();
-        ctx.shadowColor = 'rgba(242, 199, 108, 0.9)';
-        ctx.shadowBlur = 10 + pulse * 12;
-        drawMapShape(q, fill, stroke, 1.8);
-        ctx.restore();
-      } else {
-        drawMapShape(q, fill, stroke, 0.9);
+  function drawBodies(time) {
+    if (!game) return;
+    ctx.save();
+    ctx.beginPath();
+    roundRect(BOX.x + 2, BOX.y + 2, BOX.w - 4, BOX.h - 4, 14);
+    ctx.clip();
+    for (var i = 0; i < game.bodies.length; i++) {
+      var body = game.bodies[i];
+      var ref = E.byCode[body.ref];
+      for (var j = 0; j < body.members.length; j++) {
+        var p = E.byCode[body.members[j]];
+        drawPref(p, body.x, body.y, ref, p.color, 'rgba(5, 10, 20, 0.84)', 1.1, 0, 0, null);
       }
     }
-
-    if (hintUntil > now && hintUntilCode) {
-      var hp = E.byCode[hintUntilCode];
-      if (hp) {
-        var c = centerScreen(hp);
-        ctx.save();
-        ctx.globalAlpha = 0.9;
-        ctx.fillStyle = '#ffe8a8';
-        ctx.font = '800 10px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'bottom';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-        ctx.shadowBlur = 5;
-        ctx.fillText(hp.label, c.x, c.y - 5);
-        ctx.restore();
-      }
-    }
-
-    if (game && game.lastPlaced) {
-      var lp = E.byCode[game.lastPlaced.code];
-      if (lp && effects.lastGlow && now < effects.lastGlow.until) {
-        var lc = centerScreen(lp);
-        ctx.save();
-        ctx.globalAlpha = 0.86;
-        ctx.fillStyle = '#fff3c7';
-        ctx.font = '800 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-        ctx.shadowBlur = 4;
-        ctx.fillText(lp.label, lc.x, lc.y);
-        ctx.restore();
-      }
-    }
+    ctx.restore();
   }
 
-  function drawDraggingPiece(time) {
-    if (!pointer || !pointer.code || !pointer.moved) return;
-    var p = E.byCode[pointer.code];
-    if (!p) return;
-    var target = centerScreen(p);
-    var ox = MAP_X - target.x + pointer.x;
-    var oy = MAP_Y - target.y + pointer.y;
+  function drawActive(time) {
+    if (!game || !game.activeCode) return;
+    var p = E.byCode[game.activeCode];
+    var y = E.spawnYFor(game.activeCode);
+    var x = BOX.x + game.activeX * SCALE;
     ctx.save();
-    ctx.globalAlpha = 0.94;
-    ctx.shadowColor = p.color;
-    ctx.shadowBlur = 22;
-    drawMapShape(p, p.color, 'rgba(255, 255, 255, 0.7)', 1.4, ox, oy, MAP_SCALE);
+    ctx.beginPath();
+    roundRect(BOX.x + 2, BOX.y + 2, BOX.w - 4, BOX.h - 4, 14);
+    ctx.clip();
+    ctx.strokeStyle = 'rgba(242, 199, 108, 0.26)';
+    ctx.setLineDash([4, 9]);
+    ctx.beginPath();
+    ctx.moveTo(x, BOX.y + 30);
+    ctx.lineTo(x, FLOOR_Y - 8);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    drawPref(p, game.activeX, y, p, p.color, 'rgba(255, 240, 177, 0.95)', 1.7, 0, 0, p.color);
+    ctx.restore();
+  }
+
+  function drawHint(time) {
+    if (!game || !hint || nowMs() > hint.until || !game.activeCode) return;
+    var sx = BOX.x + hint.x * SCALE;
+    ctx.save();
+    ctx.beginPath();
+    roundRect(BOX.x + 2, BOX.y + 2, BOX.w - 4, BOX.h - 4, 14);
+    ctx.clip();
+    var pulse = 0.55 + 0.45 * Math.sin(time * 7);
+    ctx.globalAlpha = 0.72 + pulse * 0.2;
+    ctx.strokeStyle = 'rgba(255, 238, 171, ' + (0.55 + pulse * 0.35) + ')';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 7]);
+    ctx.beginPath();
+    ctx.moveTo(sx, BOX.y + 24);
+    ctx.lineTo(sx, FLOOR_Y - 8);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = '#ffe8a8';
+    ctx.shadowColor = 'rgba(242, 199, 108, 0.9)';
+    ctx.shadowBlur = 10;
+    ctx.beginPath();
+    ctx.moveTo(sx - 6, BOX.y + 30);
+    ctx.lineTo(sx + 6, BOX.y + 30);
+    ctx.lineTo(sx, BOX.y + 40);
+    ctx.closePath();
+    ctx.fill();
     ctx.restore();
     ctx.save();
-    ctx.globalAlpha = 0.9;
-    ctx.fillStyle = '#fff3c7';
-    ctx.font = '800 10px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.fillStyle = '#ffe8a8';
+    ctx.font = '900 10px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'bottom';
     ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
-    ctx.shadowBlur = 5;
-    ctx.fillText(p.label, pointer.x, pointer.y - 14);
+    ctx.shadowBlur = 4;
+    ctx.fillText('ここへ落とす', sx, BOX.y + 58);
     ctx.restore();
   }
 
-  function drawTray() {
-    var panelY = 540;
-    var panel = ctx.createLinearGradient(0, panelY, 0, C.VIEW_H);
-    panel.addColorStop(0, 'rgba(12, 22, 45, 0.96)');
-    panel.addColorStop(1, 'rgba(5, 10, 22, 0.98)');
+  function drawPanel() {
+    var panel = ctx.createLinearGradient(0, PANEL_Y, 0, C.VIEW_H);
+    panel.addColorStop(0, 'rgba(12, 22, 45, 0.98)');
+    panel.addColorStop(1, 'rgba(5, 10, 22, 0.99)');
     ctx.fillStyle = panel;
-    roundRect(0, panelY, C.VIEW_W, C.VIEW_H - panelY, 20);
+    roundRect(0, PANEL_Y, C.VIEW_W, C.VIEW_H - PANEL_Y, 20);
     ctx.fill();
     ctx.strokeStyle = 'rgba(119, 228, 223, 0.14)';
-    ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(16, panelY + 1);
-    ctx.lineTo(C.VIEW_W - 16, panelY + 1);
+    ctx.moveTo(16, PANEL_Y + 1);
+    ctx.lineTo(C.VIEW_W - 16, PANEL_Y + 1);
     ctx.stroke();
 
-    var hintActive = game.hints > 0;
+    var st = E.getState(game);
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    if (st.activeCode) {
+      var active = E.byCode[st.activeCode];
+      ctx.fillStyle = '#fff1bd';
+      ctx.font = '900 15px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+      ctx.fillText('いま: ' + active.label, 20, 625);
+    } else {
+      ctx.fillStyle = '#fff1bd';
+      ctx.font = '900 14px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+      ctx.fillText('全部落とした! 60秒で完成させよう', 20, 625);
+    }
+    ctx.fillStyle = 'rgba(145, 174, 199, 0.95)';
+    ctx.font = '800 10px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.textAlign = 'right';
+    ctx.fillText('のこり ' + st.queueLength, 460, 625);
+    ctx.textAlign = 'left';
+    ctx.font = '800 8px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(145, 174, 199, 0.8)';
+    ctx.fillText('NEXT', 20, 650);
+
+    var next = st.queue.slice(1, 4);
+    for (var i = 0; i < next.length; i++) {
+      var p = E.byCode[next[i]];
+      var x = 70 + i * 74;
+      ctx.save();
+      ctx.fillStyle = 'rgba(17, 33, 61, 0.78)';
+      ctx.strokeStyle = 'rgba(119, 228, 223, 0.1)';
+      roundRect(x, 638, 66, 54, 9);
+      ctx.fill();
+      ctx.stroke();
+      drawMini(p, x + 33, 660, 48, 27, 0.92);
+      ctx.fillStyle = 'rgba(219, 236, 252, 0.86)';
+      ctx.font = '700 8px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(p.label, x + 33, 682);
+      ctx.restore();
+    }
+
+    drawButton(HINT_RECT, 'ヒント ' + st.hints, st.hints > 0);
+    drawButton(SHAKE_RECT, 'ゆらす ' + st.shakes, st.shakes > 0);
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(145, 174, 199, 0.9)';
+    ctx.font = '700 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.fillText('左右にドラッグ', 310, 726);
+    ctx.fillText('離す / タップで落とす', 310, 742);
+    ctx.fillText('H:ヒント  X:ゆらす', 310, 758);
+  }
+
+  function drawButton(rect, text, enabled) {
     ctx.save();
-    ctx.fillStyle = hintActive ? 'rgba(242, 199, 108, 0.15)' : 'rgba(90, 110, 135, 0.1)';
-    ctx.strokeStyle = hintActive ? 'rgba(242, 199, 108, 0.74)' : 'rgba(130, 155, 180, 0.25)';
-    ctx.lineWidth = 1.3;
-    roundRect(HINT_RECT.x, HINT_RECT.y, HINT_RECT.w, HINT_RECT.h, 12);
+    ctx.fillStyle = enabled ? 'rgba(242, 199, 108, 0.14)' : 'rgba(90, 110, 135, 0.08)';
+    ctx.strokeStyle = enabled ? 'rgba(242, 199, 108, 0.72)' : 'rgba(130, 155, 180, 0.22)';
+    ctx.lineWidth = 1.2;
+    roundRect(rect.x, rect.y, rect.w, rect.h, 12);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = hintActive ? '#ffe4a0' : '#71879c';
+    ctx.fillStyle = enabled ? '#ffe4a0' : '#71879c';
     ctx.font = '900 13px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('ヒント ' + game.hints, HINT_RECT.x + HINT_RECT.w / 2, HINT_RECT.y + HINT_RECT.h / 2 + 1);
+    ctx.fillText(text, rect.x + rect.w / 2, rect.y + rect.h / 2 + 1);
     ctx.restore();
-
-    var selected = game.selectedCode ? E.byCode[game.selectedCode] : null;
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    if (selected) {
-      ctx.fillStyle = '#fff1bd';
-      ctx.font = '900 16px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.fillText(selected.label, 138, 562);
-      ctx.fillStyle = 'rgba(145, 174, 199, 0.95)';
-      ctx.font = '700 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.fillText(E.regionLabel[selected.region] + ' / 地図の正しい場所へ', 138, 581);
-    } else {
-      ctx.fillStyle = 'rgba(224, 239, 255, 0.92)';
-      ctx.font = '800 12px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.fillText('地方をえらんで、県を地図へ', 138, 562);
-      ctx.fillStyle = 'rgba(145, 174, 199, 0.9)';
-      ctx.font = '700 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.fillText('ドラッグでも、タップでも置けます', 138, 581);
-    }
-
-    for (var i = 0; i < tabRects.length; i++) drawTab(tabRects[i]);
-    var pieces = E.tray(game);
-    for (i = 0; i < pieces.length; i++) drawTile(pieces[i], i);
-    if (!pieces.length) {
-      ctx.fillStyle = 'rgba(145, 174, 199, 0.85)';
-      ctx.font = '800 12px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('この地方は完成しました', C.VIEW_W / 2, 700);
-    }
-  }
-
-  function drawTab(rect) {
-    var region = rect.region;
-    var remaining = E.regionRemaining(game, region).length;
-    var active = game.regionFilter === region;
-    var complete = remaining === 0;
-    var color = E.regionColor[region];
-    ctx.save();
-    ctx.fillStyle = active ? hexAlpha(color, 0.2) : 'rgba(15, 30, 56, 0.72)';
-    ctx.strokeStyle = active ? hexAlpha(color, 0.92) : 'rgba(119, 228, 223, 0.14)';
-    ctx.lineWidth = active ? 1.6 : 1;
-    roundRect(rect.x, rect.y, rect.w, rect.h, 10);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = active ? '#fff3cc' : (complete ? 'rgba(126, 165, 188, 0.62)' : 'rgba(212, 232, 250, 0.9)');
-    ctx.font = (active ? '900 ' : '800 ') + '9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(E.regionLabel[region], rect.x + rect.w / 2, rect.y + 28);
-    if (remaining > 0) {
-      ctx.fillStyle = active ? '#fff3cc' : color;
-      ctx.beginPath();
-      ctx.arc(rect.x + rect.w - 9, rect.y + 9, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillStyle = '#07101e';
-      ctx.font = '900 8px ui-monospace, Menlo, monospace';
-      ctx.fillText(String(remaining), rect.x + rect.w - 9, rect.y + 10);
-    } else {
-      ctx.strokeStyle = 'rgba(119, 228, 223, 0.7)';
-      ctx.lineWidth = 1.5;
-      ctx.beginPath();
-      ctx.moveTo(rect.x + rect.w - 14, rect.y + 9);
-      ctx.lineTo(rect.x + rect.w - 10, rect.y + 13);
-      ctx.lineTo(rect.x + rect.w - 4, rect.y + 4);
-      ctx.stroke();
-    }
-    ctx.restore();
-  }
-
-  function tileRect(index) {
-    var col = index % COLS;
-    var row = Math.floor(index / COLS);
-    return {
-      x: TRAY_X + col * (TILE_W + TILE_GAP_X),
-      y: TRAY_Y + row * (TILE_H + TILE_GAP_Y),
-      w: TILE_W,
-      h: TILE_H
-    };
-  }
-
-  function drawTile(p, index) {
-    var r = tileRect(index);
-    var active = game.selectedCode === p.code;
-    ctx.save();
-    ctx.fillStyle = active ? 'rgba(242, 199, 108, 0.14)' : 'rgba(17, 33, 61, 0.86)';
-    ctx.strokeStyle = active ? 'rgba(255, 225, 157, 0.96)' : 'rgba(119, 228, 223, 0.1)';
-    ctx.lineWidth = active ? 1.8 : 1;
-    roundRect(r.x, r.y, r.w, r.h, 10);
-    ctx.fill();
-    ctx.stroke();
-
-    var b = p.bbox;
-    var bw = b[2] - b[0];
-    var bh = b[3] - b[1];
-    var scale = Math.min(42 / bw, 31 / bh);
-    var cx = r.x + r.w / 2;
-    var cy = r.y + 22;
-    var ox = cx - ((b[0] + b[2]) / 2) * scale;
-    var oy = cy - ((b[1] + b[3]) / 2) * scale;
-    ctx.shadowColor = hexAlpha(p.color, 0.55);
-    ctx.shadowBlur = active ? 9 : 4;
-    drawMapShape(p, p.color, 'rgba(5, 10, 20, 0.78)', 0.8, ox, oy, scale);
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = active ? '#fff4c9' : 'rgba(219, 236, 252, 0.9)';
-    ctx.font = (active ? '900 ' : '700 ') + '9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(p.label, r.x + r.w / 2, r.y + 50);
-    ctx.restore();
-  }
-
-  function drawIntroMap(time) {
-    for (var i = 0; i < E.prefectures.length; i++) {
-      var p = E.prefectures[i];
-      drawMapShape(p, hexAlpha(p.color, 0.17 + 0.03 * Math.sin(time * 1.4 + i)), hexAlpha(p.color, 0.34), 0.8);
-    }
   }
 
   function drawTitle(time) {
     drawBackdrop(time);
     ctx.save();
-    ctx.shadowColor = 'rgba(0, 0, 0, 0.55)';
-    ctx.shadowBlur = 24;
-    var panel = ctx.createLinearGradient(BOARD.x, BOARD.y, BOARD.x, BOARD.y + BOARD.h);
-    panel.addColorStop(0, '#101f3a');
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 26;
+    var panel = ctx.createLinearGradient(BOX.x, BOX.y, BOX.x, BOX.y + BOX.h);
+    panel.addColorStop(0, '#10203c');
     panel.addColorStop(1, '#060d1d');
     ctx.fillStyle = panel;
-    roundRect(BOARD.x, BOARD.y, BOARD.w, BOARD.h, 16);
+    roundRect(BOX.x, BOX.y, BOX.w, BOX.h, 16);
     ctx.fill();
     ctx.restore();
     ctx.strokeStyle = 'rgba(119, 228, 223, 0.16)';
-    roundRect(BOARD.x + 0.5, BOARD.y + 0.5, BOARD.w - 1, BOARD.h - 1, 16);
+    roundRect(BOX.x + 0.5, BOX.y + 0.5, BOX.w - 1, BOX.h - 1, 16);
     ctx.stroke();
-    drawIntroMap(time);
 
-    var panelY = 540;
-    ctx.fillStyle = 'rgba(12, 22, 45, 0.8)';
-    roundRect(0, panelY, C.VIEW_W, C.VIEW_H - panelY, 20);
+    ctx.save();
+    ctx.beginPath();
+    roundRect(BOX.x + 1, BOX.y + 1, BOX.w - 2, BOX.h - 2, 15);
+    ctx.clip();
+    var demo = [
+      { code: 1, x: 0.62, y: 0.72 },
+      { code: 2, x: 0.60, y: 0.61 },
+      { code: 3, x: 0.64, y: 0.55 },
+      { code: 4, x: 0.63, y: 0.49 },
+      { code: 7, x: 0.60, y: 0.42 },
+      { code: 13, x: 0.57, y: 0.33 },
+      { code: 27, x: 0.44, y: 0.42 },
+      { code: 40, x: 0.24, y: 0.55 }
+    ];
+    for (var i = 0; i < demo.length; i++) {
+      var p = E.byCode[demo[i].code];
+      drawPref(p, demo[i].x, demo[i].y, p, hexAlpha(p.color, 0.32), hexAlpha(p.color, 0.55), 0.8, 0, 0, null);
+    }
+    ctx.restore();
+
+    ctx.fillStyle = 'rgba(12, 22, 45, 0.84)';
+    roundRect(0, PANEL_Y, C.VIEW_W, C.VIEW_H - PANEL_Y, 20);
     ctx.fill();
-    ctx.fillStyle = 'rgba(242, 199, 108, 0.5)';
-    ctx.font = '800 10px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.fillStyle = 'rgba(242, 199, 108, 0.55)';
+    ctx.font = '900 10px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('47 PIECES / 8 REGIONS / ONE MAP', C.VIEW_W / 2, 600);
-    ctx.fillStyle = 'rgba(145, 174, 199, 0.6)';
+    ctx.fillText('DROP · MERGE · 47 PREFECTURES', C.VIEW_W / 2, 678);
+    ctx.fillStyle = 'rgba(145, 174, 199, 0.55)';
     ctx.font = '700 9px ui-monospace, Menlo, monospace';
-    ctx.fillText('DRAG · CONNECT · COMPLETE', C.VIEW_W / 2, 626);
+    ctx.fillText('FALL · TOUCH · CONNECT', C.VIEW_W / 2, 704);
+  }
+
+  function drawEffects() {
+    for (var i = 0; i < effects.particles.length; i++) {
+      var p = effects.particles[i];
+      var a = clamp(p.life / p.max, 0, 1);
+      ctx.globalAlpha = a;
+      ctx.fillStyle = p.color;
+      ctx.shadowColor = p.color;
+      ctx.shadowBlur = 9;
+      if (p.shape === 'line') {
+        ctx.save();
+        ctx.translate(p.x, p.y);
+        ctx.rotate(Math.atan2(p.vy, p.vx));
+        ctx.fillRect(0, -p.size * 0.35, p.size * 2.6, p.size * 0.7);
+        ctx.restore();
+      } else {
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    for (i = 0; i < effects.popups.length; i++) {
+      var pop = effects.popups[i];
+      ctx.globalAlpha = clamp(pop.life / pop.max, 0, 1);
+      ctx.fillStyle = pop.color;
+      ctx.shadowColor = pop.color;
+      ctx.shadowBlur = 10;
+      ctx.font = '900 ' + pop.size + 'px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(pop.text, pop.x, pop.y);
+    }
+    ctx.globalAlpha = 1;
+    ctx.shadowBlur = 0;
+    if (effects.banner) {
+      var b = effects.banner;
+      var alpha = clamp(b.life / b.max, 0, 1);
+      ctx.save();
+      ctx.globalAlpha = Math.min(1, alpha * 1.7);
+      var y = 286 - (1 - alpha) * 8;
+      ctx.fillStyle = 'rgba(5, 10, 20, 0.8)';
+      roundRect(54, y - 27, 372, 66, 14);
+      ctx.fill();
+      ctx.strokeStyle = b.color;
+      ctx.lineWidth = 1.2;
+      roundRect(54, y - 27, 372, 66, 14);
+      ctx.stroke();
+      ctx.fillStyle = b.color;
+      ctx.shadowColor = b.color;
+      ctx.shadowBlur = 18;
+      ctx.font = '900 21px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(b.text, C.VIEW_W / 2, y);
+      if (b.sub) {
+        ctx.shadowBlur = 0;
+        ctx.fillStyle = '#e6f8ff';
+        ctx.font = '800 11px ui-monospace, Menlo, monospace';
+        ctx.fillText(b.sub, C.VIEW_W / 2, y + 21);
+      }
+      ctx.restore();
+    }
   }
 
   function draw(time) {
@@ -674,13 +670,15 @@
     ctx.clearRect(0, 0, C.VIEW_W, C.VIEW_H);
     ctx.save();
     if (effects && effects.shake > 0) {
-      ctx.translate((Math.random() - 0.5) * 14 * effects.shake, (Math.random() - 0.5) * 14 * effects.shake);
+      ctx.translate((Math.random() - 0.5) * 16 * effects.shake, (Math.random() - 0.5) * 16 * effects.shake);
     }
     if (game) {
       drawBackdrop(time);
-      drawBoard(time);
-      drawDraggingPiece(time);
-      drawTray();
+      drawBox(time);
+      drawBodies(time);
+      drawActive(time);
+      drawHint(time);
+      drawPanel();
     } else {
       drawTitle(time);
     }
@@ -724,13 +722,7 @@
   }
 
   function showBanner(text, sub, color) {
-    effects.banner = {
-      text: text,
-      sub: sub || '',
-      color: color || '#ffe6a3',
-      life: 1.9,
-      max: 1.9
-    };
+    effects.banner = { text: text, sub: sub || '', color: color || '#ffe6a3', life: 1.9, max: 1.9 };
   }
 
   function processEvents() {
@@ -738,41 +730,49 @@
     var events = E.consumeEvents(game);
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
-      if (ev.type === 'place') {
-        var p = E.byCode[ev.code];
-        if (!p) continue;
-        var c = centerScreen(p);
-        burst(c.x, c.y, ev.regionComplete ? 26 : 15, [p.color, '#fff4c9', '#ffffff'], ev.regionComplete ? 300 : 210, 0.65);
-        popup('+' + ev.gain, c.x, c.y - 14, '#ffe6a3', 17);
-        if (ev.neighbors > 0) popup('つながった ×' + ev.neighbors, c.x, c.y - 32, '#9ff4ef', 12);
-        effects.lastGlow = { code: ev.code, until: nowMs() + 850 };
+      if (ev.type === 'merge') {
+        var x = BOX.x + ev.x * SCALE;
+        var y = BOX.y + ev.y * SCALE;
+        burst(x, y, 14, ['#ffe6a3', '#77e4df', '#ffffff'], 220, 0.55);
+        popup('+' + ev.gain, x, y - 10, '#ffe6a3', 17);
+        popup(ev.count + '県 合体', x, y - 28, '#9ff4ef', 11);
+        effects.shake = Math.max(effects.shake, 0.18);
       } else if (ev.type === 'region') {
-        var rc = regionCenter(ev.region);
-        burst(rc.x, rc.y, 30, [E.regionColor[ev.region], '#fff4c9', '#ffffff'], 300, 0.9);
+        var codes = E.byRegion[ev.region];
+        var rx = 0;
+        var ry = 0;
+        for (var k = 0; k < codes.length; k++) {
+          var rp = E.byCode[codes[k]];
+          rx += rp.center[0];
+          ry += rp.center[1];
+        }
+        rx = BOX.x + (rx / codes.length) * SCALE;
+        ry = BOX.y + (ry / codes.length) * SCALE;
+        burst(rx, ry, 28, [E.regionColor[ev.region], '#fff4c9', '#ffffff'], 280, 0.9);
         showBanner(ev.label + ' 完成', '+500', E.regionColor[ev.region]);
-      } else if (ev.type === 'miss') {
-        effects.shake = Math.max(effects.shake, 0.8);
-        effects.flash = Math.max(effects.flash, 0.4);
-        effects.flashColor = '255, 110, 110';
-        var md = ev.drop ? ev.drop : ev.target;
-        var mt = mapPoint([md.x, md.y]);
-        popup('ちがう... -2秒', mt.x, mt.y, '#ff9d8c', 15);
+      } else if (ev.type === 'drop') {
+        var dx = BOX.x + ev.x * SCALE;
+        burst(dx, BOX.y + 15, 6, ['#77e4df', '#ffffff'], 80, 0.28, 240);
       } else if (ev.type === 'hint') {
-        hintUntil = nowMs() + 2700;
-        hintUntilCode = ev.code;
+        hint = { code: ev.code, x: ev.x, y: ev.y, until: nowMs() + 2700 };
+      } else if (ev.type === 'shake') {
+        effects.shake = Math.max(effects.shake, 0.6);
+      } else if (ev.type === 'overflow') {
+        effects.flash = 0.8;
+        effects.flashColor = '255, 120, 100';
       } else if (ev.type === 'timeout') {
         effects.flash = 0.8;
-        effects.flashColor = '255, 130, 110';
+        effects.flashColor = '255, 120, 100';
       } else if (ev.type === 'clear') {
-        effects.flash = 0.8;
+        effects.flash = 0.85;
         effects.flashColor = '255, 246, 210';
-        showBanner('日本地図 完成!', 'BONUS +' + ev.clearBonus, '#ffe6a3');
-        for (var k = 0; k < 80; k++) {
+        showBanner('日本列島 完成!', 'BONUS +' + ev.bonus, '#ffe6a3');
+        for (var n = 0; n < 90; n++) {
           effects.particles.push({
             x: Math.random() * C.VIEW_W,
-            y: -20 - Math.random() * 120,
+            y: -20 - Math.random() * 140,
             vx: (Math.random() - 0.5) * 80,
-            vy: 80 + Math.random() * 140,
+            vy: 80 + Math.random() * 150,
             g: 110,
             life: 3 + Math.random() * 2,
             max: 5,
@@ -813,74 +813,6 @@
     }
   }
 
-  function drawEffects() {
-    if (!effects) return;
-    for (var i = 0; i < effects.particles.length; i++) {
-      var p = effects.particles[i];
-      var a = clamp(p.life / p.max, 0, 1);
-      ctx.globalAlpha = a;
-      ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = 9;
-      if (p.shape === 'line') {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(Math.atan2(p.vy, p.vx));
-        ctx.fillRect(0, -p.size * 0.35, p.size * 2.6, p.size * 0.7);
-        ctx.restore();
-      } else {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    }
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-
-    for (i = 0; i < effects.popups.length; i++) {
-      var pop = effects.popups[i];
-      ctx.globalAlpha = clamp(pop.life / pop.max, 0, 1);
-      ctx.fillStyle = pop.color;
-      ctx.shadowColor = pop.color;
-      ctx.shadowBlur = 10;
-      ctx.font = '900 ' + pop.size + 'px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(pop.text, pop.x, pop.y);
-    }
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-
-    if (effects.banner) {
-      var b = effects.banner;
-      var alpha = clamp(b.life / b.max, 0, 1);
-      ctx.save();
-      ctx.globalAlpha = Math.min(1, alpha * 1.7);
-      var y = 286 - (1 - alpha) * 8;
-      ctx.fillStyle = 'rgba(5, 10, 20, 0.78)';
-      roundRect(54, y - 27, 372, 66, 14);
-      ctx.fill();
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = 1.2;
-      roundRect(54, y - 27, 372, 66, 14);
-      ctx.stroke();
-      ctx.fillStyle = b.color;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 18;
-      ctx.font = '900 21px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(b.text, C.VIEW_W / 2, y);
-      if (b.sub) {
-        ctx.shadowBlur = 0;
-        ctx.fillStyle = '#e6f8ff';
-        ctx.font = '800 11px ui-monospace, Menlo, monospace';
-        ctx.fillText(b.sub, C.VIEW_W / 2, y + 21);
-      }
-      ctx.restore();
-    }
-  }
-
   function pointerPosition(e) {
     var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
     var w = rect.width || 480;
@@ -895,66 +827,57 @@
     return pos.x >= r.x && pos.x <= r.x + r.w && pos.y >= r.y && pos.y <= r.y + r.h;
   }
 
-  function onBoard(pos) {
-    return pos.x >= BOARD.x && pos.x <= BOARD.x + BOARD.w && pos.y >= BOARD.y && pos.y <= BOARD.y + BOARD.h;
+  function inBox(pos) {
+    return pos.x >= BOX.x && pos.x <= BOX.x + BOX.w && pos.y >= BOX.y && pos.y <= BOX.y + BOX.h;
   }
 
-  function pieceAt(pos) {
-    if (!game) return null;
-    var pieces = E.tray(game);
-    for (var i = 0; i < pieces.length; i++) {
-      if (inRect(pos, tileRect(i))) return pieces[i];
-    }
-    return null;
+  function setActiveFromScreen(x) {
+    if (!game || !game.activeCode) return;
+    E.setActiveX(game, (x - BOX.x) / SCALE);
   }
 
-  function tabAt(pos) {
-    for (var i = 0; i < tabRects.length; i++) {
-      if (inRect(pos, { x: tabRects[i].x, y: 598, w: tabRects[i].w, h: 62 })) return tabRects[i].region;
+  function dropActive() {
+    if (!game || game.phase !== 'run' || game.paused) return null;
+    var body = E.dropActive(game);
+    processEvents();
+    syncUI();
+    return body;
+  }
+
+  function useHint() {
+    if (!game || game.phase !== 'run' || game.paused) return;
+    var target = E.useHint(game);
+    if (target) {
+      hint = { code: target.code, x: target.x, y: target.y, until: nowMs() + 2700 };
+      effects.flash = Math.max(effects.flash, 0.12);
+      effects.flashColor = '255, 232, 150';
+    } else {
+      popup('ヒントはつかえない', C.VIEW_W / 2, 560, '#ff9d8c', 13);
     }
-    return null;
+    processEvents();
+    syncUI();
+  }
+
+  function useShake() {
+    if (!game || game.phase !== 'run' || game.paused) return;
+    if (E.shake(game)) {
+      processEvents();
+      syncUI();
+    }
   }
 
   function onPointerDown(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!game || game.paused || game.phase !== 'run' || pointer) return;
+    if (!game || game.phase !== 'run' || game.paused || pointer) return;
     var pos = pointerPosition(e);
     var mode = 'none';
-    var code = null;
-    var region = null;
-
-    if (inRect(pos, HINT_HIT)) mode = 'hint';
-    else {
-      region = tabAt(pos);
-      if (region) mode = 'tab';
-      else {
-        var piece = pieceAt(pos);
-        if (piece) {
-          mode = 'drag';
-          code = piece.code;
-          E.selectPiece(game, code);
-          syncUI();
-        } else if (onBoard(pos)) {
-          if (game.selectedCode) {
-            mode = 'board';
-            code = game.selectedCode;
-          }
-        }
-      }
+    if (inRect(pos, HINT_RECT)) mode = 'hint';
+    else if (inRect(pos, SHAKE_RECT)) mode = 'shake';
+    else if (inBox(pos)) {
+      mode = 'drop';
+      setActiveFromScreen(pos.x);
     }
-
-    pointer = {
-      id: e.pointerId == null ? 1 : e.pointerId,
-      mode: mode,
-      code: code,
-      region: region,
-      x: pos.x,
-      y: pos.y,
-      startX: pos.x,
-      startY: pos.y,
-      moved: false,
-      overBoard: onBoard(pos)
-    };
+    pointer = { id: e.pointerId == null ? 1 : e.pointerId, mode: mode, x: pos.x, y: pos.y };
     try {
       if (canvas.setPointerCapture) canvas.setPointerCapture(pointer.id);
     } catch (err) { }
@@ -965,8 +888,7 @@
     if (!pointer) {
       var hover = pointerPosition(e);
       if (canvas) {
-        var interactive = inRect(hover, HINT_HIT) || tabAt(hover) || pieceAt(hover) || (onBoard(hover) && game && game.selectedCode);
-        canvas.style.cursor = interactive ? 'pointer' : 'default';
+        canvas.style.cursor = (inRect(hover, HINT_RECT) || inRect(hover, SHAKE_RECT) || inBox(hover)) ? 'pointer' : 'default';
       }
       return;
     }
@@ -974,8 +896,7 @@
     var pos = pointerPosition(e);
     pointer.x = pos.x;
     pointer.y = pos.y;
-    pointer.overBoard = onBoard(pos);
-    if (Math.abs(pos.x - pointer.startX) + Math.abs(pos.y - pointer.startY) > 7) pointer.moved = true;
+    if (pointer.mode === 'drop') setActiveFromScreen(pos.x);
   }
 
   function onPointerUp(e) {
@@ -988,18 +909,10 @@
     try {
       if (canvas.releasePointerCapture) canvas.releasePointerCapture(id);
     } catch (err) { }
-
-    if (!game || game.paused || game.phase !== 'run') return;
-
-    if (p.mode === 'hint' && !p.moved) {
-      doHint();
-    } else if (p.mode === 'tab' && !p.moved) {
-      game.selectedCode = null;
-      E.selectRegion(game, p.region);
-      syncUI();
-    } else if ((p.mode === 'drag' || p.mode === 'board') && p.code) {
-      if (p.overBoard) attemptPlace(p.code, p.x, p.y);
-    }
+    if (!game || game.phase !== 'run' || game.paused) return;
+    if (p.mode === 'hint') useHint();
+    else if (p.mode === 'shake') useShake();
+    else if (p.mode === 'drop') dropActive();
   }
 
   function onPointerCancel(e) {
@@ -1010,30 +923,6 @@
         if (canvas.releasePointerCapture) canvas.releasePointerCapture(id);
       } catch (err) { }
     }
-  }
-
-  function attemptPlace(code, x, y) {
-    if (!game || game.phase !== 'run' || game.paused) return;
-    var nx = (x - MAP_X) / MAP_SCALE;
-    var ny = (y - MAP_Y) / MAP_SCALE;
-    var result = E.tryPlace(game, code, nx, ny);
-    processEvents();
-    syncUI();
-    return result;
-  }
-
-  function doHint() {
-    if (!game || game.phase !== 'run' || game.paused) return;
-    var h = E.useHint(game);
-    if (!h) {
-      popup('ヒントはつかえない', C.VIEW_W / 2, 520, '#ff9d8c', 13);
-      return;
-    }
-    hintUntil = nowMs() + 2700;
-    hintUntilCode = h.code;
-    showBanner(h.label + ' はここ', E.regionLabel[h.region], '#ffe6a3');
-    processEvents();
-    syncUI();
   }
 
   function onKeyDown(e) {
@@ -1050,7 +939,21 @@
     if (k === 'h' || k === 'H') {
       if (game && game.phase === 'run' && !game.paused) {
         if (e.preventDefault) e.preventDefault();
-        doHint();
+        useHint();
+      }
+      return;
+    }
+    if (k === 'x' || k === 'X') {
+      if (game && game.phase === 'run' && !game.paused) {
+        if (e.preventDefault) e.preventDefault();
+        useShake();
+      }
+      return;
+    }
+    if (k === 'ArrowLeft' || k === 'ArrowRight') {
+      if (game && game.phase === 'run' && !game.paused) {
+        if (e.preventDefault) e.preventDefault();
+        E.moveActive(game, k === 'ArrowLeft' ? -0.03 : 0.03);
       }
       return;
     }
@@ -1060,13 +963,15 @@
         if (!e.repeat) beginRun();
       } else if (game.paused) {
         resumeGame();
+      } else if (game.phase === 'run' && !e.repeat) {
+        dropActive();
       }
     }
   }
 
   function resizeCanvas() {
     if (!canvas) return;
-    dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(2, Math.max(1, window.devicePixelRatio)) : 1;
+    var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(2, Math.max(1, window.devicePixelRatio)) : 1;
     var w = Math.round(C.VIEW_W * dpr);
     var h = Math.round(C.VIEW_H * dpr);
     if (canvas.width !== w) canvas.width = w;
@@ -1096,18 +1001,6 @@
         phase: Math.random() * 6.28
       });
     }
-    tabRects = [];
-    var totalW = E.regions.length * TAB_W + (E.regions.length - 1) * TAB_GAP;
-    var startX = (C.VIEW_W - totalW) / 2;
-    for (i = 0; i < E.regions.length; i++) {
-      tabRects.push({
-        x: startX + i * (TAB_W + TAB_GAP),
-        y: TAB_Y,
-        w: TAB_W,
-        h: TAB_H,
-        region: E.regions[i].id
-      });
-    }
   }
 
   function frame(ts) {
@@ -1116,7 +1009,6 @@
     var dt = (ts - lastTs) / 1000;
     lastTs = ts;
     dt = clamp(dt, 0, 0.05);
-
     if (game && !game.paused && game.phase === 'run') {
       E.tick(game, dt);
       processEvents();
@@ -1131,35 +1023,18 @@
 
   function autoPlayStep() {
     if (!game) return;
-    if (game.paused || game.phase !== 'run') return;
-    if (autoState.delay > 0) {
-      autoState.delay--;
+    if (game.paused || game.phase !== 'run' || !game.activeCode) return;
+    if (autoState.wait > 0) {
+      autoState.wait--;
       return;
     }
-    var pieces = E.tray(game);
-    var code = pieces.length ? pieces[0].code : E.firstRemaining(game);
-    if (!code) return;
-    var t = E.target(code);
-    E.tryPlace(game, code, t.x, t.y);
+    var target = E.targetForActive(game);
+    if (target) E.setActiveX(game, target.x);
+    E.dropActive(game);
     processEvents();
     syncUI();
-    autoState.delay = 1;
+    autoState.wait = 30;
   }
-
-  function hexAlpha(hex, alpha) {
-    var h = hex.replace('#', '');
-    if (h.length === 3) h = h[0] + h[0] + h[1] + h[1] + h[2] + h[2];
-    var r = parseInt(h.slice(0, 2), 16);
-    var g = parseInt(h.slice(2, 4), 16);
-    var b = parseInt(h.slice(4, 6), 16);
-    return 'rgba(' + r + ',' + g + ',' + b + ',' + alpha + ')';
-  }
-
-  function mod(n, m) {
-    return ((n % m) + m) % m;
-  }
-
-  var hintUntilCode = null;
 
   function init() {
     canvas = $('game');
@@ -1173,6 +1048,8 @@
     els.screenPause = $('screen-pause');
     els.titleBestScore = $('title-best-score');
     els.titleBestTime = $('title-best-time');
+    els.overKicker = $('over-kicker');
+    els.overTitle = $('over-title');
     els.overScore = $('over-score');
     els.overCount = $('over-count');
     els.overBestScore = $('over-best-score');
@@ -1241,10 +1118,10 @@
           return {
             id: 'ken-tsunagi',
             phase: 'title',
-            placedCount: 0,
-            total: E.total,
             score: 0,
-            timeLeft: E.timeLimit,
+            total: E.total,
+            queueLength: E.total,
+            largest: 0,
             best: best
           };
         }
@@ -1252,30 +1129,12 @@
         state.best = { score: best.score, time: best.time };
         return state;
       },
-      getScreenTarget: function (code) {
-        var p = E.byCode[Number(code)];
-        if (!p) return null;
-        var c = centerScreen(p);
+      getScreenPoint: function (wx, wy) {
         var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
         return {
-          x: rect.left + c.x / C.VIEW_W * (rect.width || 480),
-          y: rect.top + c.y / C.VIEW_H * (rect.height || 800)
+          x: rect.left + (BOX.x + wx * SCALE) / C.VIEW_W * (rect.width || 480),
+          y: rect.top + (BOX.y + wy * SCALE) / C.VIEW_H * (rect.height || 800)
         };
-      },
-      getPieceTile: function (code) {
-        if (!game) return null;
-        var pieces = E.tray(game);
-        for (var i = 0; i < pieces.length; i++) {
-          if (pieces[i].code === Number(code)) {
-            var r = tileRect(i);
-            var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
-            return {
-              x: rect.left + (r.x + r.w / 2) / C.VIEW_W * (rect.width || 480),
-              y: rect.top + (r.y + r.h / 2) / C.VIEW_H * (rect.height || 800)
-            };
-          }
-        }
-        return null;
       }
     };
   }
