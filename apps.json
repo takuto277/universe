@@ -95,6 +95,20 @@
       "summary": "倍々に増えるボールと20球レースを楽しむ、音楽連動の映像ゲーム。"
     },
     {
+      "id": "tether",
+      "path": "projects/_labs/tether/",
+      "tag": "GAME",
+      "title": "TETHER",
+      "description": "張り出したアンカーにロープを引っかけて登る、1ボタンの縦画面クライミング。押して巻き取り、離して飛ぶ。60秒でどこまで登れるか、15のアンカーと3つの回転バーを越えて自己ベストを目指す。ベスト高さ保存、効果音つき。",
+      "tags": [
+        "1ボタン",
+        "クライミング"
+      ],
+      "thumbnail": "projects/_labs/tether/thumb.jpg",
+      "thumbDelay": 0.45,
+      "summary": "押して巻き取り、離して飛ぶ。60秒で塔を登る1ボタンクライミング。"
+    },
+    {
       "id": "neon-stack",
       "path": "projects/_labs/neon-stack/",
       "tag": "GAME",

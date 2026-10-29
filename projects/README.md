@@ -25,6 +25,7 @@
 | `graph-cross` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `exponential-balls` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `observer-game` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
+| `tether` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `unknown-word-deal` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `janken-game` | `_samples/` | 最初の最小実装。教材・検証用として維持する |
 
