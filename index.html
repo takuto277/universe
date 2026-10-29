@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0b1019">
   <meta name="description" content="universeでつくったブラウザゲームの一覧。1ボタン、パズル、音楽、推理、アクションを遊べます。">
   <title>universe games</title>
-  <style>
+<style>
     :root {
       --bg: #080d16;
       --panel: #111a2a;
@@ -192,6 +192,14 @@
       html { scroll-behavior: auto; }
       * { transition: none !important; }
     }
+      .list-status {
+      grid-column: 1 / -1;
+      color: var(--muted);
+      text-align: center;
+      padding: 48px 12px;
+      font-size: 13px;
+    }
+    .list-status.error { color: #ff9aae; }
   </style>
 </head>
 <body>
@@ -200,187 +208,17 @@
       <p class="eyebrow">UNIVERSE / GAMES</p>
       <h1>つくったゲーム</h1>
       <p class="subtitle">1ボタン、パズル、音楽、推理、アクション。ブラウザですぐ遊べます。</p>
-      <nav class="filters" aria-label="ジャンルで絞り込む">
-        <button class="filter active" type="button" data-filter="all" aria-pressed="true">すべて</button>
-        <button class="filter" type="button" data-filter="スポーツ" aria-pressed="false">スポーツ</button>
-        <button class="filter" type="button" data-filter="タイミング" aria-pressed="false">タイミング</button>
-        <button class="filter" type="button" data-filter="心理戦" aria-pressed="false">心理戦</button>
-        <button class="filter" type="button" data-filter="1対1" aria-pressed="false">1対1</button>
-        <button class="filter" type="button" data-filter="1ボタン" aria-pressed="false">1ボタン</button>
-        <button class="filter" type="button" data-filter="アクション" aria-pressed="false">アクション</button>
-        <button class="filter" type="button" data-filter="数学" aria-pressed="false">数学</button>
-        <button class="filter" type="button" data-filter="ローグライト" aria-pressed="false">ローグライト</button>
-        <button class="filter" type="button" data-filter="言語" aria-pressed="false">言語</button>
-        <button class="filter" type="button" data-filter="推理" aria-pressed="false">推理</button>
-        <button class="filter" type="button" data-filter="パズル" aria-pressed="false">パズル</button>
-        <button class="filter" type="button" data-filter="音楽" aria-pressed="false">音楽</button>
-        <button class="filter" type="button" data-filter="レトロ" aria-pressed="false">レトロ</button>
-        <button class="filter" type="button" data-filter="レース" aria-pressed="false">レース</button>
-        <button class="filter" type="button" data-filter="アーケード" aria-pressed="false">アーケード</button>
-        <button class="filter" type="button" data-filter="ジャンプ" aria-pressed="false">ジャンプ</button>
-        <button class="filter" type="button" data-filter="日本地図" aria-pressed="false">日本地図</button>
-        <button class="filter" type="button" data-filter="音響" aria-pressed="false">音響</button>
-      </nav>
-      <p class="result-count" id="result-count">11 本のゲーム</p>
+      <nav class="filters" id="filters" aria-label="ジャンルで絞り込む"></nav>
+      <p class="result-count" id="result-count">読み込み中...</p>
     </header>
 
     <main>
       <ul class="cards" id="game-grid">
-    <li class="game-card" data-tags="スポーツ タイミング">
-      <a class="card-link" href="projects/_labs/baseball-game/" data-app="baseball-game">
-        <figure class="thumb">
-          <img src="projects/_labs/baseball-game/thumb.jpg" alt="9球種を読め!のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>9球種を読め!</h2>
-          <p>3回勝負の野球ゲーム。9球種と見逃しの駆け引き、カウント制、タイミングバーで長打を狙え。配球メモと得意/苦手バッジでCPUのクセを読んで打ち崩し、守備はゾーン率を見極めて四球に注意!</p>
-          <ul class="tags"><li>スポーツ</li><li>タイミング</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="心理戦 1対1">
-      <a class="card-link" href="projects/_samples/janken-game/" data-app="janken-game">
-        <figure class="thumb">
-          <img src="projects/_samples/janken-game/thumb.jpg" alt="手を読め!のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>手を読め!</h2>
-          <p>心理戦じゃんけんゲーム。連勝ボーナスと先読み必殺の読み合い、見切りゲージを満タンにしてCPUの手を見てから選べ。手の履歴と「CPUの読み」メーターを見ながら、出しグセを読まれないように駆け引きを制せ!</p>
-          <ul class="tags"><li>心理戦</li><li>1対1</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="1ボタン アクション">
-      <a class="card-link" href="projects/_labs/gravity-flip/" data-app="gravity-flip">
-        <figure class="thumb">
-          <img src="projects/_labs/gravity-flip/thumb.jpg" alt="重力フリップのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>重力フリップ</h2>
-          <p>タップで上下の重力を反転してトゲを避ける1ボタン2Dアクション。だんだん速くなるステージでコインを集め、自己ベストの距離を目指せ!</p>
-          <ul class="tags"><li>1ボタン</li><li>アクション</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="アクション 数学 ローグライト">
-      <a class="card-link" href="projects/_labs/graph-cross/" data-app="graph-cross">
-        <figure class="thumb">
-          <img src="projects/_labs/graph-cross/thumb.jpg" alt="グラフクロスのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>グラフクロス</h2>
-          <p>xが自動で進むグラフの上で関数を切り替え、自分の曲線を敵の曲線に交差させて大爆発を起こす2Dアクション。上昇/下降/その他のジャンルから3つ選ぶデッキ、累乗(x^p)・波(sin/cos/三角/角丸/減衰)・指数/対数/S字/山/減速下降の関数ビルダーと2関数の合成カード、リアルタイム軌道プレビューと合成後プレビュー、角度・弱点・連続MULTI、アイテムで追加される非対称グラフ、ボスとステージクリア、軌道プレビュー付きの同ジャンル関数入れ替え3択と強化3択、敵撃破時に縦ビームで撃ち抜くプリズムクロス、アイテム磁石・リバイブ・コンボガード・ボスブレイカー、関数スロットの3択追加、ローカル関数ガチャとレアリティ、3フェーズボスとレーザー/弾幕攻撃、STAGE10の最終ボスとエンディング、装甲/分裂/ジャマーの特殊敵、1ラン1回の救済チェンジ、図解付き3ステップのチュートリアル、ステージ開始時点からやり直せるリトライ、ライフ無限のストレス解消モードを搭載。BGMと効果音、スマホのタップ操作にも対応!</p>
-          <ul class="tags"><li>アクション</li><li>数学</li><li>ローグライト</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="言語 推理">
-      <a class="card-link" href="projects/_labs/unknown-word-deal/" data-app="unknown-word-deal">
-        <figure class="thumb">
-          <img src="projects/_labs/unknown-word-deal/thumb.jpg" alt="未知語de交渉のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>未知語de交渉</h2>
-          <p>品物は見えている。商人の短い文に潜む文法語と意図を読み、差し出す・受け取る・断るを選ぶスマホ向け言語交渉ゲーム。当たれば+10硬貨、外れれば+3硬貨。迷ったら2硬貨で意味を確認。3人目は言葉としぐさが食い違う。最後は契約書の主語を読んで署名/拒否。3〜5分。</p>
-          <ul class="tags"><li>言語</li><li>推理</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="推理 パズル">
-      <a class="card-link" href="projects/_labs/observer-game/" data-app="observer-game">
-        <figure class="thumb">
-          <img src="projects/_labs/observer-game/thumb.jpg" alt="観測者のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>観測者</h2>
-          <p>敵の動きの隠れた規則を観測し、次の一手を予測するスマホ向け推理ゲーム。観測・予測・灯を動かす実験で6つの候補を絞る。外すとライフが減り、規則が変わる。12ターンで何回当てられるか。約5分。</p>
-          <ul class="tags"><li>推理</li><li>パズル</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="音楽 レトロ レース">
-      <a class="card-link" href="projects/_labs/exponential-balls/" data-app="exponential-balls">
-        <figure class="thumb">
-          <img src="projects/_labs/exponential-balls/thumb.jpg" alt="BLOOMのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>BLOOM</h2>
-          <p>ボールが2,048まで倍々に増えるAUTO、上部ラインで2個に増えるFRAME、20色の球がギミックを抜けて最後の1球を決めるノータップRACE、20球の能力差と予想を楽しむ積み木レースRACE 3Dの4モードを載せた縦画面オーディオビジュアル。AUTO/FRAMEはタップで押し返し。120 BPMのプロシージャル音楽。</p>
-          <ul class="tags"><li>音楽</li><li>レトロ</li><li>レース</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="1ボタン 音楽 アーケード">
-      <a class="card-link" href="projects/_labs/neon-stack/" data-app="neon-stack">
-        <figure class="thumb">
-          <img src="projects/_labs/neon-stack/thumb.jpg" alt="ネオンスタックのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>ネオンスタック</h2>
-          <p>1ボタンで遊ぶネオン積み上げアーケード。左右に往復するブロックを落とし、重なった幅だけが残る。PERFECTで幅キープ+コンボ、3連続で幅回復。5階ごとのコア、10階ごとのバイオーム、BGMのBEATボーナス、日替わりチャレンジ、BGM/効果音つき。</p>
-          <ul class="tags"><li>1ボタン</li><li>音楽</li><li>アーケード</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="アクション ジャンプ">
-      <a class="card-link" href="projects/_labs/jump-rush/" data-app="jump-rush">
-        <figure class="thumb">
-          <img src="projects/_labs/jump-rush/thumb.jpg" alt="ジャンプラッシュのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>ジャンプラッシュ</h2>
-          <p>自動で走るヒーローをタップ/押しっぱなしでジャンプさせ、4種類の敵を踏み越えて城を目指すスマホ縦画面の横スクロールアクション。左右に歩く敵、跳ねる敵、空中を漂う敵、弾を撃つ敵、下から壊せる/壊せないブロック、穴、3ライフ、旗ポールから城へ入るクリア演出、距離・踏み・ブロック・タイムのスコア、ベスト保存つき。</p>
-          <ul class="tags"><li>アクション</li><li>ジャンプ</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="パズル 日本地図">
-      <a class="card-link" href="projects/_labs/ken-tsunagi/" data-app="ken-tsunagi">
-        <figure class="thumb">
-          <img src="projects/_labs/ken-tsunagi/thumb.jpg" alt="けんつなぎのゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>けんつなぎ</h2>
-          <p>47都道府県を箱に落とし、隣り合う県が触れると地図どおり合体する落ちものパズル。県は重力で積もり、陸続きと橋でつながる。47県を落としたら60秒以内に日本列島を完成させ、箱あふれと時間切れを避けてスコアを伸ばす。ヒント3回、ゆらす3回、ベストスコアと最速タイム保存つき。</p>
-          <ul class="tags"><li>パズル</li><li>日本地図</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
-    <li class="game-card" data-tags="音響 パズル">
-      <a class="card-link" href="projects/_labs/oto-no-ie/" data-app="oto-no-ie">
-        <figure class="thumb">
-          <img src="projects/_labs/oto-no-ie/thumb.jpg" alt="音の家のゲームプレイ" loading="lazy" decoding="async" width="1200" height="800">
-          <span class="tag">GAME</span>
-        </figure>
-        <div class="card-body">
-          <h2>音の家</h2>
-          <p>目が見えない住人に鈴の音で道を教える音響パズル。壁と閉じた扉は音を遮り、ガラスは音だけ通す。部屋に最大3つの鈴を置き、音が届く範囲につないで出口へ導く全5室。開いた扉と閉じた扉、鈴の順番、音の波紋、スマホ操作対応。</p>
-          <ul class="tags"><li>音響</li><li>パズル</li></ul>
-          <span class="play">遊ぶ <span aria-hidden="true">→</span></span>
-        </div>
-      </a>
-    </li>
+        <li class="list-status" id="list-status">ゲーム一覧を読み込んでいます...</li>
       </ul>
+      <noscript>
+        <p class="list-status">一覧の表示にはJavaScriptが必要です。<a href="https://github.com/takuto277/universe">GitHub</a>から各ゲームを開けます。</p>
+      </noscript>
     </main>
 
     <footer>
@@ -391,29 +229,131 @@
 
   <script>
     (function () {
-      var cards = Array.prototype.slice.call(document.querySelectorAll('.game-card'));
-      var buttons = Array.prototype.slice.call(document.querySelectorAll('.filter'));
+      var grid = document.getElementById('game-grid');
+      var filters = document.getElementById('filters');
       var count = document.getElementById('result-count');
+      var status = document.getElementById('list-status');
+
+      function tagList(app) {
+        return (app.tags || []).filter(function (tag) { return typeof tag === 'string' && tag; });
+      }
+
+      function makeCard(app) {
+        var li = document.createElement('li');
+        li.className = 'game-card';
+        li.setAttribute('data-tags', tagList(app).join(' '));
+
+        var link = document.createElement('a');
+        link.className = 'card-link';
+        link.href = app.path;
+        link.setAttribute('data-app', app.id);
+
+        var figure = document.createElement('figure');
+        figure.className = 'thumb';
+        var img = document.createElement('img');
+        img.src = app.thumbnail;
+        img.alt = app.title + 'のゲームプレイ';
+        img.loading = 'lazy';
+        img.decoding = 'async';
+        img.width = 1200;
+        img.height = 800;
+        var tag = document.createElement('span');
+        tag.className = 'tag';
+        tag.textContent = app.tag || 'GAME';
+        figure.appendChild(img);
+        figure.appendChild(tag);
+
+        var body = document.createElement('div');
+        body.className = 'card-body';
+        var title = document.createElement('h2');
+        title.textContent = app.title;
+        var description = document.createElement('p');
+        description.textContent = app.description;
+        var tags = document.createElement('ul');
+        tags.className = 'tags';
+        tagList(app).forEach(function (name) {
+          var item = document.createElement('li');
+          item.textContent = name;
+          tags.appendChild(item);
+        });
+        var play = document.createElement('span');
+        play.className = 'play';
+        play.textContent = '遊ぶ →';
+
+        body.appendChild(title);
+        body.appendChild(description);
+        body.appendChild(tags);
+        body.appendChild(play);
+        link.appendChild(figure);
+        link.appendChild(body);
+        li.appendChild(link);
+        return li;
+      }
+
       function apply(filter) {
+        var cards = Array.prototype.slice.call(grid.querySelectorAll('.game-card'));
         var shown = 0;
         cards.forEach(function (card) {
-          var tags = (card.getAttribute('data-tags') || '').split(' ');
-          var visible = filter === 'all' || tags.indexOf(filter) >= 0;
+          var names = (card.getAttribute('data-tags') || '').split(' ');
+          var visible = filter === 'all' || names.indexOf(filter) >= 0;
           card.hidden = !visible;
           if (visible) shown++;
         });
-        buttons.forEach(function (button) {
+        Array.prototype.slice.call(filters.querySelectorAll('.filter')).forEach(function (button) {
           var active = button.getAttribute('data-filter') === filter;
           button.classList.toggle('active', active);
           button.setAttribute('aria-pressed', active ? 'true' : 'false');
         });
         count.textContent = shown + ' 本のゲーム';
       }
-      buttons.forEach(function (button) {
-        button.addEventListener('click', function () {
-          apply(button.getAttribute('data-filter'));
+
+      function makeFilters(tags) {
+        var all = document.createElement('button');
+        all.type = 'button';
+        all.className = 'filter active';
+        all.setAttribute('data-filter', 'all');
+        all.setAttribute('aria-pressed', 'true');
+        all.textContent = 'すべて';
+        all.addEventListener('click', function () { apply('all'); });
+        filters.appendChild(all);
+        tags.forEach(function (tag) {
+          var button = document.createElement('button');
+          button.type = 'button';
+          button.className = 'filter';
+          button.setAttribute('data-filter', tag);
+          button.setAttribute('aria-pressed', 'false');
+          button.textContent = tag;
+          button.addEventListener('click', function () { apply(tag); });
+          filters.appendChild(button);
         });
-      });
+      }
+
+      fetch('apps.json', { cache: 'no-cache' })
+        .then(function (response) {
+          if (!response.ok) throw new Error('HTTP ' + response.status);
+          return response.json();
+        })
+        .then(function (data) {
+          var apps = Array.isArray(data.apps) ? data.apps : [];
+          var tags = [];
+          apps.forEach(function (app) {
+            tagList(app).forEach(function (tag) {
+              if (tags.indexOf(tag) < 0) tags.push(tag);
+            });
+          });
+          if (status) status.remove();
+          grid.innerHTML = '';
+          apps.forEach(function (app) { grid.appendChild(makeCard(app)); });
+          makeFilters(tags);
+          apply('all');
+        })
+        .catch(function (error) {
+          if (status) {
+            status.className = 'list-status error';
+            status.textContent = 'ゲーム一覧を読み込めませんでした: ' + error.message;
+          }
+          count.textContent = '';
+        });
     })();
   </script>
 </body>

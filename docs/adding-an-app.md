@@ -10,7 +10,7 @@
 mkdir -p projects/_labs/my-app
 ```
 
-`projects/_labs/my-app/index.html` を入口にします。公開 URL は `https://takuto277.github.io/universe/projects/_labs/my-app/` になるため、配置パスは URL の一部として扱います。
+`projects/_labs/my-app/index.html` を入口にします。`</body>` の直前に `projects/_shared/game-back.js` を読み込むと、一覧へ戻るボタンが付きます。公開 URL は `https://takuto277.github.io/universe/projects/_labs/my-app/` になるため、配置パスは URL の一部として扱います。
 
 ## 2. 実装する
 
@@ -61,7 +61,7 @@ window.__GAME__ = {
 }
 ```
 
-`index.html` のカードにも同じ `path`、`tag`、`title`、`description`、`tags`、`thumbnail` を反映します。サムネイルは [ゲーム一覧](game-list.md) の手順で生成できます。
+トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`tags` と `thumbnail` を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。
 
 ## 6. 検査する
 

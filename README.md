@@ -94,7 +94,7 @@ http://localhost:8000/ を開きます。
 ./tools/verify.sh
 ```
 
-`verify.sh` は各アプリの `test-*.js` を JavaScriptCore の `jsc` で実行し、`apps.json`、`index.html`、アプリ内のリンクの整合性を検査します。
+`verify.sh` は各アプリの `test-*.js` を JavaScriptCore の `jsc` で実行し、`apps.json`、サムネイル、未登録アプリ、アプリ内のリンクの整合性を検査します。
 
 ## 開発フロー
 
@@ -104,7 +104,7 @@ http://localhost:8000/ を開きます。
 
 ## アプリを追加する
 
-[docs/adding-an-app.md](docs/adding-an-app.md) の手順に従ってください。`apps.json`、`index.html`、アプリの `README.md`、テストを同じ変更で更新します。
+[docs/adding-an-app.md](docs/adding-an-app.md) の手順に従ってください。`apps.json`（`tags` / `thumbnail` 含む）、アプリの `README.md`、テストを同じ変更で更新します。一覧は `apps.json` から自動生成されます。
 
 ## ドキュメント
 
