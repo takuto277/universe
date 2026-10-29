@@ -8,7 +8,7 @@
 - タイトル・説明: `apps.json`（カードは `summary` を1行表示）
 - ジャンル: `apps.json` の `tags`。一覧上部のピッカーで絞り込めます
 - カード全体がゲームへのリンク
-- 各ゲームの右端中央に「一覧へ」タブ（`projects/_shared/game-back.js`）
+- 各ゲーム右上の三点メニューから「ゲーム一覧へ」（`projects/_shared/game-back.js`）
 
 ## サムネイル
 
