@@ -7,6 +7,7 @@ function tryLoad(paths) {
 }
 
 tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['audio.js', 'projects/_labs/sleep-guard/audio.js']);
 tryLoad(['engine.js', 'projects/_labs/sleep-guard/engine.js']);
 tryLoad(['game.js', 'projects/_labs/sleep-guard/game.js']);
 
@@ -15,6 +16,7 @@ Harness.run({
   maxSteps: 20000,
   afterDone: 120,
   check: function (state, h) {
+    h.assert(typeof SleepGuardAudio === 'object', 'audio.js が読み込まれていない');
     if (!state) { h.assert(false, '状態が取得できない'); return; }
     h.assert(state.phase === 'clear' || state.phase === 'over', '終了状態になっていない: ' + state.phase);
     h.assert(state.phase === 'clear', '自動操作でクリアできていない: ' + state.phase);

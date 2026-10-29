@@ -3,6 +3,9 @@
   'use strict';
 
   var E = (typeof window !== 'undefined' && window.SleepGuardEngine) ? window.SleepGuardEngine : null;
+  var AU = (typeof window !== 'undefined' && window.SleepGuardAudio) ? window.SleepGuardAudio : null;
+  var audio = AU ? AU.create() : null;
+  var MUTE_KEY = 'sleep-guard-muted';
   var canvas = null;
   var ctx = null;
   var els = {};
@@ -17,12 +20,43 @@
   var stars = [];
   var shake = 0;
   var flash = 0;
+  var muted = loadMuted();
+  var images = { bg: null, sleep: null, awake: null, noise: {} };
+  var bgLayout = null;
 
   function nowMs() {
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   }
 
   function $(id) { return document.getElementById(id); }
+
+  function loadMuted() {
+    try { return typeof localStorage !== 'undefined' && localStorage.getItem(MUTE_KEY) === '1'; }
+    catch (e) { return false; }
+  }
+
+  function saveMuted(value) {
+    try { if (typeof localStorage !== 'undefined') localStorage.setItem(MUTE_KEY, value ? '1' : '0'); }
+    catch (e) { }
+  }
+
+  function loadImage(src) {
+    if (typeof Image === 'undefined') return null;
+    var img = new Image();
+    img.src = src;
+    return img;
+  }
+
+  function preloadAssets() {
+    images.bg = loadImage('assets/bg-bedroom.jpg');
+    images.sleep = loadImage('assets/character-sleep.png');
+    images.awake = loadImage('assets/character-awake.png');
+    if (!E) return;
+    for (var i = 0; i < E.NOISE_TYPES.length; i++) {
+      var type = E.NOISE_TYPES[i];
+      images.noise[type.id] = loadImage('assets/noise-' + type.id + '-sheet.png');
+    }
+  }
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
 
   function roundRect(x, y, w, h, r) {
@@ -90,6 +124,11 @@
   function beginRun() {
     state = E.createGame({ width: viewW, height: viewH });
     E.start(state);
+    if (audio) {
+      audio.unlock();
+      audio.setMuted(muted);
+      audio.startBgm();
+    }
     endShown = false;
     particles = [];
     rings = [];
@@ -104,6 +143,7 @@
   function showEnd() {
     if (endShown || !state) return;
     endShown = true;
+    if (audio) audio.stopBgm();
     var snap = E.snapshot(state);
     var clear = snap.result === 'clear';
     if (els.endEyebrow) els.endEyebrow.textContent = clear ? 'GOOD MORNING' : 'NO SLEEP';
@@ -126,16 +166,20 @@
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
       if (ev.type === 'noise') {
+        if (audio) audio.play('noise');
         ring(ev.noise.x, ev.noise.y, 'rgba(255,130,200,.55)', 52, 0.5);
       } else if (ev.type === 'silence') {
+        if (audio) audio.play('tap');
         burst(ev.noise.x, ev.noise.y, 16, ['#6db7ff', '#c8f0ff', '#ffd166', '#ffffff'], 230, 0.65);
         ring(ev.noise.x, ev.noise.y, 'rgba(109,183,255,.7)', 62, 0.45);
       } else if (ev.type === 'clear') {
+        if (audio) audio.play('clear');
         flash = 0.35;
         for (var j = 0; j < 5; j++) {
           burst(viewW * (0.2 + j * 0.15), viewH * 0.35, 22, ['#ffd166', '#6db7ff', '#ff82c8', '#ffffff'], 300, 1.1);
         }
       } else if (ev.type === 'over') {
+        if (audio) audio.play('over');
         shake = 0.8;
         flash = 0.4;
       }
@@ -219,6 +263,38 @@
     }
   }
 
+  function drawBackgroundImage() {
+    var img = images.bg;
+    if (!img || !img.complete || !img.naturalWidth) return false;
+    var scale = Math.max(viewW / img.naturalWidth, viewH / img.naturalHeight);
+    var dw = img.naturalWidth * scale;
+    var dh = img.naturalHeight * scale;
+    var dx = (viewW - dw) / 2;
+    var dy = (viewH - dh) / 2;
+    ctx.drawImage(img, dx, dy, dw, dh);
+    bgLayout = { scale: scale, dx: dx, dy: dy };
+    return true;
+  }
+
+  function drawCharacterImage(time, awake) {
+    var img = awake ? images.awake : images.sleep;
+    if (!img || !img.complete || !img.naturalWidth || !bgLayout) return false;
+    var scale = bgLayout.scale;
+    var size = 360 * scale;
+    var cx = bgLayout.dx + 165 * scale;
+    var cy = bgLayout.dy + 610 * scale;
+    var bob = awake ? Math.sin(time * 26) * 2.2 * scale : Math.sin(time * 1.7) * 1.8 * scale;
+    ctx.save();
+    ctx.globalAlpha = 0.25;
+    ctx.fillStyle = '#050816';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + size * 0.27, size * 0.23, size * 0.06, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+    ctx.drawImage(img, cx - size / 2, cy - size / 2 + bob, size, size);
+    return true;
+  }
+
   function drawBed(time, awake) {
     var bedW = Math.min(viewW * 0.8, 430);
     var bedH = Math.min(viewH * 0.2, 160);
@@ -300,7 +376,11 @@
 
   function drawNoise(noise, time) {
     var pulse = 0.5 + 0.5 * Math.sin(time * 5 + noise.id);
+    var sheet = images.noise[noise.type];
+    var hasSheet = sheet && sheet.complete && sheet.naturalWidth;
     ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
     ctx.globalAlpha = 0.22 + pulse * 0.18;
     ctx.strokeStyle = '#ff82c8';
     ctx.lineWidth = 2;
@@ -315,10 +395,16 @@
     ctx.strokeStyle = 'rgba(255,130,200,.8)';
     ctx.lineWidth = 2;
     ctx.stroke();
-    ctx.font = Math.round(noise.r * 1.15) + 'px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(noise.icon, noise.x, noise.y + 1);
+    if (hasSheet) {
+      var frame = Math.floor((((state ? state.time : time) - noise.born) * 4) % 2);
+      var fw = sheet.naturalWidth / 2;
+      var size = noise.r * 3.2;
+      ctx.drawImage(sheet, frame * fw, 0, fw, sheet.naturalHeight,
+                    noise.x - size / 2, noise.y - size / 2, size, size);
+    } else {
+      ctx.font = Math.round(noise.r * 1.15) + 'px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
+      ctx.fillText(noise.icon, noise.x, noise.y + 1);
+    }
     ctx.font = '700 8px system-ui, sans-serif';
     ctx.fillStyle = 'rgba(255,220,240,.9)';
     ctx.fillText(noise.label, noise.x, noise.y + noise.r + 12);
@@ -349,10 +435,12 @@
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.save();
     if (shake > 0) ctx.translate((Math.random() - 0.5) * 14 * shake, (Math.random() - 0.5) * 14 * shake);
-    drawBackdrop(time);
+    var hasBackground = drawBackgroundImage();
+    if (!hasBackground) drawBackdrop(time);
     var awake = !!(state && state.phase === 'run' && state.noises.length);
     if (state && state.phase === 'over') awake = true;
-    drawBed(time, awake);
+    if (hasBackground) drawCharacterImage(time, awake);
+    else drawBed(time, awake);
     if (state) {
       for (var i = 0; i < state.noises.length; i++) drawNoise(state.noises[i], time);
     }
@@ -416,6 +504,10 @@
     }
   }
 
+  function updateSoundButton() {
+    if (els.btnSound) els.btnSound.textContent = muted ? '音 OFF' : '音 ON';
+  }
+
   function init() {
     canvas = $('arena');
     els.stage = $('stage');
@@ -433,15 +525,32 @@
     els.endStopped = $('end-stopped');
     els.btnStart = $('btn-start');
     els.btnAgain = $('btn-again');
+    els.btnSound = $('btn-sound');
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
     }
     state = E.createGame({ width: viewW, height: viewH });
+    preloadAssets();
     makeStars();
     resizeCanvas();
     if (els.btnStart) els.btnStart.addEventListener('click', beginRun);
     if (els.btnAgain) els.btnAgain.addEventListener('click', beginRun);
+    if (audio) audio.setMuted(muted);
+    updateSoundButton();
+    if (els.btnSound) {
+      els.btnSound.addEventListener('click', function (event) {
+        if (event && event.preventDefault) event.preventDefault();
+        muted = !muted;
+        saveMuted(muted);
+        if (audio) {
+          audio.unlock();
+          audio.setMuted(muted);
+          if (!muted && state && state.phase === 'run') audio.startBgm();
+        }
+        updateSoundButton();
+      });
+    }
     if (els.screenEnd) {
       els.screenEnd.addEventListener('click', function (event) {
         if (event.target === els.screenEnd) beginRun();
