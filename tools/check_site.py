@@ -89,6 +89,9 @@ def load_apps():
         if not list(app_dir.glob("test-*.js")):
             error(f"{label}: test-*.js がありません: {path}")
 
+        if "game-back.js" not in read(app_dir / "index.html"):
+            error(f"{label}: 一覧へ戻る共通スクリプトがありません: {path}")
+
         thumbnail = app["thumbnail"]
         if thumbnail.startswith("/") or "\\" in thumbnail or ".." in Path(thumbnail).parts:
             error(f"{label}: thumbnail はリポジトリ内の相対パスにしてください: {thumbnail}")

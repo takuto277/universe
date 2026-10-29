@@ -10,7 +10,7 @@
 mkdir -p projects/_labs/my-app
 ```
 
-`projects/_labs/my-app/index.html` を入口にします。公開 URL は `https://takuto277.github.io/universe/projects/_labs/my-app/` になるため、配置パスは URL の一部として扱います。
+`projects/_labs/my-app/index.html` を入口にします。`</body>` の直前に `projects/_shared/game-back.js` を読み込むと、一覧へ戻るボタンが付きます。公開 URL は `https://takuto277.github.io/universe/projects/_labs/my-app/` になるため、配置パスは URL の一部として扱います。
 
 ## 2. 実装する
 
