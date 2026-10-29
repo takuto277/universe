@@ -11,7 +11,8 @@
   style.textContent = [
     ':root { --universe-nav-h: calc(' + navHeight + ' + env(safe-area-inset-top)); }',
     'body { padding-top: var(--universe-nav-h) !important; box-sizing: border-box !important; }',
-    '#app { height: calc(100dvh - var(--universe-nav-h)) !important; min-height: 0 !important; box-sizing: border-box; }',
+    '#app { height: calc(100dvh - var(--universe-nav-h)) !important; min-height: 0 !important; margin-top: 0 !important; box-sizing: border-box; }',
+    '#game-frame { max-height: calc(100dvh - var(--universe-nav-h) - 16px) !important; width: min(calc(100vw - 16px), calc((100dvh - var(--universe-nav-h) - 16px) * 0.6), 520px) !important; }',
     '@supports not (height: 100dvh) { #app { height: calc(100vh - var(--universe-nav-h)) !important; } }'
   ].join('\n');
   document.head.appendChild(style);
