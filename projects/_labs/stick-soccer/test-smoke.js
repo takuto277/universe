@@ -1,0 +1,32 @@
+function tryLoad(paths) {
+  for (var i = 0; i < paths.length; i++) {
+    try { load(paths[i]); return true; } catch (e) { }
+  }
+  throw new Error('load failed: ' + paths.join(' / '));
+}
+tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+tryLoad(['engine.js', 'projects/_labs/stick-soccer/engine.js']);
+tryLoad(['game.js', 'projects/_labs/stick-soccer/game.js']);
+
+Harness.run({
+  name: 'stick-soccer',
+  maxSteps: 20000,
+  afterDone: 200,
+  check: function (state, h) {
+    if (!state) { h.assert(false, '状態が取得できない'); return; }
+    h.assert(state.over === true, 'ゲームが終了しない: phase=' + state.phase);
+    h.assert(state.phase === 'over', '終了状態が不正: ' + state.phase);
+    h.assert(state.shots > 0 && state.shots <= state.turns, 'キック数が範囲外: ' + state.shots);
+    h.assert(state.score.player >= 0 && state.score.cpu >= 0, 'スコアが不正');
+    h.assert(state.winner === 'player' || state.winner === 'cpu' || state.winner === 'draw', '勝敗が不正: ' + state.winner);
+    var els = h.elements;
+    h.assert(els['screen-over'] && els['screen-over'].classList.contains('visible'), 'リザルト画面が出ていない');
+    h.assert(els['screen-title'] && !els['screen-title'].classList.contains('visible'), 'タイトル画面が残っている');
+    h.assert(els['you'] && els['you'].textContent === String(state.score.player), 'HUDの自分スコアが一致しない');
+    h.assert(els['cpu'] && els['cpu'].textContent === String(state.score.cpu), 'HUDのCPUスコアが一致しない');
+    h.assert(els['shots'] && els['shots'].textContent === 'KICK ' + state.shots + '/12', 'HUDのキック数が一致しない');
+  },
+  summary: function (state) {
+    print('  最終: ' + state.score.player + ' - ' + state.score.cpu + ' / ' + state.winner + ' / KICK ' + state.shots + '/' + state.turns);
+  }
+});

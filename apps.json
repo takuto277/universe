@@ -146,7 +146,21 @@
         "パズル"
       ],
       "thumbnail": "projects/_labs/oto-no-ie/thumb.jpg",
-      "summary": "鈴の音で目が見えない住人を出口へ導く、全5室の音響パズル。"
+      "summary": "共鳴鏡と吸音カーテンで音を届ける、全7室の音響パズル。"
+    },
+    {
+      "id": "stick-soccer",
+      "path": "projects/_labs/stick-soccer/",
+      "tag": "GAME",
+      "title": "スティックサッカー",
+      "description": "ボールを引っ張って離すターン制フリックサッカー。ピッチ上の棒人間に当たるとボールが跳ね返り、CPUと交互にキック。先に3点取るか、12キック終了時の得点で勝負。ドラッグの向きと長さでシュートを決め、CPUは軌道シミュレーションで狙ってくる。スマホ対応。",
+      "tags": [
+        "サッカー",
+        "ターン制",
+        "アクション"
+      ],
+      "thumbnail": "projects/_labs/stick-soccer/thumb.jpg",
+      "summary": "ボールを引っ張って棒人間を跳ね返す、CPU対戦のターン制フリックサッカー。"
     }
   ]
 }
