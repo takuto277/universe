@@ -4,6 +4,7 @@
   var root = typeof window !== 'undefined' ? window : globalThis;
   var E = root.StickSoccerEngine;
   if (!E) return;
+  var Audio = root.SoccerAudio;
 
   var C = { VIEW_W: 480, VIEW_H: 800 };
   var F = E.FIELD;
@@ -24,6 +25,7 @@
   var mode = 'title';
   var formation = copyFormation(E.DEFAULT_FORMATION);
   var formationDrag = null;
+  var stageIndex = 0;
 
   function copyFormation(src) {
     var out = [];
@@ -43,6 +45,8 @@
     var screens = [
       ['screen-title', els.screenTitle],
       ['screen-over', els.screenOver],
+      ['screen-stage', els.screenStage],
+      ['screen-ending', els.screenEnding],
       ['screen-pause', els.screenPause]
     ];
     for (var i = 0; i < screens.length; i++) {
@@ -65,6 +69,7 @@
 
   function showFormation() {
     mode = 'formation';
+    if (Audio) Audio.start();
     game = null;
     pointer = null;
     formationDrag = null;
@@ -78,7 +83,8 @@
 
   function beginMatch() {
     mode = 'match';
-    game = E.createGame({ formation: copyFormation(formation) });
+    if (Audio) Audio.start();
+    game = E.createGame({ formation: copyFormation(formation), stage: stageIndex });
     pointer = null;
     formationDrag = null;
     resetEffects();
@@ -97,7 +103,7 @@
     var st = E.getState(game);
     if (els.you) els.you.textContent = String(st.score.player);
     if (els.cpu) els.cpu.textContent = String(st.score.cpu);
-    if (els.shots) els.shots.textContent = 'KICK ' + st.shots + '/' + st.turns;
+    if (els.shots) els.shots.textContent = 'STAGE ' + (st.stage + 1) + '/' + st.stageTotal + ' · KICK ' + st.shots + '/' + st.turns;
     if (els.turn) {
       var label = 'YOUR TURN';
       if (st.phase === 'over') label = 'FULL TIME';
@@ -109,8 +115,11 @@
     }
 
     var target = null;
-    if (st.phase === 'over') target = 'screen-over';
-    else if (st.paused) target = 'screen-pause';
+    if (st.phase === 'over') {
+      if (st.winner === 'player' && st.stage + 1 < st.stageTotal) target = 'screen-stage';
+      else if (st.winner === 'player') target = 'screen-ending';
+      else target = 'screen-over';
+    } else if (st.paused) target = 'screen-pause';
     setScreen(target);
     if (els.pause) els.pause.classList.toggle('hidden', !(st.phase !== 'over' && !st.paused));
 
@@ -125,6 +134,23 @@
       if (els.overYou) els.overYou.textContent = String(st.score.player);
       if (els.overCpu) els.overCpu.textContent = String(st.score.cpu);
       if (els.overShots) els.overShots.textContent = String(st.shots);
+      if (els.stageClearText && st.winner === 'player' && st.stage + 1 < st.stageTotal) {
+        els.stageClearText.textContent = 'STAGE ' + (st.stage + 2) + ' / ' + st.stageTotal + ' · 相手は ' + E.STAGES[st.stage + 1].name;
+      }
+    }
+  }
+
+  function syncAudioButton() {
+    if (!els.sound) return;
+    var muted = Audio ? Audio.isMuted() : true;
+    els.sound.classList.toggle('muted', muted);
+    els.sound.setAttribute('aria-label', muted ? 'BGMを再生' : 'BGMを消音');
+  }
+
+  function toggleAudio() {
+    if (Audio) {
+      Audio.toggle();
+      syncAudioButton();
     }
   }
 
@@ -276,7 +302,7 @@
   function drawStickFigure(o, index, time) {
     var x = o.x;
     var y = o.y;
-    var color = index % 3 === 0 ? '#ffd166' : (index % 3 === 1 ? '#7df5c7' : '#ff8fbd');
+    var color = o.team === 'cpu' ? (index % 2 === 0 ? '#ff8fbd' : '#ff6fa8') : (index % 2 === 0 ? '#7df5c7' : '#ffd166');
     var sway = Math.sin(time * 1.8 + index) * 2;
     ctx.save();
     ctx.translate(x, y);
@@ -517,6 +543,25 @@
       ctx.fillText(E.FORMATION_LINES[line].label, F.x - 2, y);
       ctx.restore();
     }
+    var stage = E.STAGES[stageIndex];
+    if (stage) {
+      ctx.save();
+      ctx.globalAlpha = 0.22;
+      for (var ci = 0; ci < stage.cpuFormation.length; ci++) {
+        var cp = stage.cpuFormation[ci];
+        var cLine = E.CPU_LINES[cp.line];
+        if (!cLine) continue;
+        drawStickFigure({ x: E.FORMATION_SLOTS[cp.slot], y: cLine.y, r: E.PLAYER_R, team: 'cpu' }, ci, time);
+      }
+      ctx.restore();
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 143, 189, 0.7)';
+      ctx.font = '900 9px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'right';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('CPU ' + stage.name, F.right - 4, F.y - 9);
+      ctx.restore();
+    }
     for (var sl = 0; sl < E.FORMATION_LINES.length; sl++) {
       for (var sc = 0; sc < E.FORMATION_SLOTS.length; sc++) {
         var sp = formationSlotPoint(sl, sc);
@@ -571,10 +616,10 @@
     ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(255, 241, 190, 0.92)';
     ctx.font = '900 12px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.fillText('FORMATION', C.VIEW_W / 2, 62);
+    ctx.fillText('FORMATION  STAGE ' + (stageIndex + 1) + '/' + E.STAGES.length, C.VIEW_W / 2, 62);
     ctx.fillStyle = 'rgba(145, 190, 168, 0.78)';
     ctx.font = '700 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.fillText('11人を4本のラインへ。スロットの外には置けません', C.VIEW_W / 2, 82);
+    ctx.fillText('自分11人を下側4ラインへ。上側はCPUの形', C.VIEW_W / 2, 82);
     ctx.restore();
   }
 
@@ -793,6 +838,10 @@
     if (!e) return;
     var k = e.key || '';
     var code = e.code || '';
+    if (k === 'm' || k === 'M') {
+      toggleAudio();
+      return;
+    }
     if (k === 'p' || k === 'P' || k === 'Escape') {
       if (game && game.phase !== 'over') {
         if (e.preventDefault) e.preventDefault();
@@ -805,7 +854,13 @@
       if (mode === 'formation') {
         if (!e.repeat) beginMatch();
       } else if (!game || game.phase === 'over') {
-        if (!e.repeat) showFormation();
+        if (!e.repeat) {
+          if (game && game.phase === 'over' && game.winner === 'player') {
+            if (game.stage + 1 < E.STAGES.length) stageIndex = game.stage + 1;
+            else stageIndex = 0;
+          }
+          showFormation();
+        }
       } else if (game.paused) {
         resumeGame();
       }
@@ -873,9 +928,12 @@
     els.cpu = $('cpu');
     els.turn = $('turn');
     els.shots = $('shots');
+    els.sound = $('btn-sound');
     els.pause = $('btn-pause');
     els.screenTitle = $('screen-title');
     els.screenOver = $('screen-over');
+    els.screenStage = $('screen-stage');
+    els.screenEnding = $('screen-ending');
     els.screenPause = $('screen-pause');
     els.overKicker = $('over-kicker');
     els.overTitle = $('over-title');
@@ -883,6 +941,7 @@
     els.overYou = $('over-you');
     els.overCpu = $('over-cpu');
     els.overShots = $('over-shots');
+    els.stageClearText = $('stage-clear-text');
 
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
@@ -898,12 +957,18 @@
     var resume = $('btn-resume');
     var formationReset = $('btn-formation-reset');
     var formationStart = $('btn-formation-start');
-    if (start) start.addEventListener('click', showFormation);
+    var nextStage = $('btn-next-stage');
+    var endingRetry = $('btn-ending-retry');
+    if (start) start.addEventListener('click', function () { stageIndex = 0; showFormation(); });
     if (retry) retry.addEventListener('click', showFormation);
+    if (nextStage) nextStage.addEventListener('click', function () { stageIndex++; showFormation(); });
+    if (endingRetry) endingRetry.addEventListener('click', function () { stageIndex = 0; showFormation(); });
     if (resume) resume.addEventListener('click', resumeGame);
     if (formationReset) formationReset.addEventListener('click', function () { formation = copyFormation(E.DEFAULT_FORMATION); });
     if (formationStart) formationStart.addEventListener('click', beginMatch);
     if (els.pause) els.pause.addEventListener('click', togglePause);
+    if (els.sound) els.sound.addEventListener('click', toggleAudio);
+    syncAudioButton();
 
     if (canvas) {
       canvas.addEventListener('pointerdown', onPointerDown, false);
@@ -932,7 +997,7 @@
       autoPlayStep: autoPlayStep,
       isDone: function () { return !!(game && game.phase === 'over'); },
       getState: function () {
-        if (!game) return { id: 'stick-soccer', phase: mode, score: { player: 0, cpu: 0 }, formation: copyFormation(formation) };
+        if (!game) return { id: 'stick-soccer', phase: mode, stage: stageIndex, score: { player: 0, cpu: 0 }, formation: copyFormation(formation) };
         var state = E.getState(game);
         state.formation = copyFormation(formation);
         return state;

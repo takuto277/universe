@@ -54,7 +54,7 @@ html, body {
   z-index: 3;
   top: max(10px, env(safe-area-inset-top));
   left: 12px;
-  right: 68px;
+  right: 122px;
   display: flex;
   align-items: stretch;
   justify-content: space-between;
@@ -92,6 +92,8 @@ html, body {
   cursor: pointer;
 }
 .icon-btn.hidden { display: none; }
+#btn-sound { right: 66px; color: var(--gold); }
+#btn-sound.muted { color: #607a70; }
 #hud.hidden { display: none; }
 .icon-btn:active { transform: scale(0.95); }
 #overlay { position: absolute; inset: 0; z-index: 6; pointer-events: none; }
