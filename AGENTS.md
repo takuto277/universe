@@ -29,7 +29,7 @@ python3 -m http.server 8000   # ローカル確認
 
 ## 構成
 
-- `apps.json` が公開アプリ一覧の正。`index.html` のカードと一致させる
+- `apps.json` が公開アプリ一覧の正。`index.html` は `apps.json` から実行時生成するため、カードを手で追加しない
 - 各アプリは `projects/` 配下（分類は `projects/README.md`）に置き、`index.html`、`README.md`、`test-*.js` を持つ
 - ゲームは `window.__GAME__`（`id` / `title` / `start` / `autoPlayStep` / `isDone` / `getState`）を公開する
 - 共通のスモークテスト基盤は `tools/harness.js`
@@ -38,7 +38,7 @@ python3 -m http.server 8000   # ローカル確認
 
 - 依存ゼロの静的構成を基本とする。ビルドや外部ランタイムを増やす場合は、先に理由を `docs/decisions/` に記録する
 - 公開 URL を壊さない。アプリのディレクトリ名やパスを変えるときはリダイレクトを用意する
-- アプリを追加・変更したら、`apps.json`、`index.html`、`README.md`、テストを同じ変更で更新する
+- アプリを追加・変更したら、`apps.json`（`tags` / `thumbnail` 含む）、`README.md`、テストを同じ変更で更新し、サムネイルを生成する
 - アプリのCSS/JSを変更したら `index.html` の `?v=` も更新し、デプロイ直後の古いキャッシュ混在を防ぐ
 - main へ直接 push せず、作業ブランチを作って PR を出す。main は branch protection で保護され、`tests` / `site` が必須
 - PR のレビューは `pr-reviewer` subagent、マージは `pr-merger` subagent に任せる。レビュアーは編集・承認・マージをせず、マージ担当はレビュー・編集をしない

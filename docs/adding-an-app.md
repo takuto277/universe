@@ -61,7 +61,7 @@ window.__GAME__ = {
 }
 ```
 
-`index.html` のカードにも同じ `path`、`tag`、`title`、`description`、`tags`、`thumbnail` を反映します。サムネイルは [ゲーム一覧](game-list.md) の手順で生成できます。
+トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`tags` と `thumbnail` を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。
 
 ## 6. 検査する
 
