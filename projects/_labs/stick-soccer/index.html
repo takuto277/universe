@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#07110d" />
   <title>スティックサッカー - 引っ張って狙うターン制フリック</title>
-  <link rel="stylesheet" href="styles.css?v=1" />
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <main id="app">
@@ -19,6 +19,14 @@
       </header>
       <button id="btn-pause" class="icon-btn hidden" type="button" aria-label="ポーズ">Ⅱ</button>
 
+      <div id="formation-bar" class="formation-bar hidden">
+        <p>11人を4本のラインの好きなスロットへドラッグ</p>
+        <div class="formation-actions">
+          <button id="btn-formation-reset" class="secondary" type="button">リセット</button>
+          <button id="btn-formation-start" class="primary" type="button">この形でキックオフ</button>
+        </div>
+      </div>
+
       <div id="overlay">
         <section id="screen-title" class="screen visible">
           <p class="kicker">FLICK · BOUNCE · SCORE</p>
@@ -28,11 +36,12 @@
             <li>ボールを引っ張って離すとシュート。引いた方向と逆へ飛ぶ</li>
             <li>ピッチ上の棒人間に当たるとボールが跳ね返る</li>
             <li>CPUと交互にキック。先に3点取った方が勝ち</li>
+            <li>試合前に11人の選手を4本のラインへ配置（フォーメーション）</li>
             <li>12キックで決着がつかなければ得点勝負</li>
             <li>ゴール後はセンターから、失点側のキックで再開</li>
           </ul>
           <button id="btn-start" class="primary" type="button">キックオフ</button>
-          <p class="tiny">上に引いて下へ / 下に引いて上へ。狙いと強さは引く長さで決まる</p>
+          <p class="tiny">11人を4本のラインに配置してからキックオフ。狙いと強さは引く長さで決まる</p>
         </section>
 
         <section id="screen-over" class="screen">
@@ -58,8 +67,8 @@
       </div>
     </div>
   </main>
-  <script src="engine.js?v=2"></script>
-  <script src="game.js?v=2"></script>
+  <script src="engine.js?v=3"></script>
+  <script src="game.js?v=3"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

@@ -21,6 +21,15 @@
   var pointer = null;
   var effects = null;
   var trail = [];
+  var mode = 'title';
+  var formation = copyFormation(E.DEFAULT_FORMATION);
+  var formationDrag = null;
+
+  function copyFormation(src) {
+    var out = [];
+    for (var i = 0; i < src.length; i++) out.push({ line: src[i].line, slot: src[i].slot });
+    return out;
+  }
 
   function nowMs() {
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -54,17 +63,36 @@
     trail = [];
   }
 
-  function beginGame() {
-    game = E.createGame();
+  function showFormation() {
+    mode = 'formation';
+    game = null;
     pointer = null;
+    formationDrag = null;
     resetEffects();
     setScreen(null);
+    if (els.pause) els.pause.classList.add('hidden');
+    if (els.hud) els.hud.classList.add('hidden');
+    if (els.formationBar) els.formationBar.classList.remove('hidden');
+    lastTs = 0;
+  }
+
+  function beginMatch() {
+    mode = 'match';
+    game = E.createGame({ formation: copyFormation(formation) });
+    pointer = null;
+    formationDrag = null;
+    resetEffects();
+    setScreen(null);
+    if (els.hud) els.hud.classList.remove('hidden');
+    if (els.formationBar) els.formationBar.classList.add('hidden');
     if (els.pause) els.pause.classList.remove('hidden');
     lastTs = 0;
     syncUI();
   }
 
   function syncUI() {
+    if (els.hud) els.hud.classList.toggle('hidden', mode !== 'match');
+    if (els.formationBar) els.formationBar.classList.toggle('hidden', mode !== 'formation');
     if (!game) return;
     var st = E.getState(game);
     if (els.you) els.you.textContent = String(st.score.player);
@@ -202,7 +230,7 @@
     ctx.restore();
   }
 
-  function drawField(time) {
+  function drawField(time, skipGoals) {
     ctx.save();
     var pitch = ctx.createLinearGradient(0, F.y, 0, F.bottom);
     pitch.addColorStop(0, '#0b2319');
@@ -239,8 +267,10 @@
     ctx.arc(G.x, F.bottom - 82, 42, Math.PI, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
-    drawGoal(true);
-    drawGoal(false);
+    if (!skipGoals) {
+      drawGoal(true);
+      drawGoal(false);
+    }
   }
 
   function drawStickFigure(o, index, time) {
@@ -279,7 +309,8 @@
   }
 
   function drawObstacles(time) {
-    for (var i = 0; i < E.OBSTACLES.length; i++) drawStickFigure(E.OBSTACLES[i], i, time);
+    var list = game ? game.obstacles : E.OBSTACLES;
+    for (var i = 0; i < list.length; i++) drawStickFigure(list[i], i, time);
   }
 
   function drawTrail() {
@@ -439,6 +470,114 @@
     drawBanner();
   }
 
+  function formationSlotPoint(line, slot) {
+    var l = E.FORMATION_LINES[line];
+    return { x: E.FORMATION_SLOTS[slot], y: l ? l.y : 0 };
+  }
+
+  function nearestFormationSlot(x, y) {
+    var best = null;
+    for (var line = 0; line < E.FORMATION_LINES.length; line++) {
+      for (var slot = 0; slot < E.FORMATION_SLOTS.length; slot++) {
+        var p = formationSlotPoint(line, slot);
+        var d = Math.sqrt((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y));
+        if (!best || d < best.d) best = { line: line, slot: slot, d: d, x: p.x, y: p.y };
+      }
+    }
+    return best;
+  }
+
+  function formationTokenAt(x, y) {
+    var best = -1;
+    var bestD = 38;
+    for (var i = 0; i < formation.length; i++) {
+      var p = formationSlotPoint(formation[i].line, formation[i].slot);
+      var d = Math.sqrt((x - p.x) * (x - p.x) + (y - p.y) * (y - p.y));
+      if (d < bestD) { bestD = d; best = i; }
+    }
+    return best;
+  }
+
+  function drawFormation(time) {
+    for (var line = 0; line < E.FORMATION_LINES.length; line++) {
+      var y = E.FORMATION_LINES[line].y;
+      ctx.save();
+      ctx.strokeStyle = 'rgba(190, 255, 222, 0.18)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([5, 8]);
+      ctx.beginPath();
+      ctx.moveTo(F.x + 8, y);
+      ctx.lineTo(F.right - 8, y);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(210, 255, 230, 0.62)';
+      ctx.font = '900 8px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'left';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(E.FORMATION_LINES[line].label, F.x - 2, y);
+      ctx.restore();
+    }
+    for (var sl = 0; sl < E.FORMATION_LINES.length; sl++) {
+      for (var sc = 0; sc < E.FORMATION_SLOTS.length; sc++) {
+        var sp = formationSlotPoint(sl, sc);
+        ctx.save();
+        ctx.strokeStyle = 'rgba(125, 245, 199, 0.2)';
+        ctx.fillStyle = 'rgba(125, 245, 199, 0.035)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([3, 5]);
+        ctx.beginPath();
+        ctx.arc(sp.x, sp.y, E.PLAYER_R, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.restore();
+      }
+    }
+    var target = formationDrag ? nearestFormationSlot(formationDrag.x, formationDrag.y) : null;
+    if (target && target.d < 58) {
+      ctx.save();
+      ctx.strokeStyle = 'rgba(255, 209, 102, 0.9)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(target.x, target.y, E.PLAYER_R + 9, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.restore();
+    }
+    for (var i = 0; i < formation.length; i++) {
+      var p = formationSlotPoint(formation[i].line, formation[i].slot);
+      if (formationDrag && formationDrag.index === i) continue;
+      drawStickFigure(p, i, time);
+      ctx.save();
+      ctx.fillStyle = 'rgba(230, 255, 242, 0.82)';
+      ctx.font = '900 8px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(i + 1), p.x, p.y + 30);
+      ctx.restore();
+    }
+    if (formationDrag) {
+      var dp = { x: formationDrag.x, y: formationDrag.y, r: E.PLAYER_R };
+      drawStickFigure(dp, formationDrag.index, time);
+      ctx.save();
+      ctx.fillStyle = '#ffe6a3';
+      ctx.font = '900 9px ui-monospace, Menlo, monospace';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(String(formationDrag.index + 1), dp.x, dp.y + 30);
+      ctx.restore();
+    }
+    ctx.save();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = 'rgba(255, 241, 190, 0.92)';
+    ctx.font = '900 12px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.fillText('FORMATION', C.VIEW_W / 2, 62);
+    ctx.fillStyle = 'rgba(145, 190, 168, 0.78)';
+    ctx.font = '700 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.fillText('11人を4本のラインへ。スロットの外には置けません', C.VIEW_W / 2, 82);
+    ctx.restore();
+  }
+
   function draw(time) {
     if (!ctx) return;
     ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
@@ -447,7 +586,12 @@
     if (effects && effects.shake > 0) {
       ctx.translate((Math.random() - 0.5) * 18 * effects.shake, (Math.random() - 0.5) * 18 * effects.shake);
     }
-    if (game) {
+    if (mode === 'formation') {
+      drawBackdrop(time);
+      drawField(time, true);
+      drawFormation(time);
+      drawEffects();
+    } else if (game) {
       drawBackdrop(time);
       drawField(time);
       drawObstacles(time);
@@ -562,8 +706,16 @@
 
   function onPointerDown(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!game || game.paused || game.phase !== 'aim' || game.turn !== 'player' || pointer) return;
     var pos = pointerPosition(e);
+    if (mode === 'formation') {
+      if (formationDrag) return;
+      var token = formationTokenAt(pos.x, pos.y);
+      if (token < 0) return;
+      formationDrag = { index: token, id: e.pointerId == null ? 1 : e.pointerId, x: pos.x, y: pos.y };
+      try { if (canvas.setPointerCapture) canvas.setPointerCapture(formationDrag.id); } catch (err) { }
+      return;
+    }
+    if (!game || game.paused || game.phase !== 'aim' || game.turn !== 'player' || pointer) return;
     if (!nearBall(pos)) return;
     pointer = {
       id: e.pointerId == null ? 1 : e.pointerId,
@@ -576,10 +728,21 @@
   }
 
   function onPointerMove(e) {
+    if (formationDrag) {
+      if ((e.pointerId == null ? 1 : e.pointerId) !== formationDrag.id) return;
+      var fp = pointerPosition(e);
+      formationDrag.x = fp.x;
+      formationDrag.y = fp.y;
+      return;
+    }
     if (!pointer) {
       if (canvas) {
         var p = pointerPosition(e);
-        canvas.style.cursor = nearBall(p) && game && game.phase === 'aim' && game.turn === 'player' ? 'grab' : 'default';
+        if (mode === 'formation') {
+          canvas.style.cursor = formationTokenAt(p.x, p.y) >= 0 ? 'grab' : 'default';
+        } else {
+          canvas.style.cursor = nearBall(p) && game && game.phase === 'aim' && game.turn === 'player' ? 'grab' : 'default';
+        }
       }
       return;
     }
@@ -591,6 +754,26 @@
 
   function onPointerUp(e) {
     if (e && e.preventDefault) e.preventDefault();
+    if (formationDrag) {
+      var fid = e.pointerId == null ? 1 : e.pointerId;
+      if (fid !== formationDrag.id) return;
+      var drag = formationDrag;
+      formationDrag = null;
+      try { if (canvas.releasePointerCapture) canvas.releasePointerCapture(fid); } catch (err) { }
+      var target = nearestFormationSlot(drag.x, drag.y);
+      if (!target || target.d > 58) return;
+      var old = formation[drag.index];
+      var occupant = -1;
+      for (var i = 0; i < formation.length; i++) {
+        if (i !== drag.index && formation[i].line === target.line && formation[i].slot === target.slot) {
+          occupant = i;
+          break;
+        }
+      }
+      formation[drag.index] = { line: target.line, slot: target.slot };
+      if (occupant >= 0) formation[occupant] = { line: old.line, slot: old.slot };
+      return;
+    }
     if (!pointer) return;
     var id = e.pointerId == null ? 1 : e.pointerId;
     if (id !== pointer.id) return;
@@ -619,8 +802,10 @@
     }
     if (k === ' ' || k === 'Spacebar' || k === 'Enter' || code === 'Space') {
       if (e.preventDefault) e.preventDefault();
-      if (!game || game.phase === 'over') {
-        if (!e.repeat) beginGame();
+      if (mode === 'formation') {
+        if (!e.repeat) beginMatch();
+      } else if (!game || game.phase === 'over') {
+        if (!e.repeat) showFormation();
       } else if (game.paused) {
         resumeGame();
       }
@@ -644,6 +829,12 @@
     var dt = (ts - lastTs) / 1000;
     lastTs = ts;
     dt = clamp(dt, 0, 0.05);
+    if (mode === 'formation') {
+      updateEffects(dt);
+      draw(ts / 1000);
+      if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
+      return;
+    }
     if (game && !game.paused) {
       E.update(game, dt);
       if (game.phase === 'moving') {
@@ -661,6 +852,10 @@
   }
 
   function autoPlayStep() {
+    if (mode === 'formation') {
+      beginMatch();
+      return;
+    }
     if (!game) return;
     if (game.paused) return;
     if (game.phase === 'aim' && game.turn === 'player') {
@@ -672,6 +867,8 @@
 
   function init() {
     canvas = $('game');
+    els.hud = $('hud');
+    els.formationBar = $('formation-bar');
     els.you = $('you');
     els.cpu = $('cpu');
     els.turn = $('turn');
@@ -699,16 +896,20 @@
     var start = $('btn-start');
     var retry = $('btn-retry');
     var resume = $('btn-resume');
-    if (start) start.addEventListener('click', beginGame);
-    if (retry) retry.addEventListener('click', beginGame);
+    var formationReset = $('btn-formation-reset');
+    var formationStart = $('btn-formation-start');
+    if (start) start.addEventListener('click', showFormation);
+    if (retry) retry.addEventListener('click', showFormation);
     if (resume) resume.addEventListener('click', resumeGame);
+    if (formationReset) formationReset.addEventListener('click', function () { formation = copyFormation(E.DEFAULT_FORMATION); });
+    if (formationStart) formationStart.addEventListener('click', beginMatch);
     if (els.pause) els.pause.addEventListener('click', togglePause);
 
     if (canvas) {
       canvas.addEventListener('pointerdown', onPointerDown, false);
       canvas.addEventListener('pointermove', onPointerMove, false);
       canvas.addEventListener('pointerup', onPointerUp, false);
-      canvas.addEventListener('pointercancel', function () { pointer = null; }, false);
+      canvas.addEventListener('pointercancel', function () { pointer = null; formationDrag = null; }, false);
       canvas.addEventListener('contextmenu', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
       canvas.addEventListener('dblclick', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
     }
@@ -727,12 +928,20 @@
     root.__GAME__ = {
       id: 'stick-soccer',
       title: 'スティックサッカー',
-      start: function () { beginGame(); },
+      start: function () { beginMatch(); },
       autoPlayStep: autoPlayStep,
       isDone: function () { return !!(game && game.phase === 'over'); },
       getState: function () {
-        if (!game) return { id: 'stick-soccer', phase: 'title', score: { player: 0, cpu: 0 } };
-        return E.getState(game);
+        if (!game) return { id: 'stick-soccer', phase: mode, score: { player: 0, cpu: 0 }, formation: copyFormation(formation) };
+        var state = E.getState(game);
+        state.formation = copyFormation(formation);
+        return state;
+      },
+      getFormationState: function () { return { mode: mode, formation: copyFormation(formation) }; },
+      getFormationSlotPoint: function (line, slot) {
+        var p = formationSlotPoint(line, slot);
+        var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
+        return { x: rect.left + p.x / C.VIEW_W * (rect.width || 480), y: rect.top + p.y / C.VIEW_H * (rect.height || 800) };
       },
       getBallPoint: function () {
         if (!game) return null;
