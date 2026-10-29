@@ -524,6 +524,25 @@
     return best;
   }
 
+  function candidateFormation(index, line, slot) {
+    var next = copyFormation(formation);
+    var old = next[index];
+    var occupant = -1;
+    for (var i = 0; i < next.length; i++) {
+      if (i !== index && next[i].line === line && next[i].slot === slot) {
+        occupant = i;
+        break;
+      }
+    }
+    next[index] = { line: line, slot: slot };
+    if (occupant >= 0) next[occupant] = { line: old.line, slot: old.slot };
+    return next;
+  }
+
+  function canDropFormation(index, line, slot) {
+    return E.isValidFormation(candidateFormation(index, line, slot));
+  }
+
   function drawFormation(time) {
     for (var line = 0; line < E.FORMATION_LINES.length; line++) {
       var y = E.FORMATION_LINES[line].y;
@@ -580,12 +599,23 @@
     }
     var target = formationDrag ? nearestFormationSlot(formationDrag.x, formationDrag.y) : null;
     if (target && target.d < 58) {
+      var valid = canDropFormation(formationDrag.index, target.line, target.slot);
       ctx.save();
-      ctx.strokeStyle = 'rgba(255, 209, 102, 0.9)';
+      ctx.strokeStyle = valid ? 'rgba(255, 209, 102, 0.9)' : 'rgba(255, 111, 159, 0.95)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(target.x, target.y, E.PLAYER_R + 9, 0, Math.PI * 2);
       ctx.stroke();
+      if (!valid) {
+        ctx.strokeStyle = 'rgba(255, 111, 159, 0.95)';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(target.x - 7, target.y - 7);
+        ctx.lineTo(target.x + 7, target.y + 7);
+        ctx.moveTo(target.x + 7, target.y - 7);
+        ctx.lineTo(target.x - 7, target.y + 7);
+        ctx.stroke();
+      }
       ctx.restore();
     }
     for (var i = 0; i < formation.length; i++) {
@@ -619,7 +649,7 @@
     ctx.fillText('FORMATION  STAGE ' + (stageIndex + 1) + '/' + E.STAGES.length, C.VIEW_W / 2, 62);
     ctx.fillStyle = 'rgba(145, 190, 168, 0.78)';
     ctx.font = '700 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.fillText('自分11人を下側4ラインへ。上側はCPUの形', C.VIEW_W / 2, 82);
+    ctx.fillText('自分11人を下側4ラインへ。左右の隣には置けません', C.VIEW_W / 2, 82);
     ctx.restore();
   }
 
@@ -807,16 +837,9 @@
       try { if (canvas.releasePointerCapture) canvas.releasePointerCapture(fid); } catch (err) { }
       var target = nearestFormationSlot(drag.x, drag.y);
       if (!target || target.d > 58) return;
-      var old = formation[drag.index];
-      var occupant = -1;
-      for (var i = 0; i < formation.length; i++) {
-        if (i !== drag.index && formation[i].line === target.line && formation[i].slot === target.slot) {
-          occupant = i;
-          break;
-        }
-      }
-      formation[drag.index] = { line: target.line, slot: target.slot };
-      if (occupant >= 0) formation[occupant] = { line: old.line, slot: old.slot };
+      var nextFormation = candidateFormation(drag.index, target.line, target.slot);
+      if (!E.isValidFormation(nextFormation)) return;
+      formation = nextFormation;
       return;
     }
     if (!pointer) return;
