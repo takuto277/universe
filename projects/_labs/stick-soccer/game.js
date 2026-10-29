@@ -134,7 +134,9 @@
       if (els.overYou) els.overYou.textContent = String(st.score.player);
       if (els.overCpu) els.overCpu.textContent = String(st.score.cpu);
       if (els.overShots) els.overShots.textContent = String(st.shots);
-      if (els.stageClearText) els.stageClearText.textContent = 'STAGE ' + (st.stage + 2) + ' / ' + st.stageTotal + ' · 相手は ' + E.STAGES[st.stage + 1].name;
+      if (els.stageClearText && st.winner === 'player' && st.stage + 1 < st.stageTotal) {
+        els.stageClearText.textContent = 'STAGE ' + (st.stage + 2) + ' / ' + st.stageTotal + ' · 相手は ' + E.STAGES[st.stage + 1].name;
+      }
     }
   }
 
