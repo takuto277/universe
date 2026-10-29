@@ -53,7 +53,8 @@ def capture(browser, base_url, app, width, height, delay):
 
     end = page.evaluate("() => performance.now() + %d" % int(delay * 1000))
     while page.evaluate("() => performance.now()") < end:
-        page.evaluate("() => { const g = window.__GAME__; if (g && g.autoPlayStep) g.autoPlayStep(); }")
+        if not app.get("thumbNoAuto"):
+            page.evaluate("() => { const g = window.__GAME__; if (g && g.autoPlayStep) g.autoPlayStep(); }")
         page.wait_for_timeout(120)
         state = page.evaluate("() => window.__GAME__ && window.__GAME__.getState ? window.__GAME__.getState() : null")
         if isinstance(state, dict) and state.get("over"):
