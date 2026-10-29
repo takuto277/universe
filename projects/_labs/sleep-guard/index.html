@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080d1c">
+  <title>ねむりのまもり - 睡眠防衛ゲーム</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="sleep-panel">
+        <div class="sleep-head"><span>すいみん</span><b id="gauge-pct">33%</b></div>
+        <div class="gauge" aria-label="睡眠ゲージ">
+          <div id="gauge-fill"></div>
+          <span class="gauge-start" title="開始位置"></span>
+        </div>
+      </div>
+      <div class="score-panel">
+        <span>SCORE <b id="score">0</b></span>
+        <span>しずかにした <b id="stopped">0</b></span>
+      </div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="480" height="800" aria-label="眠るキャラクターと騒音のゲーム画面"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <p class="eyebrow">GOOD NIGHT</p>
+          <h1>ねむりのまもり</h1>
+          <p class="subtitle">眠りたいのに、部屋がうるさい。</p>
+          <ul class="rules">
+            <li>騒音オブジェクトを <b>タップ / クリック</b> して静かにさせる</li>
+            <li>静かな時間が続くと睡眠ゲージが溜まる。MAXでクリア</li>
+            <li>騒音を放置するとゲージが減り、0で「眠れ無ーーい！」</li>
+            <li>ゲージは1/3からスタート。だんだん騒音が増える</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">ねむる</button>
+          <p class="tiny">騒音をタップして、静かな夜を守ろう</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <p class="eyebrow" id="end-eyebrow">GOOD NIGHT</p>
+          <h2 id="end-title">おやすみなさい</h2>
+          <p id="end-detail" class="end-detail"></p>
+          <div class="end-stats">
+            <div><span>SCORE</span><b id="end-score">0</b></div>
+            <div><span>TIME</span><b id="end-time">0s</b></div>
+            <div><span>STOPPED</span><b id="end-stopped">0</b></div>
+          </div>
+          <button id="btn-again" class="primary" type="button">もう一度ねむる</button>
+          <p class="tiny">タップ / Space でもう一度</p>
+        </section>
+      </div>
+    </main>
+
+    <footer id="tip">騒音をタップして、静かな夜を守ろう</footer>
+  </div>
+
+  <script src="engine.js"></script>
+  <script src="game.js"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>

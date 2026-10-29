@@ -68,6 +68,9 @@ universe/
 │   │   ├── ken-tsunagi/
 │   │   ├── neon-stack/
 │   │   ├── observer-game/
+│   │   ├── oto-no-ie/
+│   │   ├── sleep-guard/
+│   │   ├── stick-soccer/
 │   │   ├── tether/
 │   │   └── unknown-word-deal/
 │   └── _samples/              # 教材・最小実装

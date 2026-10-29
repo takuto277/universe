@@ -122,9 +122,7 @@
       ],
       "thumbnail": "projects/_labs/tether/thumb.jpg",
       "thumbDelay": 0.45,
-      "summary": "押して巻き取り、離して飛ぶ。60秒で塔を登る1ボタンクライミング。",
-      "createdAt": "2026-10-29",
-      "updatedAt": "2026-10-29T23:38:52+09:00"
+      "summary": "押して巻き取り、離して飛ぶ。60秒で塔を登る1ボタンクライミング。"
     },
     {
       "id": "neon-stack",
@@ -204,6 +202,24 @@
       "summary": "9スロットのフォーメーションで左右の壁を作らず戦う、ステージ制フリックサッカー。",
       "createdAt": "2026-10-29",
       "updatedAt": "2026-10-30T01:09:22+09:00"
+    },
+    {
+      "id": "sleep-guard",
+      "path": "projects/_labs/sleep-guard/",
+      "tag": "GAME",
+      "title": "ねむりのまもり",
+      "description": "眠りたいキャラクターを騒音から守るタップ防衛ゲーム。部屋に現れる目覚まし時計・スマホ・テレビなどをタップして静め、睡眠ゲージをMAXまで溜めるとクリア。ゲージは1/3から始まり、騒音を放置すると減少し、0になると「眠れ無ーーい！」でゲームオーバー。",
+      "summary": "騒音をタップで静め、睡眠ゲージをMAXまで育てるタップ防衛。",
+      "tags": [
+        "睡眠",
+        "タップ",
+        "防衛"
+      ],
+      "thumbnail": "projects/_labs/sleep-guard/thumb.jpg",
+      "thumbDelay": 2.4,
+      "createdAt": "2026-10-30",
+      "updatedAt": "2026-10-30T01:21:43+09:00",
+      "thumbNoAuto": true
     }
   ]
 }
