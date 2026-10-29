@@ -72,6 +72,7 @@ universe/
 │   │   ├── sleep-guard/
 │   │   ├── stick-soccer/
 │   │   ├── tether/
+│   │   ├── thermo/
 │   │   └── unknown-word-deal/
 │   └── _samples/              # 教材・最小実装
 │       └── janken-game/
