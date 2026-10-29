@@ -24,12 +24,13 @@ assert(s.tether && s.tether.anchorId === 0, '初期テザーがanchor0でない'
 assert(s.anchors[0].used === true, '初期アンカーがusedでない');
 assert(s.player.y > s.anchors[0].y - 120, 'プレイヤー位置が不正');
 
-var len0 = s.tether.length;
+game.state.tether.length = 120;
+var len0 = 120;
 game.setHold(true);
 game.update(0.2, 0.1);
 s = game.getState();
 assert(s.holding === true, 'ホールドが記録されない');
-assert(s.tether.length < len0, '巻き取りでテザーが短くならない');
+assert(s.tether.length < len0 && s.tether.length >= E.MIN_LENGTH, '巻き取りでテザーが短くならない / 中央まで寄りすぎる');
 
 var vy0 = s.player.vy;
 game.setHold(false);
@@ -51,10 +52,24 @@ assert(s.rescues === 1, '床救助が記録されない');
 game.setHold(true);
 game.update(0.25, 0.1);
 s = game.getState();
-assert(s.tether && s.tether.length < 80, '床救助後に巻き取れない');
+assert(s.tether && s.tether.length >= E.MIN_LENGTH, '床救助後にテザーが維持されない');
 
 game.reset();
 assert(game.state.phase === 'start' && game.state.tether === null, 'resetでstartに戻らない');
+
+// ロープが長いほど、離したときの速度が大きい
+function launchSpeed(length) {
+  var g = E.createGame();
+  g.start();
+  g.state.tether = { anchorId: 0, length: length };
+  g.state.holding = true;
+  g.state.player.vx = 0;
+  g.state.player.vy = 0;
+  g.setHold(false);
+  var out = g.getState();
+  return Math.sqrt(out.player.vx * out.player.vx + out.player.vy * out.player.vy);
+}
+assert(launchSpeed(120) > launchSpeed(80), '長いロープの方が速く飛ばない');
 
 // ホールド中だけ、一定距離内のアンカー（使用済みも含む）に掛かる
 game.start();
@@ -83,6 +98,39 @@ game.state.player.vy = 0;
 game.setHold(true);
 s = game.getState();
 assert(s.tether && s.tether.anchorId === 0, '使用済みアンカーに再び掛からない');
+
+// 高速でも回転バーを貫通しない
+var fast = E.createGame();
+fast.start();
+fast.state.tether = null;
+fast.state.holding = false;
+fast.state.attachCooldown = 999;
+var bar = fast.state.obstacles[0];
+bar.angle = 0;
+fast.state.player.x = 0;
+fast.state.player.y = bar.y - 40;
+fast.state.player.vx = 0;
+fast.state.player.vy = 1800;
+fast.update(0.1, 0.05);
+s = fast.getState();
+assert(s.events.some(function (e) { return e.type === 'hit'; }), '高速で回転バーを貫通する');
+
+// バンパーと風のギミック
+var gimmick = E.createGame();
+gimmick.start();
+assert(gimmick.state.bumpers.length >= 3, 'バンパーが3個未満');
+assert(gimmick.state.winds.length >= 2, '風ゾーンが2個未満');
+gimmick.state.tether = null;
+gimmick.state.holding = false;
+gimmick.state.attachCooldown = 999;
+var b = gimmick.state.bumpers[0];
+gimmick.state.player.x = b.x;
+gimmick.state.player.y = b.y - b.r - 4;
+gimmick.state.player.vx = 0;
+gimmick.state.player.vy = -200;
+gimmick.update(0.1, 1 / 60);
+s = gimmick.getState();
+assert(s.events.some(function (e) { return e.type === 'bump'; }), 'バンパーが反応しない');
 
 game.reset();
 game.start();
