@@ -11,7 +11,9 @@
         "タイミング"
       ],
       "thumbnail": "projects/_labs/baseball-game/thumb.jpg",
-      "summary": "9球種とカウントを読み合う、3回勝負のタイミング野球。"
+      "summary": "9球種とカウントを読み合う、3回勝負のタイミング野球。",
+      "createdAt": "2026-10-18",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "janken-game",
@@ -24,7 +26,9 @@
         "1対1"
       ],
       "thumbnail": "projects/_samples/janken-game/thumb.jpg",
-      "summary": "CPUのクセと出しグセを読み合う、先読みじゃんけん。"
+      "summary": "CPUのクセと出しグセを読み合う、先読みじゃんけん。",
+      "createdAt": "2026-10-20",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "gravity-flip",
@@ -37,7 +41,9 @@
         "アクション"
       ],
       "thumbnail": "projects/_labs/gravity-flip/thumb.jpg",
-      "summary": "タップで重力を反転し、トゲを避けて距離を伸ばす1ボタンアクション。"
+      "summary": "タップで重力を反転し、トゲを避けて距離を伸ばす1ボタンアクション。",
+      "createdAt": "2026-10-21",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "graph-cross",
@@ -51,7 +57,9 @@
         "ローグライト"
       ],
       "thumbnail": "projects/_labs/graph-cross/thumb.jpg",
-      "summary": "関数の曲線を敵に交差させ、デッキと合成で戦うグラフアクション。"
+      "summary": "関数の曲線を敵に交差させ、デッキと合成で戦うグラフアクション。",
+      "createdAt": "2026-10-21",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "unknown-word-deal",
@@ -64,7 +72,9 @@
         "推理"
       ],
       "thumbnail": "projects/_labs/unknown-word-deal/thumb.jpg",
-      "summary": "未知の文法語と商人のしぐさから意図を読み、交渉する言語ゲーム。"
+      "summary": "未知の文法語と商人のしぐさから意図を読み、交渉する言語ゲーム。",
+      "createdAt": "2026-10-25",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "observer-game",
@@ -77,7 +87,9 @@
         "パズル"
       ],
       "thumbnail": "projects/_labs/observer-game/thumb.jpg",
-      "summary": "敵の隠れた移動規則を観測し、次の一手を予想する推理ゲーム。"
+      "summary": "敵の隠れた移動規則を観測し、次の一手を予想する推理ゲーム。",
+      "createdAt": "2026-10-25",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "exponential-balls",
@@ -92,7 +104,25 @@
       ],
       "thumbnail": "projects/_labs/exponential-balls/thumb.jpg",
       "thumbDelay": 6,
-      "summary": "倍々に増えるボールと20球レースを楽しむ、音楽連動の映像ゲーム。"
+      "summary": "倍々に増えるボールと20球レースを楽しむ、音楽連動の映像ゲーム。",
+      "createdAt": "2026-10-27",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
+    },
+    {
+      "id": "tether",
+      "path": "projects/_labs/tether/",
+      "tag": "GAME",
+      "title": "TETHER",
+      "description": "張り出したアンカーにロープを引っかけて登る、1ボタンの縦画面クライミング。押して巻き取り、離して飛ぶ。60秒でどこまで登れるか、15のアンカーと3つの回転バーを越えて自己ベストを目指す。ベスト高さ保存、効果音つき。",
+      "tags": [
+        "1ボタン",
+        "クライミング"
+      ],
+      "thumbnail": "projects/_labs/tether/thumb.jpg",
+      "thumbDelay": 0.45,
+      "summary": "押して巻き取り、離して飛ぶ。60秒で塔を登る1ボタンクライミング。",
+      "createdAt": "2026-10-29",
+      "updatedAt": "2026-10-29T23:38:52+09:00"
     },
     {
       "id": "neon-stack",
@@ -107,7 +137,9 @@
       ],
       "thumbnail": "projects/_labs/neon-stack/thumb.jpg",
       "thumbDelay": 3.5,
-      "summary": "ブロックを積み、PERFECTとBEATで塔を伸ばす1ボタンアーケード。"
+      "summary": "ブロックを積み、PERFECTとBEATで塔を伸ばす1ボタンアーケード。",
+      "createdAt": "2026-10-28",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "jump-rush",
@@ -120,7 +152,9 @@
         "ジャンプ"
       ],
       "thumbnail": "projects/_labs/jump-rush/thumb.jpg",
-      "summary": "走り続けるヒーローをジャンプさせ、敵を踏んで城を目指す横スクロール。"
+      "summary": "走り続けるヒーローをジャンプさせ、敵を踏んで城を目指す横スクロール。",
+      "createdAt": "2026-10-28",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "ken-tsunagi",
@@ -133,7 +167,9 @@
         "日本地図"
       ],
       "thumbnail": "projects/_labs/ken-tsunagi/thumb.jpg",
-      "summary": "47都道府県を落としてつなぎ、日本列島を完成させる落ちものパズル。"
+      "summary": "47都道府県を落としてつなぎ、日本列島を完成させる落ちものパズル。",
+      "createdAt": "2026-10-29",
+      "updatedAt": "2026-10-29T22:15:02+09:00"
     },
     {
       "id": "oto-no-ie",
@@ -146,7 +182,9 @@
         "パズル"
       ],
       "thumbnail": "projects/_labs/oto-no-ie/thumb.jpg",
-      "summary": "共鳴鏡と吸音カーテンで音を届ける、全7室の音響パズル。"
+      "summary": "共鳴鏡と吸音カーテンで音を届ける、全7室の音響パズル。",
+      "createdAt": "2026-10-29",
+      "updatedAt": "2026-10-29T22:34:42+09:00"
     },
     {
       "id": "stick-soccer",
@@ -160,7 +198,9 @@
         "アクション"
       ],
       "thumbnail": "projects/_labs/stick-soccer/thumb.jpg",
-      "summary": "11人を4ラインに配置し、引っ張って狙うCPU対戦フリックサッカー。"
+      "summary": "11人を4ラインに配置し、引っ張って狙うCPU対戦フリックサッカー。",
+      "createdAt": "2026-10-29",
+      "updatedAt": "2026-10-29T23:45:36+09:00"
     }
   ]
 }
