@@ -29,7 +29,15 @@ assert(!E.isValidFormation([{ line: 9, slot: 0 }]), 'invalid line should be ille
 var invalid = E.createGame({ formation: [{ line: 0, slot: 0 }, { line: 0, slot: 1 }] });
 assert(invalid.obstacles.length === 22, 'invalid formation should fall back to the default');
 assert(invalid.obstacles.filter(function (p) { return p.team === 'player'; }).length === 11, 'fallback should restore 11 players');
-assert(E.TURNS === 12 && E.WIN_SCORE === 3, 'turn or win limit is wrong');
+assert(E.WIN_SCORE === 3, 'win target should be 3 goals');
+for (var aiStage = 1; aiStage < E.STAGES.length; aiStage++) {
+  var prevAi = E.STAGES[aiStage - 1].ai;
+  var nextAi = E.STAGES[aiStage].ai;
+  assert(nextAi.angleNoise < prevAi.angleNoise, 'later stages should aim more accurately');
+  assert(nextAi.mistake < prevAi.mistake, 'later stages should make fewer bad choices');
+  assert(nextAi.power > prevAi.power, 'later stages should shoot stronger');
+  assert(nextAi.think < prevAi.think && nextAi.aim < prevAi.aim, 'later stages should act faster');
+}
 
 var custom = E.createGame({ formation: [{ line: 0, slot: 2 }, { line: 2, slot: 0 }] });
 assert(custom.obstacles.length === 13, 'custom player formation plus CPU count is wrong: ' + custom.obstacles.length);
@@ -51,7 +59,7 @@ assert(E.createGame({ stage: 99 }).stage === 2, 'stage should clamp to the last 
 
 var s = E.createGame();
 var st = E.getState(s);
-assert(st.phase === 'aim' && st.turn === 'player' && st.shots === 0, 'initial state is wrong');
+assert(st.phase === 'aim' && st.turn === 'player' && st.shots === 0 && st.winScore === 3, 'initial state is wrong');
 assert(st.ball.x === E.CENTER.x && st.ball.y === E.CENTER.y, 'ball should start at center');
 assert(st.score.player === 0 && st.score.cpu === 0, 'scores should start at zero');
 
@@ -129,24 +137,27 @@ assert(s.phase === 'over' && s.winner === 'player', '3 goals should finish the g
 s = E.createGame();
 s.score.player = 1;
 s.score.cpu = 2;
-s.shots = E.TURNS;
+s.shots = 30;
+s.turn = 'cpu';
 s.ball.vx = 300;
 s.ball.vy = 0;
 s.phase = 'moving';
 E.update(s, 0.05);
 for (i = 0; i < 120 && s.phase !== 'over'; i++) E.update(s, 1 / 60);
-assert(s.phase === 'over' && s.winner === 'cpu', 'turn limit should resolve by score: ' + s.winner);
+assert(s.phase !== 'over' && s.winner === null, 'kick count should not end a first-to-3 match: ' + s.phase);
 
 s = E.createGame();
-s.score.player = 1;
-s.score.cpu = 1;
-s.shots = E.TURNS;
-s.ball.vx = 300;
-s.ball.vy = 0;
+s.score.player = 2;
+s.score.cpu = 2;
+s.shots = 30;
+s.ball.x = E.CENTER.x;
+s.ball.y = E.FIELD.y + 40;
+s.ball.vy = -600;
 s.phase = 'moving';
-E.update(s, 0.05);
+E.update(s, 0.08);
+assert(s.phase === 'goal', 'goal after many kicks should still count');
 for (i = 0; i < 120 && s.phase !== 'over'; i++) E.update(s, 1 / 60);
-assert(s.phase === 'over' && s.winner === 'draw', 'tied turn limit should be a draw: ' + s.winner);
+assert(s.phase === 'over' && s.winner === 'player', 'first to 3 should end after many kicks: ' + s.winner);
 
 s = E.createGame();
 var fixed = function () { return 0.5; };

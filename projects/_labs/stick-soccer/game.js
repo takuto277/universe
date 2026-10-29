@@ -103,7 +103,7 @@
     var st = E.getState(game);
     if (els.you) els.you.textContent = String(st.score.player);
     if (els.cpu) els.cpu.textContent = String(st.score.cpu);
-    if (els.shots) els.shots.textContent = 'STAGE ' + (st.stage + 1) + '/' + st.stageTotal + ' · KICK ' + st.shots + '/' + st.turns;
+    if (els.shots) els.shots.textContent = 'STAGE ' + (st.stage + 1) + '/' + st.stageTotal + ' · KICK ' + st.shots;
     if (els.turn) {
       var label = 'YOUR TURN';
       if (st.phase === 'over') label = 'FULL TIME';
@@ -125,7 +125,7 @@
 
     if (st.phase === 'over') {
       var winner = st.winner;
-      if (els.overKicker) els.overKicker.textContent = st.reason === 'turns' ? '12 KICKS / FULL TIME' : 'FULL TIME';
+      if (els.overKicker) els.overKicker.textContent = 'FIRST TO 3 / FULL TIME';
       if (els.overTitle) {
         els.overTitle.textContent = winner === 'player' ? 'YOU WIN' : (winner === 'cpu' ? 'CPU WIN' : 'DRAW');
         els.overTitle.className = 'result-title' + (winner === 'cpu' ? ' lose' : (winner === 'draw' ? ' draw' : ''));
@@ -578,7 +578,7 @@
       ctx.font = '900 9px ui-monospace, Menlo, monospace';
       ctx.textAlign = 'right';
       ctx.textBaseline = 'middle';
-      ctx.fillText('CPU ' + stage.name, F.right - 4, F.y - 9);
+      ctx.fillText('CPU ' + stage.name + ' · LV.' + (stageIndex + 1), F.right - 4, F.y - 9);
       ctx.restore();
     }
     for (var sl = 0; sl < E.FORMATION_LINES.length; sl++) {

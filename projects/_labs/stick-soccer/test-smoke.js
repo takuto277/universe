@@ -16,7 +16,8 @@ Harness.run({
     if (!state) { h.assert(false, '状態が取得できない'); return; }
     h.assert(state.over === true, 'ゲームが終了しない: phase=' + state.phase);
     h.assert(state.phase === 'over', '終了状態が不正: ' + state.phase);
-    h.assert(state.shots > 0 && state.shots <= state.turns, 'キック数が範囲外: ' + state.shots);
+    h.assert(state.shots > 0, 'キック数が不正: ' + state.shots);
+    h.assert(state.score.player >= 3 || state.score.cpu >= 3, '先に3点で終了していない');
     h.assert(state.score.player >= 0 && state.score.cpu >= 0, 'スコアが不正');
     h.assert(state.winner === 'player' || state.winner === 'cpu' || state.winner === 'draw', '勝敗が不正: ' + state.winner);
     var els = h.elements;
@@ -28,9 +29,9 @@ Harness.run({
     h.assert(els['you'] && els['you'].textContent === String(state.score.player), 'HUDの自分スコアが一致しない');
     h.assert(els['cpu'] && els['cpu'].textContent === String(state.score.cpu), 'HUDのCPUスコアが一致しない');
     h.assert(state.stage >= 0 && state.stage < state.stageTotal, 'ステージ番号が不正: ' + state.stage);
-    h.assert(els['shots'] && els['shots'].textContent === 'STAGE ' + (state.stage + 1) + '/' + state.stageTotal + ' · KICK ' + state.shots + '/12', 'HUDのステージ/キック数が一致しない');
+    h.assert(els['shots'] && els['shots'].textContent === 'STAGE ' + (state.stage + 1) + '/' + state.stageTotal + ' · KICK ' + state.shots, 'HUDのステージ/キック数が一致しない');
   },
   summary: function (state) {
-    print('  最終: ' + state.score.player + ' - ' + state.score.cpu + ' / ' + state.winner + ' / KICK ' + state.shots + '/' + state.turns);
+    print('  最終: ' + state.score.player + ' - ' + state.score.cpu + ' / ' + state.winner + ' / KICK ' + state.shots);
   }
 });

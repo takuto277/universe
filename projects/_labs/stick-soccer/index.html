@@ -14,7 +14,7 @@
 
       <header id="hud">
         <div class="team you"><span>YOU</span><b id="you">0</b></div>
-        <div class="turn-box"><b id="turn">YOUR TURN</b><span id="shots">STAGE 1/3 · KICK 0/12</span></div>
+        <div class="turn-box"><b id="turn">YOUR TURN</b><span id="shots">STAGE 1/3 · KICK 0</span></div>
         <div class="team cpu"><span>CPU</span><b id="cpu">0</b></div>
       </header>
       <button id="btn-sound" class="icon-btn sound-btn" type="button" aria-label="BGMを消音">♪</button>
@@ -38,9 +38,9 @@
             <li>自分とCPUの11人ずつ、計22人がピッチに並ぶ。CPUと交互にキック</li>
             <li>試合前に自分の11人を下側4本のラインへ配置（フォーメーション）</li>
             <li>同じラインの左右隣には置けない。9スロットから選ぶ</li>
-            <li>CPUの形は3ステージで変化。勝つと次のステージへ</li>
-            <li>12キックで決着がつかなければ得点勝負</li>
-            <li>先に3点取った方が勝ち。ゴール後は失点側のキックで再開</li>
+            <li>CPUの形とLVは3ステージで上昇。勝つと次のステージへ</li>
+            <li><strong>先に3点取った方が勝ち</strong>。キック数に上限はない</li>
+            <li>ゴール後はセンターから、失点側のキックで再開</li>
             <li>スタジアム風BGMつき。右上の♪で消音できる</li>
           </ul>
           <button id="btn-start" class="primary" type="button">キックオフ</button>
@@ -87,8 +87,8 @@
     </div>
   </main>
   <script src="audio.js?v=1"></script>
-  <script src="engine.js?v=5"></script>
-  <script src="game.js?v=6"></script>
+  <script src="engine.js?v=6"></script>
+  <script src="game.js?v=7"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

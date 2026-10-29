@@ -19,7 +19,6 @@
   var OBSTACLE_BOUNCE = 0.88;
   var STOP_SPEED = 18;
   var SHOT_LIMIT = 7;
-  var TURNS = 12;
   var WIN_SCORE = 3;
 
   var PLAYER_LINES = [
@@ -53,10 +52,15 @@
   }
 
   var STAGES = [
-    { id: 'stage-1', name: '4-4-2', cpuFormation: cpuFormation(4, [1, 3, 5, 7], [1, 3, 5, 7], [2, 6]) },
-    { id: 'stage-2', name: '3-5-2', cpuFormation: cpuFormation(4, [1, 4, 7], [0, 2, 4, 6, 8], [2, 6]) },
-    { id: 'stage-3', name: '4-3-3', cpuFormation: cpuFormation(4, [1, 3, 5, 7], [1, 4, 7], [0, 4, 8]) }
+    { id: 'stage-1', name: '4-4-2', cpuFormation: cpuFormation(4, [1, 3, 5, 7], [1, 3, 5, 7], [2, 6]), ai: { angleNoise: 0.22, mistake: 0.8, spread: 3, power: 0.78, powerNoise: 0.22, think: 0.95, aim: 1.0 } },
+    { id: 'stage-2', name: '3-5-2', cpuFormation: cpuFormation(4, [1, 4, 7], [0, 2, 4, 6, 8], [2, 6]), ai: { angleNoise: 0.05, mistake: 0.12, spread: 2, power: 0.98, powerNoise: 0.06, think: 0.5, aim: 0.55 } },
+    { id: 'stage-3', name: '4-3-3', cpuFormation: cpuFormation(4, [1, 3, 5, 7], [1, 4, 7], [0, 4, 8]), ai: { angleNoise: 0.015, mistake: 0.04, spread: 1, power: 1, powerNoise: 0.02, think: 0.3, aim: 0.35 } }
   ];
+
+  function aiFor(s) {
+    var index = clamp(Number(s.stage) || 0, 0, STAGES.length - 1);
+    return STAGES[index].ai;
+  }
 
   function isValidFormation(formation) {
     if (!formation || !formation.length) return true;
@@ -258,9 +262,10 @@
     var targetY = side === 'player' ? FIELD.y : FIELD.bottom;
     var startX = s.ball.x;
     var startY = s.ball.y;
+    var ai = side === 'cpu' ? aiFor(s) : null;
     var candidates = [];
     var offsets = [-62, -42, -20, 0, 20, 42, 62];
-    var maxPower = MAX_PULL * PULL_POWER;
+    var maxPower = MAX_PULL * PULL_POWER * (ai ? ai.power : 1);
     var powers = [650, 800, 950, maxPower];
     for (var i = 0; i < offsets.length; i++) {
       var tx = CENTER.x + offsets[i];
@@ -287,9 +292,16 @@
     candidates.sort(function (a, b) { return b.score - a.score; });
     if (!candidates.length) return { vx: 0, vy: side === 'player' ? -800 : 800 };
     var pick = candidates[0];
-    if (candidates.length > 1 && random() < 0.18) pick = candidates[1];
-    var angle = Math.atan2(pick.vy, pick.vx) + (random() - 0.5) * 0.035;
-    var shotPower = Math.min(maxPower, Math.sqrt(pick.vx * pick.vx + pick.vy * pick.vy) * (0.97 + random() * 0.06));
+    var mistake = ai ? ai.mistake : 0.18;
+    if (candidates.length > 1 && random() < mistake) {
+      var spread = Math.min(ai ? ai.spread : 1, candidates.length - 1);
+      pick = candidates[1 + Math.floor(random() * spread)];
+    }
+    var angleNoise = ai ? ai.angleNoise : 0.035;
+    var powerNoise = ai ? ai.powerNoise : 0.06;
+    var angle = Math.atan2(pick.vy, pick.vx) + (random() - 0.5) * angleNoise;
+    var powerScale = 1 - powerNoise / 2 + random() * powerNoise;
+    var shotPower = Math.min(maxPower, Math.sqrt(pick.vx * pick.vx + pick.vy * pick.vy) * powerScale);
     return { vx: Math.cos(angle) * shotPower, vy: Math.sin(angle) * shotPower };
   }
 
@@ -307,12 +319,12 @@
     if (s.score.player > s.score.cpu) s.winner = 'player';
     else if (s.score.player < s.score.cpu) s.winner = 'cpu';
     else s.winner = 'draw';
-    s.reason = s.shots >= TURNS ? 'turns' : 'score';
+    s.reason = 'score';
     event(s, 'over', { winner: s.winner, score: s.score });
   }
 
   function nextTurn(s) {
-    if (s.score.player >= WIN_SCORE || s.score.cpu >= WIN_SCORE || s.shots >= TURNS) {
+    if (s.score.player >= WIN_SCORE || s.score.cpu >= WIN_SCORE) {
       finish(s);
       return;
     }
@@ -322,7 +334,7 @@
     s.shotTime = 0;
     if (s.turn === 'cpu') {
       s.phase = 'cpuThink';
-      s.cpuTimer = 0.45;
+      s.cpuTimer = aiFor(s).think;
     } else {
       s.phase = 'aim';
     }
@@ -341,7 +353,7 @@
   }
 
   function afterGoal(s) {
-    if (s.score.player >= WIN_SCORE || s.score.cpu >= WIN_SCORE || s.shots >= TURNS) {
+    if (s.score.player >= WIN_SCORE || s.score.cpu >= WIN_SCORE) {
       finish(s);
       return;
     }
@@ -352,7 +364,7 @@
     s.stopTimer = 0;
     if (s.turn === 'cpu') {
       s.phase = 'cpuThink';
-      s.cpuTimer = 0.6;
+      s.cpuTimer = aiFor(s).think + 0.15;
     } else {
       s.phase = 'aim';
     }
@@ -385,7 +397,7 @@
       if (s.cpuTimer <= 0) {
         s.cpuPlan = chooseShot(s, 'cpu', s.rng);
         s.phase = 'cpuAim';
-        s.cpuTimer = 0.55;
+        s.cpuTimer = aiFor(s).aim;
         event(s, 'cpuAim', { vx: s.cpuPlan.vx, vy: s.cpuPlan.vy });
       }
     } else if (s.phase === 'cpuAim') {
@@ -413,7 +425,7 @@
       paused: s.paused,
       score: { player: s.score.player, cpu: s.score.cpu },
       shots: s.shots,
-      turns: TURNS,
+      winScore: WIN_SCORE,
       stage: s.stage,
       stageName: s.stageName,
       stageTotal: STAGES.length,
@@ -449,7 +461,6 @@
     DEFAULT_FORMATION: DEFAULT_FORMATION,
     obstaclesFor: obstaclesFor,
     isValidFormation: isValidFormation,
-    TURNS: TURNS,
     WIN_SCORE: WIN_SCORE,
     createGame: createGame,
     shoot: shoot,
