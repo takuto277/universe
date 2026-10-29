@@ -15,12 +15,20 @@
     anchors: document.getElementById('anchors'),
     best: document.getElementById('best'),
     hint: document.getElementById('hint'),
+    stage: document.getElementById('stage'),
+    stageTarget: document.getElementById('stage-target'),
+    stageBar: document.getElementById('stage-bar'),
     start: document.getElementById('start-overlay'),
     result: document.getElementById('result-overlay'),
+    resultEyebrow: document.getElementById('result-eyebrow'),
     resultHeight: document.getElementById('result-height'),
     resultSub: document.getElementById('result-sub'),
+    resultStage: document.getElementById('result-stage'),
     resultAnchors: document.getElementById('result-anchors'),
     resultBest: document.getElementById('result-best'),
+    banner: document.getElementById('stage-banner'),
+    bannerTitle: document.getElementById('stage-banner-title'),
+    bannerSub: document.getElementById('stage-banner-sub'),
     btnStart: document.getElementById('btn-start'),
     btnRetry: document.getElementById('btn-retry'),
     btnMute: document.getElementById('btn-mute'),
@@ -33,6 +41,7 @@
   var lastNow = null;
   var seenEvents = 0;
   var lastHeight = -1;
+  var bannerTimer = null;
 
   function show(el, on) { if (el) el.classList.toggle('visible', !!on); }
   function hide(el, on) { if (el) el.classList.toggle('is-hidden', !!on); }
@@ -56,6 +65,21 @@
     show(els.start, false);
     show(els.result, false);
     hide(els.hud, false);
+    show(els.banner, false);
+    if (bannerTimer && root.clearTimeout) root.clearTimeout(bannerTimer);
+    bannerTimer = null;
+    text(els.btnRetry, 'CLIMB AGAIN');
+  }
+
+  function showStageBanner(event) {
+    if (!els.banner) return;
+    text(els.bannerTitle, 'STAGE ' + (event.cleared || 1) + ' CLEAR');
+    text(els.bannerSub, 'STAGE ' + (event.stage || 2) + ' · GOAL ' + (event.target || 0) + 'M');
+    show(els.banner, true);
+    if (bannerTimer && root.clearTimeout) root.clearTimeout(bannerTimer);
+    if (root.setTimeout) {
+      bannerTimer = root.setTimeout(function () { show(els.banner, false); }, 1500);
+    }
   }
 
   function finishUI(state) {
@@ -66,10 +90,14 @@
       best = h;
       try { if (root.localStorage) root.localStorage.setItem('tether-best', String(best)); } catch (e) { }
     }
+    var cleared = !!r.cleared;
+    text(els.resultEyebrow, cleared ? 'ALL CLEAR' : 'TIME UP');
     text(els.resultHeight, h + 'm');
-    text(els.resultSub, h > previousBest ? 'NEW BEST' : 'KEEP CLIMBING');
+    text(els.resultSub, cleared ? 'ALL STAGES CLEAR' : (h > previousBest ? 'NEW BEST' : 'KEEP CLIMBING'));
+    text(els.resultStage, 'STAGE ' + (r.stage || 1) + '/' + (r.stageCount || 5));
     text(els.resultAnchors, 'ANCHORS ' + (r.anchors || 1));
     text(els.resultBest, 'BEST ' + best + 'm');
+    text(els.btnRetry, cleared ? 'PLAY AGAIN' : 'CLIMB AGAIN');
     hide(els.hud, true);
     show(els.result, true);
     if (audio) audio.finish();
@@ -83,6 +111,10 @@
       else if (ev.type === 'detach' && audio.snap) audio.snap();
       else if (ev.type === 'hit' && audio.hit) audio.hit();
       else if (ev.type === 'bump' && audio.bump) audio.bump();
+      else if (ev.type === 'stage') {
+        showStageBanner(ev);
+        if (audio.stage) audio.stage();
+      }
     }
     seenEvents = state.events.length;
   }
@@ -95,6 +127,13 @@
     for (var i = 0; i < state.anchors.length; i++) if (state.anchors[i].used) used++;
     text(els.anchors, 'ANCHORS ' + used);
     text(els.best, 'BEST ' + best + 'm');
+    text(els.stage, 'STAGE ' + state.stage + ' / ' + state.stageCount);
+    text(els.stageTarget, state.allClear ? 'CLEAR' : 'GOAL ' + state.stageTarget + 'M');
+    if (els.stageBar) {
+      var span = state.stageTarget - state.stageStart;
+      var pct = span > 0 ? (state.height - state.stageStart) / span : 1;
+      els.stageBar.style.width = (Math.max(0, Math.min(1, pct)) * 100).toFixed(1) + '%';
+    }
     if (state.height !== lastHeight) {
       lastHeight = state.height;
       if (els.height && els.height.classList) {

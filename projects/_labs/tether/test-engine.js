@@ -13,6 +13,8 @@ function assert(cond, m) { if (!cond) throw new Error('assert failed: ' + m); pa
 assert(E.DURATION === 60, '60秒でない');
 assert(E.ANCHORS.length >= 6, 'アンカーが6個未満');
 assert(E.OBSTACLES.length >= 2, '障害物が2個未満');
+assert(E.STAGES.length >= 3, 'ステージが3個未満');
+assert(E.STAGES[1].target > E.STAGES[0].target && E.STAGES[1].speed > E.STAGES[0].speed, 'ステージが難しくなっていない');
 
 var game = E.createGame();
 assert(game.state.phase === 'start', '初期状態がstartでない');
@@ -23,6 +25,7 @@ assert(s.anchors.length === E.ANCHORS.length, 'アンカー数が不正');
 assert(s.tether && s.tether.anchorId === 0, '初期テザーがanchor0でない');
 assert(s.anchors[0].used === true, '初期アンカーがusedでない');
 assert(s.player.y > s.anchors[0].y - 120, 'プレイヤー位置が不正');
+assert(s.stage === 1 && s.stageTarget === E.STAGES[0].target, '初期ステージが不正');
 
 game.state.tether.length = 120;
 var len0 = 120;
@@ -131,6 +134,33 @@ gimmick.state.player.vy = -200;
 gimmick.update(0.1, 1 / 60);
 s = gimmick.getState();
 assert(s.events.some(function (e) { return e.type === 'bump'; }), 'バンパーが反応しない');
+
+// 目標高さに達すると次のステージへ進み、最後はALL CLEAR
+function setHeight(g, meters) {
+  g.state.tether = null;
+  g.state.holding = false;
+  g.state.attachCooldown = 999;
+  g.state.player.x = 0;
+  g.state.player.y = 110 + meters * 10;
+  g.state.player.vx = 0;
+  g.state.player.vy = 0;
+  g.state.maxY = g.state.player.y;
+  g.update(0.1, 1 / 60);
+  return g.getState();
+}
+var stages = E.createGame();
+stages.start();
+s = setHeight(stages, E.STAGES[0].target);
+assert(s.stage === 2 && s.stageTarget === E.STAGES[1].target, 'ステージ1がクリアされない');
+assert(s.events.some(function (e) { return e.type === 'stage'; }), 'ステージクリアイベントがない');
+for (var si = 1; si < E.STAGES.length - 1; si++) {
+  s = setHeight(stages, E.STAGES[si].target);
+  assert(s.stage === si + 2, 'ステージ' + (si + 1) + 'が進まない');
+}
+s = setHeight(stages, E.STAGES[E.STAGES.length - 1].target);
+assert(s.phase === 'finished', '最終ステージで終了しない');
+assert(s.result && s.result.cleared === true, 'ALL CLEARにならない');
+assert(s.result.stagesCleared === E.STAGES.length, 'クリア数が不正');
 
 game.reset();
 game.start();

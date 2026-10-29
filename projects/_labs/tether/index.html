@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#050b14" />
   <meta name="description" content="TETHER — hold to reel, release to fly, and climb the tower in 60 seconds." />
   <title>TETHER</title>
-  <link rel="stylesheet" href="style.css?v=20261030-tether5" />
+  <link rel="stylesheet" href="style.css?v=20261030-tether6" />
 </head>
 <body>
   <div id="app">
@@ -24,6 +24,11 @@
         <span id="height" class="height">0</span>
         <span class="height-label">M</span>
       </div>
+      <div class="stage-line">
+        <span id="stage">STAGE 1 / 5</span>
+        <span id="stage-target">GOAL 80M</span>
+      </div>
+      <div class="stage-track"><span id="stage-bar"></span></div>
       <div class="meta">
         <span id="time">TIME 60.0</span>
         <span id="anchors">ANCHORS 1</span>
@@ -36,7 +41,7 @@
       <div class="start-content">
         <p class="eyebrow">A ONE-BUTTON CLIMB</p>
         <h1>TETHER</h1>
-        <p class="lead">Hold near any anchor to link. Reel in to climb, then release to fly. A longer rope launches you faster. Climb the tower before the 60 seconds run out.</p>
+        <p class="lead">Clear 5 stages in one 60-second climb. Hold near any anchor to link, reel in to climb, then release to fly. A longer rope launches you faster.</p>
         <svg class="start-art" viewBox="0 0 260 180" role="img" aria-label="A ball tethered to anchors">
           <path d="M60 130 L60 55 M160 70 L160 25 M215 145 L215 95" stroke="#2b4a55" stroke-width="2" />
           <circle cx="60" cy="55" r="9" fill="none" stroke="#f4c96b" stroke-width="2" />
@@ -55,10 +60,11 @@
 
     <div id="result-overlay" class="overlay">
       <div class="result-content">
-        <p class="eyebrow">TIME UP</p>
+        <p id="result-eyebrow" class="eyebrow">TIME UP</p>
         <h1 id="result-height">0m</h1>
         <p id="result-sub" class="lead">Best 0m</p>
         <div class="result-meta">
+          <span id="result-stage">STAGE 1/5</span>
           <span id="result-anchors">ANCHORS 1</span>
           <span id="result-best">BEST 0m</span>
         </div>
@@ -66,12 +72,17 @@
         <button id="btn-result-sound" class="link-btn" type="button">SOUND: ON</button>
       </div>
     </div>
+
+    <div id="stage-banner" class="stage-banner" aria-live="polite">
+      <span id="stage-banner-title">STAGE CLEAR</span>
+      <span id="stage-banner-sub">NEXT 80M</span>
+    </div>
   </div>
 
-  <script src="engine.js?v=20261030-tether5"></script>
-  <script src="audio.js?v=20261030-tether5"></script>
-  <script src="renderer.js?v=20261030-tether5"></script>
-  <script src="game.js?v=20261030-tether5"></script>
+  <script src="engine.js?v=20261030-tether6"></script>
+  <script src="audio.js?v=20261030-tether6"></script>
+  <script src="renderer.js?v=20261030-tether6"></script>
+  <script src="game.js?v=20261030-tether6"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

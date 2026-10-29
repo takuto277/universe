@@ -48,6 +48,14 @@
     { x: 0, y: 3220, w: 356, h: 230, ax: -470, ay: 0 }
   ];
 
+  var STAGES = [
+    { target: 80, speed: 1.00, wind: 1.00 },
+    { target: 160, speed: 1.15, wind: 1.12 },
+    { target: 250, speed: 1.30, wind: 1.24 },
+    { target: 350, speed: 1.45, wind: 1.36 },
+    { target: 450, speed: 1.60, wind: 1.50 }
+  ];
+
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function dist(ax, ay, bx, by) { return Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by)); }
 
@@ -68,8 +76,17 @@
       result: null,
       events: [],
       rescues: 0,
+      stage: 1,
+      stageStart: 0,
+      stageTarget: STAGES[0].target,
+      stageCount: STAGES.length,
+      allClear: false,
       startedAt: 0
     };
+
+    function stageConfig() {
+      return STAGES[Math.min(state.stage, STAGES.length) - 1];
+    }
 
     function makeAnchors() {
       state.anchors = ANCHORS.map(function (a, i) {
@@ -102,6 +119,10 @@
       state.result = null;
       state.events = [];
       state.rescues = 0;
+      state.stage = 1;
+      state.stageStart = 0;
+      state.stageTarget = STAGES[0].target;
+      state.allClear = false;
       state.startedAt = Date.now();
       emit();
       return true;
@@ -120,16 +141,25 @@
       state.result = null;
       state.events = [];
       state.rescues = 0;
+      state.stage = 1;
+      state.stageStart = 0;
+      state.stageTarget = STAGES[0].target;
+      state.allClear = false;
       emit();
     }
 
-    function finish() {
+    function finish(cleared) {
       state.phase = 'finished';
       state.result = {
         height: Math.floor(state.height),
         maxY: state.maxY,
         time: Math.floor(state.time),
-        anchors: state.anchors.filter(function (a) { return a.used; }).length
+        anchors: state.anchors.filter(function (a) { return a.used; }).length,
+        stage: state.stage,
+        stageCount: state.stageCount,
+        stageTarget: state.stageTarget,
+        stagesCleared: cleared ? state.stage : state.stage - 1,
+        cleared: !!cleared
       };
       state.tether = null;
       state.holding = false;
@@ -211,8 +241,9 @@
         var w = state.winds[i];
         if (p.x < w.x - w.w / 2 || p.x > w.x + w.w / 2) continue;
         if (p.y < w.y - w.h / 2 || p.y > w.y + w.h / 2) continue;
-        p.vx += w.ax * dt;
-        p.vy += w.ay * dt;
+        var windScale = stageConfig().wind;
+        p.vx += w.ax * windScale * dt;
+        p.vy += w.ay * windScale * dt;
       }
     }
 
@@ -278,7 +309,7 @@
       var p = state.player;
       for (var oi = 0; oi < state.obstacles.length; oi++) {
         var o = state.obstacles[oi];
-        o.angle += o.speed * dt;
+        o.angle += o.speed * stageConfig().speed * dt;
         var ux = Math.cos(o.angle) * o.len;
         var uy = Math.sin(o.angle) * o.len;
         var tproj = clamp(((p.x - o.x) * ux + (p.y - o.y) * uy) / (o.len * o.len), -1, 1);
@@ -294,6 +325,19 @@
           p.vy += (hy / hd) * 150 - 80;
           state.events.push({ type: 'hit', x: p.x, y: p.y });
         }
+      }
+    }
+
+    function advanceStage() {
+      while (state.phase === 'playing' && state.stage < STAGES.length && state.height >= state.stageTarget) {
+        state.stageStart = state.stageTarget;
+        state.stage += 1;
+        state.stageTarget = STAGES[state.stage - 1].target;
+        state.events.push({ type: 'stage', stage: state.stage, target: state.stageTarget, cleared: state.stage - 1 });
+      }
+      if (state.phase === 'playing' && state.height >= STAGES[STAGES.length - 1].target) {
+        state.allClear = true;
+        finish(true);
       }
     }
 
@@ -319,7 +363,8 @@
 
       state.maxY = Math.max(state.maxY, p.y);
       state.height = Math.max(0, (state.maxY - START_Y) / HEIGHT_SCALE);
-      if (state.time >= DURATION) finish();
+      advanceStage();
+      if (state.phase === 'playing' && state.time >= DURATION) finish(false);
       return getState();
     }
 
@@ -351,6 +396,11 @@
         maxY: state.maxY,
         height: Math.floor(state.height),
         rescues: state.rescues,
+        stage: state.stage,
+        stageStart: state.stageStart,
+        stageTarget: state.stageTarget,
+        stageCount: state.stageCount,
+        allClear: state.allClear,
         result: state.result,
         events: state.events.slice()
       };
@@ -381,6 +431,7 @@
     OBSTACLES: OBSTACLES,
     BUMPERS: BUMPERS,
     WINDS: WINDS,
+    STAGES: STAGES,
     HEIGHT_SCALE: HEIGHT_SCALE
   };
 });
