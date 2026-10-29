@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#07110d" />
+  <title>スティックサッカー - 引っ張って狙うターン制フリック</title>
+  <link rel="stylesheet" href="styles.css?v=1" />
+</head>
+<body>
+  <main id="app">
+    <div id="game-frame">
+      <canvas id="game" width="480" height="800" aria-label="スティックサッカー"></canvas>
+
+      <header id="hud">
+        <div class="team you"><span>YOU</span><b id="you">0</b></div>
+        <div class="turn-box"><b id="turn">YOUR TURN</b><span id="shots">KICK 0/12</span></div>
+        <div class="team cpu"><span>CPU</span><b id="cpu">0</b></div>
+      </header>
+      <button id="btn-pause" class="icon-btn hidden" type="button" aria-label="ポーズ">Ⅱ</button>
+
+      <div id="overlay">
+        <section id="screen-title" class="screen visible">
+          <p class="kicker">FLICK · BOUNCE · SCORE</p>
+          <h1>スティックサッカー</h1>
+          <p class="subtitle">引っ張って、跳ね返して、ゴールを狙え。</p>
+          <ul class="rules">
+            <li>ボールを引っ張って離すとシュート。引いた方向と逆へ飛ぶ</li>
+            <li>ピッチ上の棒人間に当たるとボールが跳ね返る</li>
+            <li>CPUと交互にキック。先に3点取った方が勝ち</li>
+            <li>12キックで決着がつかなければ得点勝負</li>
+            <li>ゴール後はセンターから、失点側のキックで再開</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">キックオフ</button>
+          <p class="tiny">上に引いて下へ / 下に引いて上へ。狙いと強さは引く長さで決まる</p>
+        </section>
+
+        <section id="screen-over" class="screen">
+          <p class="kicker" id="over-kicker">FULL TIME</p>
+          <h2 class="result-title" id="over-title">YOU WIN</h2>
+          <div class="result-score"><span>FINAL</span><b id="over-score">0 - 0</b></div>
+          <div class="result-stats">
+            <div><span>YOUR GOALS</span><b id="over-you">0</b></div>
+            <div><span>CPU GOALS</span><b id="over-cpu">0</b></div>
+            <div><span>KICKS</span><b id="over-shots">0</b></div>
+          </div>
+          <button id="btn-retry" class="primary" type="button">もう一度あそぶ</button>
+          <p class="tiny">Space / Enter でもう一度</p>
+        </section>
+
+        <section id="screen-pause" class="screen pause-screen">
+          <p class="kicker">PAUSED</p>
+          <h2 class="result-title">PAUSED</h2>
+          <p class="subtitle">ピッチを止めて、ひと休み。</p>
+          <button id="btn-resume" class="primary" type="button">再開</button>
+          <p class="tiny">P / Esc でも再開</p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="engine.js?v=1"></script>
+  <script src="game.js?v=1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
