@@ -72,6 +72,7 @@
   function snap() { tone(220, 0.3, 0.12, 'sawtooth'); }
   function hit() { tone(110, 0.22, 0.14, 'square'); }
   function bump() { tone(520, 0.12, 0.09, 'triangle'); tone(780, 0.1, 0.05, 'sine'); }
+  function stage() { tone(523, 0.2, 0.08, 'sine'); tone(659, 0.26, 0.08, 'sine'); tone(784, 0.36, 0.07, 'sine'); }
   function finish() { tone(330, 0.8, 0.10, 'sine'); tone(495, 0.8, 0.06, 'sine'); }
 
   function toggleMute() {
@@ -82,7 +83,7 @@
   function isEnabled() { return enabled; }
 
   root.TetherAudio = {
-    start: start, stop: stop, attach: attach, snap: snap, hit: hit, bump: bump, finish: finish,
+    start: start, stop: stop, attach: attach, snap: snap, hit: hit, bump: bump, stage: stage, finish: finish,
     toggleMute: toggleMute, isEnabled: isEnabled
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
