@@ -165,7 +165,31 @@ h2 { font-size: clamp(26px, 7vw, 40px); }
 }
 .end-stats span { display: block; color: var(--muted); font-size: 8px; font-weight: 800; letter-spacing: 1.5px; }
 .end-stats b { font-size: 17px; }
-#tip { color: var(--muted); text-align: center; font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#tip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  color: var(--muted);
+  font-size: 11px;
+  min-width: 0;
+}
+#tip span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sound {
+  flex: 0 0 auto;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: rgba(17,26,49,.9);
+  color: var(--muted);
+  font-family: inherit;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.2;
+  padding: 5px 8px;
+  min-height: 30px;
+  cursor: pointer;
+}
+.sound:hover { color: var(--blue); border-color: rgba(109,183,255,.55); }
 @media (max-width: 560px) {
   #app { padding: 8px 8px calc(9px + env(safe-area-inset-bottom)); gap: 6px; }
   #hud { gap: 5px; }

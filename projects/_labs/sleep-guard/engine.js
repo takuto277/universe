@@ -12,9 +12,9 @@
   var QUIET_GAIN = 3.2;
   var TAP_GAIN = 2.4;
   var BASE_DRAIN = 5.0;
-  var SPAWN_BASE = 3.2;
-  var SPAWN_MIN = 1.15;
-  var MAX_NOISES = 4;
+  var SPAWN_BASE = 2.0;
+  var SPAWN_MIN = 0.65;
+  var MAX_NOISES = 6;
   var MAX_DT = 0.05;
   var MAX_EVENTS = 80;
 
@@ -59,7 +59,7 @@
     state.stopped = 0;
     state.noises = [];
     state.nextNoiseId = 1;
-    state.spawnTimer = 1.4;
+    state.spawnTimer = 0.8;
     state.over = false;
     state.result = null;
     state.events = [];
@@ -157,9 +157,10 @@
 
     state.spawnTimer -= dt;
     if (state.spawnTimer <= 0) {
-      spawnNoise(state);
-      var interval = Math.max(SPAWN_MIN, SPAWN_BASE - state.time * 0.035);
-      state.spawnTimer = interval * (0.8 + state.rng() * 0.45);
+      var burst = 1 + (state.rng() < 0.45 ? 1 : 0);
+      for (var n = 0; n < burst; n++) spawnNoise(state);
+      var interval = Math.max(SPAWN_MIN, SPAWN_BASE - state.time * 0.045);
+      state.spawnTimer = interval * (0.65 + state.rng() * 0.55);
     }
     return state;
   }
@@ -186,9 +187,9 @@
     if (!state) return;
     if (state.phase === 'idle') { start(state); return; }
     if (state.phase !== 'run') return;
-    if (state.noises.length) {
+    while (state.noises.length) {
       var noise = state.noises[0];
-      tapAt(state, noise.x, noise.y);
+      if (!tapAt(state, noise.x, noise.y)) break;
     }
   }
 
@@ -226,7 +227,7 @@
       result: state.result,
       noises: state.noises.map(function (noise) {
         return { id: noise.id, type: noise.type, icon: noise.icon, label: noise.label,
-                 x: noise.x, y: noise.y, r: noise.r };
+                 x: noise.x, y: noise.y, r: noise.r, age: Math.max(0, state.time - noise.born) };
       })
     };
   }
