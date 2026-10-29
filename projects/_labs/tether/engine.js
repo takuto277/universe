@@ -1,7 +1,7 @@
 /* engine.js : TETHER のコアロジック（UI非依存・描画非依存）
  *
  * 縦の塔に浮かぶアンカーへロープでぶら下がり、押して巻き取り、離して飛ぶ。
- * 60秒でどこまで登れるかを競う。アンカーは1回だけ使える。
+ * 60秒でどこまで登れるかを競う。アンカーは何度でも掴み直せる。
  */
 (function (root, factory) {
   'use strict';
@@ -122,7 +122,6 @@
       var bestD = ATTACH_RADIUS;
       for (var i = 0; i < state.anchors.length; i++) {
         var a = state.anchors[i];
-        if (a.used) continue;
         var d = dist(state.player.x, state.player.y, a.x, a.y);
         if (d < bestD) { bestD = d; best = a; }
       }
@@ -135,6 +134,7 @@
 
     function detach() {
       if (!state.tether) return false;
+      var current = state.tether.anchorId;
       state.events.push({ type: 'detach', x: state.player.x, y: state.player.y });
       state.tether = null;
       state.holding = false;
@@ -142,7 +142,7 @@
       var target = null;
       for (var i = 0; i < state.anchors.length; i++) {
         var a = state.anchors[i];
-        if (a.used || a.y <= state.player.y + 40) continue;
+        if (a.id === current || a.y <= state.player.y + 40) continue;
         if (!target || a.y < target.y) target = a;
       }
       if (target) {
@@ -175,6 +175,7 @@
       if (state.phase !== 'playing') return false;
       if (on) {
         state.holding = true;
+        if (!state.tether) attachNearest();
         return true;
       }
       if (state.holding && state.tether) detach();
@@ -213,7 +214,7 @@
         p.vy -= GRAVITY * dt;
         p.x += p.vx * dt;
         p.y += p.vy * dt;
-        attachNearest();
+        if (state.holding) attachNearest();
       }
 
       if (p.x < -WALL_X + p.r) { p.x = -WALL_X + p.r; p.vx = Math.abs(p.vx) * 0.55; }
@@ -252,7 +253,10 @@
 
     function autoStep() {
       if (state.phase !== 'playing') return;
-      if (!state.tether) return;
+      if (!state.tether) {
+        if (!state.holding) setHold(true);
+        return;
+      }
       if (!state.holding) { setHold(true); return; }
       if (state.tether.length <= MIN_LENGTH + 8) setHold(false);
     }

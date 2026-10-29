@@ -97,7 +97,7 @@
         var ax = sx(a.x), ay = sy(a.y);
         if (ay < -60 || ay > height + 60) continue;
         var isTether = state.tether && state.tether.anchorId === a.id;
-        ctx.strokeStyle = a.used && !isTether ? 'rgba(150, 180, 200, 0.25)' : 'rgba(244, 201, 107, 0.8)';
+        ctx.strokeStyle = a.used && !isTether ? 'rgba(244, 201, 107, 0.35)' : 'rgba(244, 201, 107, 0.8)';
         ctx.lineWidth = isTether ? 3 : 1.5;
         ctx.beginPath();
         ctx.arc(ax, ay, isTether ? 15 : 12, 0, Math.PI * 2);
