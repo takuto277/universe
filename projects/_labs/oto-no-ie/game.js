@@ -10,9 +10,9 @@
   var GRID_X = 51;
   var GRID_Y = 116;
   var PANEL_Y = 608;
-  var SLOT = { w: 84, h: 58, gap: 6 };
-  var RUN_RECT = { x: 296, y: 618, w: 164, h: 58 };
-  var RESET_RECT = { x: 296, y: 684, w: 164, h: 46 };
+  var SLOT = { w: 58, h: 58, gap: 5 };
+  var RUN_RECT = { x: 338, y: 618, w: 122, h: 58 };
+  var RESET_RECT = { x: 338, y: 684, w: 122, h: 46 };
   var REASONS = {
     unheard: '次の鈴が聞こえなかった。音の届く場所に置こう。',
     blocked: '音は届いたが、ガラスや壁で歩けない。',
@@ -146,10 +146,12 @@
     if (!game) return;
     var st = E.getState(game);
     if (els.level) els.level.textContent = (st.levelIndex + 1) + '/' + st.levelTotal;
-    if (els.charms) els.charms.textContent = st.charmsUsed + '/' + st.maxCharms;
+    if (els.charms) els.charms.textContent = st.bellsUsed + '/' + st.maxBells;
+    if (els.mirrors) els.mirrors.textContent = st.mirrorsUsed + '/' + st.maxMirrors;
     if (els.range) els.range.textContent = String(st.range);
     if (els.clearLevel) els.clearLevel.textContent = String(st.levelIndex + 1);
-    if (els.clearBells) els.clearBells.textContent = st.charmsUsed + '/' + st.maxCharms;
+    if (els.clearBells) els.clearBells.textContent = st.bellsUsed + '/' + st.maxBells;
+    if (els.clearMirrors) els.clearMirrors.textContent = st.mirrorsUsed + '/' + st.maxMirrors;
     if (els.clearLeft) els.clearLeft.textContent = String(st.levelTotal - st.levelIndex - 1);
     if (els.failReason) els.failReason.textContent = formatReason(st.reason);
 
@@ -309,6 +311,20 @@
         ctx.lineTo(x + 13, y + CELL - 13);
         ctx.stroke();
       }
+    } else if (ch === 'A') {
+      ctx.save();
+      ctx.fillStyle = 'rgba(255, 119, 175, 0.12)';
+      ctx.fillRect(x + 8, y + 7, CELL - 16, CELL - 14);
+      ctx.strokeStyle = 'rgba(255, 119, 175, 0.7)';
+      ctx.lineWidth = 1.3;
+      ctx.strokeRect(x + 8.5, y + 7.5, CELL - 17, CELL - 15);
+      for (var wv = 0; wv < 3; wv++) {
+        ctx.beginPath();
+        ctx.moveTo(x + 14, y + 14 + wv * 12);
+        ctx.quadraticCurveTo(x + CELL / 2, y + 8 + wv * 12, x + CELL - 14, y + 16 + wv * 12);
+        ctx.stroke();
+      }
+      ctx.restore();
     } else if (ch === 'S') {
       ctx.save();
       ctx.fillStyle = 'rgba(244, 201, 107, 0.12)';
@@ -341,14 +357,14 @@
   function drawSoundZones() {
     if (!game || !game.level) return;
     var st = E.getState(game);
-    for (var i = 0; i < st.charms.length; i++) {
-      var ch = st.charms[i];
+    for (var i = 0; i < st.bells.length; i++) {
+      var ch = st.bells[i];
       if (!ch) continue;
-      var selected = st.selectedSlot === i;
-      var cells = E.soundCells(game.level, ch);
+      var selected = st.selected.type === 'bell' && st.selected.index === i;
+      var cells = E.soundCells(game, ch);
       for (var j = 0; j < cells.length; j++) {
         var cell = cells[j];
-        var alpha = selected ? (0.2 - cell.d * 0.03) : (0.085 - cell.d * 0.014);
+        var alpha = selected ? (0.2 - cell.d * 0.03) : (0.08 - cell.d * 0.013);
         if (alpha <= 0) continue;
         var rr = cellRect(cell.r, cell.c);
         ctx.fillStyle = selected ? 'rgba(244, 201, 107, ' + alpha + ')' : 'rgba(130, 232, 226, ' + alpha + ')';
@@ -389,6 +405,26 @@
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(String(slot + 1), 0, 2);
+    ctx.restore();
+  }
+
+  function drawMirror(m, slot, selected) {
+    var rr = cellRect(m.r, m.c);
+    ctx.save();
+    ctx.translate(rr.cx, rr.cy);
+    ctx.rotate(-0.55);
+    ctx.shadowColor = selected ? 'rgba(244, 201, 107, 0.95)' : 'rgba(130, 232, 226, 0.75)';
+    ctx.shadowBlur = selected ? 14 : 8;
+    ctx.fillStyle = selected ? 'rgba(255, 228, 160, 0.86)' : 'rgba(130, 232, 226, 0.75)';
+    ctx.fillRect(-4, -17, 8, 34);
+    ctx.fillStyle = 'rgba(10, 22, 40, 0.9)';
+    ctx.fillRect(-1.2, -15, 2.4, 30);
+    ctx.shadowBlur = 0;
+    ctx.fillStyle = selected ? '#ffe4a0' : '#c9fffb';
+    ctx.font = '900 8px ui-monospace, Menlo, monospace';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('M' + (slot + 1), 0, -22);
     ctx.restore();
   }
 
@@ -444,9 +480,13 @@
 
     drawSoundZones();
 
-    for (var i = 0; i < st.charms.length; i++) {
-      var ch = st.charms[i];
-      if (ch) drawCharm(ch, i, st.selectedSlot === i);
+    for (var i = 0; i < st.bells.length; i++) {
+      var ch = st.bells[i];
+      if (ch) drawCharm(ch, i, st.selected.type === 'bell' && st.selected.index === i);
+    }
+    for (var mi = 0; mi < st.mirrors.length; mi++) {
+      var mirror = st.mirrors[mi];
+      if (mirror) drawMirror(mirror, mi, st.selected.type === 'mirror' && st.selected.index === mi);
     }
 
     if (st.phase === 'build') {
@@ -544,48 +584,78 @@
     ctx.textBaseline = 'middle';
     ctx.fillStyle = '#fff1bd';
     ctx.font = '900 13px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.fillText('鈴を置いて、音をつなぐ', 20, 622);
-    for (var i = 0; i < st.maxCharms; i++) {
-      var x = 20 + i * (SLOT.w + SLOT.gap);
-      var y = 638;
-      var selected = st.selectedSlot === i;
-      var placed = !!st.charms[i];
-      ctx.save();
-      ctx.fillStyle = selected ? 'rgba(244, 201, 107, 0.15)' : 'rgba(17, 33, 61, 0.82)';
-      ctx.strokeStyle = selected ? 'rgba(255, 228, 160, 0.96)' : 'rgba(130, 232, 226, 0.16)';
-      ctx.lineWidth = selected ? 1.8 : 1;
-      roundRect(x, y, SLOT.w, SLOT.h, 10);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = selected ? '#ffe4a0' : '#b8d9f2';
-      ctx.font = '900 15px ui-monospace, Menlo, monospace';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(String(i + 1), x + 17, y + 19);
-      ctx.font = '800 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.fillStyle = placed ? 'rgba(130, 232, 226, 0.9)' : 'rgba(145, 174, 199, 0.52)';
-      ctx.fillText(placed ? '設置済み' : '空き', x + SLOT.w / 2 + 7, y + 36);
-      if (placed) {
-        ctx.fillStyle = 'rgba(244, 201, 107, 0.9)';
-        ctx.beginPath();
-        ctx.arc(x + SLOT.w - 12, y + 12, 4, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.restore();
+    ctx.fillText('鈴と鏡を置いて、音をつなぐ', 20, 622);
+    var entries = itemEntries(game);
+    for (var i = 0; i < entries.length; i++) {
+      drawItemSlot(16 + i * (SLOT.w + SLOT.gap), 638, entries[i], st);
     }
 
     drawButton(RUN_RECT, '音を鳴らす', st.phase === 'build');
-    drawButton(RESET_RECT, '鈴をけす', st.charmsUsed > 0);
+    drawButton(RESET_RECT, 'ぜんぶ外す', st.bellsUsed + st.mirrorsUsed > 0);
 
     ctx.textAlign = 'left';
     ctx.textBaseline = 'middle';
     ctx.fillStyle = 'rgba(145, 174, 199, 0.9)';
     ctx.font = '700 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.fillText('ガラス = 音は通る / 人は通れない', 20, 706);
-    ctx.fillText('X = 閉じた扉 / D = 開いた扉', 20, 724);
-    ctx.fillText('鈴をタップで外せます', 20, 742);
+    ctx.fillText('鏡 = 音を中継 / A = 吸音カーテン', 20, 706);
+    ctx.fillText('ガラス = 音は通る / 人は通れない', 20, 724);
+    ctx.fillText('鈴・鏡をタップで外せます', 20, 742);
     ctx.fillStyle = 'rgba(145, 174, 199, 0.55)';
     ctx.fillText('M: 消音  P: ポーズ', 20, 766);
+  }
+
+  function itemEntries(g) {
+    var out = [];
+    for (var i = 0; i < g.level.maxBells; i++) out.push({ type: 'bell', index: i });
+    for (i = 0; i < g.level.maxMirrors; i++) out.push({ type: 'mirror', index: i });
+    return out;
+  }
+
+  function drawItemSlot(x, y, entry, st) {
+    var selected = st.selected.type === entry.type && st.selected.index === entry.index;
+    var placed = entry.type === 'bell' ? !!st.bells[entry.index] : !!st.mirrors[entry.index];
+    var isMirror = entry.type === 'mirror';
+    ctx.save();
+    ctx.fillStyle = selected ? 'rgba(244, 201, 107, 0.15)' : 'rgba(17, 33, 61, 0.82)';
+    ctx.strokeStyle = selected ? 'rgba(255, 228, 160, 0.96)' : (isMirror ? 'rgba(130, 232, 226, 0.3)' : 'rgba(255, 138, 115, 0.24)');
+    ctx.lineWidth = selected ? 1.8 : 1;
+    roundRect(x, y, SLOT.w, SLOT.h, 10);
+    ctx.fill();
+    ctx.stroke();
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    if (isMirror) {
+      ctx.save();
+      ctx.translate(x + SLOT.w / 2, y + 21);
+      ctx.rotate(-0.55);
+      ctx.fillStyle = selected ? '#ffe4a0' : '#82e8e2';
+      ctx.fillRect(-3.5, -12, 7, 24);
+      ctx.fillStyle = 'rgba(10, 22, 40, 0.9)';
+      ctx.fillRect(-1, -10, 2, 20);
+      ctx.restore();
+      ctx.fillStyle = selected ? '#ffe4a0' : '#b8d9f2';
+      ctx.font = '900 11px ui-monospace, Menlo, monospace';
+      ctx.fillText('M' + (entry.index + 1), x + SLOT.w / 2, y + 43);
+    } else {
+      ctx.fillStyle = selected ? '#ffe4a0' : '#ff8a73';
+      ctx.beginPath();
+      ctx.arc(x + SLOT.w / 2, y + 21, 9, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#101827';
+      ctx.beginPath();
+      ctx.arc(x + SLOT.w / 2, y + 21, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = selected ? '#ffe4a0' : '#b8d9f2';
+      ctx.font = '900 11px ui-monospace, Menlo, monospace';
+      ctx.fillText(String(entry.index + 1), x + SLOT.w / 2, y + 43);
+    }
+    if (placed) {
+      ctx.fillStyle = 'rgba(244, 201, 107, 0.95)';
+      ctx.beginPath();
+      ctx.arc(x + SLOT.w - 8, y + 8, 3.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+    ctx.restore();
   }
 
   function drawButton(rect, text, enabled) {
@@ -841,9 +911,10 @@
 
   function runFromSolution() {
     if (!game) return;
-    E.clearCharms(game);
+    E.clearItems(game);
     var sol = E.solutionFor(game.levelIndex);
-    for (var i = 0; i < sol.length; i++) E.placeCharm(game, i, sol[i][0], sol[i][1]);
+    for (var i = 0; i < sol.bells.length; i++) E.placeItem(game, 'bell', i, sol.bells[i][0], sol.bells[i][1]);
+    for (var m = 0; m < sol.mirrors.length; m++) E.placeItem(game, 'mirror', m, sol.mirrors[m][0], sol.mirrors[m][1]);
     E.run(game);
     E.completeRun(game);
   }
@@ -878,12 +949,13 @@
   }
 
   function slotAt(pos) {
-    if (!game) return -1;
-    for (var i = 0; i < game.charms.length; i++) {
-      var r = { x: 20 + i * (SLOT.w + SLOT.gap), y: 638, w: SLOT.w, h: SLOT.h };
-      if (inRect(pos, r)) return i;
+    if (!game) return null;
+    var entries = itemEntries(game);
+    for (var i = 0; i < entries.length; i++) {
+      var r = { x: 16 + i * (SLOT.w + SLOT.gap), y: 638, w: SLOT.w, h: SLOT.h };
+      if (inRect(pos, r)) return entries[i];
     }
-    return -1;
+    return null;
   }
 
   function gridAt(pos) {
@@ -899,27 +971,27 @@
 
   function onPointerDown(e) {
     if (e && e.preventDefault) e.preventDefault();
-    if (!game || game.paused || game.phase !== 'build' || pointer) return;
+    if (!game || game.paused || game.phase !== 'build') return;
     ensureAudio();
     var pos = pointerPosition(e);
     var slot = slotAt(pos);
     var grid = gridAt(pos);
-    if (slot >= 0) E.selectSlot(game, slot);
+    if (slot) E.selectItem(game, slot.type, slot.index);
     else if (inRect(pos, RUN_RECT)) {
       startRun();
       return;
     } else if (inRect(pos, RESET_RECT)) {
-      E.clearCharms(game);
+      E.clearItems(game);
       tone(380, 0.12, 0.035, 'triangle');
     } else if (grid) {
-      if (E.removeCharmAt(game, grid.r, grid.c)) {
+      if (E.removeItemAt(game, grid.r, grid.c)) {
         tone(320, 0.12, 0.03, 'triangle');
       } else {
-        var selected = game.selectedSlot;
-        if (E.placeCharm(game, selected, grid.r, grid.c)) {
-          tone(720 + selected * 80, 0.15, 0.04, 'sine');
+        var selected = game.selected;
+        if (E.placeItem(game, selected.type, selected.index, grid.r, grid.c)) {
+          tone(selected.type === 'mirror' ? 880 : 720, 0.15, 0.04, 'sine');
           var rr = cellRect(grid.r, grid.c);
-          burst(rr.cx, rr.cy, 8, ['#ffe4a0', '#82e8e2', '#ffffff'], 110, 0.45);
+          burst(rr.cx, rr.cy, 8, selected.type === 'mirror' ? ['#82e8e2', '#ffffff', '#ffe4a0'] : ['#ffe4a0', '#ff8a73', '#ffffff'], 110, 0.45);
         }
       }
     }
@@ -929,7 +1001,7 @@
   function onPointerMove(e) {
     if (!pointer && canvas) {
       var pos = pointerPosition(e);
-      canvas.style.cursor = (slotAt(pos) >= 0 || inRect(pos, RUN_RECT) || inRect(pos, RESET_RECT) || gridAt(pos)) ? 'pointer' : 'default';
+      canvas.style.cursor = (slotAt(pos) || inRect(pos, RUN_RECT) || inRect(pos, RESET_RECT) || gridAt(pos)) ? 'pointer' : 'default';
     }
   }
 
@@ -950,8 +1022,12 @@
       }
       return;
     }
-    if (k === '1' || k === '2' || k === '3') {
-      if (game && game.phase === 'build') E.selectSlot(game, Number(k) - 1);
+    if (k === '1' || k === '2' || k === '3' || k === '4' || k === '5') {
+      if (game && game.phase === 'build') {
+        var n = Number(k);
+        if (n <= game.level.maxBells) E.selectItem(game, 'bell', n - 1);
+        else if (n <= game.level.maxBells + game.level.maxMirrors) E.selectItem(game, 'mirror', n - game.level.maxBells - 1);
+      }
       return;
     }
     if (k === 'r' || k === 'R') {
@@ -1026,6 +1102,7 @@
     canvas = $('game');
     els.level = $('level');
     els.charms = $('charms');
+    els.mirrors = $('mirrors');
     els.range = $('range');
     els.pause = $('btn-pause');
     els.screenTitle = $('screen-title');
@@ -1035,6 +1112,7 @@
     els.screenPause = $('screen-pause');
     els.clearLevel = $('clear-level');
     els.clearBells = $('clear-bells');
+    els.clearMirrors = $('clear-mirrors');
     els.clearLeft = $('clear-left');
     els.failReason = $('fail-reason');
 
@@ -1099,7 +1177,7 @@
       getSlotPoint: function (i) {
         var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
         return {
-          x: rect.left + (20 + i * (SLOT.w + SLOT.gap) + SLOT.w / 2) / C.VIEW_W * (rect.width || 480),
+          x: rect.left + (16 + i * (SLOT.w + SLOT.gap) + SLOT.w / 2) / C.VIEW_W * (rect.width || 480),
           y: rect.top + (638 + SLOT.h / 2) / C.VIEW_H * (rect.height || 800)
         };
       }
