@@ -34,17 +34,17 @@
     { id: 'mf', label: 'MF', y: 275 },
     { id: 'fw', label: 'FW', y: 340 }
   ];
-  var FORMATION_SLOTS = [96, 168, 240, 312, 384];
+  var FORMATION_SLOTS = [72, 114, 156, 198, 240, 282, 324, 366, 408];
   var PLAYER_R = 16;
   var DEFAULT_FORMATION = [
-    { line: 0, slot: 1 }, { line: 0, slot: 2 }, { line: 0, slot: 3 },
-    { line: 1, slot: 0 }, { line: 1, slot: 2 }, { line: 1, slot: 4 },
-    { line: 2, slot: 0 }, { line: 2, slot: 1 }, { line: 2, slot: 3 }, { line: 2, slot: 4 },
-    { line: 3, slot: 2 }
+    { line: 0, slot: 2 }, { line: 0, slot: 4 }, { line: 0, slot: 6 },
+    { line: 1, slot: 1 }, { line: 1, slot: 4 }, { line: 1, slot: 7 },
+    { line: 2, slot: 1 }, { line: 2, slot: 3 }, { line: 2, slot: 5 }, { line: 2, slot: 7 },
+    { line: 3, slot: 4 }
   ];
 
   function cpuFormation(gk, df, mf, fw) {
-    var out = [{ line: 0, slot: 2 }];
+    var out = [{ line: 0, slot: gk }];
     var i;
     for (i = 0; i < df.length; i++) out.push({ line: 1, slot: df[i] });
     for (i = 0; i < mf.length; i++) out.push({ line: 2, slot: mf[i] });
@@ -53,10 +53,33 @@
   }
 
   var STAGES = [
-    { id: 'stage-1', name: '4-4-2', cpuFormation: cpuFormation(2, [0, 1, 3, 4], [0, 1, 3, 4], [1, 3]) },
-    { id: 'stage-2', name: '3-5-2', cpuFormation: cpuFormation(2, [0, 2, 4], [0, 1, 2, 3, 4], [1, 3]) },
-    { id: 'stage-3', name: '4-3-3', cpuFormation: cpuFormation(2, [0, 1, 3, 4], [1, 2, 3], [0, 2, 4]) }
+    { id: 'stage-1', name: '4-4-2', cpuFormation: cpuFormation(4, [1, 3, 5, 7], [1, 3, 5, 7], [2, 6]) },
+    { id: 'stage-2', name: '3-5-2', cpuFormation: cpuFormation(4, [1, 4, 7], [0, 2, 4, 6, 8], [2, 6]) },
+    { id: 'stage-3', name: '4-3-3', cpuFormation: cpuFormation(4, [1, 3, 5, 7], [1, 4, 7], [0, 4, 8]) }
   ];
+
+  function isValidFormation(formation) {
+    if (!formation || !formation.length) return true;
+    var seen = {};
+    var byLine = {};
+    for (var i = 0; i < formation.length; i++) {
+      var p = formation[i];
+      if (!p || !PLAYER_LINES[p.line] || FORMATION_SLOTS[p.slot] == null) return false;
+      var key = p.line + ':' + p.slot;
+      if (seen[key]) return false;
+      seen[key] = true;
+      if (!byLine[p.line]) byLine[p.line] = [];
+      byLine[p.line].push(p.slot);
+    }
+    for (var line in byLine) {
+      if (!Object.prototype.hasOwnProperty.call(byLine, line)) continue;
+      var slots = byLine[line].slice().sort(function (a, b) { return a - b; });
+      for (var j = 1; j < slots.length; j++) {
+        if (slots[j] - slots[j - 1] === 1) return false;
+      }
+    }
+    return true;
+  }
 
   function obstaclesFor(formation, team) {
     var f = formation && formation.length ? formation : DEFAULT_FORMATION;
@@ -95,6 +118,7 @@
     options = options || {};
     var stage = clamp(Number(options.stage) || 0, 0, STAGES.length - 1);
     var playerFormation = options.formation || DEFAULT_FORMATION;
+    if (!isValidFormation(playerFormation)) playerFormation = DEFAULT_FORMATION;
     var cpuFormation = STAGES[stage].cpuFormation;
     var s = {
       phase: 'aim',
@@ -424,6 +448,7 @@
     PLAYER_R: PLAYER_R,
     DEFAULT_FORMATION: DEFAULT_FORMATION,
     obstaclesFor: obstaclesFor,
+    isValidFormation: isValidFormation,
     TURNS: TURNS,
     WIN_SCORE: WIN_SCORE,
     createGame: createGame,

@@ -13,8 +13,22 @@ assert(E.FIELD.w > 300 && E.FIELD.h > 500, 'field size is wrong');
 assert(E.OBSTACLES.length === 22, '22 stick obstacles expected: ' + E.OBSTACLES.length);
 assert(E.DEFAULT_FORMATION.length === 11, 'default formation should have 11 players');
 assert(E.FORMATION_LINES.length === 4 && E.CPU_LINES.length === 4, 'both teams should have 4 lines');
+assert(E.FORMATION_SLOTS.length === 9, 'nine formation slots per line expected');
+assert(E.isValidFormation(E.DEFAULT_FORMATION), 'default formation should be legal');
 assert(E.STAGES.length === 3, 'three stages expected');
 assert(E.STAGES[0].cpuFormation.length === 11 && E.STAGES[1].cpuFormation.length === 11 && E.STAGES[2].cpuFormation.length === 11, 'each CPU formation should have 11 players');
+for (var stageFormation = 0; stageFormation < E.STAGES.length; stageFormation++) {
+  assert(E.isValidFormation(E.STAGES[stageFormation].cpuFormation), 'CPU stage formation should not have adjacent players');
+}
+assert(E.isValidFormation([{ line: 0, slot: 0 }, { line: 0, slot: 2 }]), 'two-slot spacing should be legal');
+assert(!E.isValidFormation([{ line: 0, slot: 0 }, { line: 0, slot: 1 }]), 'adjacent players in one line should be illegal');
+assert(E.isValidFormation([{ line: 0, slot: 0 }, { line: 1, slot: 1 }]), 'adjacent slots in different lines should be legal');
+assert(!E.isValidFormation([{ line: 0, slot: 0 }, { line: 0, slot: 0 }]), 'duplicate formation positions should be illegal');
+assert(!E.isValidFormation([{ line: 9, slot: 0 }]), 'invalid line should be illegal');
+
+var invalid = E.createGame({ formation: [{ line: 0, slot: 0 }, { line: 0, slot: 1 }] });
+assert(invalid.obstacles.length === 22, 'invalid formation should fall back to the default');
+assert(invalid.obstacles.filter(function (p) { return p.team === 'player'; }).length === 11, 'fallback should restore 11 players');
 assert(E.TURNS === 12 && E.WIN_SCORE === 3, 'turn or win limit is wrong');
 
 var custom = E.createGame({ formation: [{ line: 0, slot: 2 }, { line: 2, slot: 0 }] });
