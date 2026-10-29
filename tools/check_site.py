@@ -2,6 +2,7 @@
 import json
 import re
 import sys
+from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
@@ -9,7 +10,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 ERRORS = []
-REQUIRED = ("id", "path", "tag", "title", "description", "summary", "thumbnail")
+REQUIRED = ("id", "path", "tag", "title", "description", "summary", "thumbnail", "createdAt", "updatedAt")
 
 
 def error(message):
@@ -101,6 +102,16 @@ def load_apps():
         tags = app.get("tags")
         if not isinstance(tags, list) or not tags or not all(isinstance(tag, str) and tag.strip() for tag in tags):
             error(f"{label}: tags は空でない文字列の配列にしてください")
+
+        parsed = {}
+        for key in ("createdAt", "updatedAt"):
+            value = app.get(key)
+            try:
+                parsed[key] = datetime.fromisoformat(value or "")
+            except ValueError:
+                error(f"{label}: {key} は YYYY-MM-DD または ISO 日時で指定してください: {value}")
+        if len(parsed) == 2 and parsed["updatedAt"].date() < parsed["createdAt"].date():
+            error(f"{label}: updatedAt が createdAt より古いです")
 
         valid.append(app)
 

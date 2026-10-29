@@ -151,11 +151,27 @@
       font-size: 13px;
       line-height: 1.55;
     }
+    .card-foot {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      gap: 8px;
+      margin-top: auto;
+      padding-top: 3px;
+    }
     .play {
       color: var(--gold);
       font-size: 12px;
       font-weight: 800;
       letter-spacing: 1px;
+      white-space: nowrap;
+    }
+    .dates {
+      color: var(--muted);
+      font-size: 10px;
+      line-height: 1.45;
+      text-align: right;
+      white-space: nowrap;
     }
     footer {
       margin-top: 56px;
@@ -175,6 +191,7 @@
       .card-body p { display: block; overflow: visible; -webkit-line-clamp: unset; font-size: 11px; line-height: 1.4; }
       .tag { top: 8px; left: 8px; padding: 2px 6px; font-size: 9px; }
       .play { font-size: 11px; }
+      .dates { font-size: 9px; }
       .genre-picker { display: flex; margin: 20px 0 12px; }
       .genre-picker select { flex: 1; }
     }
@@ -262,13 +279,20 @@
         title.textContent = app.title;
         var description = document.createElement('p');
         description.textContent = app.summary || app.description;
+        var foot = document.createElement('div');
+        foot.className = 'card-foot';
         var play = document.createElement('span');
         play.className = 'play';
         play.textContent = '遊ぶ →';
+        var dates = document.createElement('span');
+        dates.className = 'dates';
+        dates.innerHTML = '作成 ' + (app.createdAt || '-') + '<br>更新 ' + ((app.updatedAt || '').slice(0, 10) || '-');
+        foot.appendChild(play);
+        foot.appendChild(dates);
 
         body.appendChild(title);
         body.appendChild(description);
-        body.appendChild(play);
+        body.appendChild(foot);
         link.appendChild(figure);
         link.appendChild(body);
         li.appendChild(link);
@@ -308,6 +332,12 @@
         })
         .then(function (data) {
           var apps = Array.isArray(data.apps) ? data.apps : [];
+          apps = apps.slice().sort(function (a, b) {
+            var akey = a.updatedAt || a.createdAt || '';
+            var bkey = b.updatedAt || b.createdAt || '';
+            if (akey !== bkey) return bkey.localeCompare(akey);
+            return (b.createdAt || '').localeCompare(a.createdAt || '');
+          });
           var tags = [];
           apps.forEach(function (app) {
             tagList(app).forEach(function (tag) {
