@@ -70,6 +70,28 @@
       ctx.lineTo(sx(178), height);
       ctx.stroke();
 
+      var floorY = sy(state.floorY == null ? 110 : state.floorY);
+      if (floorY > -20 && floorY < height + 20) {
+        var floorGlow = ctx.createLinearGradient(0, floorY - 22, 0, floorY + 8);
+        floorGlow.addColorStop(0, 'rgba(111, 214, 195, 0)');
+        floorGlow.addColorStop(0.55, 'rgba(111, 214, 195, 0.12)');
+        floorGlow.addColorStop(1, 'rgba(111, 214, 195, 0)');
+        ctx.fillStyle = floorGlow;
+        ctx.fillRect(sx(-178), floorY - 22, 356 * scale, 30);
+        ctx.strokeStyle = 'rgba(160, 240, 224, 0.7)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(sx(-178), floorY);
+        ctx.lineTo(sx(178), floorY);
+        ctx.stroke();
+        ctx.fillStyle = 'rgba(111, 214, 195, 0.5)';
+        for (var fx = -150; fx <= 150; fx += 50) {
+          ctx.beginPath();
+          ctx.arc(sx(fx), floorY, 1.6, 0, Math.PI * 2);
+          ctx.fill();
+        }
+      }
+
       for (var i = 0; i < state.anchors.length; i++) {
         var a = state.anchors[i];
         var ax = sx(a.x), ay = sy(a.y);

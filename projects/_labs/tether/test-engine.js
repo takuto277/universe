@@ -37,6 +37,22 @@ s = game.getState();
 assert(s.tether === null, 'リリースでテザーが外れない');
 assert(s.player.vy > vy0, 'リリースのスナップがない');
 
+// 床まで落ちても画面外に出ず、anchor0 に再び掛かって再開できる
+game.state.tether = null;
+game.state.player.x = 0;
+game.state.player.y = 110;
+game.state.player.vy = -600;
+game.update(0.2, 1 / 60);
+s = game.getState();
+assert(s.player.y === 110, '床より下に落ちる');
+assert(s.player.vy === 0, '床で下向き速度が残る');
+assert(s.tether && s.tether.anchorId === 0, '床で再びテザーが掛からない');
+assert(s.rescues === 1, '床救助が記録されない');
+game.setHold(true);
+game.update(0.25, 0.1);
+s = game.getState();
+assert(s.tether && s.tether.length < 80, '床救助後に巻き取れない');
+
 game.reset();
 assert(game.state.phase === 'start' && game.state.tether === null, 'resetでstartに戻らない');
 
