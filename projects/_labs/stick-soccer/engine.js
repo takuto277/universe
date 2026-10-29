@@ -64,6 +64,7 @@
       reason: null,
       cpuTimer: 0,
       cpuPlan: null,
+      rng: null,
       events: []
     };
     return s;
@@ -178,21 +179,24 @@
     return { goal: null, x: ball.x, y: ball.y, time: t };
   }
 
-  function chooseShot(s, side) {
+  function chooseShot(s, side, rng) {
+    var random = rng || Math.random;
     var targetY = side === 'player' ? FIELD.y : FIELD.bottom;
     var startX = s.ball.x;
     var startY = s.ball.y;
     var candidates = [];
     var offsets = [-62, -42, -20, 0, 20, 42, 62];
-    var powers = [650, 800, 950, 1080];
+    var maxPower = MAX_PULL * PULL_POWER;
+    var powers = [650, 800, 950, maxPower];
     for (var i = 0; i < offsets.length; i++) {
       var tx = CENTER.x + offsets[i];
       var dx = tx - startX;
       var dy = targetY - startY;
       var len = Math.sqrt(dx * dx + dy * dy) || 1;
       for (var p = 0; p < powers.length; p++) {
-        var vx = dx / len * powers[p];
-        var vy = dy / len * powers[p];
+        var power = Math.min(powers[p], maxPower);
+        var vx = dx / len * power;
+        var vy = dy / len * power;
         var sim = simulateShot(s, vx, vy);
         var score = 0;
         if (sim.goal === side) score += 100000;
@@ -209,15 +213,15 @@
     candidates.sort(function (a, b) { return b.score - a.score; });
     if (!candidates.length) return { vx: 0, vy: side === 'player' ? -800 : 800 };
     var pick = candidates[0];
-    if (candidates.length > 1 && Math.random() < 0.18) pick = candidates[1];
-    var angle = Math.atan2(pick.vy, pick.vx) + (Math.random() - 0.5) * 0.035;
-    var power = Math.sqrt(pick.vx * pick.vx + pick.vy * pick.vy) * (0.97 + Math.random() * 0.06);
-    return { vx: Math.cos(angle) * power, vy: Math.sin(angle) * power };
+    if (candidates.length > 1 && random() < 0.18) pick = candidates[1];
+    var angle = Math.atan2(pick.vy, pick.vx) + (random() - 0.5) * 0.035;
+    var shotPower = Math.min(maxPower, Math.sqrt(pick.vx * pick.vx + pick.vy * pick.vy) * (0.97 + random() * 0.06));
+    return { vx: Math.cos(angle) * shotPower, vy: Math.sin(angle) * shotPower };
   }
 
-  function autoShot(s, side) {
+  function autoShot(s, side, rng) {
     if (!s || s.phase !== 'aim' || s.turn !== side || s.paused) return false;
-    var plan = chooseShot(s, side);
+    var plan = chooseShot(s, side, rng);
     return shoot(s, plan.vx, plan.vy);
   }
 
@@ -305,7 +309,7 @@
     } else if (s.phase === 'cpuThink') {
       s.cpuTimer -= dt;
       if (s.cpuTimer <= 0) {
-        s.cpuPlan = chooseShot(s, 'cpu');
+        s.cpuPlan = chooseShot(s, 'cpu', s.rng);
         s.phase = 'cpuAim';
         s.cpuTimer = 0.55;
         event(s, 'cpuAim', { vx: s.cpuPlan.vx, vy: s.cpuPlan.vy });

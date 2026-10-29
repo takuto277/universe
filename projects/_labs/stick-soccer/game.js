@@ -21,7 +21,6 @@
   var pointer = null;
   var effects = null;
   var trail = [];
-  var ui = { finalized: false };
 
   function nowMs() {
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -103,6 +102,7 @@
 
   function pauseGame() {
     if (!game || game.phase === 'over' || game.paused) return;
+    pointer = null;
     game.paused = true;
     E.setPaused(game, true);
     setScreen('screen-pause');
@@ -323,8 +323,8 @@
     var pullY = 0;
     var active = false;
     if (st.phase === 'aim' && st.turn === 'player' && pointer) {
-      pullX = pointer.x - game.ball.x;
-      pullY = pointer.y - game.ball.y;
+      pullX = pointer.x - pointer.startX;
+      pullY = pointer.y - pointer.startY;
       active = true;
     } else if (st.phase === 'cpuAim' && st.cpuAim) {
       pullX = -st.cpuAim.vx / E.PULL_POWER;
@@ -567,6 +567,8 @@
     if (!nearBall(pos)) return;
     pointer = {
       id: e.pointerId == null ? 1 : e.pointerId,
+      startX: pos.x,
+      startY: pos.y,
       x: pos.x,
       y: pos.y
     };
@@ -596,8 +598,8 @@
     pointer = null;
     try { if (canvas.releasePointerCapture) canvas.releasePointerCapture(id); } catch (err) { }
     if (!game || game.paused || game.phase !== 'aim' || game.turn !== 'player') return;
-    var dx = p.x - game.ball.x;
-    var dy = p.y - game.ball.y;
+    var dx = p.x - p.startX;
+    var dy = p.y - p.startY;
     if (E.shootDrag(game, dx, dy)) {
       processEvents();
       syncUI();
@@ -643,8 +645,6 @@
     lastTs = ts;
     dt = clamp(dt, 0, 0.05);
     if (game && !game.paused) {
-      var oldX = game.ball.x;
-      var oldY = game.ball.y;
       E.update(game, dt);
       if (game.phase === 'moving') {
         trail.push({ x: game.ball.x, y: game.ball.y });

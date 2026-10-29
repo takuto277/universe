@@ -36,6 +36,19 @@ g.shots = 1;
 E.update(g, 0.08);
 assert(g.score.player === 1 && g.phase === 'goal', 'top goal should score for player: ' + g.phase);
 assert(g.goalSide === 'player', 'goal side should be player');
+for (i = 0; i < 120 && g.phase === 'goal'; i++) E.update(g, 1 / 60);
+assert(g.turn === 'cpu' && g.phase === 'cpuThink', 'conceding side should kick off after a goal: ' + g.turn + '/' + g.phase);
+
+g = E.createGame();
+g.ball.x = E.CENTER.x;
+g.ball.y = E.FIELD.bottom - 40;
+g.ball.vx = 0;
+g.ball.vy = 600;
+g.phase = 'moving';
+g.shots = 1;
+E.update(g, 0.08);
+assert(g.score.cpu === 1 && g.phase === 'goal', 'bottom goal should score for cpu: ' + g.phase);
+assert(g.goalSide === 'cpu', 'goal side should be cpu');
 
 g = E.createGame();
 g.ball.x = E.FIELD.x + 40;
@@ -89,9 +102,25 @@ for (i = 0; i < 120 && s.phase !== 'over'; i++) E.update(s, 1 / 60);
 assert(s.phase === 'over' && s.winner === 'cpu', 'turn limit should resolve by score: ' + s.winner);
 
 s = E.createGame();
-var plan = E.chooseShot(s, 'player');
-assert(plan && isFinite(plan.vx) && isFinite(plan.vy), 'AI shot is invalid');
-var sim = E.simulateShot(s, plan.vx, plan.vy);
+s.score.player = 1;
+s.score.cpu = 1;
+s.shots = E.TURNS;
+s.ball.vx = 300;
+s.ball.vy = 0;
+s.phase = 'moving';
+E.update(s, 0.05);
+for (i = 0; i < 120 && s.phase !== 'over'; i++) E.update(s, 1 / 60);
+assert(s.phase === 'over' && s.winner === 'draw', 'tied turn limit should be a draw: ' + s.winner);
+
+s = E.createGame();
+var fixed = function () { return 0.5; };
+var planA = E.chooseShot(s, 'player', fixed);
+var planB = E.chooseShot(s, 'player', fixed);
+assert(planA && isFinite(planA.vx) && isFinite(planA.vy), 'AI shot is invalid');
+assert(planA.vx === planB.vx && planA.vy === planB.vy, 'fixed RNG should make AI shots deterministic');
+var aiSpeed = Math.sqrt(planA.vx * planA.vx + planA.vy * planA.vy);
+assert(aiSpeed <= E.MAX_PULL * E.PULL_POWER + 0.001, 'AI shot should respect max pull power: ' + aiSpeed);
+var sim = E.simulateShot(s, planA.vx, planA.vy);
 assert(sim && typeof sim.goal !== 'undefined', 'shot simulation failed');
 
 s = E.createGame();
