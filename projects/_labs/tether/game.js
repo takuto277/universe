@@ -79,7 +79,7 @@
     if (!audio || !state.events) return;
     for (var i = seenEvents; i < state.events.length; i++) {
       var ev = state.events[i];
-      if (ev.type === 'attach' && audio.attach) audio.attach();
+      if ((ev.type === 'attach' || ev.type === 'rescue') && audio.attach) audio.attach();
       else if (ev.type === 'detach' && audio.snap) audio.snap();
       else if (ev.type === 'hit' && audio.hit) audio.hit();
     }

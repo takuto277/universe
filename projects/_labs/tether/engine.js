@@ -53,6 +53,7 @@
       height: 0,
       result: null,
       events: [],
+      rescues: 0,
       startedAt: 0
     };
 
@@ -80,6 +81,7 @@
       state.height = 0;
       state.result = null;
       state.events = [];
+      state.rescues = 0;
       state.startedAt = Date.now();
       emit();
       return true;
@@ -97,6 +99,7 @@
       state.height = 0;
       state.result = null;
       state.events = [];
+      state.rescues = 0;
       emit();
     }
 
@@ -154,6 +157,20 @@
       return true;
     }
 
+    function rescueFromFloor() {
+      var a = state.anchors[0];
+      if (!a) return false;
+      var d = dist(state.player.x, state.player.y, a.x, a.y) || 1;
+      a.used = true;
+      state.tether = { anchorId: a.id, length: d };
+      state.player.vx = 0;
+      state.player.vy = 0;
+      state.attachCooldown = 0;
+      state.rescues += 1;
+      state.events.push({ type: 'rescue', x: a.x, y: a.y });
+      return true;
+    }
+
     function setHold(on) {
       if (state.phase !== 'playing') return false;
       if (on) {
@@ -201,7 +218,11 @@
 
       if (p.x < -WALL_X + p.r) { p.x = -WALL_X + p.r; p.vx = Math.abs(p.vx) * 0.55; }
       if (p.x > WALL_X - p.r) { p.x = WALL_X - p.r; p.vx = -Math.abs(p.vx) * 0.55; }
-      if (p.y < START_Y) { p.y = START_Y; p.vy = Math.abs(p.vy) * 0.15; }
+      if (p.y <= START_Y) {
+        p.y = START_Y;
+        p.vy = Math.max(0, p.vy);
+        if (!state.tether) rescueFromFloor();
+      }
 
       for (var oi = 0; oi < state.obstacles.length; oi++) {
         var o = state.obstacles[oi];
@@ -248,8 +269,10 @@
         obstacles: state.obstacles.map(function (o) { return { x: o.x, y: o.y, len: o.len, thickness: o.thickness, angle: o.angle }; }),
         holding: state.holding,
         anchorCooldown: state.attachCooldown,
+        floorY: START_Y,
         maxY: state.maxY,
         height: Math.floor(state.height),
+        rescues: state.rescues,
         result: state.result,
         events: state.events.slice()
       };
