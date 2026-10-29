@@ -15,6 +15,7 @@
       <header id="hud">
         <div class="hud-item"><span>ROOM</span><b id="level">1/5</b></div>
         <div class="hud-item"><span>BELLS</span><b id="charms">0/3</b></div>
+        <div class="hud-item"><span>MIRRORS</span><b id="mirrors">0/2</b></div>
         <div class="hud-item"><span>HEARING</span><b id="range">3</b></div>
       </header>
       <button id="btn-pause" class="icon-btn hidden" type="button" aria-label="ポーズ">Ⅱ</button>
@@ -30,9 +31,10 @@
             <li>音は壁と閉じた扉を通らない。ガラスは音だけ通す</li>
             <li>鈴は順番に鳴る。次の鈴が届かないと立ち止まる</li>
             <li>最後の鈴のあと、出口の鐘が聞こえればクリア</li>
+            <li>鏡は音を受けてもう一度響かせる。Aの吸音カーテンは音だけ止める</li>
           </ul>
           <button id="btn-start" class="primary" type="button">はじめる</button>
-          <p class="tiny">全5室 / 鈴は3つまで / 壁と扉を読んで音をつなごう</p>
+          <p class="tiny">全7室 / 鈴と鏡を置いて、音の道をつくろう</p>
         </section>
 
         <section id="screen-level" class="screen">
@@ -41,7 +43,8 @@
           <div class="result-score"><span>ROOM</span><b id="clear-level">1</b></div>
           <div class="result-stats">
             <div><span>BELLS</span><b id="clear-bells">0</b></div>
-            <div><span>ROOMS LEFT</span><b id="clear-left">4</b></div>
+            <div><span>MIRRORS</span><b id="clear-mirrors">0</b></div>
+            <div><span>ROOMS LEFT</span><b id="clear-left">6</b></div>
           </div>
           <button id="btn-next" class="primary" type="button">次の部屋へ</button>
           <p class="tiny">Space / Enter でも次へ</p>
@@ -60,7 +63,7 @@
           <h2 class="result-title clear">家の外へ</h2>
           <p class="subtitle">最後の鐘が、朝の音に変わった。</p>
           <button id="btn-ending-retry" class="primary" type="button">もう一度あそぶ</button>
-          <p class="tiny">5つの部屋を、音だけで抜けた</p>
+          <p class="tiny">7つの部屋を、音だけで抜けた</p>
         </section>
 
         <section id="screen-pause" class="screen pause-screen">
@@ -73,9 +76,9 @@
       </div>
     </div>
   </main>
-  <script src="data.js?v=1"></script>
-  <script src="engine.js?v=1"></script>
-  <script src="game.js?v=1"></script>
+  <script src="data.js?v=2"></script>
+  <script src="engine.js?v=2"></script>
+  <script src="game.js?v=2"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

@@ -24,9 +24,9 @@ Harness.run({
     var els = h.elements;
     h.assert(els['screen-ending'] && els['screen-ending'].classList.contains('visible'), 'エンディング画面が出ていない');
     h.assert(els['screen-title'] && !els['screen-title'].classList.contains('visible'), 'タイトル画面が残っている');
-    h.assert(els['level'] && els['level'].textContent === '5/5', 'HUDのレベルが一致しない: ' + els['level'].textContent);
+    h.assert(els['level'] && els['level'].textContent === '7/7', 'HUDのレベルが一致しない: ' + els['level'].textContent);
   },
   summary: function (state) {
-    print('  最終: ' + (state.levelIndex + 1) + '/' + state.levelTotal + '室 / 鈴' + state.charmsUsed + '個 / ' + state.levelTitle);
+    print('  最終: ' + (state.levelIndex + 1) + '/' + state.levelTotal + '室 / 鈴' + state.bellsUsed + ' / 鏡' + state.mirrorsUsed + ' / ' + state.levelTitle);
   }
 });
