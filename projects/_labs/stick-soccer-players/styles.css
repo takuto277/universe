@@ -92,7 +92,7 @@ html, body {
   cursor: pointer;
 }
 .icon-btn.hidden { display: none; }
-#btn-sound { right: 66px; color: var(--gold); }
+#btn-sound { right: 66px; z-index: 7; color: var(--gold); }
 #btn-sound.muted { color: #607a70; }
 #hud.hidden { display: none; }
 .icon-btn:active { transform: scale(0.95); }

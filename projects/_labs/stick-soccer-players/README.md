@@ -46,6 +46,7 @@ stick-soccer-players/
 ├── engine.js       # 選手/ボール物理、衝突、フォーメーション、CPU AI、ステージ
 ├── audio.js        # スタジアム風BGMのWebAudio生成
 ├── game.js         # Canvas描画、入力、演出、ステージ遷移、window.__GAME__
+├── test-aim.js     # 選手中心からずらしたタッチ→ドラッグの発射方向
 ├── test-audio.js   # BGMスケジューラ・消音・停止
 ├── test-engine.js  # 物理・衝突比率・フォーメーション・ゴール・3点先取
 └── test-smoke.js   # 自動プレイでゲーム終了まで確認
@@ -73,12 +74,13 @@ universe のルートで:
 
 ```sh
 cd projects/_labs/stick-soccer-players
+jsc test-aim.js
 jsc test-audio.js
 jsc test-engine.js
 jsc test-smoke.js
 ```
 
-`test-engine.js` は22人、9スロット、左右隣接禁止、ボール/選手の吹っ飛び比率（約1/3）、ゴール、3点先取、失敗フォールバック、CPUプランを検証します。
+`test-engine.js` は22人、9スロット、左右隣接禁止、ボール/選手の吹っ飛び比率（約1/3）、ゴール、3点先取、失敗フォールバック、CPUプランを検証します。`test-aim.js` は選手中心からずらしてタッチした場合も、表示と同じドラッグベクトルで発射されることを確認します。
 
 ## 既知の制限
 

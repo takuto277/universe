@@ -66,7 +66,8 @@
       banner: null,
       fireworks: 0,
       fireworkTimer: 0,
-      goalPulse: 0
+      goalPulse: 0,
+      resultDelay: 0
     };
     trail = [];
   }
@@ -120,9 +121,11 @@
 
     var target = null;
     if (st.phase === 'over') {
-      if (st.winner === 'player' && st.stage + 1 < st.stageTotal) target = 'screen-stage';
-      else if (st.winner === 'player') target = 'screen-ending';
-      else target = 'screen-over';
+      if (!effects.resultDelay) {
+        if (st.winner === 'player' && st.stage + 1 < st.stageTotal) target = 'screen-stage';
+        else if (st.winner === 'player') target = 'screen-ending';
+        else target = 'screen-over';
+      }
     } else if (st.paused) target = 'screen-pause';
     setScreen(target);
     if (els.pause) els.pause.classList.toggle('hidden', !(st.phase !== 'over' && !st.paused));
@@ -808,6 +811,7 @@
         else showBanner('CPU TURN', 'CPUが選手を引っ張っています', '#ff8fbd');
       } else if (ev.type === 'over') {
         effects.flash = 0.55;
+        effects.resultDelay = 1.4;
       }
     }
   }
@@ -838,6 +842,7 @@
     if (effects.shake > 0) effects.shake = Math.max(0, effects.shake - dt * 2.6);
     if (effects.flash > 0) effects.flash = Math.max(0, effects.flash - dt * 2.4);
     if (effects.goalPulse > 0) effects.goalPulse = Math.max(0, effects.goalPulse - dt * 1.4);
+    if (effects.resultDelay > 0) effects.resultDelay = Math.max(0, effects.resultDelay - dt);
     if (effects.fireworks > 0) {
       effects.fireworks -= dt;
       effects.fireworkTimer -= dt;
@@ -940,8 +945,10 @@
     pointer = null;
     try { if (canvas.releasePointerCapture) canvas.releasePointerCapture(id); } catch (err) { }
     if (!game || game.paused || game.phase !== 'aim' || game.turn !== 'player') return;
-    var dx = p.x - p.startX;
-    var dy = p.y - p.startY;
+    var anchor = game.chars[p.index];
+    if (!anchor) return;
+    var dx = p.x - anchor.x;
+    var dy = p.y - anchor.y;
     if (E.pullCharacter(game, p.index, dx, dy)) {
       processEvents();
       syncUI();
