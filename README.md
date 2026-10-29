@@ -68,6 +68,7 @@ universe/
 │   │   ├── ken-tsunagi/
 │   │   ├── neon-stack/
 │   │   ├── observer-game/
+│   │   ├── tether/
 │   │   └── unknown-word-deal/
 │   └── _samples/              # 教材・最小実装
 │       └── janken-game/

@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050b14" />
+  <meta name="description" content="TETHER — hold to reel, release to fly, and climb the tower in 60 seconds." />
+  <title>TETHER</title>
+  <link rel="stylesheet" href="style.css?v=20261029-tether2" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <div>
+          <p class="eyebrow">ROPE / CLIMB / 60 SECONDS</p>
+          <h1>TETHER</h1>
+        </div>
+        <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+      </div>
+      <div class="height-wrap">
+        <span id="height" class="height">0</span>
+        <span class="height-label">M</span>
+      </div>
+      <div class="meta">
+        <span id="time">TIME 60.0</span>
+        <span id="anchors">ANCHORS 1</span>
+        <span id="best">BEST 0</span>
+      </div>
+      <p id="hint" class="hint">HOLD TO REEL · RELEASE TO FLY</p>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">A ONE-BUTTON CLIMB</p>
+        <h1>TETHER</h1>
+        <p class="lead">Hold to reel in. Release to fly. Climb the tower before the 60 seconds run out.</p>
+        <svg class="start-art" viewBox="0 0 260 180" role="img" aria-label="A ball tethered to anchors">
+          <path d="M60 130 L60 55 M160 70 L160 25 M215 145 L215 95" stroke="#2b4a55" stroke-width="2" />
+          <circle cx="60" cy="55" r="9" fill="none" stroke="#f4c96b" stroke-width="2" />
+          <circle cx="160" cy="25" r="9" fill="none" stroke="#f4c96b" stroke-width="2" />
+          <circle cx="215" cy="95" r="9" fill="none" stroke="#f4c96b" stroke-width="2" />
+          <path d="M60 55 L108 128" stroke="#f4c96b" stroke-width="1.5" opacity="0.8" />
+          <circle cx="108" cy="128" r="15" fill="#6fd6c3" opacity="0.9" />
+          <circle cx="160" cy="62" r="5" fill="#8fe5d6" opacity="0.45" />
+          <circle cx="215" cy="142" r="5" fill="#8fe5d6" opacity="0.3" />
+        </svg>
+        <button id="btn-start" class="primary big" type="button">START CLIMB</button>
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">Hold anywhere · release to launch · best height is saved</p>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay">
+      <div class="result-content">
+        <p class="eyebrow">TIME UP</p>
+        <h1 id="result-height">0m</h1>
+        <p id="result-sub" class="lead">Best 0m</p>
+        <div class="result-meta">
+          <span id="result-anchors">ANCHORS 1</span>
+          <span id="result-best">BEST 0m</span>
+        </div>
+        <button id="btn-retry" class="primary big" type="button">CLIMB AGAIN</button>
+        <button id="btn-result-sound" class="link-btn" type="button">SOUND: ON</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261029-tether2"></script>
+  <script src="audio.js?v=20261029-tether2"></script>
+  <script src="renderer.js?v=20261029-tether2"></script>
+  <script src="game.js?v=20261029-tether2"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
