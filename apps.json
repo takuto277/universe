@@ -10,7 +10,8 @@
         "スポーツ",
         "タイミング"
       ],
-      "thumbnail": "projects/_labs/baseball-game/thumb.jpg"
+      "thumbnail": "projects/_labs/baseball-game/thumb.jpg",
+      "summary": "9球種とカウントを読み合う、3回勝負のタイミング野球。"
     },
     {
       "id": "janken-game",
@@ -22,7 +23,8 @@
         "心理戦",
         "1対1"
       ],
-      "thumbnail": "projects/_samples/janken-game/thumb.jpg"
+      "thumbnail": "projects/_samples/janken-game/thumb.jpg",
+      "summary": "CPUのクセと出しグセを読み合う、先読みじゃんけん。"
     },
     {
       "id": "gravity-flip",
@@ -34,7 +36,8 @@
         "1ボタン",
         "アクション"
       ],
-      "thumbnail": "projects/_labs/gravity-flip/thumb.jpg"
+      "thumbnail": "projects/_labs/gravity-flip/thumb.jpg",
+      "summary": "タップで重力を反転し、トゲを避けて距離を伸ばす1ボタンアクション。"
     },
     {
       "id": "graph-cross",
@@ -47,7 +50,8 @@
         "数学",
         "ローグライト"
       ],
-      "thumbnail": "projects/_labs/graph-cross/thumb.jpg"
+      "thumbnail": "projects/_labs/graph-cross/thumb.jpg",
+      "summary": "関数の曲線を敵に交差させ、デッキと合成で戦うグラフアクション。"
     },
     {
       "id": "unknown-word-deal",
@@ -59,7 +63,8 @@
         "言語",
         "推理"
       ],
-      "thumbnail": "projects/_labs/unknown-word-deal/thumb.jpg"
+      "thumbnail": "projects/_labs/unknown-word-deal/thumb.jpg",
+      "summary": "未知の文法語と商人のしぐさから意図を読み、交渉する言語ゲーム。"
     },
     {
       "id": "observer-game",
@@ -71,7 +76,8 @@
         "推理",
         "パズル"
       ],
-      "thumbnail": "projects/_labs/observer-game/thumb.jpg"
+      "thumbnail": "projects/_labs/observer-game/thumb.jpg",
+      "summary": "敵の隠れた移動規則を観測し、次の一手を予想する推理ゲーム。"
     },
     {
       "id": "exponential-balls",
@@ -85,7 +91,8 @@
         "レース"
       ],
       "thumbnail": "projects/_labs/exponential-balls/thumb.jpg",
-      "thumbDelay": 6
+      "thumbDelay": 6,
+      "summary": "倍々に増えるボールと20球レースを楽しむ、音楽連動の映像ゲーム。"
     },
     {
       "id": "neon-stack",
@@ -99,7 +106,8 @@
         "アーケード"
       ],
       "thumbnail": "projects/_labs/neon-stack/thumb.jpg",
-      "thumbDelay": 3.5
+      "thumbDelay": 3.5,
+      "summary": "ブロックを積み、PERFECTとBEATで塔を伸ばす1ボタンアーケード。"
     },
     {
       "id": "jump-rush",
@@ -111,7 +119,8 @@
         "アクション",
         "ジャンプ"
       ],
-      "thumbnail": "projects/_labs/jump-rush/thumb.jpg"
+      "thumbnail": "projects/_labs/jump-rush/thumb.jpg",
+      "summary": "走り続けるヒーローをジャンプさせ、敵を踏んで城を目指す横スクロール。"
     },
     {
       "id": "ken-tsunagi",
@@ -123,7 +132,8 @@
         "パズル",
         "日本地図"
       ],
-      "thumbnail": "projects/_labs/ken-tsunagi/thumb.jpg"
+      "thumbnail": "projects/_labs/ken-tsunagi/thumb.jpg",
+      "summary": "47都道府県を落としてつなぎ、日本列島を完成させる落ちものパズル。"
     },
     {
       "id": "oto-no-ie",
@@ -135,7 +145,8 @@
         "音響",
         "パズル"
       ],
-      "thumbnail": "projects/_labs/oto-no-ie/thumb.jpg"
+      "thumbnail": "projects/_labs/oto-no-ie/thumb.jpg",
+      "summary": "鈴の音で目が見えない住人を出口へ導く、全5室の音響パズル。"
     }
   ]
 }

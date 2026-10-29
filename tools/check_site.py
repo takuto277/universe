@@ -9,7 +9,7 @@ from urllib.parse import unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 ERRORS = []
-REQUIRED = ("id", "path", "tag", "title", "description", "thumbnail")
+REQUIRED = ("id", "path", "tag", "title", "description", "summary", "thumbnail")
 
 
 def error(message):
@@ -116,7 +116,7 @@ def check_index(apps):
     html = normalize(read(index_path))
     markers = (
         'id="game-grid"',
-        'id="filters"',
+        'id="genre-filter"',
         'id="result-count"',
         "fetch('apps.json'",
     )

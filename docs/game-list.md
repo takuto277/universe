@@ -5,10 +5,10 @@
 ## 表示
 
 - サムネイル: `apps.json` の `thumbnail`
-- タイトル・説明: `apps.json`
-- タグ: `apps.json` の `tags`。一覧上部のボタンで絞り込めます
+- タイトル・説明: `apps.json`（カードは `summary` を1行表示）
+- ジャンル: `apps.json` の `tags`。一覧上部のピッカーで絞り込めます
 - カード全体がゲームへのリンク
-- 各ゲームの右端中央に「一覧へ」タブ（`projects/_shared/game-back.js`）
+- 各ゲーム右上の三点メニューから「ゲーム一覧へ」（`projects/_shared/game-back.js`）
 
 ## サムネイル
 
@@ -19,7 +19,7 @@ python3 tools/playtest/serve.py --directory . --port 8000 &
 python3 tools/thumbnails/generate.py --base-url http://127.0.0.1:8000
 ```
 
-生成サイズは 1200×800（3:2）です。`apps.json` の `thumbnail` はアプリディレクトリ内の `thumb.jpg` を指します。
+生成サイズは 1200×800（3:2）です。`apps.json` の `thumbnail` はアプリディレクトリ内の `thumb.jpg` を指します。カードは2列（スマホは1列）で、`summary` を1行表示します。
 
 ## ゲーム追加時
 
