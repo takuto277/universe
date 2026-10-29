@@ -56,6 +56,35 @@ assert(s.tether && s.tether.length < 80, '床救助後に巻き取れない');
 game.reset();
 assert(game.state.phase === 'start' && game.state.tether === null, 'resetでstartに戻らない');
 
+// ホールド中だけ、一定距離内のアンカー（使用済みも含む）に掛かる
+game.start();
+game.state.tether = null;
+game.state.holding = false;
+game.state.attachCooldown = 0;
+game.state.player.x = 70;
+game.state.player.y = 520;
+game.state.player.vx = 0;
+game.state.player.vy = 0;
+game.update(0.1, 1 / 60);
+s = game.getState();
+assert(s.tether === null, 'ホールドしていないのにアンカーへ掛かる');
+game.setHold(true);
+s = game.getState();
+assert(s.tether && s.tether.anchorId === 1, '2個目のアンカーに掛からない');
+assert(s.anchors[1].used === true, '2個目のアンカーがusedにならない');
+game.setHold(false);
+game.state.tether = null;
+game.state.holding = false;
+game.state.attachCooldown = 0;
+game.state.player.x = 0;
+game.state.player.y = 190;
+game.state.player.vx = 0;
+game.state.player.vy = 0;
+game.setHold(true);
+s = game.getState();
+assert(s.tether && s.tether.anchorId === 0, '使用済みアンカーに再び掛からない');
+
+game.reset();
 game.start();
 var t = 0;
 while (game.state.phase === 'playing' && t < 65) {
