@@ -15,7 +15,7 @@
   var START_Y = 110;
   var GRAVITY = 980;
   var REEL_SPEED = 250;
-  var MIN_LENGTH = 26;
+  var MIN_LENGTH = 80;
   var MAX_LENGTH = 220;
   var ATTACH_RADIUS = 120;
   var PLAYER_R = 9;
@@ -36,6 +36,18 @@
     { x: 0, y: 3650, len: 115, thickness: 7, angle: 2.0, speed: 2.4 }
   ];
 
+  var BUMPERS = [
+    { x: 90, y: 690, r: 17, power: 300, hue: 42 },
+    { x: -110, y: 1580, r: 18, power: 330, hue: 174 },
+    { x: 105, y: 2920, r: 17, power: 360, hue: 42 },
+    { x: -95, y: 4040, r: 18, power: 390, hue: 174 }
+  ];
+
+  var WINDS = [
+    { x: 0, y: 1350, w: 356, h: 230, ax: 430, ay: 0 },
+    { x: 0, y: 3220, w: 356, h: 230, ax: -470, ay: 0 }
+  ];
+
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
   function dist(ax, ay, bx, by) { return Math.sqrt((ax - bx) * (ax - bx) + (ay - by) * (ay - by)); }
 
@@ -47,6 +59,8 @@
       tether: null,
       anchors: [],
       obstacles: [],
+      bumpers: [],
+      winds: [],
       holding: false,
       attachCooldown: 0,
       maxY: START_Y,
@@ -63,6 +77,12 @@
       });
       state.obstacles = OBSTACLES.map(function (o) {
         return { x: o.x, y: o.y, len: o.len, thickness: o.thickness, angle: o.angle, speed: o.speed };
+      });
+      state.bumpers = BUMPERS.map(function (b) {
+        return { x: b.x, y: b.y, r: b.r, power: b.power, hue: b.hue };
+      });
+      state.winds = WINDS.map(function (w) {
+        return { x: w.x, y: w.y, w: w.w, h: w.h, ax: w.ax, ay: w.ay };
       });
     }
 
@@ -135,6 +155,8 @@
     function detach() {
       if (!state.tether) return false;
       var current = state.tether.anchorId;
+      var rope = state.tether.length;
+      var power = SNAP * (0.75 + 0.75 * clamp(rope / ATTACH_RADIUS, 0, 1.4));
       state.events.push({ type: 'detach', x: state.player.x, y: state.player.y });
       state.tether = null;
       state.holding = false;
@@ -149,10 +171,10 @@
         var dx = target.x - state.player.x;
         var dy = target.y - state.player.y;
         var d = Math.sqrt(dx * dx + dy * dy) || 1;
-        state.player.vx += (dx / d) * SNAP * 0.65;
-        state.player.vy += (dy / d) * SNAP;
+        state.player.vx += (dx / d) * power * 0.65;
+        state.player.vy += (dy / d) * power;
       } else {
-        state.player.vy += SNAP;
+        state.player.vy += power;
       }
       return true;
     }
@@ -183,13 +205,18 @@
       return true;
     }
 
-    function update(t, dt) {
-      if (state.phase !== 'playing') return getState();
-      if (!isFinite(dt) || dt <= 0) dt = 1 / 60;
-      dt = Math.min(0.05, dt);
-      state.time += dt;
-      state.attachCooldown = Math.max(0, state.attachCooldown - dt);
+    function applyWind(dt) {
+      var p = state.player;
+      for (var i = 0; i < state.winds.length; i++) {
+        var w = state.winds[i];
+        if (p.x < w.x - w.w / 2 || p.x > w.x + w.w / 2) continue;
+        if (p.y < w.y - w.h / 2 || p.y > w.y + w.h / 2) continue;
+        p.vx += w.ax * dt;
+        p.vy += w.ay * dt;
+      }
+    }
 
+    function movePlayer(dt) {
       var p = state.player;
       if (state.tether) {
         var a = state.anchors[state.tether.anchorId];
@@ -224,7 +251,31 @@
         p.vy = Math.max(0, p.vy);
         if (!state.tether) rescueFromFloor();
       }
+    }
 
+    function collideBumpers() {
+      var p = state.player;
+      for (var i = 0; i < state.bumpers.length; i++) {
+        var b = state.bumpers[i];
+        var dx = p.x - b.x;
+        var dy = p.y - b.y;
+        var d = Math.sqrt(dx * dx + dy * dy);
+        if (d >= p.r + b.r) continue;
+        if (d < 0.001) { dx = 0; dy = 1; d = 1; }
+        var nx = dx / d;
+        var ny = dy / d;
+        p.x = b.x + nx * (p.r + b.r + 1);
+        p.y = b.y + ny * (p.r + b.r + 1);
+        var vn = p.vx * nx + p.vy * ny;
+        if (vn < 0) { p.vx -= 1.6 * vn * nx; p.vy -= 1.6 * vn * ny; }
+        p.vx += nx * b.power;
+        p.vy += ny * b.power;
+        state.events.push({ type: 'bump', x: p.x, y: p.y });
+      }
+    }
+
+    function stepObstacles(dt) {
+      var p = state.player;
       for (var oi = 0; oi < state.obstacles.length; oi++) {
         var o = state.obstacles[oi];
         o.angle += o.speed * dt;
@@ -244,6 +295,27 @@
           state.events.push({ type: 'hit', x: p.x, y: p.y });
         }
       }
+    }
+
+    function simulateStep(dt) {
+      applyWind(dt);
+      movePlayer(dt);
+      collideBumpers();
+      stepObstacles(dt);
+    }
+
+    function update(t, dt) {
+      if (state.phase !== 'playing') return getState();
+      if (!isFinite(dt) || dt <= 0) dt = 1 / 60;
+      dt = Math.min(0.05, dt);
+      state.time += dt;
+      state.attachCooldown = Math.max(0, state.attachCooldown - dt);
+
+      var p = state.player;
+      var speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy);
+      var steps = clamp(Math.ceil(speed * dt / 4), 1, 16);
+      var stepDt = dt / steps;
+      for (var step = 0; step < steps; step++) simulateStep(stepDt);
 
       state.maxY = Math.max(state.maxY, p.y);
       state.height = Math.max(0, (state.maxY - START_Y) / HEIGHT_SCALE);
@@ -271,6 +343,8 @@
         tether: state.tether ? { anchorId: state.tether.anchorId, length: state.tether.length } : null,
         anchors: state.anchors.map(function (a) { return { id: a.id, x: a.x, y: a.y, used: a.used }; }),
         obstacles: state.obstacles.map(function (o) { return { x: o.x, y: o.y, len: o.len, thickness: o.thickness, angle: o.angle }; }),
+        bumpers: state.bumpers.map(function (b) { return { x: b.x, y: b.y, r: b.r, hue: b.hue }; }),
+        winds: state.winds.map(function (w) { return { x: w.x, y: w.y, w: w.w, h: w.h, ax: w.ax, ay: w.ay }; }),
         holding: state.holding,
         anchorCooldown: state.attachCooldown,
         floorY: START_Y,
@@ -305,6 +379,8 @@
     ATTACH_RADIUS: ATTACH_RADIUS,
     ANCHORS: ANCHORS,
     OBSTACLES: OBSTACLES,
+    BUMPERS: BUMPERS,
+    WINDS: WINDS,
     HEIGHT_SCALE: HEIGHT_SCALE
   };
 });

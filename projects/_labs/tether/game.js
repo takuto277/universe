@@ -82,6 +82,7 @@
       if ((ev.type === 'attach' || ev.type === 'rescue') && audio.attach) audio.attach();
       else if (ev.type === 'detach' && audio.snap) audio.snap();
       else if (ev.type === 'hit' && audio.hit) audio.hit();
+      else if (ev.type === 'bump' && audio.bump) audio.bump();
     }
     seenEvents = state.events.length;
   }
