@@ -9,6 +9,7 @@ universe は、ゲームを題材に無人開発基盤を育てるモノレポ�
 ./tools/verify.sh             # テスト + サイト検査 + PR スクリプトの構文検査
 ./tools/run-tests.sh          # 全アプリの test-*.js
 python3 tools/check_site.py   # apps.json / index.html / ローカルリンクの検査
+python3 tools/sync_app_dates.py --check  # 日付欠落の検査（補完は --check なし）
 python3 tools/check_skills.py # スキルの契約検査
 ./tools/auto-pr.sh --dry-run  # 自動PR処理の対象確認
 ./tools/install-auto-pr.sh    # 自動PR処理のLaunchAgent登録

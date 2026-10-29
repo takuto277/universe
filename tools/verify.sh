@@ -6,6 +6,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 # 信頼するチェックを先に実行し、アプリのテストは最後に回す。
 # テスト JS が後続のチェックを差し替えられないようにするため。
 python3 "$ROOT/tools/check_site.py"
+python3 "$ROOT/tools/sync_app_dates.py" --check
 python3 "$ROOT/tools/check_skills.py"
 for script in \
   "$ROOT/tools/agent.sh" \
@@ -35,7 +36,8 @@ paths += [root / "tools/agent_runner.py", root / "tools/test_agent_runner.py",
           root / "tools/check_skills.py", root / "tools/test_skills.py",
           root / "tools/playtest/playtest.py",
           root / "tools/playtest/serve.py",
-          root / "tools/thumbnails/generate.py"]
+          root / "tools/thumbnails/generate.py",
+          root / "tools/sync_app_dates.py"]
 for path in paths:
     compile(path.read_text(encoding="utf-8"), str(path), "exec")
 print("pr scripts compile OK")

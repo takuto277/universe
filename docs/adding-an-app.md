@@ -64,7 +64,7 @@ window.__GAME__ = {
 }
 ```
 
-トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`summary`、`tags`、`thumbnail`、`createdAt`、`updatedAt`（更新時刻のISO日時）を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。ゲームを更新したら `updatedAt` も更新してください。
+トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`summary`、`tags`、`thumbnail`、`createdAt`、`updatedAt`（更新時刻のISO日時）を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。ゲームを更新したら `updatedAt` も更新してください。日付を忘れた場合は `python3 tools/sync_app_dates.py` でgit履歴から補完できます。
 
 ## 6. 検査する
 
