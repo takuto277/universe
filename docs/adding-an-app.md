@@ -58,11 +58,13 @@ window.__GAME__ = {
   "description": "詳細な説明",
   "summary": "一覧カードに出す1行の説明",
   "tags": ["ジャンル", "操作"],
-  "thumbnail": "projects/_labs/my-app/thumb.jpg"
+  "thumbnail": "projects/_labs/my-app/thumb.jpg",
+  "createdAt": "2026-10-29",
+  "updatedAt": "2026-10-29T12:00:00+09:00"
 }
 ```
 
-トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`summary`、`tags`、`thumbnail` を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。
+トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`summary`、`tags`、`thumbnail`、`createdAt`、`updatedAt`（更新時刻のISO日時）を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。ゲームを更新したら `updatedAt` も更新してください。
 
 ## 6. 検査する
 
