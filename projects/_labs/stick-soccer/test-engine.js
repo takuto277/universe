@@ -10,8 +10,14 @@ var passed = 0;
 function assert(cond, message) { if (!cond) throw new Error('assert failed: ' + message); passed++; }
 
 assert(E.FIELD.w > 300 && E.FIELD.h > 500, 'field size is wrong');
-assert(E.OBSTACLES.length >= 5, 'not enough stick obstacles');
+assert(E.OBSTACLES.length === 11, '11 stick obstacles expected: ' + E.OBSTACLES.length);
+assert(E.DEFAULT_FORMATION.length === 11, 'default formation should have 11 players');
+assert(E.FORMATION_LINES.length === 4, 'formation should have 4 lines');
 assert(E.TURNS === 12 && E.WIN_SCORE === 3, 'turn or win limit is wrong');
+
+var custom = E.createGame({ formation: [{ line: 0, slot: 2 }, { line: 2, slot: 0 }] });
+assert(custom.obstacles.length === 2, 'custom formation obstacle count is wrong');
+assert(custom.obstacles[0].x === E.FORMATION_SLOTS[2] && custom.obstacles[1].y === E.FORMATION_LINES[2].y, 'custom formation positions are wrong');
 
 var s = E.createGame();
 var st = E.getState(s);
@@ -61,15 +67,15 @@ E.update(g, 0.1);
 assert(g.ball.vx > 0, 'ball should bounce from the left wall');
 assert(g.ball.x >= E.FIELD.x + E.BALL_R - 0.1, 'ball penetrated the wall');
 
-g = E.createGame();
-var o = E.OBSTACLES[0];
-g.ball.x = o.x + o.r + E.BALL_R - 2;
+g = E.createGame({ formation: [{ line: 0, slot: 2 }] });
+var o = g.obstacles[0];
+g.ball.x = o.x + o.r + E.BALL_R + 8;
 g.ball.y = o.y;
 g.ball.vx = -500;
 g.ball.vy = 0;
 g.phase = 'moving';
 g.shots = 1;
-E.update(g, 0.06);
+E.update(g, 0.08);
 assert(g.ball.vx > 0, 'ball should bounce from a stick obstacle: ' + g.ball.vx);
 
 s = E.createGame();

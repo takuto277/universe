@@ -22,14 +22,34 @@
   var TURNS = 12;
   var WIN_SCORE = 3;
 
-  var OBSTACLES = [
-    { x: 140, y: 230, r: 22 },
-    { x: 340, y: 230, r: 22 },
-    { x: 112, y: 452, r: 22 },
-    { x: 368, y: 452, r: 22 },
-    { x: 148, y: 626, r: 22 },
-    { x: 332, y: 626, r: 22 }
+  var FORMATION_LINES = [
+    { id: 'fw', label: 'FW', y: 210 },
+    { id: 'mf', label: 'MF', y: 325 },
+    { id: 'df', label: 'DF', y: 440 },
+    { id: 'gk', label: 'GK', y: 555 }
   ];
+  var FORMATION_SLOTS = [96, 168, 240, 312, 384];
+  var PLAYER_R = 18;
+  var DEFAULT_FORMATION = [
+    { line: 0, slot: 1 }, { line: 0, slot: 2 }, { line: 0, slot: 3 },
+    { line: 1, slot: 0 }, { line: 1, slot: 2 }, { line: 1, slot: 4 },
+    { line: 2, slot: 0 }, { line: 2, slot: 1 }, { line: 2, slot: 3 }, { line: 2, slot: 4 },
+    { line: 3, slot: 2 }
+  ];
+
+  function obstaclesFor(formation) {
+    var f = formation && formation.length ? formation : DEFAULT_FORMATION;
+    var out = [];
+    for (var i = 0; i < f.length; i++) {
+      var p = f[i];
+      var line = FORMATION_LINES[p.line];
+      var slot = FORMATION_SLOTS[p.slot];
+      if (!line || slot == null) continue;
+      out.push({ x: slot, y: line.y, r: PLAYER_R, line: p.line, slot: p.slot, index: i });
+    }
+    return out;
+  }
+  var OBSTACLES = obstaclesFor(DEFAULT_FORMATION);
 
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
   function speedOf(b) { return Math.sqrt(b.vx * b.vx + b.vy * b.vy); }
@@ -48,7 +68,8 @@
     s.ball.vy = 0;
   }
 
-  function createGame() {
+  function createGame(options) {
+    options = options || {};
     var s = {
       phase: 'aim',
       turn: 'player',
@@ -65,6 +86,7 @@
       cpuTimer: 0,
       cpuPlan: null,
       rng: null,
+      obstacles: obstaclesFor(options.formation),
       events: []
     };
     return s;
@@ -109,9 +131,9 @@
     }
   }
 
-  function collideObstacles(ball, events) {
-    for (var i = 0; i < OBSTACLES.length; i++) {
-      var o = OBSTACLES[i];
+  function collideObstacles(ball, events, obstacles) {
+    for (var i = 0; i < obstacles.length; i++) {
+      var o = obstacles[i];
       var dx = ball.x - o.x;
       var dy = ball.y - o.y;
       var dist = Math.sqrt(dx * dx + dy * dy);
@@ -126,7 +148,7 @@
     }
   }
 
-  function integrate(ball, dt, events) {
+  function integrate(ball, dt, events, obstacles) {
     var speed = speedOf(ball);
     var steps = Math.max(1, Math.ceil(speed * dt / 6));
     var h = dt / steps;
@@ -156,7 +178,7 @@
         if (events) events.push({ type: 'wall', x: FIELD.right, y: ball.y });
       }
 
-      collideObstacles(ball, events);
+      collideObstacles(ball, events, obstacles);
     }
     var sp = speedOf(ball);
     var ns = Math.max(0, sp - FRICTION * dt);
@@ -171,7 +193,7 @@
     var ball = { x: s.ball.x, y: s.ball.y, vx: vx, vy: vy };
     var t = 0;
     while (t < SHOT_LIMIT) {
-      var goal = integrate(ball, 1 / 120, null);
+      var goal = integrate(ball, 1 / 120, null, s.obstacles);
       t += 1 / 120;
       if (goal) return { goal: goal, x: ball.x, y: ball.y, time: t };
       if (speedOf(ball) < STOP_SPEED) break;
@@ -290,7 +312,7 @@
     dt = clamp(Number(dt) || 0, 0, 0.05);
     if (s.phase === 'moving') {
       s.shotTime += dt;
-      var goal = integrate(s.ball, dt, s.events);
+      var goal = integrate(s.ball, dt, s.events, s.obstacles);
       if (goal) {
         goalScored(s, goal);
         return s;
@@ -341,6 +363,7 @@
       shots: s.shots,
       turns: TURNS,
       ball: { x: s.ball.x, y: s.ball.y, vx: s.ball.vx, vy: s.ball.vy },
+      obstacles: s.obstacles,
       goalSide: s.goalSide,
       cpuAim: (s.phase === 'cpuAim' && s.cpuPlan) ? { vx: s.cpuPlan.vx, vy: s.cpuPlan.vy } : null,
       winner: s.winner,
@@ -362,6 +385,11 @@
     MAX_PULL: MAX_PULL,
     PULL_POWER: PULL_POWER,
     OBSTACLES: OBSTACLES,
+    FORMATION_LINES: FORMATION_LINES,
+    FORMATION_SLOTS: FORMATION_SLOTS,
+    PLAYER_R: PLAYER_R,
+    DEFAULT_FORMATION: DEFAULT_FORMATION,
+    obstaclesFor: obstaclesFor,
     TURNS: TURNS,
     WIN_SCORE: WIN_SCORE,
     createGame: createGame,
