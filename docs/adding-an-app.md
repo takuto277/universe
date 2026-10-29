@@ -55,13 +55,14 @@ window.__GAME__ = {
   "path": "projects/_labs/my-app/",
   "tag": "GAME",
   "title": "My App",
-  "description": "一覧に表示する短い説明",
+  "description": "詳細な説明",
+  "summary": "一覧カードに出す1行の説明",
   "tags": ["ジャンル", "操作"],
   "thumbnail": "projects/_labs/my-app/thumb.jpg"
 }
 ```
 
-トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`tags` と `thumbnail` を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。
+トップページの一覧は `apps.json` から自動生成されるため、`index.html` にカードを手で追加する必要はありません。`summary`、`tags`、`thumbnail` を設定し、[ゲーム一覧](game-list.md) の手順でサムネイルを生成してください。
 
 ## 6. 検査する
 
