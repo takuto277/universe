@@ -20,11 +20,15 @@ Harness.run({
     h.assert(state.score.player >= 0 && state.score.cpu >= 0, 'スコアが不正');
     h.assert(state.winner === 'player' || state.winner === 'cpu' || state.winner === 'draw', '勝敗が不正: ' + state.winner);
     var els = h.elements;
-    h.assert(els['screen-over'] && els['screen-over'].classList.contains('visible'), 'リザルト画面が出ていない');
+    var resultVisible = ['screen-over', 'screen-stage', 'screen-ending'].some(function (id) {
+      return els[id] && els[id].classList.contains('visible');
+    });
+    h.assert(resultVisible, 'リザルト画面が出ていない');
     h.assert(els['screen-title'] && !els['screen-title'].classList.contains('visible'), 'タイトル画面が残っている');
     h.assert(els['you'] && els['you'].textContent === String(state.score.player), 'HUDの自分スコアが一致しない');
     h.assert(els['cpu'] && els['cpu'].textContent === String(state.score.cpu), 'HUDのCPUスコアが一致しない');
-    h.assert(els['shots'] && els['shots'].textContent === 'KICK ' + state.shots + '/12', 'HUDのキック数が一致しない');
+    h.assert(state.stage >= 0 && state.stage < state.stageTotal, 'ステージ番号が不正: ' + state.stage);
+    h.assert(els['shots'] && els['shots'].textContent === 'STAGE ' + (state.stage + 1) + '/' + state.stageTotal + ' · KICK ' + state.shots + '/12', 'HUDのステージ/キック数が一致しない');
   },
   summary: function (state) {
     print('  最終: ' + state.score.player + ' - ' + state.score.cpu + ' / ' + state.winner + ' / KICK ' + state.shots + '/' + state.turns);

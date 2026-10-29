@@ -22,14 +22,20 @@
   var TURNS = 12;
   var WIN_SCORE = 3;
 
-  var FORMATION_LINES = [
-    { id: 'fw', label: 'FW', y: 210 },
-    { id: 'mf', label: 'MF', y: 325 },
-    { id: 'df', label: 'DF', y: 440 },
-    { id: 'gk', label: 'GK', y: 555 }
+  var PLAYER_LINES = [
+    { id: 'fw', label: 'FW', y: 455 },
+    { id: 'mf', label: 'MF', y: 525 },
+    { id: 'df', label: 'DF', y: 595 },
+    { id: 'gk', label: 'GK', y: 655 }
+  ];
+  var CPU_LINES = [
+    { id: 'gk', label: 'GK', y: 145 },
+    { id: 'df', label: 'DF', y: 210 },
+    { id: 'mf', label: 'MF', y: 275 },
+    { id: 'fw', label: 'FW', y: 340 }
   ];
   var FORMATION_SLOTS = [96, 168, 240, 312, 384];
-  var PLAYER_R = 18;
+  var PLAYER_R = 16;
   var DEFAULT_FORMATION = [
     { line: 0, slot: 1 }, { line: 0, slot: 2 }, { line: 0, slot: 3 },
     { line: 1, slot: 0 }, { line: 1, slot: 2 }, { line: 1, slot: 4 },
@@ -37,19 +43,36 @@
     { line: 3, slot: 2 }
   ];
 
-  function obstaclesFor(formation) {
+  function cpuFormation(gk, df, mf, fw) {
+    var out = [{ line: 0, slot: 2 }];
+    var i;
+    for (i = 0; i < df.length; i++) out.push({ line: 1, slot: df[i] });
+    for (i = 0; i < mf.length; i++) out.push({ line: 2, slot: mf[i] });
+    for (i = 0; i < fw.length; i++) out.push({ line: 3, slot: fw[i] });
+    return out;
+  }
+
+  var STAGES = [
+    { id: 'stage-1', name: '4-4-2', cpuFormation: cpuFormation(2, [0, 1, 3, 4], [0, 1, 3, 4], [1, 3]) },
+    { id: 'stage-2', name: '3-5-2', cpuFormation: cpuFormation(2, [0, 2, 4], [0, 1, 2, 3, 4], [1, 3]) },
+    { id: 'stage-3', name: '4-3-3', cpuFormation: cpuFormation(2, [0, 1, 3, 4], [1, 2, 3], [0, 2, 4]) }
+  ];
+
+  function obstaclesFor(formation, team) {
     var f = formation && formation.length ? formation : DEFAULT_FORMATION;
+    var lines = team === 'cpu' ? CPU_LINES : PLAYER_LINES;
     var out = [];
     for (var i = 0; i < f.length; i++) {
       var p = f[i];
-      var line = FORMATION_LINES[p.line];
+      var line = lines[p.line];
       var slot = FORMATION_SLOTS[p.slot];
       if (!line || slot == null) continue;
-      out.push({ x: slot, y: line.y, r: PLAYER_R, line: p.line, slot: p.slot, index: i });
+      out.push({ x: slot, y: line.y, r: PLAYER_R, line: p.line, slot: p.slot, index: i, team: team || 'player' });
     }
     return out;
   }
-  var OBSTACLES = obstaclesFor(DEFAULT_FORMATION);
+
+  var OBSTACLES = obstaclesFor(DEFAULT_FORMATION, 'player').concat(obstaclesFor(STAGES[0].cpuFormation, 'cpu'));
 
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
   function speedOf(b) { return Math.sqrt(b.vx * b.vx + b.vy * b.vy); }
@@ -70,6 +93,9 @@
 
   function createGame(options) {
     options = options || {};
+    var stage = clamp(Number(options.stage) || 0, 0, STAGES.length - 1);
+    var playerFormation = options.formation || DEFAULT_FORMATION;
+    var cpuFormation = STAGES[stage].cpuFormation;
     var s = {
       phase: 'aim',
       turn: 'player',
@@ -86,7 +112,9 @@
       cpuTimer: 0,
       cpuPlan: null,
       rng: null,
-      obstacles: obstaclesFor(options.formation),
+      stage: stage,
+      stageName: STAGES[stage].name,
+      obstacles: obstaclesFor(playerFormation, 'player').concat(obstaclesFor(cpuFormation, 'cpu')),
       events: []
     };
     return s;
@@ -362,6 +390,9 @@
       score: { player: s.score.player, cpu: s.score.cpu },
       shots: s.shots,
       turns: TURNS,
+      stage: s.stage,
+      stageName: s.stageName,
+      stageTotal: STAGES.length,
       ball: { x: s.ball.x, y: s.ball.y, vx: s.ball.vx, vy: s.ball.vy },
       obstacles: s.obstacles,
       goalSide: s.goalSide,
@@ -385,8 +416,11 @@
     MAX_PULL: MAX_PULL,
     PULL_POWER: PULL_POWER,
     OBSTACLES: OBSTACLES,
-    FORMATION_LINES: FORMATION_LINES,
+    PLAYER_LINES: PLAYER_LINES,
+    CPU_LINES: CPU_LINES,
+    FORMATION_LINES: PLAYER_LINES,
     FORMATION_SLOTS: FORMATION_SLOTS,
+    STAGES: STAGES,
     PLAYER_R: PLAYER_R,
     DEFAULT_FORMATION: DEFAULT_FORMATION,
     obstaclesFor: obstaclesFor,

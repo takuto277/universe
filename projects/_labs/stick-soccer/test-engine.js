@@ -10,14 +10,30 @@ var passed = 0;
 function assert(cond, message) { if (!cond) throw new Error('assert failed: ' + message); passed++; }
 
 assert(E.FIELD.w > 300 && E.FIELD.h > 500, 'field size is wrong');
-assert(E.OBSTACLES.length === 11, '11 stick obstacles expected: ' + E.OBSTACLES.length);
+assert(E.OBSTACLES.length === 22, '22 stick obstacles expected: ' + E.OBSTACLES.length);
 assert(E.DEFAULT_FORMATION.length === 11, 'default formation should have 11 players');
-assert(E.FORMATION_LINES.length === 4, 'formation should have 4 lines');
+assert(E.FORMATION_LINES.length === 4 && E.CPU_LINES.length === 4, 'both teams should have 4 lines');
+assert(E.STAGES.length === 3, 'three stages expected');
+assert(E.STAGES[0].cpuFormation.length === 11 && E.STAGES[1].cpuFormation.length === 11 && E.STAGES[2].cpuFormation.length === 11, 'each CPU formation should have 11 players');
 assert(E.TURNS === 12 && E.WIN_SCORE === 3, 'turn or win limit is wrong');
 
 var custom = E.createGame({ formation: [{ line: 0, slot: 2 }, { line: 2, slot: 0 }] });
-assert(custom.obstacles.length === 2, 'custom formation obstacle count is wrong');
+assert(custom.obstacles.length === 13, 'custom player formation plus CPU count is wrong: ' + custom.obstacles.length);
 assert(custom.obstacles[0].x === E.FORMATION_SLOTS[2] && custom.obstacles[1].y === E.FORMATION_LINES[2].y, 'custom formation positions are wrong');
+assert(custom.obstacles[0].team === 'player' && custom.obstacles[2].team === 'cpu', 'obstacle teams are wrong');
+
+var expectedLines = [[1, 4, 4, 2], [1, 3, 5, 2], [1, 4, 3, 3]];
+for (var stageIndex = 0; stageIndex < E.STAGES.length; stageIndex++) {
+  var stageGame = E.createGame({ stage: stageIndex });
+  assert(stageGame.obstacles.length === 22, 'stage ' + (stageIndex + 1) + ' should have 22 obstacles');
+  assert(stageGame.stage === stageIndex && stageGame.stageName === E.STAGES[stageIndex].name, 'stage metadata is wrong');
+  var stageLines = [0, 0, 0, 0];
+  for (var oi = 0; oi < stageGame.obstacles.length; oi++) {
+    if (stageGame.obstacles[oi].team === 'cpu') stageLines[stageGame.obstacles[oi].line]++;
+  }
+  assert(stageLines.join('/') === expectedLines[stageIndex].join('/'), 'stage ' + (stageIndex + 1) + ' CPU lines are wrong: ' + stageLines.join('/'));
+}
+assert(E.createGame({ stage: 99 }).stage === 2, 'stage should clamp to the last stage');
 
 var s = E.createGame();
 var st = E.getState(s);
