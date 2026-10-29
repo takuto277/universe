@@ -221,6 +221,23 @@
       "updatedAt": "2026-10-30T02:16:49+09:00"
     },
     {
+      "id": "stick-soccer-players",
+      "path": "projects/_labs/stick-soccer-players/",
+      "tag": "GAME",
+      "title": "スティックサッカー プレイヤーズ",
+      "description": "自分の選手を引っ張って突進させ、ボールにぶつけてゴールを狙うターン制フリックサッカー。自分とCPUの11人ずつ計22人で、選手同士の吹っ飛びはボール衝突の約1/3。4本×9スロットのフォーメーション、3ステージのCPU強化、先に3点取った方が勝ち。ゴール時は紙吹雪・花火・衝撃波の派手な演出。",
+      "tags": [
+        "サッカー",
+        "ターン制",
+        "アクション",
+        "ステージ"
+      ],
+      "thumbnail": "projects/_labs/stick-soccer-players/thumb.jpg",
+      "summary": "選手を投げてボールを吹っ飛ばす、派手なゴール演出つきフリックサッカー。",
+      "createdAt": "2026-10-30",
+      "updatedAt": "2026-10-30T03:13:54+09:00"
+    },
+    {
       "id": "sleep-guard",
       "path": "projects/_labs/sleep-guard/",
       "tag": "GAME",
