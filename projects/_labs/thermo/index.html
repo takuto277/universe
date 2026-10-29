@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#050b14" />
+  <meta name="description" content="THERMO — exchange heat with water, ice and doors. Keep your body in the safe band and escape five rooms." />
+  <title>THERMO</title>
+  <link rel="stylesheet" href="style.css?v=20261030-thermo1" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <div>
+          <p class="eyebrow">HEAT / EXCHANGE / ESCAPE</p>
+          <h1>THERMO</h1>
+        </div>
+        <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+      </div>
+
+      <div class="room-line">
+        <span id="room">ROOM 1 / 5</span>
+        <span id="room-name">THAW</span>
+      </div>
+
+      <div class="temp-row">
+        <div class="temp-read"><span id="temp-value">50</span><span class="temp-unit">°C</span></div>
+        <div class="temp-label">BODY HEAT</div>
+      </div>
+      <div class="temp-track">
+        <div class="safe-band"></div>
+        <span id="temp-mark"></span>
+      </div>
+
+      <div class="meta">
+        <span id="moves">MOVES 0</span>
+        <span id="time">TIME 0.0</span>
+      </div>
+
+      <p id="prompt" class="prompt">MOVE NEXT TO A WATER, ICE, EMBER OR DOOR</p>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">A FIVE-ROOM THERMAL PUZZLE</p>
+        <h1>THERMO</h1>
+        <p class="lead">You are a heat-bearing spark in a cold facility. Swap heat with the room, keep your body between <strong>20°C and 80°C</strong>, and reach the exit.</p>
+        <div class="rules">
+          <p><span class="rule-icon warm">+15</span> Absorb water or embers to warm up. Water freezes into a walkable floor.</p>
+          <p><span class="rule-icon cool">-15</span> Emit heat into ice or a heat door. Doors open; ice turns back to water.</p>
+          <p><span class="rule-icon move">4</span> Move with the pad or arrow keys. Use EXCHANGE when facing a special tile.</p>
+        </div>
+        <button id="btn-start" class="primary big" type="button">ENTER FACILITY</button>
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">Five rooms · no timer · the safe band is the puzzle</p>
+      </div>
+    </div>
+
+    <div id="state-overlay" class="overlay">
+      <div class="state-content">
+        <p id="state-eyebrow" class="eyebrow">ROOM CLEAR</p>
+        <h1 id="state-title">THAW</h1>
+        <p id="state-sub" class="lead">The heat door is open.</p>
+        <p id="state-stats" class="stats">MOVES 0 · TIME 0.0</p>
+        <button id="btn-state" class="primary big" type="button">NEXT ROOM</button>
+        <button id="btn-state-sound" class="link-btn" type="button">SOUND: ON</button>
+      </div>
+    </div>
+
+    <div id="controls" class="controls is-hidden">
+      <div class="dpad" aria-label="Move">
+        <button class="pad up" data-move="U" type="button" aria-label="Up">▲</button>
+        <button class="pad left" data-move="L" type="button" aria-label="Left">◀</button>
+        <button class="pad right" data-move="R" type="button" aria-label="Right">▶</button>
+        <button class="pad down" data-move="D" type="button" aria-label="Down">▼</button>
+        <span class="dpad-core"></span>
+      </div>
+      <button id="btn-act" class="act-btn" type="button">
+        <span class="act-label">EXCHANGE</span>
+        <span class="act-key">SPACE</span>
+      </button>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261030-thermo1"></script>
+  <script src="audio.js?v=20261030-thermo1"></script>
+  <script src="renderer.js?v=20261030-thermo1"></script>
+  <script src="game.js?v=20261030-thermo1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
