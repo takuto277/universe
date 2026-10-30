@@ -247,3 +247,10 @@ h1 {
 .item-btn.milk { color: #8ff0d0; border-color: rgba(143, 240, 208, 0.7); }
 .item-btn.eraser { color: #ff8fbd; border-color: rgba(255, 143, 189, 0.7); }
 .item-btn.tray { color: #5ee7ff; border-color: rgba(94, 231, 255, 0.7); }
+.countdown-overlay { position: absolute; inset: 0; z-index: 7; display: flex; align-items: center; justify-content: center; pointer-events: none; color: #ffe6a3; font-size: 96px; font-weight: 900; text-shadow: 0 0 28px rgba(255,209,102,.7); }
+.toast { position: absolute; left: 50%; top: 35%; transform: translate(-50%, -50%) scale(.92); z-index: 7; padding: 10px 22px; border: 1px solid rgba(255,209,102,.5); border-radius: 12px; background: rgba(4,14,10,.82); color: #ffe6a3; font-size: 13px; font-weight: 900; letter-spacing: .5px; opacity: 0; pointer-events: none; transition: opacity .15s ease, transform .15s ease; text-align:center; }
+.toast.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+.drift-hud { position: absolute; left: 50%; bottom: 42px; transform: translateX(-50%); width: 200px; z-index: 6; pointer-events: none; color: var(--muted); font-size: 8px; font-weight: 900; letter-spacing: 1px; }
+.drift-hud > div { height: 9px; margin-top: 4px; border: 1px solid rgba(125,245,199,.24); border-radius: 999px; overflow: hidden; background: rgba(4,14,10,.72); }
+.drift-hud i { display: block; width: 0%; height: 100%; background: linear-gradient(90deg, var(--mint), var(--gold), var(--pink)); }
+#flash { position: absolute; inset: 0; z-index: 6; background: #eafff4; opacity: 0; pointer-events: none; }

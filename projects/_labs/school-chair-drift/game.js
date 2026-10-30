@@ -4,71 +4,86 @@
   var root = typeof window !== 'undefined' ? window : globalThis;
   var E = root.SchoolChairDriftEngine;
   if (!E) return;
+  var T = root.THREE;
   var Audio = root.SoccerAudio;
 
-  var C = E.C;
-  var HORIZON = 220;
-  var FLOOR_K = 56000;
-  var X_FOCAL = 330;
-  var VIEW_DEPTH = 2400;
   var canvas = null;
-  var ctx = null;
+  var renderer = null;
+  var scene = null;
+  var camera = null;
+  var stageGroup = null;
+  var racerGroups = [];
+  var itemMeshes = [];
+  var trapMeshes = [];
+  var shadowMeshes = [];
   var els = {};
   var game = null;
   var mode = 'title';
   var shownScreen = 'screen-title';
   var stageIndex = 0;
   var lastTs = 0;
-  var scaleX = 1;
-  var scaleY = 1;
   var pointer = null;
   var keySteer = 0;
-  var effects = null;
-  var skid = [];
-  var tutorial = 0;
+  var toastTimer = null;
+  var resultDelay = 0;
+  var flashTimer = null;
+  var itemSignatures = {};
+  var trapSignatures = {};
 
-  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+  var HORIZON_Y = 2.95;
+  var TRACK_W = 5.2;
+
   function $(id) { return document.getElementById(id); }
-  function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
-  function wrapS(s, length) { while (s < 0) s += length; while (s >= length) s -= length; return s; }
+  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
+  function wrapS(s, len) { while (s < 0) s += len; while (s >= len) s -= len; return s; }
+  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
   function stageData() { return E.STAGES[game.stage]; }
-  function playerRacer() { return game ? game.racers[0] : null; }
+  function playerRacer() { return game.racers[0]; }
 
   function setScreen(name) {
     if (name === shownScreen) return;
     shownScreen = name;
     var screens = [
-      ['screen-title', els.screenTitle],
-      ['screen-over', els.screenOver],
-      ['screen-stage', els.screenStage],
-      ['screen-ending', els.screenEnding],
+      ['screen-title', els.screenTitle], ['screen-over', els.screenOver],
+      ['screen-stage', els.screenStage], ['screen-ending', els.screenEnding],
       ['screen-pause', els.screenPause]
     ];
     for (var i = 0; i < screens.length; i++) {
-      if (!screens[i][1]) continue;
-      screens[i][1].classList.toggle('visible', screens[i][0] === name);
+      if (screens[i][1]) screens[i][1].classList.toggle('visible', screens[i][0] === name);
     }
   }
 
-  function resetEffects() {
-    effects = {
-      particles: [], popups: [], rings: [], shake: 0, flash: 0,
-      flashColor: '220, 255, 230', banner: null, fireworks: 0,
-      fireworkTimer: 0, resultDelay: 0, countdownPulse: 0
-    };
-    skid = [];
+  function toast(text, color) {
+    if (!els.toast) return;
+    els.toast.textContent = text;
+    els.toast.style.color = color || '';
+    els.toast.classList.add('show');
+    if (toastTimer) clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { els.toast.classList.remove('show'); }, 1200);
+  }
+
+  function flash(color) {
+    if (!els.flash) return;
+    els.flash.style.background = color || '#eafff4';
+    els.flash.style.opacity = '0.65';
+    if (flashTimer) clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () { els.flash.style.opacity = '0'; }, 80);
   }
 
   function showTitle() {
     mode = 'title';
     game = null;
-    pointer = null;
     stageIndex = 0;
-    resetEffects();
+    pointer = null;
+    resultDelay = 0;
     setScreen('screen-title');
     if (els.hud) els.hud.classList.add('hidden');
     if (els.itemBtn) els.itemBtn.classList.add('hidden');
     if (els.pause) els.pause.classList.add('hidden');
+    if (els.countdown) els.countdown.textContent = '';
+    if (els.driftHud) els.driftHud.style.display = 'none';
+    if (scene) scene.background = new T.Color(0x07110d);
+    if (stageGroup) clearStage();
     lastTs = 0;
   }
 
@@ -78,70 +93,16 @@
     game = E.createGame({ stage: stageIndex });
     pointer = null;
     keySteer = 0;
-    resetEffects();
+    resultDelay = 0;
     setScreen(null);
     if (els.hud) els.hud.classList.remove('hidden');
     if (els.pause) els.pause.classList.remove('hidden');
     if (els.itemBtn) els.itemBtn.classList.add('hidden');
+    if (els.driftHud) els.driftHud.style.display = '';
+    if (els.countdown) els.countdown.textContent = '';
+    if (renderer) buildSchool();
     lastTs = 0;
     syncUI();
-  }
-
-  function itemLabel(item) {
-    if (item === 'milk') return 'MILK!';
-    if (item === 'eraser') return 'ERASER';
-    if (item === 'tray') return 'TRAY';
-    return 'ITEM';
-  }
-
-  function syncUI() {
-    if (els.hud) els.hud.classList.toggle('hidden', mode !== 'match');
-    if (!game) return;
-    var st = E.getState(game);
-    if (els.lap) els.lap.textContent = Math.min(st.lap, st.laps) + '/' + st.laps;
-    if (els.rank) els.rank.textContent = st.place + '/' + st.racers.length;
-    if (els.turn) {
-      els.turn.textContent = st.phase === 'countdown' ? 'READY' : st.stageName;
-    }
-    if (els.shots) {
-      if (st.phase === 'countdown') els.shots.textContent = 'START IN ' + Math.max(0, Math.ceil(st.countdown));
-      else els.shots.textContent = 'RANK ' + st.place + '/' + st.racers.length + ' · ' + Math.round(st.progress * 100) + '%';
-    }
-
-    if (els.itemBtn) {
-      var showItem = st.phase === 'playing' && st.player.item;
-      els.itemBtn.classList.toggle('hidden', !showItem);
-      els.itemBtn.classList.remove('milk', 'eraser', 'tray');
-      if (showItem) {
-        els.itemBtn.textContent = itemLabel(st.player.item);
-        els.itemBtn.classList.add(st.player.item);
-        els.itemBtn.disabled = false;
-      } else {
-        els.itemBtn.textContent = 'ITEM';
-      }
-    }
-
-    var target = null;
-    if (st.phase === 'clear' && !effects.resultDelay) {
-      target = st.stage + 1 < st.stageTotal ? 'screen-stage' : 'screen-ending';
-    } else if (st.phase === 'over' && !effects.resultDelay) {
-      target = 'screen-over';
-    } else if (st.paused) {
-      target = 'screen-pause';
-    }
-    setScreen(target);
-    if (els.pause) els.pause.classList.toggle('hidden', !((st.phase === 'playing' || st.phase === 'countdown') && !st.paused));
-    if (els.itemBtn && st.paused) els.itemBtn.classList.add('hidden');
-
-    if (st.phase === 'clear' && st.stage + 1 < st.stageTotal) {
-      if (els.stageClearText) els.stageClearText.textContent = '1位でフィニッシュ！ 次のコースは ' + E.STAGES[st.stage + 1].name;
-    }
-    if (st.phase === 'over') {
-      if (els.overRank) els.overRank.textContent = st.place + '/' + st.racers.length;
-      if (els.overLap) els.overLap.textContent = Math.min(st.lap, st.laps) + '/' + st.laps;
-      if (els.overStage) els.overStage.textContent = (st.stage + 1) + '/' + st.stageTotal;
-      if (els.overSub) els.overSub.textContent = st.reason === 'timeup' ? 'タイムアップ。' : (st.place === 1 ? '同着？' : '1位でないと次のコースへ進めない。');
-    }
   }
 
   function syncAudioButton() {
@@ -169,7 +130,7 @@
     lastTs = 0;
     syncUI();
   }
-  function togglePause() { if (!game) return; if (game.paused) resumeGame(); else pauseGame(); }
+  function togglePause() { if (game) { if (game.paused) resumeGame(); else pauseGame(); } }
 
   function useItem() {
     if (!game || game.phase !== 'playing') return;
@@ -179,838 +140,440 @@
     }
   }
 
-  function roundRect(x, y, w, h, r) {
-    var rr = Math.max(0, Math.min(r, w / 2, h / 2));
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.lineTo(x + w - rr, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
-    ctx.lineTo(x + w, y + h - rr);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
-    ctx.lineTo(x + rr, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
-    ctx.lineTo(x, y + rr);
-    ctx.quadraticCurveTo(x, y, x + rr, y);
-    ctx.closePath();
+  function itemLabel(item) {
+    if (item === 'milk') return 'MILK!';
+    if (item === 'eraser') return 'ERASER';
+    if (item === 'tray') return 'TRAY';
+    return 'ITEM';
   }
 
-  function mod(n, m) { return ((n % m) + m) % m; }
-
-  function drawBackdrop(time) {
-    var sky = ctx.createLinearGradient(0, 0, 0, C.VIEW_H);
-    sky.addColorStop(0, '#07121a');
-    sky.addColorStop(0.34, '#0b1820');
-    sky.addColorStop(0.56, '#071510');
-    sky.addColorStop(1, '#020605');
-    ctx.fillStyle = sky;
-    ctx.fillRect(0, 0, C.VIEW_W, C.VIEW_H);
-    for (var i = 0; i < 42; i++) {
-      var x = mod(i * 97 + 31 - time * (3 + i % 5), C.VIEW_W);
-      var y = mod(i * 61 + 17, 200);
-      ctx.fillStyle = 'rgba(160, 230, 255, ' + (0.02 + (i % 4) * 0.012) + ')';
-      ctx.fillRect(x, y, 1.4, 1.4);
+  function syncUI() {
+    if (els.hud) els.hud.classList.toggle('hidden', mode !== 'match');
+    if (!game) return;
+    var st = E.getState(game);
+    var lap = Math.min(st.lap, st.laps);
+    if (els.lap) els.lap.textContent = lap + '/' + st.laps;
+    if (els.rank) els.rank.textContent = st.place + '/' + st.racers.length;
+    if (els.turn) els.turn.textContent = st.phase === 'countdown' ? 'READY' : st.stageName;
+    if (els.shots) els.shots.textContent = st.phase === 'countdown' ? 'START IN ' + Math.max(0, Math.min(3, Math.ceil(st.countdown))) : 'RANK ' + st.place + '/' + st.racers.length + ' · ' + Math.round(st.progress * 100) + '%';
+    if (els.countdown) {
+      els.countdown.textContent = st.phase === 'countdown' ? String(Math.max(1, Math.min(3, Math.ceil(st.countdown)))) : '';
     }
-    ctx.fillStyle = 'rgba(255, 209, 102, 0.05)';
-    ctx.fillRect(0, HORIZON - 2, C.VIEW_W, 2);
-  }
-
-  function project(worldS, worldX, depth) {
-    if (!game) return null;
-    var p = playerRacer();
-    var st = stageData();
-    var d = depth == null ? wrapS(worldS - p.s, st.length) : depth;
-    if (d < 52 || d > VIEW_DEPTH) return null;
-    var scale = X_FOCAL / d;
-    return {
-      x: C.VIEW_W / 2 + (worldX - p.x) * scale,
-      y: HORIZON + FLOOR_K / d,
-      scale: scale,
-      d: d
-    };
-  }
-
-  function drawFloor() {
-    var p = playerRacer();
-    var st = stageData();
-    var step = 55;
-    for (var d = VIEW_DEPTH; d > 54; d -= step) {
-      var d2 = Math.max(54, d - step);
-      var s1 = wrapS(p.s + d, st.length);
-      var s2 = wrapS(p.s + d2, st.length);
-      var c1 = E.trackCenter(st, s1);
-      var c2 = E.trackCenter(st, s2);
-      var p1 = project(s1, c1 - st.halfWidth, d);
-      var p2 = project(s1, c1 + st.halfWidth, d);
-      var p3 = project(s2, c2 + st.halfWidth, d2);
-      var p4 = project(s2, c2 - st.halfWidth, d2);
-      if (!p1 || !p2 || !p3 || !p4) continue;
-      ctx.fillStyle = (Math.floor((p.s + d) / 120) % 2 === 0) ? '#153629' : '#0e2a20';
-      ctx.beginPath();
-      ctx.moveTo(p1.x, p1.y);
-      ctx.lineTo(p2.x, p2.y);
-      ctx.lineTo(p3.x, p3.y);
-      ctx.lineTo(p4.x, p4.y);
-      ctx.closePath();
-      ctx.fill();
-      if (Math.floor((p.s + d) / 120) % 5 === 0) {
-        ctx.strokeStyle = 'rgba(196, 255, 225, 0.12)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(p4.x, p4.y);
-        ctx.lineTo(p3.x, p3.y);
-        ctx.stroke();
+    if (els.driftFill) els.driftFill.style.width = Math.round(st.player.drift * 100) + '%';
+    if (els.toast && st.player.boost > 0 && !els.toast.classList.contains('show')) { /* reserved */ }
+    if (els.itemBtn) {
+      var show = st.phase === 'playing' && st.player.item;
+      els.itemBtn.classList.toggle('hidden', !show);
+      els.itemBtn.classList.remove('milk', 'eraser', 'tray');
+      if (show) {
+        els.itemBtn.textContent = itemLabel(st.player.item);
+        els.itemBtn.classList.add(st.player.item);
+        els.itemBtn.disabled = false;
       }
     }
-
-    // lane edges & side walls
-    for (d = VIEW_DEPTH; d > 54; d -= step) {
-      var d2w = Math.max(54, d - step);
-      s1 = wrapS(p.s + d, st.length);
-      s2 = wrapS(p.s + d2w, st.length);
-      c1 = E.trackCenter(st, s1);
-      c2 = E.trackCenter(st, s2);
-      drawWall(c1 - st.halfWidth, c2 - st.halfWidth, s1, s2, d, d2w, '#203d31', '#6fe6b8');
-      drawWall(c1 + st.halfWidth, c2 + st.halfWidth, s1, s2, d, d2w, '#203d31', '#6fe6b8');
+    var target = null;
+    if (resultDelay > 0) target = null;
+    else if (st.phase === 'clear') target = st.stage + 1 < st.stageTotal ? 'screen-stage' : 'screen-ending';
+    else if (st.phase === 'over') target = 'screen-over';
+    else if (st.paused) target = 'screen-pause';
+    setScreen(target);
+    if (els.pause) els.pause.classList.toggle('hidden', !((st.phase === 'playing' || st.phase === 'countdown') && !st.paused));
+    if (st.phase === 'clear' && st.stage + 1 < st.stageTotal) {
+      if (els.stageClearText) els.stageClearText.textContent = '1位でフィニッシュ！ 次は ' + E.STAGES[st.stage + 1].name;
     }
-
-    drawSchoolDetails();
-
-    // overhead lights
-    for (d = 260; d < VIEW_DEPTH; d += 420) {
-      s1 = wrapS(p.s + d, st.length);
-      c1 = E.trackCenter(st, s1);
-      var lp = project(s1, c1, d);
-      if (!lp) continue;
-      var lw = 36 * lp.scale;
-      ctx.save();
-      ctx.shadowColor = 'rgba(255, 238, 180, 0.55)';
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = 'rgba(255, 238, 190, 0.3)';
-      ctx.fillRect(lp.x - lw / 2, lp.y - 128 * lp.scale, lw, 5 * lp.scale);
-      ctx.restore();
+    if (st.phase === 'over') {
+      if (els.overRank) els.overRank.textContent = st.place + '/' + st.racers.length;
+      if (els.overLap) els.overLap.textContent = lap + '/' + st.laps;
+      if (els.overStage) els.overStage.textContent = (st.stage + 1) + '/' + st.stageTotal;
+      if (els.overSub) els.overSub.textContent = st.reason === 'timeup' ? 'タイムアップ。' : '1位でないと次のコースへ進めない。';
     }
   }
 
-  function drawWall(x1, x2, s1, s2, d1, d2, fill, edge) {
-    var p = playerRacer();
-    var st = stageData();
-    var f1 = project(s1, x1, d1);
-    var f2 = project(s2, x2, d2);
-    if (!f1 || !f2) return;
-    var h1 = 125 * f1.scale;
-    var h2 = 125 * f2.scale;
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.moveTo(f1.x, f1.y);
-    ctx.lineTo(f2.x, f2.y);
-    ctx.lineTo(f2.x, f2.y - h2);
-    ctx.lineTo(f1.x, f1.y - h1);
-    ctx.closePath();
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(143, 240, 208, 0.24)';
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(f1.x, f1.y - h1);
-    ctx.lineTo(f2.x, f2.y - h2);
-    ctx.stroke();
+  /* ---------- Three.js school ---------- */
+  function material(color, emissive) {
+    return new T.MeshStandardMaterial({
+      color: color, roughness: 0.82, metalness: 0.04,
+      emissive: emissive || 0x000000, emissiveIntensity: emissive ? 0.7 : 0,
+      side: T.DoubleSide
+    });
+  }
+  function addBox(group, w, h, d, x, y, z, color, rotY, emissive) {
+    var m = new T.Mesh(new T.BoxGeometry(w, h, d), material(color, emissive));
+    m.position.set(x, y, z);
+    if (rotY) m.rotation.y = rotY;
+    group.add(m);
+    return m;
+  }
+  function addPlane(group, w, h, x, y, z, rotY, color, emissive) {
+    var m = new T.Mesh(new T.PlaneGeometry(w, h), material(color, emissive));
+    m.position.set(x, y, z);
+    m.rotation.y = rotY || 0;
+    group.add(m);
+    return m;
+  }
+  function textPlane(text, color) {
+    if (!T || typeof document === 'undefined') return null;
+    var c = document.createElement('canvas');
+    c.width = 256; c.height = 64;
+    var g = c.getContext('2d');
+    g.fillStyle = 'rgba(5,18,12,0.9)';
+    g.fillRect(0, 0, 256, 64);
+    g.strokeStyle = color || '#8ff0d0';
+    g.strokeRect(2, 2, 252, 60);
+    g.fillStyle = color || '#dfffea';
+    g.font = '900 30px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillText(text, 128, 34);
+    var tex = new T.CanvasTexture(c);
+    tex.minFilter = T.LinearFilter;
+    return new T.Mesh(new T.PlaneGeometry(3.4, 0.85), new T.MeshBasicMaterial({ map: tex, transparent: true, side: T.DoubleSide }));
   }
 
-  function panelQuad(s, x, d, height, fill, edge, inset) {
-    var p = playerRacer();
+  function clearStage() {
+    if (!stageGroup) return;
+    scene.remove(stageGroup);
+    stageGroup.traverse(function (o) {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (o.material.map) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+    stageGroup = null;
+    racerGroups = [];
+    itemMeshes = [];
+    trapMeshes = [];
+    itemSignatures = {};
+    trapSignatures = {};
+  }
+
+  function pointOf(s) { return E.coursePoint(stageData(), s); }
+  function tangentOf(s) { return E.courseTangent(stageData(), s); }
+  function normalOf(s) { return E.courseNormal(stageData(), s); }
+
+  function buildTrackMesh(group, y, color, widthScale, emissive) {
     var st = stageData();
-    var s2 = s + 150;
-    var d2 = wrapS(s2 - p.s, st.length);
-    if (d < 70 || d > 1900 || d2 < 70 || d2 > 1900) return null;
-    var p1 = project(s, x, d);
-    var p2 = project(s2, x, d2);
-    if (!p1 || !p2) return null;
-    var top1 = p1.y - height * p1.scale;
-    var top2 = p2.y - height * p2.scale;
-    ctx.fillStyle = fill;
-    ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.lineTo(p2.x, top2);
-    ctx.lineTo(p1.x, top1);
-    ctx.closePath();
-    ctx.fill();
-    if (edge) {
-      ctx.strokeStyle = edge;
-      ctx.lineWidth = 1;
-      ctx.stroke();
+    var n = 220;
+    var verts = [], idx = [];
+    for (var i = 0; i <= n; i++) {
+      var s = st.length * i / n;
+      var p = pointOf(s);
+      var normal = normalOf(s);
+      var hw = st.halfWidth * (widthScale == null ? 1 : widthScale);
+      verts.push(p.x + normal.x * hw, y, p.z + normal.z * hw);
+      verts.push(p.x - normal.x * hw, y, p.z - normal.z * hw);
     }
-    return { x1: p1.x, x2: p2.x, y1: p1.y, y2: p2.y, top1: top1, top2: top2 };
+    for (i = 0; i < n; i++) {
+      var a = i * 2;
+      idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
+    }
+    var geo = new T.BufferGeometry();
+    geo.setAttribute('position', new T.Float32BufferAttribute(verts, 3));
+    geo.setIndex(idx);
+    geo.computeVertexNormals();
+    var mesh = new T.Mesh(geo, material(color, emissive));
+    group.add(mesh);
+    return mesh;
   }
 
-  function drawWallText(text, s, x, d, yOffset, size) {
-    var p = playerRacer();
-    var st = stageData();
-    var pr = project(s, x, d);
-    if (!pr) return;
-    var px = pr.x;
-    var py = pr.y - yOffset * pr.scale;
-    if (px < -60 || px > C.VIEW_W + 60 || py < 0 || py > C.VIEW_H) return;
-    ctx.save();
-    ctx.fillStyle = 'rgba(237, 255, 244, 0.82)';
-    ctx.font = '900 ' + Math.max(6, size * pr.scale) + 'px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, px, py);
-    ctx.restore();
+  function zoneFor(s) {
+    var t = wrapS(s, stageData().length) / stageData().length;
+    if (t < 0.09) return 'entrance';
+    if (t < 0.30) return 'classroom';
+    if (t < 0.55) return 'gym';
+    if (t < 0.74) return 'special';
+    return 'corridor';
   }
 
-  function drawSchoolDetails() {
-    var p = playerRacer();
+  function buildWallRing(group, inner, color) {
     var st = stageData();
-    var base = Math.floor((p.s - 200) / 260) * 260;
-    for (var s = base; s < p.s + 1900; s += 260) {
-      var d = wrapS(s - p.s, st.length);
-      if (d < 90 || d > 1900) continue;
-      var center = E.trackCenter(st, s);
-      var leftX = center - st.halfWidth;
-      var rightX = center + st.halfWidth;
-      var index = Math.floor(s / 260);
-      var side = index % 4;
-      // opposite walls get doors/windows; near the start, shoe lockers.
-      if (s >= -260 && s < 320) {
-        panelQuad(s + 20, leftX, wrapS(s + 20 - p.s, st.length), 96, 'rgba(57, 100, 132, 0.75)', 'rgba(182, 233, 255, 0.45)');
-        panelQuad(s + 20, rightX, wrapS(s + 20 - p.s, st.length), 96, 'rgba(57, 100, 132, 0.75)', 'rgba(182, 233, 255, 0.45)');
-        drawWallText('下駄箱', s + 70, leftX, wrapS(s + 70 - p.s, st.length), 58, 10);
-        drawWallText('昇降口', s + 70, rightX, wrapS(s + 70 - p.s, st.length), 58, 10);
-      } else if (side === 0 || side === 3) {
-        panelQuad(s, leftX, d, 90, 'rgba(26, 62, 48, 0.8)', 'rgba(143, 240, 208, 0.35)');
-        drawWallText(index % 3 === 0 ? '教室' : '特別教室', s + 10, leftX, wrapS(s + 10 - p.s, st.length), 52, 9);
-      } else if (side === 1) {
-        // classroom door
-        panelQuad(s, leftX, d, 86, 'rgba(101, 69, 40, 0.9)', 'rgba(255, 209, 102, 0.5)');
-        panelQuad(s + 8, leftX, wrapS(s + 8 - p.s, st.length), 70, 'rgba(171, 121, 69, 0.55)', 'rgba(255, 226, 150, 0.35)');
-        drawWallText('1-A', s + 14, leftX, wrapS(s + 14 - p.s, st.length), 62, 8);
-      } else {
-        // windows along the right wall
-        panelQuad(s, rightX, d, 74, 'rgba(97, 181, 196, 0.26)', 'rgba(180, 247, 255, 0.55)');
-        for (var w = 1; w < 4; w++) {
-          var ws = s + w * 34;
-          var wd = wrapS(ws - p.s, st.length);
-          var wp = project(ws, rightX, wd);
-          if (wp) {
-            ctx.strokeStyle = 'rgba(207, 252, 255, 0.33)';
-            ctx.lineWidth = 1;
-            ctx.beginPath();
-            ctx.moveTo(wp.x, wp.y - 70 * wp.scale);
-            ctx.lineTo(wp.x, wp.y - 10 * wp.scale);
-            ctx.stroke();
-          }
+    var n = 72;
+    for (var i = 0; i < n; i++) {
+      var s1 = st.length * i / n;
+      var s2 = st.length * (i + 1) / n;
+      var mid = (s1 + s2) / 2;
+      var zone = zoneFor(mid);
+      if (!inner && (zone === 'entrance' || zone === 'classroom' || zone === 'gym')) continue;
+      var p1 = pointOf(s1), p2 = pointOf(s2);
+      var n1 = normalOf(s1), n2 = normalOf(s2);
+      var off = inner ? st.halfWidth + 0.10 : -(st.halfWidth + 0.15);
+      var x1 = p1.x + n1.x * off, z1 = p1.z + n1.z * off;
+      var x2 = p2.x + n2.x * off, z2 = p2.z + n2.z * off;
+      var mx = (x1 + x2) / 2, mz = (z1 + z2) / 2;
+      var len = Math.sqrt((x2 - x1) * (x2 - x1) + (z2 - z1) * (z2 - z1)) + 0.04;
+      var angle = Math.atan2(x2 - x1, z2 - z1);
+      addBox(group, 0.12, inner ? 0.92 : 2.9, len, mx, inner ? 0.46 : 1.45, mz, color, angle);
+      if (inner) {
+        addBox(group, 0.16, 0.14, len, mx, 1.22, mz, 0x8ff0d0, angle, 0x2b6b58);
+      }
+    }
+  }
+
+  function addLockerRow(group, s1, s2, side, color) {
+    var st = stageData();
+    var steps = 7;
+    for (var i = 0; i < steps; i++) {
+      var s = s1 + (s2 - s1) * i / steps;
+      var p = pointOf(s);
+      var normal = normalOf(s);
+      var tangent = tangentOf(s);
+      var off = side * (st.halfWidth + 0.38);
+      addBox(group, 0.55, 1.55, 0.55, p.x + normal.x * off, 0.78, p.z + normal.z * off, color, Math.atan2(tangent.x, tangent.z), 0x183c32);
+    }
+  }
+
+  function buildRoom(group, sMid, type) {
+    var st = stageData();
+    var p = pointOf(sMid);
+    var tangent = tangentOf(sMid);
+    var normal = normalOf(sMid);
+    var angle = Math.atan2(tangent.x, tangent.z);
+    var room = new T.Group();
+    room.position.set(p.x, 0, p.z);
+    room.rotation.y = angle;
+    group.add(room);
+    var depth = type === 'gym' ? 13 : 7;
+    var width = type === 'gym' ? 22 : 13;
+    var baseX = st.halfWidth + depth / 2;
+    var floorColor = type === 'gym' ? 0xa87950 : (type === 'classroom' ? 0x8a765b : 0x5e8a79);
+    // Local +X is outward from the track at this point.
+    addBox(room, depth, 0.08, width, baseX, 0.02, 0, floorColor);
+    addBox(room, 0.16, type === 'gym' ? 5.6 : 3.0, width, st.halfWidth + depth, (type === 'gym' ? 2.8 : 1.5), 0, type === 'gym' ? 0x3c6f62 : 0x6d5b45);
+    addBox(room, depth, type === 'gym' ? 5.6 : 3.0, 0.16, baseX, (type === 'gym' ? 2.8 : 1.5), width / 2, 0x4d5e50);
+    addBox(room, depth, type === 'gym' ? 5.6 : 3.0, 0.16, baseX, (type === 'gym' ? 2.8 : 1.5), -width / 2, 0x4d5e50);
+    if (type === 'gym') {
+      // court lines and hoops
+      for (var line = -2; line <= 2; line++) {
+        addBox(room, 0.025, 0.012, width * 0.84, baseX + line * 1.9, 0.08, 0, 0xd7a75b);
+      }
+      addBox(room, 0.08, 0.08, width * 0.84, baseX, 0.1, 0, 0xf3d48e);
+      addBox(room, 0.4, 2.1, 0.4, st.halfWidth + 1.2, 1.05, width / 2 - 0.7, 0x8a5e3a);
+      addBox(room, 0.4, 2.1, 0.4, st.halfWidth + 1.2, 1.05, -width / 2 + 0.7, 0x8a5e3a);
+      addBox(room, 0.08, 0.08, 1.1, st.halfWidth + 1.2, 2.6, width / 2 - 0.7, 0xffd166, 0, 0xffd166);
+      addBox(room, 0.08, 0.08, 1.1, st.halfWidth + 1.2, 2.6, -width / 2 + 0.7, 0xffd166, 0, 0xffd166);
+      var sign = textPlane('体育館', '#8ff0d0');
+      if (sign) { sign.position.set(st.halfWidth + depth + 0.02, 3.8, 0); sign.rotation.y = -Math.PI / 2; room.add(sign); }
+    } else {
+      // desks, blackboard, windows
+      for (var i = -1; i <= 1; i++) {
+        for (var j = -1; j <= 1; j++) {
+          addBox(room, 0.55, 0.5, 0.9, st.halfWidth + 2.0 + i * 0.8, 0.35, j * 1.35, 0x76563d);
+          addBox(room, 0.56, 0.36, 0.92, st.halfWidth + 2.0 + i * 0.8, 0.68, j * 1.35, 0x9b7651);
         }
       }
-      if (index % 2 === 1) {
-        panelQuad(s, rightX, d, 68, 'rgba(38, 81, 67, 0.64)', 'rgba(160, 245, 214, 0.28)');
-      }
-    }
-    // stairs signs at fixed sections of each floor
-    var stairS = st.id === 'corridor' ? 1500 : (st.id === 'special' ? 2300 : 3300);
-    var stairD = wrapS(stairS - p.s, st.length);
-    if (stairD < 1600) {
-      var sc = E.trackCenter(st, stairS);
-      drawWallText('階段', stairS, sc - st.halfWidth, stairD, 62, 10);
-      drawWallText('↑', stairS + 18, sc - st.halfWidth, wrapS(stairS + 18 - p.s, st.length), 48, 12);
+      addBox(room, 0.08, 1.2, width * 0.64, st.halfWidth + depth - 0.08, 1.5, 0, 0x1e342b);
+      var classSign = textPlane(type === 'special' ? '特別教室' : '教室', '#ffd166');
+      if (classSign) { classSign.position.set(st.halfWidth + depth - 0.2, 2.45, 0); classSign.rotation.y = -Math.PI / 2; room.add(classSign); }
     }
   }
 
-  function drawFinish() {
-    var p = playerRacer();
+  function addCorridorSigns(group) {
     var st = stageData();
-    var d = wrapS(-p.s, st.length);
-    if (d < 55 || d > VIEW_DEPTH) return;
-    var center = E.trackCenter(st, 0);
-    var left = project(0, center - st.halfWidth, d);
-    var right = project(0, center + st.halfWidth, d);
-    if (!left || !right) return;
-    var top = Math.min(left.y, right.y) - 95 * left.scale;
-    var cols = 10;
-    for (var row = 0; row < 2; row++) {
-      for (var col = 0; col < cols; col++) {
-        ctx.fillStyle = (row + col) % 2 === 0 ? 'rgba(245, 255, 250, 0.9)' : 'rgba(15, 30, 24, 0.9)';
-        var x1 = left.x + (right.x - left.x) * col / cols;
-        var x2 = left.x + (right.x - left.x) * (col + 1) / cols;
-        var y1 = left.y - 28 * left.scale + row * 14 * left.scale;
-        ctx.fillRect(x1, y1, x2 - x1, 14 * left.scale);
-      }
+    var signs = [
+      { s: st.length * 0.03, text: '昇降口', color: '#8ff0d0' },
+      { s: st.length * 0.37, text: '体育館', color: '#ffd166' },
+      { s: st.length * 0.62, text: '階段', color: '#8ff0d0' },
+      { s: st.length * 0.80, text: '特別教室', color: '#ffd166' }
+    ];
+    for (var i = 0; i < signs.length; i++) {
+      var p = pointOf(signs[i].s);
+      var n = normalOf(signs[i].s);
+      var t = tangentOf(signs[i].s);
+      var sign = textPlane(signs[i].text, signs[i].color);
+      if (!sign) continue;
+      sign.position.set(p.x - n.x * (st.halfWidth + 0.16), 2.15, p.z - n.z * (st.halfWidth + 0.16));
+      sign.rotation.y = Math.atan2(t.x, t.z) + Math.PI / 2;
+      group.add(sign);
     }
-    ctx.strokeStyle = 'rgba(255, 209, 102, 0.85)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(left.x, left.y - 32 * left.scale, right.x - left.x, 30 * left.scale);
-    ctx.fillStyle = '#ffe6a3';
-    ctx.font = '900 ' + Math.max(6, 10 * left.scale) + 'px ui-monospace, Menlo, monospace';
-    ctx.textAlign = 'center';
-    ctx.fillText('FINISH', (left.x + right.x) / 2, top);
   }
 
-  function drawObstacle(o) {
-    var p = playerRacer();
+  function buildSchool() {
     var st = stageData();
-    var d = wrapS(o.s - p.s, st.length);
-    if (d < 60 || d > VIEW_DEPTH) return;
-    var pr = project(o.s, o.x, d);
-    if (!pr) return;
-    var scale = pr.scale;
-    var w = o.w * scale * 0.9;
-    var h = Math.max(8, o.h * scale * (o.kind === 'locker' ? 1.3 : 0.9));
-    var x = pr.x;
-    var y = pr.y;
-    ctx.save();
-    ctx.globalAlpha = 0.32;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(x, y + 2, w * 0.52, h * 0.15, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    var fill = o.kind === 'locker' ? '#315a72' : (o.kind === 'bucket' ? '#507f7b' : (o.kind === 'cart' ? '#8a663f' : (o.kind === 'plant' ? '#2b5a3b' : '#5e4734')));
-    var edge = o.kind === 'locker' ? '#9fe3ff' : '#ffd166';
-    ctx.fillStyle = fill;
-    ctx.strokeStyle = edge;
-    ctx.lineWidth = Math.max(1, 2 * scale);
-    if (o.kind === 'bucket') {
-      ctx.beginPath();
-      ctx.ellipse(x, y - h * 0.35, w * 0.45, h * 0.45, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else if (o.kind === 'plant') {
-      ctx.beginPath();
-      ctx.arc(x, y - h * 0.4, w * 0.44, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    } else {
-      ctx.beginPath();
-      ctx.moveTo(x - w / 2, y);
-      ctx.lineTo(x - w / 2, y - h);
-      ctx.lineTo(x + w / 2, y - h);
-      ctx.lineTo(x + w / 2, y);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(255,255,255,0.13)';
-      ctx.fillRect(x - w * 0.36, y - h * 0.84, w * 0.72, Math.max(2, h * 0.12));
+    stageGroup = new T.Group();
+    scene.add(stageGroup);
+    buildTrackMesh(stageGroup, 0.0, st.floor === 1 ? 0x5f614b : (st.floor === 2 ? 0x536557 : 0x4b5d62), 1);
+    buildTrackMesh(stageGroup, 0.03, 0x7d6a4f, 0.86);
+    // courtyard grass
+    var courtGeo = new T.CircleGeometry(1, 64);
+    var court = new T.Mesh(courtGeo, material(0x284f35));
+    court.rotation.x = -Math.PI / 2;
+    court.scale.set(st.a - 4, st.b - 4, 1);
+    court.position.y = -0.04;
+    stageGroup.add(court);
+    // walls and rooms
+    buildWallRing(stageGroup, true, 0x6b7d69);
+    buildWallRing(stageGroup, false, st.floor === 1 ? 0x6f6654 : 0x5f6e67);
+    buildRoom(stageGroup, st.length * 0.25, 'classroom');
+    buildRoom(stageGroup, st.length * 0.50, 'gym');
+    buildRoom(stageGroup, st.length * 0.73, 'special');
+    addLockerRow(stageGroup, 0, st.length * 0.045, 1, 0x416d86);
+    addLockerRow(stageGroup, 0, st.length * 0.045, -1, 0x416d86);
+    addCorridorSigns(stageGroup);
+    // ceiling
+    buildTrackMesh(stageGroup, HORIZON_Y, 0x18251f, 1.04);
+
+    // obstacles
+    var i;
+    for (i = 0; i < game.obstacles.length; i++) {
+      var o = game.obstacles[i];
+      var op = pointOf(o.s);
+      var on = normalOf(o.s);
+      var ot = tangentOf(o.s);
+      var x = op.x + on.x * o.off, z = op.z + on.z * o.off;
+      var col = o.kind === 'locker' ? 0x315a72 : (o.kind === 'bucket' ? 0x507f7b : (o.kind === 'cart' ? 0x8a663f : (o.kind === 'plant' ? 0x2b5a3b : 0x5e4734)));
+      var mesh = addBox(stageGroup, o.w, o.kind === 'locker' ? 1.4 : 0.62, o.h, x, o.kind === 'locker' ? 0.7 : 0.31, z, col, Math.atan2(ot.x, ot.z));
+      mesh.userData.obstacle = i;
     }
-    ctx.restore();
+    racerGroups = [];
+    for (i = 0; i < game.racers.length; i++) {
+      var rg = buildChair(game.racers[i].team, i === 0);
+      scene.add(rg);
+      racerGroups.push(rg);
+    }
+    itemMeshes = [];
+    for (i = 0; i < game.itemBoxes.length; i++) {
+      var b = game.itemBoxes[i];
+      var bp = pointOf(b.s), bn = normalOf(b.s), bt = tangentOf(b.s);
+      var cube = new T.Mesh(new T.BoxGeometry(0.75, 0.75, 0.75), material(0x3b8c77, 0x2b6b58));
+      cube.position.set(bp.x + bn.x * b.x, 0.7, bp.z + bn.z * b.x);
+      cube.rotation.y = Math.atan2(bt.x, bt.z);
+      stageGroup.add(cube);
+      itemMeshes.push(cube);
+    }
   }
 
-  function drawItemBox(b) {
-    if (b.cooldown > 0) return;
-    var p = playerRacer();
-    var st = stageData();
-    var d = wrapS(b.s - p.s, st.length);
-    if (d < 55 || d > VIEW_DEPTH) return;
-    var pr = project(b.s, b.x, d);
-    if (!pr) return;
-    var size = 24 * pr.scale;
-    var bob = Math.sin((b.s + performance.now() * 0.002)) * 3 * pr.scale;
-    ctx.save();
-    ctx.translate(pr.x, pr.y - size * 0.65 + bob);
-    ctx.rotate(Math.sin(b.s) * 0.12);
-    ctx.shadowColor = '#7df5c7';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = 'rgba(40, 120, 95, 0.8)';
-    ctx.strokeStyle = '#baffdf';
-    ctx.lineWidth = 1.5;
-    ctx.fillRect(-size / 2, -size / 2, size, size);
-    ctx.strokeRect(-size / 2, -size / 2, size, size);
-    ctx.fillStyle = '#ffe6a3';
-    ctx.font = '900 ' + Math.max(6, size * 0.5) + 'px ui-monospace, Menlo, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('?', 0, 1);
-    ctx.restore();
-  }
-
-  function drawTrap(t) {
-    var p = playerRacer();
-    var st = stageData();
-    var d = wrapS(t.s - p.s, st.length);
-    if (d < 55 || d > VIEW_DEPTH) return;
-    var pr = project(t.s, t.x, d);
-    if (!pr) return;
-    var size = 15 * pr.scale;
-    ctx.save();
-    ctx.translate(pr.x, pr.y - size * 0.4);
-    ctx.rotate(0.35);
-    ctx.fillStyle = 'rgba(255, 143, 189, 0.9)';
-    ctx.strokeStyle = '#ffd1e2';
-    ctx.lineWidth = 1.5;
-    ctx.fillRect(-size / 2, -size / 3, size, size * 0.66);
-    ctx.strokeRect(-size / 2, -size / 3, size, size * 0.66);
-    ctx.restore();
-  }
-
-  function drawRacerChair(r, pr, color) {
-    var size = 22 * pr.scale;
-    if (size < 4) size = 4;
-    var x = pr.x;
-    var y = pr.y;
-    ctx.save();
-    ctx.globalAlpha = 0.35;
-    ctx.fillStyle = '#000';
-    ctx.beginPath();
-    ctx.ellipse(x, y, size * 0.8, size * 0.24, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalAlpha = 1;
-    ctx.translate(x, y - size * 0.1);
-    ctx.strokeStyle = color;
-    ctx.fillStyle = 'rgba(20, 55, 42, 0.95)';
-    ctx.lineWidth = Math.max(1, 1.5 * pr.scale);
-    // base
+  function buildChair(team, player) {
+    var group = new T.Group();
+    var color = team === 'cpu' ? 0xff8fbd : 0x8ff0d0;
+    var seat = team === 'cpu' ? 0x5e2148 : 0x1c5c48;
+    addBox(group, 0.8, 0.18, 0.8, 0, 0.5, 0, seat);
+    addBox(group, 0.7, 0.8, 0.16, 0, 0.95, -0.32, seat);
+    addBox(group, 0.16, 0.22, 0.8, -0.44, 0.68, 0, color, 0, color);
+    addBox(group, 0.16, 0.22, 0.8, 0.44, 0.68, 0, color, 0, color);
     for (var i = 0; i < 5; i++) {
       var a = -Math.PI / 2 + i * Math.PI * 2 / 5;
-      ctx.beginPath();
-      ctx.moveTo(0, size * 0.2);
-      ctx.lineTo(Math.cos(a) * size * 0.65, size * 0.2 + Math.sin(a) * size * 0.3);
-      ctx.stroke();
+      var wheel = new T.Mesh(new T.CylinderGeometry(0.12, 0.12, 0.12, 8), material(0x111a15));
+      wheel.rotation.z = Math.PI / 2;
+      wheel.position.set(Math.cos(a) * 0.48, 0.12, Math.sin(a) * 0.48);
+      group.add(wheel);
     }
-    ctx.fillStyle = r.team === 'cpu' ? '#5e2148' : '#1c5c48';
-    roundRect(-size * 0.5, -size * 0.85, size, size * 0.8, size * 0.2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(0, -size * 1.05, size * 0.24, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+    var body = new T.Mesh(new T.CylinderGeometry(0.27, 0.32, 0.55, 10), material(0x7df5c7));
+    body.position.set(0, 1.05, 0.02);
+    group.add(body);
+    var head = new T.Mesh(new T.SphereGeometry(0.25, 12, 10), material(0xffd166));
+    head.position.set(0, 1.5, 0.02);
+    group.add(head);
+    if (player) {
+      var ring = new T.Mesh(new T.TorusGeometry(0.58, 0.035, 6, 24), new T.MeshBasicMaterial({ color: 0xffd166 }));
+      ring.rotation.x = Math.PI / 2;
+      ring.position.y = 0.06;
+      group.add(ring);
+    }
+    return group;
   }
 
-  function drawOpponents() {
-    var p = playerRacer();
-    var st = stageData();
-    for (var i = 1; i < game.racers.length; i++) {
+  function racerWorld(r) {
+    var p = pointOf(r.s);
+    var n = normalOf(r.s);
+    var t = tangentOf(r.s);
+    return { x: p.x + n.x * r.x, z: p.z + n.z * r.x, angle: Math.atan2(t.x, t.z), t: t, n: n };
+  }
+
+  function updateScene(dt) {
+    if (!renderer || !game) return;
+    for (var i = 0; i < racerGroups.length; i++) {
       var r = game.racers[i];
-      if (r.finished) continue;
-      var rel = (r.lap - p.lap) * st.length + (r.s - p.s);
-      if (rel < 45 || rel > VIEW_DEPTH) continue;
-      var pr = project(r.s, r.x, rel);
-      if (!pr) continue;
-      drawRacerChair(r, pr, '#ff8fbd');
+      var g = racerGroups[i];
+      if (!g) continue;
+      if (r.finished) { g.visible = false; continue; }
+      g.visible = true;
+      var w = racerWorld(r);
+      g.position.set(w.x, 0.02, w.z);
+      g.rotation.y = w.angle;
+      if (r.isPlayer) g.rotation.z = clamp(r.steer * 0.05, -0.05, 0.05);
     }
-  }
-
-  function drawPlayerChair() {
-    var p = playerRacer();
-    var x = C.VIEW_W / 2 + clamp(p.vx * 0.04, -8, 8);
-    var y = 690;
-    var color = 'rgba(143, 240, 208, 0.9)';
-    ctx.save();
-    ctx.translate(x, y);
-    ctx.rotate(clamp(p.steer * 0.08 + p.vx * 0.00012, -0.16, 0.16));
-    // shadow
-    ctx.fillStyle = 'rgba(0,0,0,0.4)';
-    ctx.beginPath();
-    ctx.ellipse(0, 24, 32, 11, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // caster base
-    ctx.strokeStyle = 'rgba(180, 255, 232, 0.8)';
-    ctx.fillStyle = 'rgba(10, 25, 19, 0.95)';
-    ctx.lineWidth = 2;
-    for (var i = 0; i < 5; i++) {
-      var a = -Math.PI / 2 + i * Math.PI * 2 / 5;
-      var wx = Math.cos(a) * 22;
-      var wy = 18 + Math.sin(a) * 9;
-      ctx.beginPath();
-      ctx.moveTo(0, 7);
-      ctx.lineTo(wx, wy);
-      ctx.stroke();
-      ctx.beginPath();
-      ctx.arc(wx, wy, 3.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-    }
-    // seat
-    ctx.shadowColor = 'rgba(125, 245, 199, 0.7)';
-    ctx.shadowBlur = 16;
-    ctx.fillStyle = '#1c5c48';
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 2.2;
-    roundRect(-22, -14, 44, 35, 9);
-    ctx.fill();
-    ctx.stroke();
-    // back of chair
-    ctx.fillStyle = '#123d2f';
-    roundRect(-20, -38, 40, 18, 7);
-    ctx.fill();
-    ctx.stroke();
-    // armrests
-    ctx.fillStyle = '#173e31';
-    roundRect(-27, -14, 7, 24, 4);
-    ctx.fill();
-    ctx.stroke();
-    roundRect(20, -14, 7, 24, 4);
-    ctx.fill();
-    ctx.stroke();
-    // rider back / hair
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#5a351f';
-    ctx.beginPath();
-    ctx.arc(0, -14, 12, Math.PI, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = '#7df5c7';
-    ctx.fillRect(-8, -5, 16, 16);
-    ctx.fillStyle = '#ffd166';
-    ctx.beginPath();
-    ctx.arc(0, -17, 4, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-
-    if (p.shield > 0) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(94, 231, 255, 0.7)';
-      ctx.lineWidth = 2;
-      ctx.shadowColor = '#5ee7ff';
-      ctx.shadowBlur = 16;
-      ctx.beginPath();
-      ctx.arc(x, y - 10, 36, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-    if (p.drift > 0) {
-      ctx.save();
-      ctx.strokeStyle = 'rgba(255, 209, 102, 0.6)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(x, y + 14, 30, 0.2, Math.PI - 0.2);
-      ctx.stroke();
-      ctx.restore();
-    }
-  }
-
-  function drawHudBar() {
-    var p = playerRacer();
-    var barW = 190;
-    var x = (C.VIEW_W - barW) / 2;
-    var y = 758;
-    ctx.save();
-    ctx.fillStyle = 'rgba(4, 14, 10, 0.76)';
-    roundRect(x - 9, y - 9, barW + 18, 24, 12);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(125, 245, 199, 0.22)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    ctx.fillStyle = 'rgba(125, 245, 199, 0.16)';
-    roundRect(x, y - 3, barW, 12, 6);
-    ctx.fill();
-    var grad = ctx.createLinearGradient(x, 0, x + barW, 0);
-    grad.addColorStop(0, '#7df5c7');
-    grad.addColorStop(0.6, '#ffd166');
-    grad.addColorStop(1, '#ff8fbd');
-    ctx.fillStyle = grad;
-    roundRect(x, y - 3, barW * clamp(p.drift, 0, 1), 12, 6);
-    ctx.fill();
-    ctx.fillStyle = 'rgba(230, 255, 242, 0.82)';
-    ctx.font = '900 7px ui-monospace, Menlo, monospace';
-    ctx.textAlign = 'left';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('DRIFT', x - 2, y - 12);
-    ctx.textAlign = 'right';
-    ctx.fillStyle = p.boost > 0 ? '#ffd166' : 'rgba(230, 255, 242, 0.58)';
-    ctx.fillText(p.boost > 0 ? 'BOOST!' : Math.round(p.drift * 100) + '%', x + barW + 2, y - 12);
-    ctx.restore();
-  }
-
-  function drawBanner() {
-    if (!effects.banner) return;
-    var b = effects.banner;
-    var alpha = clamp(b.life / b.max, 0, 1);
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, alpha * 1.7);
-    var y = 300 - (1 - alpha) * 8;
-    ctx.fillStyle = 'rgba(3, 12, 8, 0.84)';
-    roundRect(60, y - 28, 360, 68, 14);
-    ctx.fill();
-    ctx.strokeStyle = b.color;
-    ctx.lineWidth = 1.3;
-    roundRect(60, y - 28, 360, 68, 14);
-    ctx.stroke();
-    ctx.fillStyle = b.color;
-    ctx.shadowColor = b.color;
-    ctx.shadowBlur = 18;
-    ctx.font = '900 25px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(b.text, C.VIEW_W / 2, y);
-    if (b.sub) {
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#eafff4';
-      ctx.font = '800 10px ui-monospace, Menlo, monospace';
-      ctx.fillText(b.sub, C.VIEW_W / 2, y + 23);
-    }
-    ctx.restore();
-  }
-
-  function drawEffects() {
-    for (var ri = 0; ri < effects.rings.length; ri++) {
-      var rg = effects.rings[ri];
-      ctx.globalAlpha = clamp(rg.life / rg.maxLife, 0, 1) * 0.7;
-      ctx.strokeStyle = rg.color;
-      ctx.lineWidth = rg.width;
-      ctx.shadowColor = rg.color;
-      ctx.shadowBlur = 16;
-      ctx.beginPath();
-      ctx.arc(rg.x, rg.y, rg.r, 0, Math.PI * 2);
-      ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-    for (var i = 0; i < effects.particles.length; i++) {
-      var p = effects.particles[i];
-      ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
-      ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = p.shape === 'rect' ? 4 : 9;
-      if (p.shape === 'rect') {
-        ctx.save();
-        ctx.translate(p.x, p.y);
-        ctx.rotate(p.rot || 0);
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
-        ctx.restore();
-      } else {
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-        ctx.fill();
+    for (i = 0; i < itemMeshes.length; i++) itemMeshes[i].visible = game.itemBoxes[i].cooldown <= 0;
+    // dynamic traps
+    var live = {};
+    for (i = 0; i < game.traps.length; i++) {
+      var trap = game.traps[i];
+      live['t' + i] = true;
+      if (!trapMeshes[i]) {
+        var mesh = new T.Mesh(new T.BoxGeometry(0.42, 0.12, 0.22), material(0xff8fbd, 0x5e2148));
+        trapMeshes[i] = mesh;
+        scene.add(mesh);
       }
+      var tp = pointOf(trap.s), tn = normalOf(trap.s);
+      trapMeshes[i].position.set(tp.x + tn.x * trap.x, 0.18, tp.z + tn.z * trap.x);
+      trapMeshes[i].visible = true;
     }
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-    for (i = 0; i < effects.popups.length; i++) {
-      var pop = effects.popups[i];
-      ctx.globalAlpha = clamp(pop.life / pop.max, 0, 1);
-      ctx.fillStyle = pop.color;
-      ctx.font = '900 ' + pop.size + 'px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(pop.text, pop.x, pop.y);
+    for (i = 0; i < trapMeshes.length; i++) {
+      if (!live['t' + i] && trapMeshes[i]) trapMeshes[i].visible = false;
     }
-    ctx.globalAlpha = 1;
-    drawBanner();
+    // player camera
+    var p = playerRacer();
+    var cp = pointOf(p.s);
+    var ct = tangentOf(p.s);
+    var cn = normalOf(p.s);
+    var camS = wrapS(p.s - 8.2, stageData().length);
+    var camP = pointOf(camS);
+    var camN = normalOf(camS);
+    var lookS = wrapS(p.s + 10, stageData().length);
+    var lookP = pointOf(lookS);
+    var lookN = normalOf(lookS);
+    camera.position.set(camP.x + camN.x * p.x * 0.12, 2.3, camP.z + camN.z * p.x * 0.12);
+    camera.lookAt(lookP.x + lookN.x * p.x * 0.3, 0.78, lookP.z + lookN.z * p.x * 0.3);
   }
 
-  function drawCountdown() {
-    if (!game || game.phase !== 'countdown') return;
-    var value = game.countdown;
-    var text = value > 2.2 ? '3' : (value > 1.2 ? '2' : '1');
-    var alpha = clamp((value % 1) * 1.8, 0, 1);
-    ctx.save();
-    ctx.globalAlpha = Math.max(0.35, alpha);
-    ctx.fillStyle = '#ffe6a3';
-    ctx.shadowColor = 'rgba(255, 209, 102, 0.8)';
-    ctx.shadowBlur = 24;
-    ctx.font = '900 80px ui-monospace, Menlo, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(text, C.VIEW_W / 2, 360);
-    ctx.restore();
-  }
-
-  function draw(time) {
-    if (!ctx) return;
-    ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-    ctx.clearRect(0, 0, C.VIEW_W, C.VIEW_H);
-    ctx.save();
-    if (effects.shake > 0) ctx.translate((Math.random() - 0.5) * 14 * effects.shake, (Math.random() - 0.5) * 14 * effects.shake);
-    drawBackdrop(time);
-    if (game) {
-      drawFloor();
-      drawFinish();
-      for (var i = 0; i < game.obstacles.length; i++) drawObstacle(game.obstacles[i]);
-      for (i = 0; i < game.itemBoxes.length; i++) drawItemBox(game.itemBoxes[i]);
-      for (i = 0; i < game.traps.length; i++) drawTrap(game.traps[i]);
-      drawOpponents();
-      drawPlayerChair();
-      drawHudBar();
-      drawCountdown();
-      var hint = 'ドラッグで曲がる / 離すと直進';
-      ctx.fillStyle = 'rgba(180, 210, 195, 0.68)';
-      ctx.font = '800 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(hint, C.VIEW_W / 2, 788);
-    }
-    drawEffects();
-    if (effects.flash > 0) {
-      ctx.fillStyle = 'rgba(' + effects.flashColor + ', ' + Math.min(0.7, effects.flash * 0.6) + ')';
-      ctx.fillRect(0, 0, C.VIEW_W, C.VIEW_H);
-    }
-    ctx.restore();
-  }
-
-  function burst(x, y, count, colors, speed, life) {
-    for (var i = 0; i < count; i++) {
-      var a = Math.random() * Math.PI * 2;
-      var sp = speed * (0.35 + Math.random() * 0.9);
-      effects.particles.push({
-        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40,
-        g: 480, life: life * (0.6 + Math.random() * 0.5), max: life,
-        size: 1.5 + Math.random() * 3.6,
-        color: colors[Math.floor(Math.random() * colors.length)]
-      });
-    }
-  }
-
-  function confettiBurst(x, y, count, colors, speed, life) {
-    for (var i = 0; i < count; i++) {
-      var a = Math.random() * Math.PI * 2;
-      var sp = speed * (0.25 + Math.random() * 1.05);
-      effects.particles.push({
-        x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 120,
-        g: 620, life: life * (0.65 + Math.random() * 0.7), max: life,
-        size: 1.6 + Math.random() * 2.4,
-        shape: 'rect', w: 3 + Math.random() * 5, h: 2 + Math.random() * 5,
-        rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 16,
-        color: colors[Math.floor(Math.random() * colors.length)]
-      });
-    }
-  }
-
-  function shockwave(x, y, color, maxR, life, width) {
-    effects.rings.push({ x: x, y: y, r: 12, maxR: maxR, life: life, maxLife: life, color: color, width: width || 3 });
-  }
-
-  function popup(text, x, y, color, size) {
-    effects.popups.push({ text: text, x: x, y: y, life: 0.8, max: 0.8, color: color, size: size || 15 });
-  }
-
-  function showBanner(text, sub, color) {
-    effects.banner = { text: text, sub: sub || '', color: color || '#7df5c7', life: 1.35, max: 1.35 };
-  }
-
-  function screenPoint(s, x) {
-    var pr = project(s, x);
-    return pr || { x: C.VIEW_W / 2, y: 600 };
+  function resizeCanvas() {
+    if (!renderer) return;
+    renderer.setPixelRatio(1);
+    renderer.setSize(480, 800, false);
   }
 
   function processEvents() {
     if (!game) return;
     var events = E.consumeEvents(game);
-    var p = playerRacer();
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
-      var pt;
-      if (ev.type === 'itemBox') {
-        if (ev.id === 'player') {
-          var box = screenPoint(p.s + 80, p.x);
-          burst(box.x, box.y, 18, ['#7df5c7', '#ffffff', '#5ee7ff'], 220, 0.7);
-          showBanner('GET ' + itemLabel(ev.item), 'アイテムボタンで使用', '#7df5c7');
-        }
-      } else if (ev.type === 'itemUse') {
-        if (ev.id === 'player') {
-          if (ev.item === 'milk') showBanner('MILK BOOST!', '加速', '#7df5c7');
-          else if (ev.item === 'eraser') showBanner('ERASER!', '後方に落とした', '#ff8fbd');
-          else showBanner('TRAY SHIELD!', '一度だけガード', '#5ee7ff');
-        }
-      } else if (ev.type === 'trapHit') {
-        if (ev.id === 'player') {
-          effects.shake = 1.0;
-          effects.flash = 0.5;
-          effects.flashColor = '255, 143, 189';
-          showBanner('SPIN OUT!', '消しゴムに乗った', '#ff8fbd');
-          burst(C.VIEW_W / 2, 610, 24, ['#ff8fbd', '#ffffff', '#ffd166'], 260, 0.7);
-        }
-      } else if (ev.type === 'shieldBlock') {
-        if (ev.id === 'player') {
-          showBanner('BLOCK!', '給食トレイが守った', '#5ee7ff');
-          burst(C.VIEW_W / 2, 610, 20, ['#5ee7ff', '#ffffff', '#7df5c7'], 220, 0.6);
-        }
-      } else if (ev.type === 'boost') {
-        if (ev.id === 'player') {
-          showBanner('MINI TURBO!', 'ドリフトブースト', '#ffd166');
-          burst(C.VIEW_W / 2, 650, 28, ['#ffd166', '#ffffff', '#7df5c7'], 300, 0.7);
-          shockwave(C.VIEW_W / 2, 650, '#ffd166', 90, 0.6, 3);
-        }
-      } else if (ev.type === 'crash') {
-        if (ev.id === 'player') {
-          effects.shake = 0.7;
-          showBanner('CRASH', '障害物にぶつかった', '#ff8fbd');
-          burst(C.VIEW_W / 2, 640, 16, ['#ffd166', '#ffffff', '#ff8fbd'], 180, 0.5);
-        }
-      } else if (ev.type === 'lap') {
-        if (ev.id === 'player') showBanner('LAP ' + ev.lap, 'あと' + Math.max(0, game.laps - ev.lap) + '周', '#ffd166');
-      } else if (ev.type === 'finish') {
-        if (ev.id === 'player') {
-          effects.flash = 1.0;
-          effects.flashColor = '190, 255, 222';
-          effects.shake = 1.2;
-          effects.fireworks = 2.4;
-          effects.fireworkTimer = 0;
-          effects.resultDelay = 1.4;
-          confettiBurst(C.VIEW_W / 2, 320, 140, ['#7df5c7', '#ffd166', '#ffffff', '#5ee7ff', '#ff8fbd'], 420, 1.8);
-          shockwave(C.VIEW_W / 2, 320, '#7df5c7', 260, 0.9, 6);
-          if (ev.order === 1) showBanner('1ST PLACE!', 'コースクリア', '#7df5c7');
-          else showBanner('FINISH', ev.order + '位', '#ffd166');
-        }
-      } else if (ev.type === 'raceover') {
-        effects.resultDelay = 1.4;
-      } else if (ev.type === 'timeup') {
-        effects.flash = 0.7;
-        effects.resultDelay = 1.2;
-        showBanner('TIME UP', 'レースを終了', '#ff8fbd');
-      }
+      if (ev.type === 'itemBox' && ev.id === 'player') toast('GET ' + itemLabel(ev.item), '#8ff0d0');
+      else if (ev.type === 'itemUse' && ev.id === 'player') toast(itemLabel(ev.item), ev.item === 'eraser' ? '#ff8fbd' : '#ffd166');
+      else if (ev.type === 'trapHit' && ev.id === 'player') { toast('SPIN OUT!', '#ff8fbd'); flash('#ff8fbd'); }
+      else if (ev.type === 'shieldBlock' && ev.id === 'player') toast('BLOCK!', '#5ee7ff');
+      else if (ev.type === 'boost' && ev.id === 'player') toast('MINI TURBO!', '#ffd166');
+      else if (ev.type === 'crash' && ev.id === 'player') toast('CRASH', '#ffd166');
+      else if (ev.type === 'lap' && ev.id === 'player') toast('LAP ' + ev.lap, '#ffd166');
+      else if (ev.type === 'finish' && ev.id === 'player') {
+        flash('#eafff4');
+        toast(ev.order === 1 ? '1ST PLACE!' : 'FINISH ' + ev.order + '位', ev.order === 1 ? '#8ff0d0' : '#ffd166');
+        resultDelay = 1.4;
+      } else if (ev.type === 'raceover') resultDelay = 1.4;
+      else if (ev.type === 'timeup') { resultDelay = 1.2; toast('TIME UP', '#ff8fbd'); }
     }
   }
 
-  function updateEffects(dt) {
-    for (var i = effects.particles.length - 1; i >= 0; i--) {
-      var p = effects.particles[i];
-      p.life -= dt;
-      if (p.life <= 0) { effects.particles.splice(i, 1); continue; }
-      p.vy += p.g * dt;
-      p.x += p.vx * dt;
-      p.y += p.vy * dt;
-      p.vx *= Math.exp(-dt * (p.shape === 'rect' ? 0.7 : 1.1));
-      if (p.shape === 'rect') p.rot = (p.rot || 0) + (p.vr || 0) * dt;
+  function frame(ts) {
+    if (!lastTs) lastTs = ts || nowMs();
+    var dt = ((ts || nowMs()) - lastTs) / 1000;
+    lastTs = ts || nowMs();
+    dt = clamp(dt, 0, 0.05);
+    if (resultDelay > 0) resultDelay = Math.max(0, resultDelay - dt);
+    if (game && !game.paused && mode === 'match') {
+      E.update(game, dt);
+      processEvents();
+      syncUI();
     }
-    for (i = effects.rings.length - 1; i >= 0; i--) {
-      var ring = effects.rings[i];
-      ring.life -= dt;
-      ring.r += (ring.maxR - ring.r) * Math.min(1, dt * 7);
-      if (ring.life <= 0) effects.rings.splice(i, 1);
-    }
-    for (i = effects.popups.length - 1; i >= 0; i--) {
-      var pop = effects.popups[i];
-      pop.life -= dt;
-      pop.y -= 32 * dt;
-      if (pop.life <= 0) effects.popups.splice(i, 1);
-    }
-    for (i = skid.length - 1; i >= 0; i--) {
-      skid[i].life -= dt;
-      if (skid[i].life <= 0) skid.splice(i, 1);
-    }
-    if (effects.shake > 0) effects.shake = Math.max(0, effects.shake - dt * 2.6);
-    if (effects.flash > 0) effects.flash = Math.max(0, effects.flash - dt * 2.4);
-    if (effects.resultDelay > 0) effects.resultDelay = Math.max(0, effects.resultDelay - dt);
-    if (effects.fireworks > 0) {
-      effects.fireworks -= dt;
-      effects.fireworkTimer -= dt;
-      if (effects.fireworkTimer <= 0) {
-        effects.fireworkTimer = 0.16;
-        var fx = 70 + Math.random() * 340;
-        var fy = 150 + Math.random() * 300;
-        var fcolors = ['#7df5c7', '#ffd166', '#ffffff', '#5ee7ff', '#ff8fbd'];
-        burst(fx, fy, 28, fcolors, 280, 1.0);
-        shockwave(fx, fy, fcolors[Math.floor(Math.random() * fcolors.length)], 70, 0.6, 2);
-      }
-    }
-    if (effects.banner) {
-      effects.banner.life -= dt;
-      if (effects.banner.life <= 0) effects.banner = null;
-    }
-  }
-
-  function pointerPosition(e) {
-    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
-    var w = rect.width || 480;
-    var h = rect.height || 800;
-    return { x: (e.clientX - rect.left) / w * C.VIEW_W, y: (e.clientY - rect.top) / h * C.VIEW_H };
+    updateScene(dt);
+    if (renderer && scene && camera) renderer.render(scene, camera);
+    if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
   }
 
   function onPointerDown(e) {
     if (e && e.preventDefault) e.preventDefault();
     if (!game || game.paused || game.phase !== 'playing' || pointer) return;
     var pos = pointerPosition(e);
-    pointer = { id: e.pointerId == null ? 1 : e.pointerId, startX: pos.x, x: pos.x };
+    pointer = { id: e.pointerId == null ? 1 : e.pointerId, startX: pos.x };
     E.setSteer(game, 0);
     try { if (canvas.setPointerCapture) canvas.setPointerCapture(pointer.id); } catch (err) { }
   }
@@ -1018,8 +581,7 @@
     if (!pointer) return;
     if ((e.pointerId == null ? 1 : e.pointerId) !== pointer.id) return;
     var pos = pointerPosition(e);
-    pointer.x = pos.x;
-    if (game && game.phase === 'playing') E.setSteer(game, clamp((pointer.x - pointer.startX) / 70, -1, 1));
+    if (game && game.phase === 'playing') E.setSteer(game, clamp((pos.x - pointer.startX) / 70, -1, 1));
   }
   function onPointerUp(e) {
     if (e && e.preventDefault) e.preventDefault();
@@ -1030,42 +592,27 @@
     if (game) E.setSteer(game, keySteer);
     try { if (canvas.releasePointerCapture) canvas.releasePointerCapture(id); } catch (err) { }
   }
+  function pointerPosition(e) {
+    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
+    return { x: (e.clientX - rect.left) / (rect.width || 480) * 480, y: (e.clientY - rect.top) / (rect.height || 800) * 800 };
+  }
 
   function onKeyDown(e) {
     if (!e) return;
     var k = e.key || '';
-    var code = e.code || '';
     if (k === 'm' || k === 'M') { toggleAudio(); return; }
-    if (k === 'p' || k === 'P' || k === 'Escape') {
-      if (game && (game.phase === 'playing' || game.phase === 'countdown')) {
-        if (e.preventDefault) e.preventDefault();
-        togglePause();
-      }
-      return;
-    }
-    if (k === 'ArrowLeft' || k === 'a' || k === 'A') {
-      keySteer = -1;
-      if (game && game.phase === 'playing') E.setSteer(game, keySteer);
-      return;
-    }
-    if (k === 'ArrowRight' || k === 'd' || k === 'D') {
-      keySteer = 1;
-      if (game && game.phase === 'playing') E.setSteer(game, keySteer);
-      return;
-    }
+    if (k === 'p' || k === 'P' || k === 'Escape') { if (game && (game.phase === 'playing' || game.phase === 'countdown')) { e.preventDefault && e.preventDefault(); togglePause(); } return; }
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') { keySteer = -1; if (game && game.phase === 'playing') E.setSteer(game, -1); return; }
+    if (k === 'ArrowRight' || k === 'd' || k === 'D') { keySteer = 1; if (game && game.phase === 'playing') E.setSteer(game, 1); return; }
     if (k === 'i' || k === 'I') { useItem(); return; }
-    if (k === ' ' || k === 'Spacebar' || k === 'Enter' || code === 'Space') {
+    if (k === ' ' || k === 'Spacebar' || k === 'Enter' || e.code === 'Space') {
       if (e.preventDefault) e.preventDefault();
-      if (mode === 'title') { stageIndex = 0; beginStage(); return; }
-      if (!game) return;
-      if (game.phase === 'clear' && !effects.resultDelay) {
+      if (mode === 'title') { stageIndex = 0; beginStage(); }
+      else if (game && game.phase === 'clear' && resultDelay <= 0) {
         if (game.stage + 1 < game.stageTotal) { stageIndex = game.stage + 1; beginStage(); }
         else { stageIndex = 0; showTitle(); }
-      } else if (game.phase === 'over' && !effects.resultDelay) {
-        beginStage();
-      } else if (game.paused) {
-        resumeGame();
-      }
+      } else if (game && game.phase === 'over' && resultDelay <= 0) beginStage();
+      else if (game && game.paused) resumeGame();
     }
   }
   function onKeyUp(e) {
@@ -1077,89 +624,60 @@
     }
   }
 
-  function resizeCanvas() {
-    var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(2, Math.max(1, window.devicePixelRatio)) : 1;
-    var w = Math.round(C.VIEW_W * dpr);
-    var h = Math.round(C.VIEW_H * dpr);
-    if (canvas.width !== w) canvas.width = w;
-    if (canvas.height !== h) canvas.height = h;
-    scaleX = canvas.width / C.VIEW_W;
-    scaleY = canvas.height / C.VIEW_H;
-  }
-
-  function frame(ts) {
-    if (ts == null) ts = nowMs();
-    if (!lastTs) lastTs = ts;
-    var dt = (ts - lastTs) / 1000;
-    lastTs = ts;
-    dt = clamp(dt, 0, 0.05);
-    if (game && !game.paused && mode === 'match') {
-      E.update(game, dt);
-      if (game.phase === 'playing') {
-        var p = playerRacer();
-        if (p.drift > 0) {
-          skid.push({ x: C.VIEW_W / 2 - 18, y: 710, life: 0.55, max: 0.55 });
-          skid.push({ x: C.VIEW_W / 2 + 18, y: 710, life: 0.55, max: 0.55 });
-          if (skid.length > 90) skid.splice(0, skid.length - 90);
-        }
-      }
-      processEvents();
-      syncUI();
-    }
-    updateEffects(dt);
-    draw(ts / 1000);
-    if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
-  }
-
   function autoPlayStep() {
     if (mode === 'title') { stageIndex = 0; beginStage(); return; }
     if (!game || game.paused || game.phase !== 'playing') return;
     var p = playerRacer();
     var st = stageData();
-    var target = E.trackCenter(st, wrapS(p.s + 120, st.length));
-    E.setSteer(game, clamp((target - p.x) / 85, -1, 1));
+    var s = wrapS(p.s + 4, st.length);
+    var pn = normalOf(s);
+    var target = pn.x * -0.7;
+    E.setSteer(game, clamp((target - p.x) / 1.2, -1, 1));
     if (p.item && Math.random() < 0.02) E.useItem(game, 'player');
   }
 
   function init() {
     canvas = $('game');
-    els.hud = $('hud');
-    els.lap = $('lap');
-    els.turn = $('turn');
-    els.shots = $('shots');
-    els.rank = $('rank');
-    els.itemBtn = $('btn-item');
-    els.sound = $('btn-sound');
-    els.pause = $('btn-pause');
-    els.screenTitle = $('screen-title');
-    els.screenOver = $('screen-over');
-    els.screenStage = $('screen-stage');
-    els.screenEnding = $('screen-ending');
-    els.screenPause = $('screen-pause');
-    els.overSub = $('over-sub');
-    els.overRank = $('over-rank');
-    els.overLap = $('over-lap');
-    els.overStage = $('over-stage');
-    els.stageClearText = $('stage-clear-text');
+    els.hud = $('hud'); els.lap = $('lap'); els.turn = $('turn'); els.shots = $('shots'); els.rank = $('rank');
+    els.itemBtn = $('btn-item'); els.sound = $('btn-sound'); els.pause = $('btn-pause');
+    els.screenTitle = $('screen-title'); els.screenOver = $('screen-over'); els.screenStage = $('screen-stage');
+    els.screenEnding = $('screen-ending'); els.screenPause = $('screen-pause');
+    els.overSub = $('over-sub'); els.overRank = $('over-rank'); els.overLap = $('over-lap'); els.overStage = $('over-stage');
+    els.stageClearText = $('stage-clear-text'); els.countdown = $('countdown'); els.toast = $('toast'); els.flash = $('flash');
+    els.driftHud = $('drift-hud'); els.driftFill = $('drift-fill');
 
-    if (canvas && typeof canvas.getContext === 'function') {
-      try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
+    if (T && canvas) {
+      try {
+        renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(1);
+        renderer.setSize(480, 800, false);
+        scene = new T.Scene();
+        scene.background = new T.Color(0x07110d);
+        scene.fog = new T.Fog(0x07110d, 45, 120);
+        camera = new T.PerspectiveCamera(66, 480 / 800, 0.05, 220);
+        scene.add(new T.HemisphereLight(0xe8fff6, 0x1b2a24, 2.2));
+        var sun = new T.DirectionalLight(0xfff0c8, 2.0);
+        sun.position.set(8, 22, -12);
+        scene.add(sun);
+        var fill = new T.DirectionalLight(0x8ff0d0, 0.8);
+        fill.position.set(-12, 8, 20);
+        scene.add(fill);
+      } catch (e) {
+        renderer = null;
+        scene = null;
+        camera = null;
+      }
     }
-    resetEffects();
-    resizeCanvas();
     if (els.screenTitle) els.screenTitle.classList.add('visible');
     if (els.pause) els.pause.classList.add('hidden');
     if (els.itemBtn) els.itemBtn.classList.add('hidden');
+    if (els.driftHud) els.driftHud.style.display = 'none';
 
-    var start = $('btn-start');
-    var retry = $('btn-retry');
-    var resume = $('btn-resume');
-    var nextStage = $('btn-next-stage');
-    var endingRetry = $('btn-ending-retry');
+    var start = $('btn-start'), retry = $('btn-retry'), resume = $('btn-resume'), next = $('btn-next-stage'), ending = $('btn-ending-retry');
     if (start) start.addEventListener('click', function () { stageIndex = 0; beginStage(); });
     if (retry) retry.addEventListener('click', beginStage);
-    if (nextStage) nextStage.addEventListener('click', function () { stageIndex++; beginStage(); });
-    if (endingRetry) endingRetry.addEventListener('click', showTitle);
+    if (next) next.addEventListener('click', function () { stageIndex++; beginStage(); });
+    if (ending) ending.addEventListener('click', showTitle);
     if (resume) resume.addEventListener('click', resumeGame);
     if (els.pause) els.pause.addEventListener('click', togglePause);
     if (els.itemBtn) els.itemBtn.addEventListener('click', useItem);
@@ -1171,22 +689,19 @@
       canvas.addEventListener('pointermove', onPointerMove, false);
       canvas.addEventListener('pointerup', onPointerUp, false);
       canvas.addEventListener('pointercancel', function () { pointer = null; if (game) E.setSteer(game, keySteer); }, false);
-      canvas.addEventListener('contextmenu', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
-      canvas.addEventListener('dblclick', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
+      canvas.addEventListener('contextmenu', function (e) { e.preventDefault && e.preventDefault(); }, false);
+      canvas.addEventListener('dblclick', function (e) { e.preventDefault && e.preventDefault(); }, false);
     }
     window.addEventListener('keydown', onKeyDown, false);
     window.addEventListener('keyup', onKeyUp, false);
     window.addEventListener('blur', pauseGame, false);
     window.addEventListener('resize', resizeCanvas, false);
     document.addEventListener('visibilitychange', function () { if (document.hidden) pauseGame(); }, false);
-    document.addEventListener('gesturestart', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
-    document.addEventListener('gesturechange', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
-    document.addEventListener('gestureend', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
-    document.addEventListener('contextmenu', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
-    document.addEventListener('selectstart', function (e) { if (e.preventDefault) e.preventDefault(); }, false);
+    document.addEventListener('gesturestart', function (e) { e.preventDefault && e.preventDefault(); }, false);
+    document.addEventListener('gesturechange', function (e) { e.preventDefault && e.preventDefault(); }, false);
+    document.addEventListener('gestureend', function (e) { e.preventDefault && e.preventDefault(); }, false);
 
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
-
     root.__GAME__ = {
       id: 'school-chair-drift',
       title: '放課後チェア・グランプリ',
