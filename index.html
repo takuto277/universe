@@ -78,6 +78,14 @@
       cursor: pointer;
     }
     .genre-picker select:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+    .filter-bar {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: 14px;
+      margin: 28px 0 14px;
+    }
+    .filter-bar .genre-picker { margin: 0; }
     .result-count { color: var(--muted); font-size: 12px; margin: 0 0 18px; }
     .cards {
       list-style: none;
@@ -192,8 +200,9 @@
       .tag { top: 8px; left: 8px; padding: 2px 6px; font-size: 9px; }
       .play { font-size: 11px; }
       .dates { font-size: 9px; }
-      .genre-picker { display: flex; margin: 20px 0 12px; }
-      .genre-picker select { flex: 1; }
+      .filter-bar { margin: 20px 0 12px; gap: 10px; }
+      .filter-bar .genre-picker { display: flex; flex: 1 1 150px; margin: 0; }
+      .filter-bar .genre-picker select { flex: 1; min-width: 0; }
     }
     @media (prefers-reduced-motion: reduce) {
       html { scroll-behavior: auto; }
@@ -215,9 +224,18 @@
       <p class="eyebrow">UNIVERSE / ARCADE</p>
       <h1>UNIVERSE ARCADE</h1>
       <p class="subtitle">つくったゲームで、あそぶ。</p>
-      <div class="genre-picker">
-        <label for="genre-filter">ジャンル</label>
-        <select id="genre-filter" aria-label="ジャンルで絞り込む"></select>
+      <div class="filter-bar">
+        <div class="genre-picker">
+          <label for="genre-filter">ジャンル</label>
+          <select id="genre-filter" aria-label="ジャンルで絞り込む"></select>
+        </div>
+        <div class="genre-picker">
+          <label for="sort-order">並び順</label>
+          <select id="sort-order" aria-label="並び順を選ぶ">
+            <option value="recommended" selected>おすすめ順</option>
+            <option value="updated">更新順</option>
+          </select>
+        </div>
       </div>
       <p class="result-count" id="result-count">読み込み中...</p>
     </header>
@@ -241,8 +259,12 @@
     (function () {
       var grid = document.getElementById('game-grid');
       var filter = document.getElementById('genre-filter');
+      var sort = document.getElementById('sort-order');
       var count = document.getElementById('result-count');
       var status = document.getElementById('list-status');
+      var allApps = [];
+      var cardById = {};
+      var RECOMMENDED = ['stick-soccer', 'sleep-guard', 'trash-toss', 'ken-tsunagi', 'graph-cross'];
 
       function tagList(app) {
         return (app.tags || []).filter(function (tag) { return typeof tag === 'string' && tag; });
@@ -299,6 +321,39 @@
         return li;
       }
 
+      function byUpdated(a, b) {
+        var akey = a.updatedAt || a.createdAt || '';
+        var bkey = b.updatedAt || b.createdAt || '';
+        if (akey !== bkey) return bkey.localeCompare(akey);
+        return (b.createdAt || '').localeCompare(a.createdAt || '');
+      }
+
+      function sortedApps(mode) {
+        var list = allApps.slice();
+        if (mode === 'recommended') {
+          var rank = {};
+          RECOMMENDED.forEach(function (id, index) { rank[id] = index + 1; });
+          list.sort(function (a, b) {
+            var ar = rank[a.id] || 999;
+            var br = rank[b.id] || 999;
+            if (ar !== br) return ar - br;
+            return byUpdated(a, b);
+          });
+        } else {
+          list.sort(byUpdated);
+        }
+        return list;
+      }
+
+      function render() {
+        var ordered = sortedApps(sort.value || 'recommended');
+        ordered.forEach(function (app) {
+          if (!cardById[app.id]) cardById[app.id] = makeCard(app);
+          grid.appendChild(cardById[app.id]);
+        });
+        apply(filter.value || 'all');
+      }
+
       function apply(filter) {
         var cards = Array.prototype.slice.call(grid.querySelectorAll('.game-card'));
         var shown = 0;
@@ -323,6 +378,7 @@
           filter.appendChild(option);
         });
         filter.addEventListener('change', function () { apply(filter.value); });
+        sort.addEventListener('change', render);
       }
 
       fetch('apps.json', { cache: 'no-cache' })
@@ -332,12 +388,6 @@
         })
         .then(function (data) {
           var apps = Array.isArray(data.apps) ? data.apps : [];
-          apps = apps.slice().sort(function (a, b) {
-            var akey = a.updatedAt || a.createdAt || '';
-            var bkey = b.updatedAt || b.createdAt || '';
-            if (akey !== bkey) return bkey.localeCompare(akey);
-            return (b.createdAt || '').localeCompare(a.createdAt || '');
-          });
           var tags = [];
           apps.forEach(function (app) {
             tagList(app).forEach(function (tag) {
@@ -345,10 +395,11 @@
             });
           });
           if (status) status.remove();
+          allApps = apps;
           grid.innerHTML = '';
-          apps.forEach(function (app) { grid.appendChild(makeCard(app)); });
+          cardById = {};
           makeFilters(tags);
-          apply('all');
+          render();
         })
         .catch(function (error) {
           if (status) {
