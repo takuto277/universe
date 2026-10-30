@@ -51,6 +51,30 @@
     return button;
   }
 
+  function makeRelic(relic, index, action) {
+    var button = document.createElement('button');
+    button.type = 'button';
+    button.className = 'relic-choice';
+    button.style.setProperty('--relic-color', relic.color);
+    var icon = document.createElement('span');
+    icon.className = 'icon';
+    icon.textContent = relic.icon;
+    var name = document.createElement('span');
+    name.className = 'name';
+    name.textContent = relic.name;
+    var desc = document.createElement('span');
+    desc.className = 'desc';
+    desc.textContent = relic.desc;
+    button.appendChild(icon);
+    button.appendChild(name);
+    button.appendChild(desc);
+    button.addEventListener('click', function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      action(index);
+    });
+    return button;
+  }
+
   function floatText(text, kind) {
     if (!els.fx) return;
     var el = document.createElement('span');
@@ -96,9 +120,54 @@
     }
   }
 
+  function renderRelics() {
+    if (!els.relicBar || !state) return;
+    els.relicBar.innerHTML = '';
+    for (var i = 0; i < state.relics.length; i++) {
+      var relic = E.RELICS[state.relics[i]];
+      if (!relic) continue;
+      var chip = document.createElement('span');
+      chip.className = 'relic-chip';
+      chip.textContent = relic.icon + ' ' + relic.name;
+      els.relicBar.appendChild(chip);
+    }
+    setText(els.deckCount, state.deck.length);
+  }
+
+  function renderRelicChoices() {
+    if (!els.relicHand || !state) return;
+    els.relicHand.innerHTML = '';
+    for (var i = 0; i < state.relicChoices.length; i++) {
+      var relic = E.RELICS[state.relicChoices[i]];
+      if (relic) els.relicHand.appendChild(makeRelic(relic, i, chooseRelic));
+    }
+  }
+
+  function renderDeck() {
+    if (!els.deckList || !state) return;
+    els.deckList.innerHTML = '';
+    var counts = {};
+    for (var i = 0; i < state.deck.length; i++) counts[state.deck[i].name] = (counts[state.deck[i].name] || 0) + 1;
+    Object.keys(counts).sort().forEach(function (name) {
+      var line = document.createElement('div');
+      line.className = 'deck-line';
+      var b = document.createElement('b');
+      b.textContent = counts[name] + '×';
+      line.appendChild(b);
+      line.appendChild(document.createTextNode(name));
+      els.deckList.appendChild(line);
+    });
+  }
+
   function renderStatus() {
     if (!els.enemyStatus || !state || !state.enemy) return;
     els.enemyStatus.innerHTML = '';
+    if (state.enemy.elite || state.enemy.boss) {
+      var rankChip = document.createElement('span');
+      rankChip.className = 'chip';
+      rankChip.textContent = state.enemy.boss ? '👑 BOSS' : '◆ ELITE';
+      els.enemyStatus.appendChild(rankChip);
+    }
     if (state.enemy.frozen > 0) {
       var freeze = document.createElement('span');
       freeze.className = 'chip freeze';
@@ -152,13 +221,14 @@
     setText(els.endHp, r.hp + ' / ' + r.maxHp);
     setText(els.endTurns, r.turns);
     setText(els.endDeck, r.deck.length + ' cards: ' + r.deck.join(' / '));
+    setText(els.endRelics, r.relics && r.relics.length ? 'RELICS: ' + r.relics.join(' / ') : 'RELICS: none');
     setText(els.endBest, best);
     setText(els.bestStart, 'BEST FLOOR ' + best);
   }
 
   function showOverlay(phase) {
     if (!els.overlay) return;
-    if (phase === 'start' || phase === 'reward' || phase === 'win' || phase === 'over') {
+    if (phase === 'start' || phase === 'reward' || phase === 'relic' || phase === 'win' || phase === 'over') {
       els.overlay.classList.add('visible');
       if (phase !== 'start' && els.fx) els.fx.innerHTML = '';
     } else {
@@ -166,11 +236,14 @@
     }
     var showStart = phase === 'start';
     var showReward = phase === 'reward';
+    var showRelic = phase === 'relic';
     var showEnd = phase === 'win' || phase === 'over';
     if (els.start) els.start.classList.toggle('visible', showStart);
     if (els.rewardScreen) els.rewardScreen.classList.toggle('visible', showReward);
+    if (els.relicScreen) els.relicScreen.classList.toggle('visible', showRelic);
     if (els.end) els.end.classList.toggle('visible', showEnd);
     if (showReward) renderReward();
+    if (showRelic) renderRelicChoices();
     if (showEnd) fillEnd();
   }
 
@@ -190,6 +263,7 @@
       if (els.enemyAvatar) els.enemyAvatar.setAttribute('data-floor', String(state.floor));
     }
     renderStatus();
+    renderRelics();
     renderIntent();
     renderLog();
     setText(els.pileInfo, 'DRAW ' + state.drawPile.length + ' / DISCARD ' + state.discard.length);
@@ -242,6 +316,26 @@
     render();
   }
 
+  function chooseRelic(index) {
+    if (!state || state.phase !== 'relic') return;
+    E.chooseRelic(state, index);
+    processEvents(E.consumeEvents(state));
+    render();
+  }
+
+  function skipReward() {
+    if (!state || state.phase !== 'reward') return;
+    E.skipReward(state);
+    processEvents(E.consumeEvents(state));
+    render();
+  }
+
+  function openDeck(open) {
+    if (!els.deckModal) return;
+    if (open) renderDeck();
+    els.deckModal.classList.toggle('visible', !!open);
+  }
+
   function onKey(e) {
     if (!e) return;
     var key = e.key || '';
@@ -255,6 +349,7 @@
     if (e.preventDefault) e.preventDefault();
     if (state && state.phase === 'run') playCard(n - 1);
     else if (state && state.phase === 'reward') chooseReward(n - 1);
+    else if (state && state.phase === 'relic') chooseRelic(n - 1);
   }
 
   function init() {
@@ -276,11 +371,20 @@
       log: $('log'),
       hand: $('hand'),
       pileInfo: $('pile-info'),
+      deckCount: $('deck-count'),
+      relicBar: $('relic-bar'),
+      btnDeck: $('btn-deck'),
+      deckModal: $('deck-modal'),
+      deckList: $('deck-list'),
+      btnDeckClose: $('btn-deck-close'),
       fx: $('fx'),
       overlay: $('overlay'),
       start: $('screen-start'),
       rewardScreen: $('screen-reward'),
       rewardHand: $('reward-hand'),
+      btnSkip: $('btn-skip'),
+      relicScreen: $('screen-relic'),
+      relicHand: $('relic-hand'),
       end: $('screen-end'),
       endEyebrow: $('end-eyebrow'),
       endRank: $('end-rank'),
@@ -289,6 +393,7 @@
       endHp: $('end-hp'),
       endTurns: $('end-turns'),
       endDeck: $('end-deck'),
+      endRelics: $('end-relics'),
       endBest: $('end-best'),
       bestStart: $('best-start'),
       btnStart: $('btn-start'),
@@ -299,6 +404,12 @@
     state = E.createGame();
     if (els.btnStart) els.btnStart.addEventListener('click', begin);
     if (els.btnAgain) els.btnAgain.addEventListener('click', begin);
+    if (els.btnSkip) els.btnSkip.addEventListener('click', skipReward);
+    if (els.btnDeck) els.btnDeck.addEventListener('click', function () { openDeck(true); });
+    if (els.btnDeckClose) els.btnDeckClose.addEventListener('click', function () { openDeck(false); });
+    if (els.deckModal) els.deckModal.addEventListener('click', function (e) {
+      if (e.target === els.deckModal) openDeck(false);
+    });
     window.addEventListener('keydown', onKey);
     render();
     showOverlay('start');

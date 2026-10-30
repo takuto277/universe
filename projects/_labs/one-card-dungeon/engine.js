@@ -27,6 +27,27 @@
   var START_DECK = ['strike', 'strike', 'strike', 'guard', 'guard', 'heal', 'heavy', 'freeze'];
   var REWARD_POOL = ['strike', 'guard', 'heavy', 'heal', 'freeze', 'poison', 'focus', 'drain', 'bash'];
 
+  var RELICS = {
+    whetstone: { id: 'whetstone', name: '砥石', icon: '🪨', color: '#ffb36b', desc: 'すべての攻撃 +2ダメージ' },
+    oath: { id: 'oath', name: '鉄の誓い', icon: '🛡', color: '#6db7ff', desc: 'ガード +3ブロック' },
+    leech: { id: 'leech', name: '吸血の牙', icon: '🩸', color: '#ff7bc8', desc: '攻撃命中時 HP+1' },
+    ice: { id: 'ice', name: '氷結晶', icon: '❄', color: '#8ed2ff', desc: 'フリーズ +1ターン' },
+    venom: { id: 'venom', name: '毒瓶', icon: '☠', color: '#b48cff', desc: '毒のダメージ +1' },
+    heart: { id: 'heart', name: '生命の器', icon: '❤', color: '#ff637d', desc: '最大HP +10 / 10回復' },
+    lens: { id: 'lens', name: '集中の眼', icon: '✨', color: '#ffd166', desc: 'フォーカス +4' },
+    aegis: { id: 'aegis', name: '守護の紋', icon: '🔰', color: '#58e6b0', desc: '各階開始時 シールド+6' }
+  };
+  var RELIC_POOL = Object.keys(RELICS);
+
+  var ENEMY_PROFILES = [
+    { name: 'スライム', pattern: ['attack', 'guard', 'wait', 'heavy'] },
+    { name: 'コウモリ', pattern: ['attack', 'attack', 'wait', 'heavy'] },
+    { name: 'ゴブリン', pattern: ['attack', 'guard', 'attack', 'heavy'], elite: true, hpBonus: 6, atkBonus: 1 },
+    { name: 'ゴーレム', pattern: ['guard', 'heavy', 'wait', 'attack'], hpBonus: 4 },
+    { name: 'リッチ', pattern: ['attack', 'wait', 'heavy', 'guard'], elite: true, hpBonus: 3, atkBonus: 1 },
+    { name: '魔王', pattern: ['attack', 'heavy', 'guard', 'wait', 'attack'], boss: true, hpBonus: 10, atkBonus: 1 }
+  ];
+
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
 
   function mulberry32(seed) {
@@ -59,6 +80,15 @@
     if (state.events.length > 40) state.events.shift();
   }
 
+  function hasRelic(state, id) {
+    return state.relics && state.relics.indexOf(id) >= 0;
+  }
+
+  function relicData(id) {
+    var def = RELICS[id];
+    return { id: def.id, name: def.name, icon: def.icon, color: def.color, desc: def.desc };
+  }
+
   function makeCard(id, uid) {
     var def = CARDS[id];
     return { uid: uid, id: def.id, name: def.name, icon: def.icon, color: def.color, desc: def.desc };
@@ -77,23 +107,23 @@
   }
 
   function makeEnemy(state, floor) {
-    var names = ['スライム', 'コウモリ', 'ゴブリン', 'ゴーレム', 'リッチ', '魔王'];
-    var normalPattern = ['attack', 'guard', 'wait', 'heavy'];
-    var bossPattern = ['attack', 'heavy', 'guard', 'wait', 'attack'];
-    var hp = 12 + floor * 5 + (floor === MAX_FLOOR ? 10 : 0);
-    var attack = 2 + floor + (floor === MAX_FLOOR ? 1 : 0);
+    var profile = ENEMY_PROFILES[floor - 1];
+    var hp = 12 + floor * 5 + (profile.hpBonus || 0);
+    var attack = 2 + floor + (profile.atkBonus || 0);
     var enemy = {
-      name: names[floor - 1],
+      name: profile.name,
       floor: floor,
       hp: hp,
       maxHp: hp,
       shield: 0,
       attack: attack,
-      pattern: floor === MAX_FLOOR ? bossPattern : normalPattern,
+      pattern: profile.pattern,
       intentIndex: 0,
       frozen: 0,
       poisonTurns: 0,
-      poisonDamage: 0
+      poisonDamage: 0,
+      elite: !!profile.elite,
+      boss: !!profile.boss
     };
     enemy.intent = intentOf(enemy);
     return enemy;
@@ -110,7 +140,7 @@
   function startFloor(state, floor) {
     state.floor = floor;
     state.phase = 'run';
-    state.player.shield = 0;
+    state.player.shield = hasRelic(state, 'aegis') ? 6 : 0;
     state.player.focus = 0;
     state.enemy = makeEnemy(state, floor);
     state.drawPile = shuffle(state, state.deck.slice());
@@ -145,6 +175,8 @@
     state.drawPile = [];
     state.discard = [];
     state.rewardChoices = [];
+    state.relics = [];
+    state.relicChoices = [];
     state.enemy = null;
     state.result = null;
     state.log = [];
@@ -196,6 +228,7 @@
     var def = CARDS[card.id];
     var amount = def.bash ? state.player.shield : (def.damage || 0);
     if (!amount) return 0;
+    amount += hasRelic(state, 'whetstone') ? 2 : 0;
     amount += state.player.focus;
     state.player.focus = 0;
     if (def.bash) state.player.shield = 0;
@@ -218,6 +251,7 @@
         hp: state.player.hp,
         maxHp: state.player.maxHp,
         deck: state.deck.map(function (c) { return c.name; }),
+        relics: state.relics.map(function (id) { return RELICS[id].name; }),
         rank: state.player.hp >= 20 ? 'S' : (state.player.hp >= 10 ? 'A' : 'B')
       };
       pushEvent(state, { type: 'win', result: state.result });
@@ -243,6 +277,7 @@
       hp: state.player.hp,
       maxHp: state.player.maxHp,
       deck: state.deck.map(function (c) { return c.name; }),
+      relics: state.relics.map(function (id) { return RELICS[id].name; }),
       rank: 'FLOOR ' + state.floor
     };
     pushEvent(state, { type: 'over', result: state.result });
@@ -306,10 +341,15 @@
       var dealt = dealDamage(state, damage);
       pushEvent(state, { type: 'damage', value: dealt });
       pushLog(state, '敵に' + dealt + 'ダメージ');
+      if (dealt > 0 && hasRelic(state, 'leech')) {
+        state.player.hp = Math.min(state.player.maxHp, state.player.hp + 1);
+        pushEvent(state, { type: 'heal', value: 1 });
+      }
     }
     if (def.block) {
-      state.player.shield += def.block;
-      pushEvent(state, { type: 'block', value: def.block });
+      var blockGain = def.block + (hasRelic(state, 'oath') ? 3 : 0);
+      state.player.shield += blockGain;
+      pushEvent(state, { type: 'block', value: blockGain });
     }
     if (def.heal) {
       var before = state.player.hp;
@@ -317,17 +357,20 @@
       pushEvent(state, { type: 'heal', value: state.player.hp - before });
     }
     if (def.focus) {
-      state.player.focus += def.focus;
-      pushEvent(state, { type: 'focus', value: def.focus });
+      var focusGain = def.focus + (hasRelic(state, 'lens') ? 4 : 0);
+      state.player.focus += focusGain;
+      pushEvent(state, { type: 'focus', value: focusGain });
     }
     if (def.freeze) {
-      state.enemy.frozen += def.freeze;
-      pushEvent(state, { type: 'freeze', value: def.freeze });
+      var freezeGain = def.freeze + (hasRelic(state, 'ice') ? 1 : 0);
+      state.enemy.frozen += freezeGain;
+      pushEvent(state, { type: 'freeze', value: freezeGain });
     }
     if (def.poison) {
+      var poisonDamage = def.poison.damage + (hasRelic(state, 'venom') ? 1 : 0);
       state.enemy.poisonTurns = Math.max(state.enemy.poisonTurns, def.poison.turns);
-      state.enemy.poisonDamage = Math.max(state.enemy.poisonDamage, def.poison.damage);
-      pushEvent(state, { type: 'poisonApply', value: def.poison.damage });
+      state.enemy.poisonDamage = Math.max(state.enemy.poisonDamage, poisonDamage);
+      pushEvent(state, { type: 'poisonApply', value: poisonDamage });
     }
     if (def.self) {
       state.player.hp = Math.max(0, state.player.hp - def.self);
@@ -346,12 +389,52 @@
     return true;
   }
 
+  function afterReward(state) {
+    if ((state.floor === 2 || state.floor === 4)) {
+      var pool = RELIC_POOL.filter(function (id) { return !hasRelic(state, id); });
+      if (pool.length) {
+        shuffle(state, pool);
+        state.relicChoices = pool.slice(0, 3);
+        state.phase = 'relic';
+        pushEvent(state, { type: 'relicOffer', choices: state.relicChoices });
+        return;
+      }
+    }
+    startFloor(state, state.floor + 1);
+  }
+
   function chooseReward(state, index) {
     if (!state || state.phase !== 'reward') return false;
     if (index < 0 || index >= state.rewardChoices.length) return false;
     var id = state.rewardChoices[index];
     state.deck.push(makeCard(id, state.nextUid++));
     pushLog(state, CARDS[id].name + 'をデッキに追加');
+    state.rewardChoices = [];
+    afterReward(state);
+    return true;
+  }
+
+  function skipReward(state) {
+    if (!state || state.phase !== 'reward') return false;
+    var before = state.player.hp;
+    state.player.hp = Math.min(state.player.maxHp, state.player.hp + 12);
+    pushLog(state, '休憩してHP+' + (state.player.hp - before));
+    state.rewardChoices = [];
+    afterReward(state);
+    return true;
+  }
+
+  function chooseRelic(state, index) {
+    if (!state || state.phase !== 'relic') return false;
+    if (index < 0 || index >= state.relicChoices.length) return false;
+    var id = state.relicChoices[index];
+    state.relics.push(id);
+    if (id === 'heart') {
+      state.player.maxHp += 10;
+      state.player.hp = Math.min(state.player.maxHp, state.player.hp + 10);
+    }
+    pushLog(state, 'レリック: ' + RELICS[id].name);
+    state.relicChoices = [];
     startFloor(state, state.floor + 1);
     return true;
   }
@@ -365,6 +448,7 @@
     if (!state) return;
     if (state.phase === 'idle') { start(state); return; }
     if (state.phase === 'reward') { chooseReward(state, 0); return; }
+    if (state.phase === 'relic') { chooseRelic(state, 0); return; }
     if (state.phase !== 'run' || !state.hand.length) return;
     var intent = intentOf(state.enemy);
     var hand = state.hand;
@@ -407,6 +491,8 @@
         frozen: state.enemy.frozen,
         poisonTurns: state.enemy.poisonTurns,
         poisonDamage: state.enemy.poisonDamage,
+        elite: state.enemy.elite,
+        boss: state.enemy.boss,
         intent: intentOf(state.enemy)
       } : null,
       hand: state.hand.map(cardData),
@@ -414,6 +500,8 @@
       discardCount: state.discard.length,
       deckCount: state.deck.length,
       rewardChoices: state.rewardChoices.map(function (id) { return cardData({ id: id }); }),
+      relics: state.relics.map(relicData),
+      relicChoices: state.relicChoices.map(relicData),
       log: state.log.slice(),
       over: state.over,
       win: state.win,
@@ -432,11 +520,14 @@
     MAX_FLOOR: MAX_FLOOR,
     HAND_SIZE: HAND_SIZE,
     CARDS: CARDS,
+    RELICS: RELICS,
     START_HP: START_HP,
     createGame: createGame,
     start: start,
     playCard: playCard,
     chooseReward: chooseReward,
+    skipReward: skipReward,
+    chooseRelic: chooseRelic,
     nextIntent: nextIntent,
     autoStep: autoStep,
     snapshot: snapshot,
