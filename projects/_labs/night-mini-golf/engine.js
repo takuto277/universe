@@ -116,7 +116,18 @@
     var dist = Math.sqrt(dx * dx + dy * dy) || 1;
     var speed = Math.min(MAX_SPEED, Math.sqrt(2 * FRICTION * dist) * 1.03 + 28);
     var power = clamp((speed - MIN_SPEED) / (MAX_SPEED - MIN_SPEED), 0.15, 1);
-    return shootBall(s, dx / dist, dy / dist, power);
+    var directAngle = Math.atan2(dx, dy);
+    var bestAngle = directAngle;
+    var bestPower = power;
+    var bestScore = Infinity;
+    var offsets = [0, -0.14, 0.14, -0.28, 0.28, -0.42, 0.42];
+    for (var i = 0; i < offsets.length; i++) {
+      var trial = simulateShot(s, directAngle + offsets[i], power, 480);
+      var tb = trial.ball;
+      var score = trial.holed ? -1000 : Math.sqrt((tb.x - s.target.x) * (tb.x - s.target.x) + (tb.y - s.target.y) * (tb.y - s.target.y));
+      if (score < bestScore) { bestScore = score; bestAngle = directAngle + offsets[i]; bestPower = power; }
+    }
+    return shootBall(s, Math.sin(bestAngle), Math.cos(bestAngle), bestPower);
   }
 
   function autoShot(s) {
@@ -268,7 +279,37 @@
     return s;
   }
 
+  function cloneState(s) { return JSON.parse(JSON.stringify(s)); }
+
+  function simulateShot(s, angle, power, maxSteps) {
+    var c = cloneState(s);
+    c.paused = false;
+    c.events = [];
+    if (!shootBall(c, Math.sin(angle), Math.cos(angle), power)) return { points: [], holed: false, ball: c.balls[c.turn] };
+    var active = c.turn;
+    var points = [{ x: c.balls[active].x, y: c.balls[active].y }];
+    var last = null;
+    var limit = maxSteps || 600;
+    for (var i = 0; i < limit && c.phase === 'moving'; i++) {
+      update(c, 1 / 90);
+      var p = c.balls[active];
+      if (!last || Math.abs(p.x - last.x) + Math.abs(p.y - last.y) > 8) {
+        points.push({ x: p.x, y: p.y });
+        last = { x: p.x, y: p.y };
+      }
+    }
+    var end = c.balls[active];
+    if (!last || Math.abs(end.x - last.x) + Math.abs(end.y - last.y) > 1) points.push({ x: end.x, y: end.y });
+    return { points: points, holed: c.phase === 'holeover' && c.holeWinner === active, ball: end };
+  }
+
+  function previewShot(s, angle, power) {
+    if (!s || s.phase !== 'aim') return [];
+    return simulateShot(s, angle, power, 540).points;
+  }
+
   function getState(s) {
+
     if (!s) return null;
     return {
       id: 'night-mini-golf', phase: s.phase, paused: s.paused,
@@ -287,6 +328,6 @@
     FIELD: FIELD, BALL_R: BALL_R, HOLE_R: HOLE_R, STAGES: STAGES,
     createGame: createGame, playerShoot: playerShoot, shootBall: shootBall,
     cpuShot: cpuShot, autoShot: autoShot, update: update,
-    getState: getState, setPaused: setPaused, consumeEvents: consumeEvents
+    previewShot: previewShot, getState: getState, setPaused: setPaused, consumeEvents: consumeEvents
   };
 });
