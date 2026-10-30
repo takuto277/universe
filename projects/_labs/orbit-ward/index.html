@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#04050e" />
+  <meta name="description" content="ORBIT WARD — a 60-second orbital defense. Drag the shield around the core, deflect every shard, and charge a pulse." />
+  <title>ORBIT WARD</title>
+  <link rel="stylesheet" href="style.css?v=20261031-orbitward2" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <div>
+          <p class="eyebrow">A 60-SECOND ORBITAL DEFENSE</p>
+          <h1>ORBIT WARD</h1>
+        </div>
+        <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span class="label">TIME</span><strong id="time">60</strong></div>
+        <div class="stat big"><span class="label">SCORE</span><strong id="score">0</strong></div>
+        <div class="stat"><span class="label">CHAIN</span><strong id="combo">—</strong></div>
+        <div class="stat"><span class="label">CORE</span><strong id="hp" class="hearts">♥♥♥♥♥♥♥♥♥♥</strong></div>
+      </div>
+
+      <div class="readout">
+        <span id="perfect">PERFECT 0</span>
+        <span id="status">SHARDS 0</span>
+      </div>
+
+      <div class="pulse-row">
+        <div class="pulse-meter">
+          <div class="meter-label"><span>PULSE CHARGE</span><span id="pulse-text">0%</span></div>
+          <div class="meter"><span id="pulse-bar"></span></div>
+        </div>
+        <button id="btn-pulse" class="pulse-btn" type="button" aria-disabled="true">PULSE</button>
+      </div>
+
+      <p id="hint" class="hint">DRAG TO ORBIT THE SHIELD · PERFECT BLOCKS CHARGE PULSE</p>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">ONE CORE. ONE SHIELD. NO BLIND SPOTS.</p>
+        <h1>ORBIT<br /><span>WARD</span></h1>
+        <p class="lead">A dying star. A ring of incoming shards. Hold the orbit for sixty seconds.</p>
+        <div class="rules">
+          <p><span class="rule-icon drag">DRAG</span> Move your shield around the core. Meet each shard where it crosses the ring.</p>
+          <p><span class="rule-icon perfect">PERFECT</span> Meet a shard at the center of the arc to score more and charge faster.</p>
+          <p><span class="rule-icon pulse">PULSE</span> Fill the meter, then tap PULSE to wipe the orbit clear.</p>
+          <p><span class="rule-icon core">CORE</span> Ten pips. Every shard that reaches the star costs one.</p>
+        </div>
+        <button id="btn-start" class="primary big" type="button">ENTER ORBIT</button>
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">60 seconds · 10 core pips · one shield · best score saved</p>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay">
+      <div class="result-content">
+        <p id="result-eyebrow" class="eyebrow">THE CORE BREAKS</p>
+        <h1>ORBIT WARD</h1>
+        <div class="result-score"><span id="result-score">0</span><small>PTS</small></div>
+        <p id="result-rank" class="result-rank">RANK —</p>
+        <p id="result-sub" class="lead">The dark found a gap.</p>
+        <p id="result-meta" class="result-meta">BLOCKS 0 · PERFECT 0 · BEST CHAIN 0 · PULSE 0 · 0s</p>
+        <p id="result-best" class="tiny">BEST 0</p>
+        <button id="btn-retry" class="primary big" type="button">ORBIT AGAIN</button>
+        <button id="btn-result-sound" class="link-btn" type="button">SOUND: ON</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261031-orbitward2"></script>
+  <script src="audio.js?v=20261031-orbitward2"></script>
+  <script src="renderer.js?v=20261031-orbitward2"></script>
+  <script src="game.js?v=20261031-orbitward2"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
