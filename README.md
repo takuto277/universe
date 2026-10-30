@@ -71,6 +71,7 @@ universe/
 │   │   ├── neon-stack/
 │   │   ├── observer-game/
 │   │   ├── oto-no-ie/
+│   │   ├── beat-rush/
 │   │   ├── sleep-guard/
 │   │   ├── still-water/
 │   │   ├── zero-one-doorman/
