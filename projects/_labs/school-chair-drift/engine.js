@@ -8,101 +8,131 @@
 
   var C = { VIEW_W: 480, VIEW_H: 800 };
   var CHAIR_R = 17;
+  var LAPS = 3;
+  var RACERS = 4;
   var LATERAL_ACCEL = 760;
   var LATERAL_FRICTION = 5.4;
   var DRIFT_FRICTION = 2.1;
   var DRIFT_CHARGE_RATE = 0.36;
-  var MILK_TIME = 1.4;
+  var TIME_LIMIT = 150;
+  var ITEMS = ['milk', 'eraser', 'tray'];
 
-  function obstacle(wy, off, w, h, kind) { return { wy: wy, off: off, w: w, h: h, kind: kind || 'desk' }; }
-  function milk(wy, off) { return { wy: wy, off: off, taken: false }; }
+  function obstacle(s, off, w, h, kind) { return { s: s, off: off, w: w, h: h, kind: kind || 'desk' }; }
+  function itemBox(s, off) { return { s: s, off: off, cooldown: 0 }; }
 
   var STAGES = [
     {
-      id: 'corridor', name: '1F 渡り廊下', length: 5200, halfWidth: 150, baseSpeed: 300, maxSpeed: 360, time: 36,
-      curveAmp: 46, curveFreq: 0.0015,
+      id: 'corridor', name: '1F 渡り廊下', length: 3000, halfWidth: 150, baseSpeed: 300, maxSpeed: 360, turns: 2,
+      curveAmp: 76,
       obstacles: [
-        obstacle(-480, -86, 128, 50, 'locker'), obstacle(-820, 92, 52, 52, 'bucket'),
-        obstacle(-1160, -92, 116, 50, 'desk'), obstacle(-1500, 96, 76, 56, 'cart'),
-        obstacle(-1840, -86, 44, 44, 'plant'), obstacle(-2200, 82, 124, 50, 'locker'),
-        obstacle(-2540, -96, 52, 52, 'bucket'), obstacle(-2920, 88, 126, 50, 'desk'),
-        obstacle(-3280, -78, 76, 56, 'cart'), obstacle(-3650, 92, 44, 44, 'plant'),
-        obstacle(-4020, -90, 124, 50, 'locker'), obstacle(-4380, 84, 52, 52, 'bucket')
+        obstacle(480, -86, 128, 50, 'locker'), obstacle(760, 92, 52, 52, 'bucket'),
+        obstacle(1100, -92, 116, 50, 'desk'), obstacle(1450, 96, 76, 56, 'cart'),
+        obstacle(1800, -86, 44, 44, 'plant'), obstacle(2150, 82, 124, 50, 'locker'),
+        obstacle(2500, -96, 52, 52, 'bucket'), obstacle(2800, 88, 126, 50, 'desk')
       ],
-      milk: [milk(-690, 0), milk(-1360, -20), milk(-2080, 22), milk(-2800, -16), milk(-3480, 18), milk(-4140, 0)]
+      itemBoxes: [itemBox(300, 0), itemBox(850, -58), itemBox(1350, 62), itemBox(1900, 0), itemBox(2450, -58), itemBox(2850, 62)]
     },
     {
-      id: 'special', name: '特別棟', length: 6500, halfWidth: 140, baseSpeed: 320, maxSpeed: 385, time: 42,
-      curveAmp: 72, curveFreq: 0.0017,
+      id: 'special', name: '特別棟', length: 3800, halfWidth: 140, baseSpeed: 320, maxSpeed: 385, turns: 3,
+      curveAmp: 92,
       obstacles: [
-        obstacle(-420, -74, 120, 50, 'locker'), obstacle(-760, 84, 104, 46, 'desk'),
-        obstacle(-1100, -88, 52, 52, 'bucket'), obstacle(-1450, 74, 76, 56, 'cart'),
-        obstacle(-1820, -82, 122, 50, 'locker'), obstacle(-2180, 88, 44, 44, 'plant'),
-        obstacle(-2540, -90, 126, 50, 'desk'), obstacle(-2900, 78, 52, 52, 'bucket'),
-        obstacle(-3260, -82, 120, 50, 'locker'), obstacle(-3620, 86, 76, 56, 'cart'),
-        obstacle(-3980, -88, 44, 44, 'plant'), obstacle(-4350, 78, 124, 50, 'desk'),
-        obstacle(-4720, -86, 52, 52, 'bucket'), obstacle(-5080, 84, 76, 56, 'cart'),
-        obstacle(-5440, -78, 122, 50, 'locker'), obstacle(-5800, 88, 52, 52, 'bucket')
+        obstacle(420, -74, 120, 50, 'locker'), obstacle(720, 84, 104, 46, 'desk'),
+        obstacle(1060, -88, 52, 52, 'bucket'), obstacle(1400, 74, 76, 56, 'cart'),
+        obstacle(1760, -82, 122, 50, 'locker'), obstacle(2120, 88, 44, 44, 'plant'),
+        obstacle(2480, -90, 126, 50, 'desk'), obstacle(2840, 78, 52, 52, 'bucket'),
+        obstacle(3200, -82, 120, 50, 'locker'), obstacle(3540, 86, 76, 56, 'cart')
       ],
-      milk: [milk(-650, 0), milk(-1280, -18), milk(-1980, 20), milk(-2680, -18), milk(-3380, 18), milk(-4080, -18), milk(-4780, 18), milk(-5480, 0)]
+      itemBoxes: [itemBox(280, 0), itemBox(800, 58), itemBox(1300, -62), itemBox(1850, 0), itemBox(2400, 58), itemBox(3000, -62), itemBox(3550, 0)]
     },
     {
-      id: 'entrance', name: '3F エントランス', length: 7800, halfWidth: 130, baseSpeed: 340, maxSpeed: 410, time: 50,
-      curveAmp: 92, curveFreq: 0.0019,
+      id: 'entrance', name: '3F エントランス', length: 4500, halfWidth: 130, baseSpeed: 340, maxSpeed: 410, turns: 4,
+      curveAmp: 108,
       obstacles: [
-        obstacle(-400, -68, 118, 50, 'locker'), obstacle(-740, 78, 118, 50, 'desk'),
-        obstacle(-1080, -82, 52, 52, 'bucket'), obstacle(-1420, 68, 76, 56, 'cart'),
-        obstacle(-1760, -76, 120, 50, 'locker'), obstacle(-2100, 82, 44, 44, 'plant'),
-        obstacle(-2440, -84, 76, 56, 'cart'), obstacle(-2780, 72, 52, 52, 'bucket'),
-        obstacle(-3120, -78, 122, 50, 'desk'), obstacle(-3460, 82, 76, 56, 'cart'),
-        obstacle(-3800, -76, 44, 44, 'plant'), obstacle(-4140, 76, 120, 50, 'locker'),
-        obstacle(-4480, -82, 52, 52, 'bucket'), obstacle(-4820, 80, 76, 56, 'cart'),
-        obstacle(-5160, -78, 122, 50, 'desk'), obstacle(-5500, 82, 44, 44, 'plant'),
-        obstacle(-5840, -84, 52, 52, 'bucket'), obstacle(-6180, 76, 122, 50, 'locker'),
-        obstacle(-6520, 82, 76, 56, 'cart'), obstacle(-6860, -78, 44, 44, 'plant'),
-        obstacle(-7200, 82, 52, 52, 'bucket'), obstacle(-7520, 0, 76, 56, 'cart')
+        obstacle(380, -68, 118, 50, 'locker'), obstacle(680, 78, 118, 50, 'desk'),
+        obstacle(1000, -82, 52, 52, 'bucket'), obstacle(1340, 68, 76, 56, 'cart'),
+        obstacle(1680, -76, 120, 50, 'locker'), obstacle(2020, 82, 44, 44, 'plant'),
+        obstacle(2360, -84, 76, 56, 'cart'), obstacle(2700, 72, 52, 52, 'bucket'),
+        obstacle(3040, -78, 122, 50, 'desk'), obstacle(3380, 82, 76, 56, 'cart'),
+        obstacle(3720, -76, 44, 44, 'plant'), obstacle(4060, 76, 120, 50, 'locker'),
+        obstacle(4320, 0, 76, 56, 'cart')
       ],
-      milk: [milk(-600, 0), milk(-1200, 18), milk(-1840, -18), milk(-2500, 22), milk(-3160, -20), milk(-3820, 18), milk(-4480, -18), milk(-5140, 20), milk(-5800, -16), milk(-6460, 16), milk(-7120, 0)]
+      itemBoxes: [itemBox(250, 0), itemBox(700, -55), itemBox(1200, 55), itemBox(1700, 0), itemBox(2200, -55), itemBox(2750, 55), itemBox(3300, 0), itemBox(3850, -55), itemBox(4250, 55)]
     }
   ];
 
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
-  function trackCenter(stage, y) {
-    return C.VIEW_W / 2 + Math.sin(y * stage.curveFreq) * stage.curveAmp + Math.sin(y * stage.curveFreq * 2.7) * 10;
+  function wrapS(s, length) { while (s < 0) s += length; while (s >= length) s -= length; return s; }
+  function trackCenter(stage, s) {
+    var a = s / stage.length * Math.PI * 2;
+    return C.VIEW_W / 2 + Math.sin(a * stage.turns) * stage.curveAmp + Math.sin(a * 2.0) * 10;
   }
   function stageFor(index) { return STAGES[clamp(Number(index) || 0, 0, STAGES.length - 1)]; }
+
+  function makeRacer(stage, id, team, xOffset, isPlayer) {
+    return {
+      id: id,
+      team: team,
+      isPlayer: !!isPlayer,
+      s: 0,
+      lap: 0,
+      x: trackCenter(stage, 0) + xOffset,
+      vx: 0,
+      speed: stage.baseSpeed,
+      steer: 0,
+      drift: 0,
+      drifting: false,
+      boost: 0,
+      shield: 0,
+      spin: 0,
+      item: null,
+      itemTimer: 0,
+      finished: false,
+      finishOrder: 0,
+      crash: 0,
+      aiLane: xOffset * 0.48,
+      aiPhase: Math.random() * Math.PI * 2
+    };
+  }
 
   function createGame(options) {
     options = options || {};
     var stageIndex = clamp(Number(options.stage) || 0, 0, STAGES.length - 1);
     var stage = STAGES[stageIndex];
-    var obstacles = [];
-    for (var i = 0; i < stage.obstacles.length; i++) {
-      var o = stage.obstacles[i];
-      obstacles.push({ wy: o.wy, x: trackCenter(stage, o.wy) + o.off, w: o.w, h: o.h, kind: o.kind, hit: false });
+    var speeds = [0, -70, 60, 100];
+    var racers = [
+      makeRacer(stage, 'player', 'player', 0, true),
+      makeRacer(stage, 'cpu1', 'cpu', speeds[1], false),
+      makeRacer(stage, 'cpu2', 'cpu', speeds[2], false),
+      makeRacer(stage, 'cpu3', 'cpu', speeds[3], false)
+    ];
+    var itemBoxes = [];
+    for (var i = 0; i < stage.itemBoxes.length; i++) {
+      var b = stage.itemBoxes[i];
+      itemBoxes.push({ s: b.s, x: trackCenter(stage, b.s) + b.off, cooldown: 0 });
     }
-    var milks = [];
-    for (i = 0; i < stage.milk.length; i++) {
-      var m = stage.milk[i];
-      milks.push({ wy: m.wy, x: trackCenter(stage, m.wy) + m.off, taken: false });
+    var obstacles = [];
+    for (i = 0; i < stage.obstacles.length; i++) {
+      var o = stage.obstacles[i];
+      obstacles.push({ s: o.s, x: trackCenter(stage, o.s) + o.off, w: o.w, h: o.h, kind: o.kind });
     }
     return {
-      phase: 'playing',
+      phase: 'countdown',
       paused: false,
+      countdown: 3.2,
       stage: stageIndex,
       stageTotal: STAGES.length,
       stageName: stage.name,
-      time: stage.time,
-      finishTime: 0,
-      chair: { x: C.VIEW_W / 2, y: 0, vx: 0, speed: stage.baseSpeed, steer: 0, angle: 0 },
-      maxSpeed: stage.maxSpeed,
-      drift: 0,
-      boost: 0,
-      drifting: false,
-      milk: 0,
-      obstacles: obstacles,
-      milks: milks,
+      laps: LAPS,
+      stageLength: stage.length,
+      raceTime: 0,
+      finishCount: 0,
+      place: 0,
+      winner: null,
       reason: null,
+      racers: racers,
+      itemBoxes: itemBoxes,
+      traps: [],
+      obstacles: obstacles,
       events: []
     };
   }
@@ -115,114 +145,272 @@
   }
 
   function stage(s) { return STAGES[s.stage]; }
+  function playerOf(s) { return s.racers[0]; }
 
-  function circleRect(cx, cy, r, ox, oy, ow, oh) {
-    var nx = clamp(cx, ox, ox + ow);
-    var ny = clamp(cy, oy, oy + oh);
-    var dx = cx - nx;
-    var dy = cy - ny;
-    return dx * dx + dy * dy < r * r;
+  function progressOf(r) {
+    return r.finished ? LAPS * 1000000 + (100000 - r.finishOrder) : r.lap * 1000000 + r.s;
   }
-
-  function hitObstacle(s, o) {
-    var cx = s.chair.x;
-    var cy = s.chair.y;
-    var left = o.x - o.w / 2;
-    var top = o.wy - o.h / 2;
-    if (!circleRect(cx, cy, CHAIR_R, left, top, o.w, o.h)) return false;
-    var nx = cx - o.x;
-    var ny = cy - o.wy;
-    var len = Math.sqrt(nx * nx + ny * ny) || 1;
-    nx /= len;
-    ny /= len;
-    s.chair.x += nx * (CHAIR_R + 5);
-    s.chair.y += ny * (CHAIR_R + 5);
-    s.chair.vx = -nx * Math.max(120, Math.abs(s.chair.vx) * 0.55);
-    s.chair.speed = Math.max(120, s.chair.speed * 0.62);
-    s.drift = Math.max(0, s.drift - 0.3);
-    event(s, 'crash', { x: cx, y: cy, kind: o.kind });
-    return true;
+  function standings(s) {
+    return s.racers.slice().sort(function (a, b) {
+      if (a.finished && b.finished) return a.finishOrder - b.finishOrder;
+      if (a.finished) return -1;
+      if (b.finished) return 1;
+      return progressOf(b) - progressOf(a);
+    });
   }
-
-  function hitMilk(s, m) {
-    var dx = s.chair.x - m.x;
-    var dy = s.chair.y - m.wy;
-    if (dx * dx + dy * dy > (CHAIR_R + 16) * (CHAIR_R + 16)) return false;
-    m.taken = true;
-    s.milk++;
-    s.time += MILK_TIME;
-    s.chair.speed = Math.min(s.maxSpeed + 50, s.chair.speed + 26);
-    event(s, 'milk', { x: m.x, y: m.wy });
-    return true;
+  function playerPlace(s) {
+    var list = standings(s);
+    for (var i = 0; i < list.length; i++) if (list[i].isPlayer) return i + 1;
+    return 0;
   }
 
   function setSteer(s, value) {
     if (!s || s.phase !== 'playing') return;
-    s.chair.steer = clamp(Number(value) || 0, -1, 1);
+    playerOf(s).steer = clamp(Number(value) || 0, -1, 1);
+  }
+
+  function useItemFor(s, r) {
+    if (!r || !r.item || r.finished) return false;
+    var item = r.item;
+    r.item = null;
+    r.itemTimer = 0;
+    if (item === 'milk') {
+      r.boost = 2.2;
+      event(s, 'itemUse', { id: r.id, item: item });
+    } else if (item === 'tray') {
+      r.shield = 6;
+      event(s, 'itemUse', { id: r.id, item: item });
+    } else {
+      var st = stage(s);
+      s.traps.push({ s: wrapS(r.s - 80, st.length), x: r.x, life: 14, owner: r.id });
+      event(s, 'itemUse', { id: r.id, item: item });
+    }
+    return true;
+  }
+
+  function useItem(s, id) {
+    if (!s || s.phase !== 'playing') return false;
+    var racer = null;
+    for (var i = 0; i < s.racers.length; i++) if (s.racers[i].id === id) racer = s.racers[i];
+    if (!racer || !racer.isPlayer) return false;
+    return useItemFor(s, racer);
+  }
+
+  function pickupItem(s, r, box) {
+    var item = ITEMS[Math.floor(Math.random() * ITEMS.length)];
+    r.item = item;
+    r.itemTimer = r.isPlayer ? 0 : 1.4 + Math.random() * 2.8;
+    box.cooldown = 3.8;
+    event(s, 'itemBox', { id: r.id, item: item });
+  }
+
+  function hitTrap(s, r, trap, index) {
+    var st = stage(s);
+    var ds = Math.abs(wrapS(r.s - trap.s, st.length));
+    if (ds > 34) return false;
+    if (Math.abs(r.x - trap.x) > 34) return false;
+    s.traps.splice(index, 1);
+    if (r.shield > 0) {
+      r.shield = 0;
+      event(s, 'shieldBlock', { id: r.id });
+    } else {
+      r.spin = 0.95;
+      r.speed = Math.max(100, r.speed * 0.42);
+      event(s, 'trapHit', { id: r.id });
+    }
+    return true;
+  }
+
+  function checkCourse(s, r) {
+    var st = stage(s);
+    var center = trackCenter(st, r.s);
+    var left = center - st.halfWidth + CHAIR_R;
+    var right = center + st.halfWidth - CHAIR_R;
+    if (r.x < left) {
+      r.x = left;
+      if (r.vx < 0) r.vx = -r.vx * 0.45;
+      r.speed = Math.max(120, r.speed * 0.75);
+      event(s, 'wall', { id: r.id, side: 'left' });
+    } else if (r.x > right) {
+      r.x = right;
+      if (r.vx > 0) r.vx = -r.vx * 0.45;
+      r.speed = Math.max(120, r.speed * 0.75);
+      event(s, 'wall', { id: r.id, side: 'right' });
+    }
+
+    if (r.crash > 0) r.crash -= 1 / 60;
+    for (var i = 0; i < s.obstacles.length; i++) {
+      var o = s.obstacles[i];
+      var ds = Math.abs(wrapS(r.s - o.s, st.length));
+      if (ds > o.h / 2 + CHAIR_R) continue;
+      if (Math.abs(r.x - o.x) > o.w / 2 + CHAIR_R) continue;
+      if (r.crash > 0) continue;
+      r.crash = 0.6;
+      r.speed = Math.max(120, r.speed * 0.5);
+      r.x += r.x < o.x ? -18 : 18;
+      event(s, 'crash', { id: r.id, kind: o.kind });
+      break;
+    }
+
+    for (i = 0; i < s.itemBoxes.length; i++) {
+      var b = s.itemBoxes[i];
+      if (b.cooldown > 0) continue;
+      var bds = Math.abs(wrapS(r.s - b.s, st.length));
+      if (bds < 32 && Math.abs(r.x - b.x) < 34) pickupItem(s, r, b);
+    }
+
+    for (i = s.traps.length - 1; i >= 0; i--) {
+      if (hitTrap(s, r, s.traps[i], i)) break;
+    }
+  }
+
+  function advanceRacer(s, r, dt) {
+    var st = stage(s);
+    r.s += r.speed * dt;
+    while (r.s >= st.length) {
+      r.s -= st.length;
+      r.lap++;
+      if (r.lap >= LAPS) {
+        r.finished = true;
+        r.lap = LAPS;
+        r.s = 0;
+        r.finishOrder = ++s.finishCount;
+        event(s, 'finish', { id: r.id, order: r.finishOrder });
+        break;
+      } else {
+        event(s, 'lap', { id: r.id, lap: r.lap + 1 });
+      }
+    }
+  }
+
+  function updatePlayer(s, r, dt) {
+    var st = stage(s);
+    var max = st.maxSpeed + (r.boost > 0 ? 92 : 0);
+    if (r.boost > 0) r.boost = Math.max(0, r.boost - dt);
+    if (r.shield > 0) r.shield = Math.max(0, r.shield - dt);
+    if (r.spin > 0) {
+      r.spin = Math.max(0, r.spin - dt);
+      r.speed = Math.max(100, r.speed * Math.exp(-3.2 * dt));
+      r.vx *= Math.exp(-4.5 * dt);
+    } else {
+      r.speed += (max - r.speed) * 1.25 * dt;
+      r.vx += r.steer * LATERAL_ACCEL * dt;
+    }
+    r.drifting = r.spin <= 0 && Math.abs(r.vx) > 72 && Math.abs(r.steer) > 0.35 && r.speed > 170;
+    var friction = r.drifting ? DRIFT_FRICTION : LATERAL_FRICTION;
+    r.vx *= Math.exp(-friction * dt);
+    r.x += r.vx * dt;
+    if (r.drifting) {
+      r.drift = Math.min(1, r.drift + DRIFT_CHARGE_RATE * dt);
+      if (r.drift >= 1) {
+        r.drift = 0;
+        r.boost = 1.25;
+        event(s, 'boost', { id: r.id });
+      }
+    } else {
+      r.drift = Math.max(0, r.drift - 0.08 * dt);
+    }
+    checkCourse(s, r);
+  }
+
+  function updateCpu(s, r, dt) {
+    var st = stage(s);
+    var p = playerOf(s);
+    var target = trackCenter(st, r.s + 130) + r.aiLane + Math.sin(s.raceTime * 0.7 + r.aiPhase) * 22;
+    r.steer = clamp((target - r.x) / 86, -1, 1);
+    var rubber = 0;
+    var playerProgress = p.lap * st.length + p.s;
+    var selfProgress = r.lap * st.length + r.s;
+    if (selfProgress < playerProgress - 260) rubber = 0.08;
+    else if (selfProgress > playerProgress + 350) rubber = -0.06;
+    var max = st.maxSpeed * (0.94 + rubber) + (r.boost > 0 ? 60 : 0);
+    if (r.boost > 0) r.boost = Math.max(0, r.boost - dt);
+    if (r.shield > 0) r.shield = Math.max(0, r.shield - dt);
+    if (r.spin > 0) {
+      r.spin = Math.max(0, r.spin - dt);
+      r.speed = Math.max(90, r.speed * Math.exp(-3.2 * dt));
+    } else {
+      r.speed += (max - r.speed) * 0.72 * dt;
+      r.vx += r.steer * LATERAL_ACCEL * 0.82 * dt;
+    }
+    r.vx *= Math.exp(-LATERAL_FRICTION * dt);
+    r.x += r.vx * dt;
+    checkCourse(s, r);
+    if (r.item) {
+      r.itemTimer -= dt;
+      if (r.itemTimer <= 0) useItemFor(s, r);
+    }
+  }
+
+  function collideRacers(s) {
+    for (var i = 0; i < s.racers.length; i++) {
+      var a = s.racers[i];
+      if (a.finished) continue;
+      for (var j = i + 1; j < s.racers.length; j++) {
+        var b = s.racers[j];
+        if (b.finished) continue;
+        var ds = Math.abs(wrapS(a.s - b.s, stage(s).length));
+        if (ds > 24) continue;
+        var dx = b.x - a.x;
+        if (Math.abs(dx) > 30) continue;
+        var push = (30 - Math.abs(dx)) * 0.5 * (dx >= 0 ? 1 : -1);
+        a.x -= push * 0.5;
+        b.x += push * 0.5;
+        a.vx -= push * 2;
+        b.vx += push * 2;
+        a.speed *= 0.96;
+        b.speed *= 0.96;
+        event(s, 'bump', {});
+        break;
+      }
+    }
   }
 
   function update(s, dt) {
-    if (!s || s.paused || s.phase !== 'playing') return s;
+    if (!s || s.paused || s.phase === 'clear' || s.phase === 'over') return s;
     dt = clamp(Number(dt) || 0, 0, 0.05);
-    s.time -= dt;
-    if (s.time <= 0) {
-      s.time = 0;
+    if (s.phase === 'countdown') {
+      s.countdown -= dt;
+      if (s.countdown <= 0) {
+        s.countdown = 0;
+        s.phase = 'playing';
+        event(s, 'go', {});
+      }
+      return s;
+    }
+    s.raceTime += dt;
+    if (s.raceTime > TIME_LIMIT) {
       s.phase = 'over';
       s.reason = 'timeup';
       event(s, 'timeup', {});
       return s;
     }
-    var st = stage(s);
-    var c = s.chair;
-    var max = s.maxSpeed + (s.boost > 0 ? 70 : 0);
-    if (s.boost > 0) s.boost = Math.max(0, s.boost - dt);
-    c.speed += (max - c.speed) * 1.25 * dt;
-    c.vx += c.steer * LATERAL_ACCEL * dt;
-    var friction = s.drifting ? DRIFT_FRICTION : LATERAL_FRICTION;
-    c.vx *= Math.exp(-friction * dt);
-    c.x += c.vx * dt;
-    c.y -= c.speed * dt;
-    c.angle = Math.atan2(c.vx, Math.max(80, c.speed)) * 0.72;
-    s.drifting = Math.abs(c.vx) > 72 && Math.abs(c.steer) > 0.35 && c.speed > 170;
-    if (s.drifting) {
-      s.drift = Math.min(1, s.drift + DRIFT_CHARGE_RATE * dt);
-      if (s.drift >= 1) {
-        s.drift = 0;
-        s.boost = 1.25;
-        event(s, 'boost', { x: c.x, y: c.y });
+    for (var i = 0; i < s.racers.length; i++) {
+      var r = s.racers[i];
+      if (r.finished) continue;
+      if (r.isPlayer) updatePlayer(s, r, dt);
+      else updateCpu(s, r, dt);
+      if (!r.finished) advanceRacer(s, r, dt);
+    }
+    for (i = 0; i < s.itemBoxes.length; i++) if (s.itemBoxes[i].cooldown > 0) s.itemBoxes[i].cooldown = Math.max(0, s.itemBoxes[i].cooldown - dt);
+    for (i = s.traps.length - 1; i >= 0; i--) {
+      s.traps[i].life -= dt;
+      if (s.traps[i].life <= 0) s.traps.splice(i, 1);
+    }
+    collideRacers(s);
+    var player = playerOf(s);
+    if (player.finished) {
+      s.place = player.finishOrder;
+      if (s.place === 1) {
+        s.phase = 'clear';
+        s.winner = 'player';
+        s.reason = 'first';
+      } else {
+        s.phase = 'over';
+        s.winner = 'cpu';
+        s.reason = 'place';
       }
-    } else {
-      s.drift = Math.max(0, s.drift - 0.08 * dt);
-    }
-
-    var center = trackCenter(st, c.y);
-    var left = center - st.halfWidth + CHAIR_R;
-    var right = center + st.halfWidth - CHAIR_R;
-    if (c.x < left) {
-      c.x = left;
-      if (c.vx < 0) c.vx = -c.vx * 0.45;
-      c.speed = Math.max(130, c.speed * 0.78);
-      event(s, 'wall', { side: 'left' });
-    } else if (c.x > right) {
-      c.x = right;
-      if (c.vx > 0) c.vx = -c.vx * 0.45;
-      c.speed = Math.max(130, c.speed * 0.78);
-      event(s, 'wall', { side: 'right' });
-    }
-
-    for (var i = 0; i < s.obstacles.length; i++) {
-      if (s.obstacles[i].hit) continue;
-      if (hitObstacle(s, s.obstacles[i])) s.obstacles[i].hit = true;
-    }
-    for (i = 0; i < s.milks.length; i++) {
-      if (s.milks[i].taken) continue;
-      if (hitMilk(s, s.milks[i])) s.milks[i].taken = true;
-    }
-
-    if (c.y <= -st.length) {
-      s.phase = 'clear';
-      s.finishTime = Math.max(0, s.time);
-      event(s, 'finish', { time: s.finishTime });
+      event(s, 'raceover', { place: s.place, winner: s.winner });
     }
     return s;
   }
@@ -235,25 +423,31 @@
   function getState(s) {
     if (!s) return null;
     var st = stage(s);
+    var p = playerOf(s);
     return {
       id: 'school-chair-drift',
       phase: s.phase,
       paused: s.paused,
+      countdown: s.countdown,
       stage: s.stage,
       stageTotal: s.stageTotal,
       stageName: s.stageName,
-      time: s.time,
-      finishTime: s.finishTime,
-      chair: { x: s.chair.x, y: s.chair.y, vx: s.chair.vx, speed: s.chair.speed, angle: s.chair.angle },
-      progress: clamp(-s.chair.y / st.length, 0, 1),
-      centerX: trackCenter(st, s.chair.y),
-      halfWidth: st.halfWidth,
-      drift: s.drift,
-      boost: s.boost,
-      drifting: s.drifting,
-      milk: s.milk,
+      laps: s.laps,
+      stageLength: s.stageLength,
+      raceTime: s.raceTime,
+      place: playerPlace(s),
+      lap: Math.min(LAPS, p.lap + 1),
+      progress: clamp((p.lap * st.length + p.s) / (LAPS * st.length), 0, 1),
+      player: {
+        s: p.s, lap: p.lap, x: p.x, speed: p.speed, vx: p.vx,
+        drift: p.drift, drifting: p.drifting, boost: p.boost, shield: p.shield, spin: p.spin,
+        item: p.item, finished: p.finished
+      },
+      racers: s.racers,
+      itemBoxes: s.itemBoxes,
+      traps: s.traps,
       obstacles: s.obstacles,
-      milks: s.milks,
+      winner: s.winner,
       reason: s.reason,
       over: s.phase === 'over',
       clear: s.phase === 'clear'
@@ -269,10 +463,12 @@
     C: C,
     CHAIR_R: CHAIR_R,
     STAGES: STAGES,
+    LAPS: LAPS,
     trackCenter: trackCenter,
     createGame: createGame,
     update: update,
     setSteer: setSteer,
+    useItem: useItem,
     setPaused: setPaused,
     getState: getState,
     consumeEvents: consumeEvents
