@@ -20,6 +20,8 @@
   var totalStrokes = 0;
   var stagePar = 0;
   var totalPar = 0;
+  var stageShards = 0;
+  var totalShards = 0;
   var lastTs = 0;
   var scaleX = 1;
   var scaleY = 1;
@@ -29,10 +31,35 @@
   var advanceTimer = 0;
   var holeFinalized = false;
   var sinkBanner = null;
+  var BEST_KEY = 'night-mini-golf-best-v2';
+  var best = loadBest();
 
   function $(id) { return document.getElementById(id); }
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
-  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }  function loadBest() {
+    try {
+      var raw = typeof localStorage !== 'undefined' ? localStorage.getItem(BEST_KEY) : null;
+      if (!raw) return null;
+      var parsed = JSON.parse(raw);
+      if (parsed && typeof parsed.score === 'number') return parsed;
+    } catch (e) { }
+    return null;
+  }
+  function saveBest() {
+    var score = totalStrokes - totalPar;
+    if (!best || score < best.score || (score === best.score && totalShards > (best.shards || 0))) {
+      best = { score: score, strokes: totalStrokes, shards: totalShards };
+      try { if (typeof localStorage !== 'undefined') localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) { }
+    }
+    syncBestUI();
+  }
+  function syncBestUI() {
+    var text = best ? ('BEST ' + scoreText(best.score) + ' · ' + (best.shards || 0) + ' SHARDS') : 'BEST --';
+    if (els.best) els.best.textContent = text;
+    if (els.endingBest) els.endingBest.textContent = text;
+  }
+
+
 
   function setScreen(name) {
     if (name === shownScreen) return;
@@ -61,8 +88,11 @@
     totalStrokes = 0;
     stagePar = 0;
     totalPar = 0;
+    stageShards = 0;
+    totalShards = 0;
     pointer = null;
     resetEffects();
+    syncBestUI();
     setScreen('screen-title');
     if (els.hud) els.hud.classList.add('hidden');
     if (els.pause) els.pause.classList.add('hidden');
@@ -76,6 +106,8 @@
     totalStrokes = 0;
     stagePar = 0;
     totalPar = 0;
+    stageShards = 0;
+    totalShards = 0;
     beginHole();
   }
 
@@ -100,7 +132,7 @@
     var st = E.getState(game);
     if (els.hole) els.hole.textContent = (st.hole + 1) + '/' + st.holeTotal;
     if (els.turn) els.turn.textContent = st.stageName;
-    if (els.par) els.par.textContent = 'PAR ' + st.par + ' · STROKES ' + st.strokes;
+    if (els.par) els.par.textContent = 'PAR ' + st.par + ' · STROKES ' + st.strokes + ' · ★' + stageShards;
     if (els.strokes) els.strokes.textContent = String(totalStrokes + (holeFinalized ? 0 : st.strokes));
     if (els.pause) els.pause.classList.toggle('hidden', mode !== 'hole' || game.paused);
   }
@@ -113,6 +145,7 @@
       if (els.stageStrokes) els.stageStrokes.textContent = String(stageStrokes);
       if (els.stagePar) els.stagePar.textContent = String(stagePar);
       if (els.stageTotal) els.stageTotal.textContent = String(totalStrokes);
+      if (els.stageShards) els.stageShards.textContent = String(stageShards);
       if (els.stageScore) els.stageScore.textContent = scoreText(stageStrokes - stagePar);
       if (els.stageClearText) els.stageClearText.textContent = '次は ' + E.STAGES[stageIndex + 1].name + '。';
     } else {
@@ -121,6 +154,8 @@
       if (els.endingStrokes) els.endingStrokes.textContent = String(totalStrokes);
       if (els.endingPar) els.endingPar.textContent = String(totalPar);
       if (els.endingScore) els.endingScore.textContent = scoreText(totalStrokes - totalPar);
+      if (els.endingShards) els.endingShards.textContent = String(totalShards);
+      saveBest();
     }
     if (els.pause) els.pause.classList.add('hidden');
   }
@@ -163,6 +198,7 @@
     holeIndex = 0;
     stageStrokes = 0;
     stagePar = 0;
+    stageShards = 0;
     beginHole();
   }
 
@@ -303,6 +339,47 @@
       ctx.fillStyle = '#7df5c7';
       ctx.beginPath();
       ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    for (i = 0; i < (st.shards || []).length; i++) {
+      var sh = st.shards[i];
+      if (sh.taken) continue;
+      ctx.save();
+      ctx.translate(sh.x, sh.y);
+      ctx.rotate(0.785);
+      ctx.shadowColor = 'rgba(255, 209, 102, 0.9)';
+      ctx.shadowBlur = 18;
+      ctx.fillStyle = '#ffd166';
+      ctx.beginPath();
+      ctx.moveTo(0, -11);
+      ctx.lineTo(8, 0);
+      ctx.lineTo(0, 11);
+      ctx.lineTo(-8, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = 'rgba(255,255,255,0.75)';
+      ctx.beginPath();
+      ctx.arc(-2, -2, 2.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+    for (i = 0; i < (st.portals || []).length; i++) {
+      var po = st.portals[i];
+      ctx.save();
+      for (var pr = 0; pr < 3; pr++) {
+        ctx.globalAlpha = 0.62 - pr * 0.15;
+        ctx.strokeStyle = i % 2 === 0 ? '#5ee7ff' : '#ff8fbd';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(po.x, po.y, po.r - pr * 4, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 0.25;
+      ctx.fillStyle = i % 2 === 0 ? '#5ee7ff' : '#ff8fbd';
+      ctx.beginPath();
+      ctx.arc(po.x, po.y, po.r - 6, 0, Math.PI * 2);
       ctx.fill();
       ctx.restore();
     }
@@ -566,9 +643,12 @@
     var events = E.consumeEvents(game);
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
-      if (ev.type === 'sunk') { finishHole(); }
-      else if (ev.type === 'water') { effects.flash = 0.5; effects.flashColor = '80,190,255'; burst(ev.x, ev.y, 26, ['#5ee7ff', '#ffffff', '#7df5c7'], 240, 0.8); showBanner('WATER +1', '#5ee7ff'); }
-      else if (ev.type === 'bumper') { burst(ev.x, ev.y, 10, ['#7df5c7', '#ffffff'], 160, 0.4); }
+      if (ev.type === 'shoot') { if (Audio) Audio.playSfx('shot'); }
+      else if (ev.type === 'sunk') { if (Audio) Audio.playSfx('sink'); finishHole(); }
+      else if (ev.type === 'water') { if (Audio) Audio.playSfx('water'); effects.flash = 0.5; effects.flashColor = '80,190,255'; burst(ev.x, ev.y, 26, ['#5ee7ff', '#ffffff', '#7df5c7'], 240, 0.8); showBanner('WATER +1', '#5ee7ff'); }
+      else if (ev.type === 'bumper' || ev.type === 'rotor') { if (Audio) Audio.playSfx('bumper'); burst(ev.x, ev.y, 10, ['#7df5c7', '#ffffff'], 160, 0.4); }
+      else if (ev.type === 'shard') { if (Audio) Audio.playSfx('shard'); stageShards++; totalShards++; effects.flash = 0.35; effects.flashColor = '255,220,120'; burst(ev.x, ev.y, 22, ['#ffd166', '#ffffff', '#7df5c7'], 220, 0.7); showBanner('★ MOON SHARD!', '#ffd166'); }
+      else if (ev.type === 'portal') { if (Audio) Audio.playSfx('portal'); effects.flash = 0.28; effects.flashColor = '94,231,255'; burst(ev.x, ev.y, 20, ['#5ee7ff', '#7df5c7', '#ffffff'], 220, 0.7); }
     }
   }
 
@@ -699,12 +779,13 @@
     els.hud = $('hud'); els.hole = $('hole'); els.turn = $('turn'); els.par = $('par'); els.strokes = $('strokes');
     els.sound = $('btn-sound'); els.pause = $('btn-pause');
     els.screenTitle = $('screen-title'); els.screenStage = $('screen-stage'); els.screenEnding = $('screen-ending'); els.screenPause = $('screen-pause');
-    els.stageStrokes = $('stage-strokes'); els.stagePar = $('stage-par'); els.stageTotal = $('stage-total'); els.stageScore = $('stage-score'); els.stageClearText = $('stage-clear-text');
-    els.endingStrokes = $('ending-strokes'); els.endingPar = $('ending-par'); els.endingScore = $('ending-score');
+    els.stageStrokes = $('stage-strokes'); els.stagePar = $('stage-par'); els.stageTotal = $('stage-total'); els.stageScore = $('stage-score'); els.stageShards = $('stage-shards'); els.stageClearText = $('stage-clear-text');
+    els.endingShards = $('ending-shards');
+    els.endingStrokes = $('ending-strokes'); els.endingPar = $('ending-par'); els.endingScore = $('ending-score'); els.endingShards = $('ending-shards'); els.best = $('best'); els.endingBest = $('ending-best');
     if (canvas && typeof canvas.getContext === 'function') {
       try { ctx = canvas.getContext('2d'); } catch (err) { ctx = null; }
     }
-    resetEffects(); resize();
+    resetEffects(); syncBestUI(); resize();
     if (els.screenTitle) els.screenTitle.classList.add('visible');
     if (els.pause) els.pause.classList.add('hidden');
     var start = $('btn-start'), next = $('btn-next-stage'), ending = $('btn-ending-retry'), resume = $('btn-resume'), retry = $('btn-retry');
@@ -743,6 +824,8 @@
         state.totalStrokes = totalStrokes;
         state.stagePar = stagePar;
         state.totalPar = totalPar;
+        state.stageShards = stageShards;
+        state.totalShards = totalShards;
         if (mode === 'stage') state.phase = 'clear';
         if (mode === 'ending') state.phase = 'ending';
         state.over = mode === 'stage' || mode === 'ending';

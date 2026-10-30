@@ -65,6 +65,25 @@ for (h = 0; h < 3; h++) {
   assert(auto.phase === 'sunk', 'auto shot should sink stage 1 hole ' + (h + 1));
 }
 
+var shardGame = E.createGame({ stage: 0, hole: 0 });
+var sh = shardGame.shards[0];
+shardGame.ball.x = sh.x;
+shardGame.ball.y = sh.y;
+shardGame.phase = 'moving';
+E.update(shardGame, 1 / 60);
+assert(shardGame.shardCount === 1, 'moon shard should be collected');
+
+var portalGame = E.createGame({ stage: 2, hole: 1 });
+var pa = portalGame.portals[0];
+var pb = portalGame.portals[1];
+portalGame.ball.x = pa.x;
+portalGame.ball.y = pa.y;
+portalGame.phase = 'moving';
+portalGame.ball.vx = 100;
+portalGame.ball.vy = 0;
+E.update(portalGame, 1 / 60);
+assert(Math.abs(portalGame.ball.x - pb.x) < 50 || Math.abs(portalGame.ball.y - pb.y) < 50, 'portal should move the ball');
+
 var preview = E.previewDrag(s, 0, 60);
 assert(preview.length > 2, 'trajectory preview should return points');
 
