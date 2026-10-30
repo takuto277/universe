@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#090b13">
+  <meta name="description" content="0.1秒でドアを開閉して、ドレスとスーツを仕分ける30秒エレベータードアマン。">
+  <title>0.1秒ドアマン - エレベーター仕分けゲーム</title>
+  <link rel="stylesheet" href="style.css?v=20261030-doorman1">
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="hud-head">
+        <div class="hud-title"><b>0.1</b><span>SECOND<br>DOORMAN</span></div>
+        <div class="hud-stats">
+          <div><span>TIME</span><b id="time">30.0</b></div>
+          <div><span>SCORE</span><b id="score">0</b></div>
+          <div><span>COMBO</span><b id="combo">0</b></div>
+        </div>
+      </div>
+      <div id="rule"><span class="ok">ドレス OK</span><span class="slash">/</span><span class="ng">スーツ NG</span></div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="480" height="800" aria-label="エレベーターに走ってくる人をドアで仕分けるゲーム画面"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <p class="eyebrow">0.1 SECOND DOORMAN</p>
+          <h1>0.1秒<br><span>ドアマン</span></h1>
+          <p class="subtitle">0.1秒で、入れる人と入れない人を仕分けろ。</p>
+          <div class="rule-card">
+            <span>本日のドレスコード</span>
+            <b class="ok">ドレス OK</b>
+            <b class="ng">スーツ NG</b>
+          </div>
+          <ul class="rules">
+            <li>奥から走ってくる人の服を見る</li>
+            <li><b class="ok">ドレス</b>は「開ける」、<b class="ng">スーツ</b>は「閉じる」</li>
+            <li>ドアは0.1秒で開閉。0.45秒で自動反転するので連打でキープ</li>
+            <li>30秒で何組仕分けられる？</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">ドアマン開始</button>
+          <p class="tiny">ボタン連打 / ←閉じる →開ける</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <p class="eyebrow">SHIFT FINISHED</p>
+          <h2 id="end-rank">新人ドアマン</h2>
+          <p id="end-detail" class="end-detail"></p>
+          <div class="end-stats">
+            <div><span>SCORE</span><b id="end-score">0</b></div>
+            <div><span>仕分け</span><b id="end-served">0</b></div>
+            <div><span>ミス</span><b id="end-missed">0</b></div>
+          </div>
+          <div class="end-sub"><span>最大コンボ <b id="end-combo">0</b></span><span>0.1秒 <b id="end-perfect">0</b></span></div>
+          <button id="btn-again" class="primary" type="button">もう一度シフト</button>
+          <p class="tiny">タップ / Space でもう一度</p>
+        </section>
+      </div>
+    </main>
+
+    <footer id="controls">
+      <button id="btn-close" class="door-btn close" type="button">
+        <span>閉じる</span><small>スーツを止める</small>
+      </button>
+      <button id="btn-open" class="door-btn open" type="button">
+        <span>開ける</span><small>ドレスを通す</small>
+      </button>
+    </footer>
+  </div>
+
+  <script src="engine.js?v=20261030-doorman1"></script>
+  <script src="game.js?v=20261030-doorman1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
