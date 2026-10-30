@@ -12,12 +12,15 @@ function assert(cond, m) { if (!cond) throw new Error('assert failed: ' + m); pa
 
 assert(E.CASTS === 8, '8投でない');
 assert(E.FISH.length === 5, '魚が5種でない');
+assert(E.LURES.length === 3, 'ルアーが3種でない');
 
 var game = E.createGame();
 assert(game.state.phase === 'start', '初期状態がstartでない');
 game.start();
 var s = game.getState();
 assert(s.phase === 'aim' && s.castsLeft === 8, '開始状態が不正');
+assert(s.lure === 'spoon', '初期ルアーがSPOONでない');
+assert(s.activeSpot === 'reeds' || s.activeSpot === 'open' || s.activeSpot === 'rocks', 'HOTスポットが不正');
 assert(typeof game.setAimX === 'function', 'setAimXがない');
 
 // チャージしてキャスト
@@ -41,6 +44,7 @@ assert(s.phase === 'bite', 'アタリにならない');
 game.press();
 s = game.getState();
 assert(s.phase === 'reel' && s.holding === true, 'フッキングできない');
+assert(s.fish && s.fish.fight, '魚のファイト型がない');
 assert(s.hookQuality === 'perfect', '即フッキングがPERFECTでない');
 
 // リールで釣り上げる（テンションを交互に逃がす）
@@ -55,6 +59,23 @@ assert(s.phase === 'caught', '釣り上げられない');
 assert(s.catchesCount === 1 && s.score > 0, '釣果が記録されない');
 assert(s.streak === 1 && s.bestStreak === 1, 'ストリークが記録されない');
 assert(s.perfectHooks === 1, 'PERFECT HOOK数が記録されない');
+
+// HOTスポットへ正確に投げるとPERFECT CAST
+var perfect = E.createGame();
+perfect.start('fly');
+s = perfect.getState();
+var hotSpot = null;
+for (var hi = 0; hi < E.SPOTS.length; hi++) if (E.SPOTS[hi].id === s.activeSpot) hotSpot = E.SPOTS[hi];
+assert(hotSpot !== null, 'HOTスポットが取得できない');
+perfect.setAimX(hotSpot.x);
+perfect.press();
+for (var pi = 0; pi < 80; pi++) perfect.update(pi / 60, 1 / 60);
+perfect.release();
+s = perfect.getState();
+assert(s.lure === 'fly', 'FLYルアーが開始されない');
+assert(s.castQuality === 'perfect', 'HOTスポットでPERFECT CASTにならない');
+assert(s.perfectCasts === 1, 'PERFECT CAST数が記録されない');
+assert(s.biteWindow < 1.5, 'FLYのアタリ猶予が短くない');
 
 // アタリを逃すとキャストを消費して次のアタリへ
 var miss = E.createGame();
@@ -83,5 +104,8 @@ assert(s.phase === 'finished', '8投で終了しない');
 assert(s.result && s.result.score > 0, '自動プレイのスコアがない');
 assert(s.result.catchesCount > 0, '自動プレイで釣れない');
 assert(s.result.misses === 0, '自動プレイでミスしている');
+assert(s.result.perfectCasts > 0, '自動プレイでPERFECT CASTがない');
+assert(s.result.grade && s.result.grade !== '—', 'ランクが記録されない');
+assert(s.result.lure === 'spoon', '自動プレイのルアーがSPOONでない');
 
 print('engine tests OK (' + passed + ' assertions)');
