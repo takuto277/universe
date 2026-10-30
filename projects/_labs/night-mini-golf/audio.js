@@ -96,6 +96,32 @@
     osc.stop(when + 0.2);
   }
 
+  function playSfx(name) {
+    if (muted) return;
+    if (!ensure()) return;
+    var t = ctx.currentTime;
+    if (name === 'shot') {
+      tone(180, t, 0.12, 'triangle', 0.08, 900);
+      noise(t, 0.05, 0.025, 'highpass', 1400);
+    } else if (name === 'bumper') {
+      tone(520, t, 0.18, 'sine', 0.06, 1800);
+      tone(780, t + 0.05, 0.16, 'triangle', 0.035, 2200);
+    } else if (name === 'water') {
+      noise(t, 0.22, 0.07, 'lowpass', 700);
+      tone(110, t, 0.2, 'sine', 0.04, 400);
+    } else if (name === 'sink') {
+      tone(660, t, 0.14, 'sine', 0.06, 1600);
+      tone(880, t + 0.1, 0.16, 'triangle', 0.05, 2000);
+      tone(1320, t + 0.22, 0.24, 'sine', 0.04, 2400);
+    } else if (name === 'shard') {
+      tone(1320, t, 0.12, 'sine', 0.045, 2400);
+      tone(1760, t + 0.08, 0.14, 'triangle', 0.03, 2600);
+    } else if (name === 'portal') {
+      tone(220, t, 0.28, 'sine', 0.05, 800);
+      tone(440, t + 0.1, 0.3, 'triangle', 0.04, 1400);
+    }
+  }
+
   function startCrowd() {
     if (!ctx || crowd) return;
     var src = ctx.createBufferSource();
@@ -195,6 +221,7 @@
     stop: stop,
     setMuted: setMuted,
     toggle: toggle,
-    isMuted: function () { return muted; }
+    isMuted: function () { return muted; },
+    playSfx: playSfx
   };
 })(typeof window !== 'undefined' ? window : globalThis);

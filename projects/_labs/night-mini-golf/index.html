@@ -25,6 +25,7 @@
           <p class="kicker">NIGHT · PUTT · GLOW</p>
           <h1>月夜の<br><span class="title-sub">ミニゴルフ</span></h1>
           <p class="subtitle">静かな夜の9ホールを、少ない打数で。</p>
+          <p class="tiny" id="best">BEST --</p>
           <ul class="rules">
             <li>ボールをドラッグして離すとショット。引いた方向と逆へ転がる</li>
             <li>壁やバンパーで跳ね返る。砂は減速、水はペナルティ</li>
@@ -46,6 +47,7 @@
             <div><span>STROKES</span><b id="stage-strokes">0</b></div>
             <div><span>PAR</span><b id="stage-par">0</b></div>
             <div><span>TOTAL</span><b id="stage-total">0</b></div>
+            <div><span>SHARDS</span><b id="stage-shards">0</b></div>
           </div>
           <button id="btn-next-stage" class="primary" type="button">次のコースへ</button>
           <p class="tiny">Space / Enter でも次へ</p>
@@ -55,10 +57,12 @@
           <p class="kicker">9 HOLES COMPLETE</p>
           <h2 class="result-title clear">NIGHT CHAMPION</h2>
           <p class="subtitle">月夜の9ホールを駆け抜けた。</p>
+          <p class="tiny" id="ending-best">BEST --</p>
           <div class="result-stats">
             <div><span>TOTAL STROKES</span><b id="ending-strokes">0</b></div>
             <div><span>PAR</span><b id="ending-par">0</b></div>
             <div><span>SCORE</span><b id="ending-score">0</b></div>
+            <div><span>SHARDS</span><b id="ending-shards">0</b></div>
           </div>
           <button id="btn-ending-retry" class="primary" type="button">もう一度あそぶ</button>
           <p class="tiny">タイトルへ</p>
@@ -74,9 +78,9 @@
       </div>
     </div>
   </main>
-  <script src="audio.js?v=1"></script>
-  <script src="engine.js?v=2"></script>
-  <script src="game.js?v=2"></script>
+  <script src="audio.js?v=2"></script>
+  <script src="engine.js?v=3"></script>
+  <script src="game.js?v=3"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

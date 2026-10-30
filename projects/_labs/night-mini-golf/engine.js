@@ -23,10 +23,12 @@
   function bumper(x, y, r) { return { x: x, y: y, r: r }; }
   function area(x, y, w, h, kind) { return { x: x, y: y, w: w, h: h, kind: kind }; }
   function rotor(x, y, r, arms, speed, phase) { return { x: x, y: y, r: r, arms: arms, speed: speed, phase: phase || 0, angle: phase || 0 }; }
-  function hole(par, teeX, teeY, holeX, holeY, walls, bumpers, sand, water, rotors) {
+  function shard(x, y) { return { x: x, y: y, taken: false }; }
+  function portal(x, y, r) { return { x: x, y: y, r: r || 18 }; }
+  function hole(par, teeX, teeY, holeX, holeY, walls, bumpers, sand, water, rotors, shards, portals) {
     return {
       par: par, tee: { x: teeX, y: teeY }, hole: { x: holeX, y: holeY, r: HOLE_R },
-      walls: walls || [], bumpers: bumpers || [], sand: sand || [], water: water || [], rotors: rotors || []
+      walls: walls || [], bumpers: bumpers || [], sand: sand || [], water: water || [], rotors: rotors || [], shards: shards || [], portals: portals || []
     };
   }
 
@@ -72,6 +74,9 @@
     }
   ];
 
+  STAGES[2].holes[1].portals = [portal(95, 430, 18), portal(385, 430, 18)];
+  STAGES[2].holes[2].portals = [portal(120, 300, 18), portal(360, 300, 18)];
+
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
   function stageFor(i) { return STAGES[clamp(Number(i) || 0, 0, STAGES.length - 1)]; }
   function holeFor(h, i) { return h.holes[clamp(Number(i) || 0, 0, h.holes.length - 1)]; }
@@ -89,6 +94,10 @@
       tee: { x: h.tee.x, y: h.tee.y }, target: { x: h.hole.x, y: h.hole.y, r: h.hole.r },
       walls: h.walls, bumpers: h.bumpers, sand: h.sand, water: h.water,
       rotors: h.rotors.map(function (r) { return { x: r.x, y: r.y, r: r.r, arms: r.arms, speed: r.speed, phase: r.phase, angle: r.angle }; }),
+      shards: (h.shards && h.shards.length ? h.shards : [shard((h.tee.x + h.hole.x) / 2 + 68, (h.tee.y + h.hole.y) / 2)]).map(function (q) { return { x: q.x, y: q.y, taken: false }; }),
+      shardCount: 0,
+      portals: (h.portals || []).map(function (q) { return { x: q.x, y: q.y, r: q.r }; }),
+      portalCooldown: 0,
       events: []
     };
   }
@@ -203,9 +212,39 @@
     }
   }
 
+  function hitShards(s, b) {
+    for (var i = 0; i < s.shards.length; i++) {
+      var q = s.shards[i];
+      if (q.taken) continue;
+      var dx = b.x - q.x, dy = b.y - q.y;
+      if (dx * dx + dy * dy < 19 * 19) {
+        q.taken = true;
+        s.shardCount++;
+        event(s, 'shard', { x: q.x, y: q.y });
+      }
+    }
+  }
+
+  function hitPortals(s, b) {
+    if (s.portalCooldown > 0 || s.portals.length < 2) return;
+    for (var i = 0; i < s.portals.length; i++) {
+      var p = s.portals[i];
+      var dx = b.x - p.x, dy = b.y - p.y;
+      if (dx * dx + dy * dy < p.r * p.r) {
+        var other = s.portals[(i + 1) % s.portals.length];
+        b.x = other.x;
+        b.y = other.y;
+        s.portalCooldown = 0.45;
+        event(s, 'portal', { x: other.x, y: other.y });
+        return;
+      }
+    }
+  }
+
   function update(s, dt) {
     if (!s || s.paused) return s;
     dt = clamp(Number(dt) || 0, 0, 0.05);
+    if (s.portalCooldown > 0) s.portalCooldown = Math.max(0, s.portalCooldown - dt);
     updateRotors(s, dt);
     if (s.phase !== 'moving') return s;
     var b = s.ball;
@@ -220,6 +259,8 @@
       else if (b.y + BALL_R > FIELD.bottom) { b.y = FIELD.bottom - BALL_R; b.vy = -Math.abs(b.vy) * 0.72; }
       for (var i = 0; i < s.walls.length; i++) circleRectCollision(b, s.walls[i]);
       hitRotors(s, b);
+      hitShards(s, b);
+      hitPortals(s, b);
       for (i = 0; i < s.bumpers.length; i++) {
         var bp = s.bumpers[i];
         var dx = b.x - bp.x, dy = b.y - bp.y;
@@ -277,7 +318,7 @@
       phase: 'moving', ball: { x: s.ball.x, y: s.ball.y, vx: -dx * POWER, vy: -dy * POWER },
       walls: s.walls, bumpers: s.bumpers, sand: s.sand, water: s.water,
       rotors: s.rotors.map(function (r) { return { x: r.x, y: r.y, r: r.r, arms: r.arms, speed: r.speed, phase: r.phase, angle: r.angle }; }),
-      target: s.target, tee: s.tee, strokes: 1, events: []
+      target: s.target, tee: s.tee, strokes: 1, shards: s.shards.map(function (q) { return { x: q.x, y: q.y, taken: q.taken }; }), shardCount: 0, portals: s.portals.map(function (q) { return { x: q.x, y: q.y, r: q.r }; }), portalCooldown: 0, events: []
     };
     var points = [{ x: sim.ball.x, y: sim.ball.y }];
     for (var i = 0; i < 42 && sim.phase === 'moving'; i++) {
@@ -296,7 +337,7 @@
       par: s.par, strokes: s.strokes,
       ball: { x: s.ball.x, y: s.ball.y, vx: s.ball.vx, vy: s.ball.vy },
       tee: s.tee, target: s.target, walls: s.walls, bumpers: s.bumpers,
-      sand: s.sand, water: s.water, rotors: s.rotors
+      sand: s.sand, water: s.water, rotors: s.rotors, shards: s.shards, shardCount: s.shardCount, portals: s.portals
     };
   }
 
