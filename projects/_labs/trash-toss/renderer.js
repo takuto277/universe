@@ -21,9 +21,10 @@
       if (ctx) { ctx.lineCap = 'round'; ctx.lineJoin = 'round'; }
     }
 
+    // Fixed camera: behind the thrower, about 34 degrees down into the room.
     function camera() {
-      var cam = { x: 0, y: 1.65, z: -2.8 };
-      var look = { x: 0, y: 0.55, z: 3.0 };
+      var cam = { x: 0, y: 3.8, z: -2.8 };
+      var look = { x: 0, y: 0.05, z: 2.8 };
       var fx = look.x - cam.x, fy = look.y - cam.y, fz = look.z - cam.z;
       var fl = Math.sqrt(fx * fx + fy * fy + fz * fz);
       var forward = { x: fx / fl, y: fy / fl, z: fz / fl };
@@ -41,7 +42,7 @@
         forward: forward,
         right: right,
         up: { x: ux / ul, y: uy / ul, z: uz / ul },
-        focal: Math.min(width * 1.60, height * 0.80),
+        focal: Math.min(width * 1.35, height * 0.70),
         cx: width / 2,
         cy: height * 0.58
       };
@@ -311,8 +312,21 @@
       ctx.stroke();
       ctx.setLineDash([]);
       var aim = project(c, state.aim.x, 0.92, state.aim.z);
-      if (aim) {
+      var floorAim = project(c, state.aim.x, 0.02, state.aim.z);
+      if (aim && floorAim) {
         var pulse = 1 + Math.sin(t * 6) * 0.08;
+        ctx.strokeStyle = 'rgba(244, 201, 107, 0.72)';
+        ctx.lineWidth = 1;
+        ctx.setLineDash([2, 5]);
+        ctx.beginPath();
+        ctx.moveTo(aim.x, aim.y);
+        ctx.lineTo(floorAim.x, floorAim.y);
+        ctx.stroke();
+        ctx.setLineDash([]);
+        ctx.strokeStyle = 'rgba(111, 214, 195, 0.55)';
+        ctx.beginPath();
+        ctx.ellipse(floorAim.x, floorAim.y, 0.26 * floorAim.scale * pulse, 0.1 * floorAim.scale * pulse, 0, 0, Math.PI * 2);
+        ctx.stroke();
         ctx.strokeStyle = 'rgba(244, 201, 107, 0.9)';
         ctx.lineWidth = 1.5;
         ctx.beginPath();
