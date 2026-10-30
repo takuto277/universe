@@ -15,6 +15,7 @@
   var SPAWN_BASE = 2.0;
   var SPAWN_MIN = 0.65;
   var MAX_NOISES = 6;
+  var NOISE_GRACE = 2.0;
   var MAX_DT = 0.05;
   var MAX_EVENTS = 80;
 
@@ -89,7 +90,9 @@
   function activeDrain(state) {
     var drain = 0;
     for (var i = 0; i < state.noises.length; i++) {
-      var type = NOISE_TYPES.filter(function (item) { return item.id === state.noises[i].type; })[0];
+      var noise = state.noises[i];
+      if (noise.active === false) continue;
+      var type = NOISE_TYPES.filter(function (item) { return item.id === noise.type; })[0];
       drain += BASE_DRAIN * (type ? type.drain : 1);
     }
     return drain;
@@ -117,7 +120,9 @@
       x: slot.x * state.width,
       y: slot.y * state.height,
       r: Math.max(22, Math.min(state.width, state.height) * 0.055),
-      born: state.time
+      born: state.time,
+      active: false,
+      activeAt: state.time + NOISE_GRACE
     };
     state.noises.push(noise);
     pushEvent(state, { type: 'noise', noise: noise });
@@ -128,6 +133,14 @@
     if (!state || state.phase !== 'run') return state;
     dt = clamp(Number(dt) || 0, 0, MAX_DT);
     state.time += dt;
+
+    for (var ni = 0; ni < state.noises.length; ni++) {
+      var pending = state.noises[ni];
+      if (pending.active === false && state.time >= pending.activeAt) {
+        pending.active = true;
+        pushEvent(state, { type: 'noiseActive', noise: pending });
+      }
+    }
 
     if (state.noises.length === 0) {
       state.sleep += QUIET_GAIN * dt;
@@ -227,7 +240,9 @@
       result: state.result,
       noises: state.noises.map(function (noise) {
         return { id: noise.id, type: noise.type, icon: noise.icon, label: noise.label,
-                 x: noise.x, y: noise.y, r: noise.r, age: Math.max(0, state.time - noise.born) };
+                 x: noise.x, y: noise.y, r: noise.r, age: Math.max(0, state.time - noise.born),
+                 active: noise.active !== false,
+                 activeIn: Math.max(0, noise.activeAt - state.time) };
       })
     };
   }
@@ -235,6 +250,7 @@
   return {
     START_SLEEP: START_SLEEP,
     MAX_SLEEP: MAX_SLEEP,
+    NOISE_GRACE: NOISE_GRACE,
     NOISE_TYPES: NOISE_TYPES,
     createGame: createGame,
     start: start,
