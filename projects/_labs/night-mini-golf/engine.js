@@ -20,6 +20,8 @@
   function wall(x, y, w, h) { return { x: x, y: y, w: w, h: h }; }
   function bumper(x, y, r) { return { x: x, y: y, r: r }; }
   function area(x, y, w, h, kind) { return { x: x, y: y, w: w, h: h, kind: kind }; }
+  function rotor(x, y, r, arms, speed, phase) { return { x: x, y: y, r: r, arms: arms, speed: speed, phase: phase || 0, angle: phase || 0 }; }
+  function slider(x, y, w, h, axis, range, speed, phase) { return { baseX: x, baseY: y, x: x, y: y, w: w, h: h, axis: axis || 'x', range: range || 30, speed: speed || 1, phase: phase || 0 }; }
   function hole(par, teeX, teeY, holeX, holeY, walls, bumpers, sand, water) {
     return { par: par, tee: { x: teeX, y: teeY }, hole: { x: holeX, y: holeY, r: HOLE_R }, walls: walls || [], bumpers: bumpers || [], sand: sand || [], water: water || [] };
   }
@@ -42,6 +44,17 @@
     ] }
   ];
 
+  STAGES[0].holes[0].rotors = [rotor(150, 440, 34, 2, 1.15, 0)];
+  STAGES[0].holes[1].sliders = [slider(300, 480, 72, 24, 'x', 36, 1.4, 0)];
+  STAGES[0].holes[2].rotors = [rotor(330, 430, 30, 3, -1.3, 0.4)];
+  STAGES[1].holes[0].sliders = [slider(240, 430, 70, 24, 'x', 65, 1.2, 0.2)];
+  STAGES[1].holes[1].rotors = [rotor(240, 390, 48, 2, 1.4, 0.7)];
+  STAGES[1].holes[2].sliders = [slider(240, 430, 64, 22, 'y', 38, 1.1, 0.5)];
+  STAGES[2].holes[0].rotors = [rotor(240, 420, 46, 3, -1.5, 0.2)];
+  STAGES[2].holes[1].sliders = [slider(240, 380, 78, 22, 'x', 70, 1.3, 0.8)];
+  STAGES[2].holes[2].rotors = [rotor(240, 420, 52, 2, 1.6, 0.3)];
+  STAGES[2].holes[2].sliders = [slider(240, 300, 62, 22, 'y', 44, 1.2, 0.1)];
+
   function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
   function stageFor(i) { return STAGES[clamp(Number(i) || 0, 0, STAGES.length - 1)]; }
   function createBall(tee, side) {
@@ -61,6 +74,9 @@
       strokes: { player: 0, cpu: 0 },
       tee: h.tee, target: { x: h.hole.x, y: h.hole.y, r: h.hole.r },
       walls: h.walls, bumpers: h.bumpers, sand: h.sand, water: h.water,
+      rotors: (h.rotors || []).map(function (r) { return { x: r.x, y: r.y, r: r.r, arms: r.arms, speed: r.speed, phase: r.phase, angle: r.phase }; }),
+      sliders: (h.sliders || []).map(function (q) { return { baseX: q.baseX, baseY: q.baseY, x: q.baseX, y: q.baseY, w: q.w, h: q.h, axis: q.axis, range: q.range, speed: q.speed, phase: q.phase }; }),
+      elapsed: 0,
       holeWinner: null, events: []
     };
   }
@@ -146,9 +162,55 @@
     event(s, 'water', { turn: key });
   }
 
+  function updateObstacles(s, dt) {
+    s.elapsed += dt;
+    for (var i = 0; i < s.rotors.length; i++) s.rotors[i].angle += s.rotors[i].speed * dt;
+    for (i = 0; i < s.sliders.length; i++) {
+      var q = s.sliders[i];
+      var off = Math.sin(s.elapsed * q.speed + q.phase) * q.range;
+      q.x = q.baseX + (q.axis === 'x' ? off : 0);
+      q.y = q.baseY + (q.axis === 'y' ? off : 0);
+    }
+  }
+
+  function hitRotors(s, b) {
+    for (var r = 0; r < s.rotors.length; r++) {
+      var rot = s.rotors[r];
+      for (var a = 0; a < rot.arms; a++) {
+        var ang = rot.angle + a * Math.PI * 2 / rot.arms;
+        var ex = Math.cos(ang) * rot.r, ey = Math.sin(ang) * rot.r;
+        var t = ((b.x - rot.x) * ex + (b.y - rot.y) * ey) / (rot.r * rot.r);
+        t = clamp(t, 0, 1);
+        var px = rot.x + ex * t, py = rot.y + ey * t;
+        var dx = b.x - px, dy = b.y - py;
+        var d = Math.sqrt(dx * dx + dy * dy) || 0.001;
+        var rr = BALL_R + 7;
+        if (d < rr) {
+          var nx = dx / d, ny = dy / d;
+          b.x = px + nx * rr;
+          b.y = py + ny * rr;
+          var vn = b.vx * nx + b.vy * ny;
+          if (vn < 0) { b.vx -= 1.8 * vn * nx; b.vy -= 1.8 * vn * ny; }
+          event(s, 'rotor', { x: px, y: py });
+        }
+      }
+    }
+  }
+
+  function hitSliders(s, b) {
+    for (var i = 0; i < s.sliders.length; i++) {
+      var q = s.sliders[i];
+      if (circleRectCollision(b, { x: q.x - q.w / 2, y: q.y - q.h / 2, w: q.w, h: q.h })) {
+        event(s, 'slider', { x: q.x, y: q.y });
+      }
+    }
+  }
+
   function update(s, dt) {
-    if (!s || s.paused || s.phase !== 'moving') return s;
+    if (!s || s.paused || s.phase === 'holeover') return s;
     dt = clamp(Number(dt) || 0, 0, 0.05);
+    updateObstacles(s, dt);
+    if (s.phase !== 'moving') return s;
     var key = s.turn;
     var b = s.balls[key];
     var steps = Math.max(1, Math.ceil(Math.sqrt(b.vx * b.vx + b.vy * b.vy) * dt / 5));
@@ -161,6 +223,8 @@
       if (b.y - BALL_R < FIELD.y) { b.y = FIELD.y + BALL_R; b.vy = Math.abs(b.vy) * 0.72; }
       else if (b.y + BALL_R > FIELD.bottom) { b.y = FIELD.bottom - BALL_R; b.vy = -Math.abs(b.vy) * 0.72; }
       for (var i = 0; i < s.walls.length; i++) circleRectCollision(b, s.walls[i]);
+      hitRotors(s, b);
+      hitSliders(s, b);
       for (i = 0; i < s.bumpers.length; i++) {
         var bp = s.bumpers[i];
         var dx = b.x - bp.x, dy = b.y - bp.y;
@@ -212,7 +276,7 @@
       hole: s.hole, holeTotal: STAGES[s.stage].holes.length,
       par: s.par, turn: s.turn, strokes: s.strokes, holeWinner: s.holeWinner,
       balls: s.balls, tee: s.tee, target: s.target, walls: s.walls,
-      bumpers: s.bumpers, sand: s.sand, water: s.water, over: false
+      bumpers: s.bumpers, sand: s.sand, water: s.water, rotors: s.rotors, sliders: s.sliders, over: false
     };
   }
 
