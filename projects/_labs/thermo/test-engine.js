@@ -11,7 +11,8 @@ var passed = 0;
 function assert(cond, m) { if (!cond) throw new Error('assert failed: ' + m); passed++; }
 
 assert(E.LEVELS.length === 5, '5ルームでない');
-assert(E.SAFE_MIN === 20 && E.SAFE_MAX === 80, '安全帯が20-80でない');
+assert(E.SAFE_MIN === 15 && E.SAFE_MAX === 80, '安全帯が15-80でない');
+assert(E.ROOM_TIME === 45 && E.AMBIENT_DRAIN > 0, '部屋タイマー/自然冷却がない');
 assert(E.EXCHANGE === 15, '交換量が15でない');
 
 var game = E.createGame();
@@ -47,6 +48,13 @@ assert(s.temp === 50, '扉への放熱で体温が-15されない');
 assert(s.grid[5][4] === 'O', '扉が開かない');
 
 // 安全帯を超えると失敗し、リトライで元に戻る
+// 部屋の制限時間を超えると TIME で失敗する
+var timed = E.createGame();
+timed.start();
+for (var ti = 0; ti < 460 && timed.getState().phase === 'playing'; ti++) timed.update(0, 0.1);
+s = timed.getState();
+assert(s.phase === 'failed' && s.reason === 'TIME', '制限時間で失敗しない');
+
 var fail = E.createGame();
 fail.start();
 fail.state.player.x = 4;

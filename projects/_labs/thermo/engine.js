@@ -11,10 +11,12 @@
 })(typeof globalThis !== 'undefined' ? globalThis : this, function () {
   'use strict';
 
-  var SAFE_MIN = 20;
+  var SAFE_MIN = 15;
   var SAFE_MAX = 80;
   var START_TEMP = 50;
   var EXCHANGE = 15;
+  var ROOM_TIME = 45;
+  var AMBIENT_DRAIN = 0.2;
 
   var LEVELS = [
     {
@@ -211,7 +213,7 @@
         level: state.level,
         levelCount: state.levelCount,
         levelName: state.levelName,
-        temp: state.temp,
+        temp: Math.round(state.temp * 10) / 10,
         moves: state.levelMoves,
         time: state.levelTime,
         totalMoves: state.totalMoves,
@@ -231,7 +233,7 @@
           level: state.level,
           levelCount: state.levelCount,
           levelName: state.levelName,
-          temp: state.temp,
+          temp: Math.round(state.temp * 10) / 10,
           moves: state.levelMoves,
           time: state.levelTime,
           totalMoves: state.totalMoves,
@@ -244,7 +246,7 @@
           level: state.level,
           levelCount: state.levelCount,
           levelName: state.levelName,
-          temp: state.temp,
+          temp: Math.round(state.temp * 10) / 10,
           moves: state.levelMoves,
           time: state.levelTime,
           totalMoves: state.totalMoves,
@@ -323,7 +325,11 @@
     function update(t, dt) {
       if (state.phase !== 'playing') return getState();
       if (!isFinite(dt) || dt <= 0) dt = 1 / 60;
-      state.levelTime += Math.min(0.1, dt);
+      dt = Math.min(0.1, dt);
+      state.levelTime += dt;
+      state.temp -= AMBIENT_DRAIN * dt;
+      if (state.temp < SAFE_MIN) { fail('FREEZE'); return getState(); }
+      if (state.levelTime >= ROOM_TIME) { fail('TIME'); return getState(); }
       return getState();
     }
 
@@ -355,9 +361,11 @@
         levelName: state.levelName,
         grid: state.grid.map(function (row) { return row.slice(); }),
         player: { x: state.player.x, y: state.player.y, facing: state.player.facing },
-        temp: state.temp,
+        temp: Math.round(state.temp * 10) / 10,
         safeMin: state.safeMin,
         safeMax: state.safeMax,
+        roomTime: ROOM_TIME,
+        timeLeft: Math.max(0, ROOM_TIME - state.levelTime),
         levelMoves: state.levelMoves,
         levelTime: state.levelTime,
         totalMoves: state.totalMoves,
@@ -390,6 +398,8 @@
     SAFE_MAX: SAFE_MAX,
     START_TEMP: START_TEMP,
     EXCHANGE: EXCHANGE,
+    ROOM_TIME: ROOM_TIME,
+    AMBIENT_DRAIN: AMBIENT_DRAIN,
     LEVELS: LEVELS,
     SOLUTIONS: SOLUTIONS
   };
