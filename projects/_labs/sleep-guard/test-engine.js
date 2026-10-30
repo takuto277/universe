@@ -31,6 +31,19 @@ assert(E.tapAt(g, 0, 0) === null, '何もない場所のタップは無効');
 
 g = E.createGame({ rng: E.mulberry32(3) });
 E.start(g);
+for (i = 0; i < 30 && g.noises.length === 0; i++) E.update(g, 0.1);
+assert(g.noises.length > 0 && g.noises[0].active === false, '出現直後はまだ鳴っていない');
+var graceSleep = g.sleep;
+for (i = 0; i < 15; i++) E.update(g, 0.05);
+assert(g.noises[0].active === false && g.sleep > graceSleep, '2秒前はゲージが減らない（静穏ゲージは増える）');
+for (i = 0; i < 30; i++) E.update(g, 0.05);
+assert(g.noises[0].active === true, '2秒後に騒音が鳴り始める');
+var afterActive = g.sleep;
+E.update(g, 0.05);
+assert(g.sleep < afterActive, '鳴り始めたらゲージが減る');
+
+g = E.createGame({ rng: E.mulberry32(3) });
+E.start(g);
 g.sleep = 99.9;
 E.update(g, 0.05);
 assert(g.phase === 'clear' && g.result === 'clear' && g.sleep === E.MAX_SLEEP, 'MAXでクリア');

@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#080d1c">
   <title>ねむりのまもり - 睡眠防衛ゲーム</title>
-  <link rel="stylesheet" href="style.css?v=20261030">
+  <link rel="stylesheet" href="style.css?v=20261030b">
 </head>
 <body>
   <div id="app">
@@ -33,7 +33,7 @@
           <ul class="rules">
             <li>騒音オブジェクトを <b>タップ / クリック</b> して静かにさせる</li>
             <li>静かな時間が続くと睡眠ゲージが溜まる。MAXでクリア</li>
-            <li>騒音を放置するとゲージが減り、0で「眠れ無ーーい！」</li>
+            <li>騒音は出現から2秒後に鳴り始める。放置するとゲージが減り、0で「眠れ無ーーい！」</li>
             <li>ゲージは1/3からスタート。だんだん騒音が増える</li>
           </ul>
           <button id="btn-start" class="primary" type="button">ねむる</button>
@@ -61,9 +61,9 @@
     </footer>
   </div>
 
-  <script src="audio.js?v=20261030"></script>
-  <script src="engine.js?v=20261030"></script>
-  <script src="game.js?v=20261030"></script>
+  <script src="audio.js?v=20261030b"></script>
+  <script src="engine.js?v=20261030b"></script>
+  <script src="game.js?v=20261030b"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

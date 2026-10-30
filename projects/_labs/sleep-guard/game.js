@@ -166,8 +166,11 @@
     for (var i = 0; i < events.length; i++) {
       var ev = events[i];
       if (ev.type === 'noise') {
+        ring(ev.noise.x, ev.noise.y, 'rgba(109,183,255,.4)', 42, 0.4);
+      } else if (ev.type === 'noiseActive') {
         if (audio) audio.play('noise');
-        ring(ev.noise.x, ev.noise.y, 'rgba(255,130,200,.55)', 52, 0.5);
+        shake = Math.max(shake, 0.12);
+        ring(ev.noise.x, ev.noise.y, 'rgba(255,130,200,.6)', 58, 0.5);
       } else if (ev.type === 'silence') {
         if (audio) audio.play('tap');
         burst(ev.noise.x, ev.noise.y, 16, ['#6db7ff', '#c8f0ff', '#ffd166', '#ffffff'], 230, 0.65);
@@ -375,28 +378,42 @@
   }
 
   function drawNoise(noise, time) {
-    var pulse = 0.5 + 0.5 * Math.sin(time * 5 + noise.id);
+    var active = noise.active !== false;
+    var pulse = 0.5 + 0.5 * Math.sin(time * (active ? 5 : 2.5) + noise.id);
     var sheet = images.noise[noise.type];
     var hasSheet = sheet && sheet.complete && sheet.naturalWidth;
     ctx.save();
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.globalAlpha = 0.22 + pulse * 0.18;
-    ctx.strokeStyle = '#ff82c8';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(noise.x, noise.y, noise.r * (1.25 + pulse * 0.28), 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = 'rgba(40,22,58,.92)';
+
+    if (active) {
+      ctx.globalAlpha = 0.22 + pulse * 0.18;
+      ctx.strokeStyle = '#ff82c8';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(noise.x, noise.y, noise.r * (1.25 + pulse * 0.28), 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.globalAlpha = 1;
+    } else {
+      var remaining = Math.max(0, (noise.activeAt || 0) - (state ? state.time : time));
+      var progress = 1 - clamp(remaining / E.NOISE_GRACE, 0, 1);
+      ctx.strokeStyle = 'rgba(109,183,255,.8)';
+      ctx.lineWidth = 3;
+      ctx.beginPath();
+      ctx.arc(noise.x, noise.y, noise.r * 1.35, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+      ctx.stroke();
+      ctx.globalAlpha = 0.68;
+    }
+
+    ctx.fillStyle = active ? 'rgba(40,22,58,.92)' : 'rgba(18,28,52,.9)';
     ctx.beginPath();
     ctx.arc(noise.x, noise.y, noise.r, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = 'rgba(255,130,200,.8)';
+    ctx.strokeStyle = active ? 'rgba(255,130,200,.8)' : 'rgba(109,183,255,.55)';
     ctx.lineWidth = 2;
     ctx.stroke();
     if (hasSheet) {
-      var frame = Math.floor((((state ? state.time : time) - noise.born) * 4) % 2);
+      var frame = Math.floor((((state ? state.time : time) - noise.born) * (active ? 4 : 2)) % 2);
       var fw = sheet.naturalWidth / 2;
       var size = noise.r * 3.2;
       ctx.drawImage(sheet, frame * fw, 0, fw, sheet.naturalHeight,
@@ -405,9 +422,10 @@
       ctx.font = Math.round(noise.r * 1.15) + 'px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
       ctx.fillText(noise.icon, noise.x, noise.y + 1);
     }
+    ctx.globalAlpha = 1;
     ctx.font = '700 8px system-ui, sans-serif';
-    ctx.fillStyle = 'rgba(255,220,240,.9)';
-    ctx.fillText(noise.label, noise.x, noise.y + noise.r + 12);
+    ctx.fillStyle = active ? 'rgba(255,220,240,.9)' : 'rgba(160,205,255,.9)';
+    ctx.fillText(active ? noise.label : 'まもなく…', noise.x, noise.y + noise.r + 12);
     ctx.restore();
   }
 
@@ -437,7 +455,7 @@
     if (shake > 0) ctx.translate((Math.random() - 0.5) * 14 * shake, (Math.random() - 0.5) * 14 * shake);
     var hasBackground = drawBackgroundImage();
     if (!hasBackground) drawBackdrop(time);
-    var awake = !!(state && state.phase === 'run' && state.noises.length);
+    var awake = !!(state && state.phase === 'run' && state.noises.some(function (noise) { return noise.active !== false; }));
     if (state && state.phase === 'over') awake = true;
     if (hasBackground) drawCharacterImage(time, awake);
     else drawBed(time, awake);
