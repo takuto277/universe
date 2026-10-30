@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#04050e" />
   <meta name="description" content="ORBIT WARD — a 60-second orbital defense. Drag the shield around the core, deflect every shard, and charge a pulse." />
   <title>ORBIT WARD</title>
-  <link rel="stylesheet" href="style.css?v=20261031-orbitward2" />
+  <link rel="stylesheet" href="style.css?v=20261031-orbitward3" />
 </head>
 <body>
   <div id="app">
@@ -54,10 +54,39 @@
           <p><span class="rule-icon perfect">PERFECT</span> Meet a shard at the center of the arc to score more and charge faster.</p>
           <p><span class="rule-icon pulse">PULSE</span> Fill the meter, then tap PULSE to wipe the orbit clear.</p>
           <p><span class="rule-icon core">CORE</span> Ten pips. Every shard that reaches the star costs one.</p>
+          <p><span class="rule-icon module">MODULE</span> At 20 and 40 seconds, pick one of three upgrades. Time freezes while you choose.</p>
         </div>
         <button id="btn-start" class="primary big" type="button">ENTER ORBIT</button>
         <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
-        <p class="tiny">60 seconds · 10 core pips · one shield · best score saved</p>
+        <p class="tiny">60 seconds · 10 core pips · 2 module drafts · one shield</p>
+      </div>
+    </div>
+
+    <div id="upgrade-overlay" class="overlay upgrade-overlay">
+      <div class="upgrade-content">
+        <p class="eyebrow">CORE UPGRADE · TIME FROZEN</p>
+        <h1>CHOOSE A MODULE</h1>
+        <p class="lead">One upgrade now. Two drafts per orbit. Build toward the shards you fear.</p>
+        <div class="upgrade-cards">
+          <button id="upgrade-0" class="upgrade-card" type="button">
+            <span class="upgrade-tag">SHIELD</span>
+            <strong class="upgrade-name">WIDE ARC</strong>
+            <small class="upgrade-desc">Extend the shield arc.</small>
+            <span class="upgrade-key">1</span>
+          </button>
+          <button id="upgrade-1" class="upgrade-card" type="button">
+            <span class="upgrade-tag">SHIELD</span>
+            <strong class="upgrade-name">WIDE ARC</strong>
+            <small class="upgrade-desc">Extend the shield arc.</small>
+            <span class="upgrade-key">2</span>
+          </button>
+          <button id="upgrade-2" class="upgrade-card" type="button">
+            <span class="upgrade-tag">SHIELD</span>
+            <strong class="upgrade-name">WIDE ARC</strong>
+            <small class="upgrade-desc">Extend the shield arc.</small>
+            <span class="upgrade-key">3</span>
+          </button>
+        </div>
       </div>
     </div>
 
@@ -76,10 +105,10 @@
     </div>
   </div>
 
-  <script src="engine.js?v=20261031-orbitward2"></script>
-  <script src="audio.js?v=20261031-orbitward2"></script>
-  <script src="renderer.js?v=20261031-orbitward2"></script>
-  <script src="game.js?v=20261031-orbitward2"></script>
+  <script src="engine.js?v=20261031-orbitward3"></script>
+  <script src="audio.js?v=20261031-orbitward3"></script>
+  <script src="renderer.js?v=20261031-orbitward3"></script>
+  <script src="game.js?v=20261031-orbitward3"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

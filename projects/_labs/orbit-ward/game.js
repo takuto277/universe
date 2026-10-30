@@ -22,6 +22,7 @@
     pulseText: document.getElementById('pulse-text'),
     btnPulse: document.getElementById('btn-pulse'),
     start: document.getElementById('start-overlay'),
+    upgrade: document.getElementById('upgrade-overlay'),
     result: document.getElementById('result-overlay'),
     resultEyebrow: document.getElementById('result-eyebrow'),
     resultScore: document.getElementById('result-score'),
@@ -29,6 +30,11 @@
     resultSub: document.getElementById('result-sub'),
     resultMeta: document.getElementById('result-meta'),
     resultBest: document.getElementById('result-best'),
+    upgradeCards: [
+      document.getElementById('upgrade-0'),
+      document.getElementById('upgrade-1'),
+      document.getElementById('upgrade-2')
+    ],
     btnStart: document.getElementById('btn-start'),
     btnRetry: document.getElementById('btn-retry'),
     btnMute: document.getElementById('btn-mute'),
@@ -60,6 +66,7 @@
     seenEvents = 0;
     lastPhase = null;
     show(els.start, false);
+    show(els.upgrade, false);
     show(els.result, false);
     hide(els.hud, false);
     text(els.resultScore, '0');
@@ -70,6 +77,9 @@
     for (var i = seenEvents; i < state.events.length; i++) {
       var ev = state.events[i];
       if (ev.type === 'start' && audio.startTone) audio.startTone();
+      else if (ev.type === 'upgradeOffer' && audio.upgradeOffer) audio.upgradeOffer();
+      else if (ev.type === 'upgrade' && audio.upgrade) audio.upgrade();
+      else if (ev.type === 'reflect' && audio.reflect) audio.reflect();
       else if (ev.type === 'block' && audio.block) audio.block(ev.perfect);
       else if (ev.type === 'miss' && audio.miss) audio.miss();
       else if (ev.type === 'pulse' && audio.pulse) audio.pulse();
@@ -119,13 +129,48 @@
     text(els.resultMeta,
       'BLOCKS ' + (r.blocks || 0) + ' · PERFECT ' + (r.perfectBlocks || 0) +
       ' · BEST CHAIN ' + (r.bestCombo || 0) + ' · PULSE ' + (r.pulseUses || 0) +
-      ' · ' + Math.round(r.time || 0) + 's');
+      ' · REFLECT ' + (r.reflects || 0) + ' · MODULES ' + (r.upgrades ? r.upgrades.length : 0) + ' · ' + Math.round(r.time || 0) + 's');
     text(els.resultBest, 'BEST ' + best);
+    show(els.upgrade, false);
     show(els.result, true);
     hide(els.hud, true);
   }
 
+  function renderUpgrade(state) {
+    var choices = state.upgradeChoices || [];
+    for (var i = 0; i < els.upgradeCards.length; i++) {
+      var card = els.upgradeCards[i];
+      if (!card) continue;
+      var u = choices[i];
+      hide(card, !u);
+      if (!u) continue;
+      var tag = card.querySelector ? card.querySelector('.upgrade-tag') : null;
+      var name = card.querySelector ? card.querySelector('.upgrade-name') : null;
+      var desc = card.querySelector ? card.querySelector('.upgrade-desc') : null;
+      if (tag) tag.textContent = u.tag;
+      if (name) name.textContent = u.name;
+      if (desc) desc.textContent = u.desc;
+    }
+  }
+
+  function chooseUpgrade(index) {
+    if (game.state.phase !== 'upgrade') return;
+    game.applyUpgrade(index);
+    afterInput();
+  }
+
   function sync(state) {
+    if (state.phase === 'upgrade') {
+      if (lastPhase !== 'upgrade') {
+        lastPhase = 'upgrade';
+        show(els.result, false);
+        hide(els.hud, false);
+        renderUpgrade(state);
+        show(els.upgrade, true);
+      }
+      return;
+    }
+    if (lastPhase === 'upgrade') show(els.upgrade, false);
     if (state.phase !== lastPhase) {
       lastPhase = state.phase;
       if (state.phase === 'finished') finishUI(state);
@@ -177,6 +222,12 @@
 
   if (root.addEventListener) {
     root.addEventListener('keydown', function (event) {
+      if (game.state.phase === 'upgrade') {
+        if (event.code === 'Digit1') chooseUpgrade(0);
+        else if (event.code === 'Digit2') chooseUpgrade(1);
+        else if (event.code === 'Digit3') chooseUpgrade(2);
+        return;
+      }
       if (game.state.phase !== 'playing') return;
       if (event.code === 'ArrowLeft' || event.code === 'KeyA') {
         if (event.preventDefault) event.preventDefault();
@@ -194,6 +245,11 @@
     root.addEventListener('resize', function () { if (renderer) renderer.resize(); });
   }
 
+  for (var ui = 0; ui < els.upgradeCards.length; ui++) {
+    (function (index) {
+      if (els.upgradeCards[index]) els.upgradeCards[index].addEventListener('click', function () { chooseUpgrade(index); });
+    })(ui);
+  }
   if (els.btnStart) els.btnStart.addEventListener('click', begin);
   if (els.btnRetry) els.btnRetry.addEventListener('click', begin);
   if (els.btnPulse) els.btnPulse.addEventListener('click', function (event) { if (event && event.preventDefault) event.preventDefault(); firePulse(); });

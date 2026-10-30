@@ -402,13 +402,14 @@
       "path": "projects/_labs/orbit-ward/",
       "tag": "GAME",
       "title": "ORBIT WARD",
-      "description": "中心の星を守る60秒の360度シールドディフェンス。コアの周りをドラッグしてシアンのシールドを動かし、全方位から迫るシャードを迎撃する。弧の中心で合わせるPERFECT、迎撃でたまるPULSE（軌道上の敵を全消去）、分裂するSPLITTER、15/30/45秒のSURGE、10個のコア、S/A/B/C/Dランク、ベストスコア保存、環境音つき。",
+      "description": "中心の星を守る60秒の360度シールドディフェンス。コアの周りをドラッグしてシアンのシールドを動かし、全方位から迫るシャードを迎撃する。弧の中心で合わせるPERFECT、迎撃でたまるPULSE（軌道上の敵を全消去）、分裂するSPLITTER、軌道が揺れるWEAVER、15/30/45秒のSURGE、20秒と40秒に3択のMODULEドラフト（WIDE ARC/PRISM/COOLANT/REPAIR/SLOW FIELD/FOCUS/OVERDRIVE）、10個のコア、S/A/B/C/Dランク、ベストスコア保存、環境音つき。",
       "createdAt": "2026-10-31",
-      "updatedAt": "2026-10-31T01:44:00+09:00",
+      "updatedAt": "2026-10-31T02:33:12+09:00",
       "tags": [
         "防衛",
         "360度",
-        "アーケード"
+        "アーケード",
+        "ローグライト"
       ],
       "thumbnail": "projects/_labs/orbit-ward/thumb.jpg",
       "thumbDelay": 4,

@@ -313,6 +313,24 @@
             x: pos.cx, y: pos.cy - 24, vx: 0, vy: -22, life: 0.9, max: 0.9,
             size: 13, color: 'rgba(238,112,108,', text: 'CORE HIT'
           });
+        } else if (ev.type === 'reflect') {
+          var fromX = pos.cx + Math.cos(ev.from) * pos.shield;
+          var fromY = pos.cy + Math.sin(ev.from) * pos.shield;
+          var toX = pos.cx + Math.cos(ev.angle) * (ev.targetR || 0.9) * pos.scale;
+          var toY = pos.cy + Math.sin(ev.angle) * (ev.targetR || 0.9) * pos.scale;
+          fx.push({
+            x1: fromX, y1: fromY, x2: toX, y2: toY, line: true,
+            life: 0.25, max: 0.25, color: 'rgba(244,201,107,'
+          });
+          for (var ri = 0; ri < 8; ri++) {
+            var ra = Math.random() * Math.PI * 2;
+            var rv = 20 + Math.random() * 70;
+            fx.push({
+              x: toX, y: toY, vx: Math.cos(ra) * rv, vy: Math.sin(ra) * rv,
+              life: 0.3 + Math.random() * 0.3, max: 0.6,
+              size: 1 + Math.random() * 2, color: 'rgba(244,201,107,'
+            });
+          }
         } else if (ev.type === 'surge') {
           shake = 4;
           fx.push({
@@ -347,6 +365,15 @@
         f.life -= dt;
         if (f.life <= 0) { fx.splice(i, 1); continue; }
         var a = Math.max(0, f.life / f.max);
+        if (f.line) {
+          ctx.strokeStyle = f.color + a.toFixed(3) + ')';
+          ctx.lineWidth = 2;
+          ctx.beginPath();
+          ctx.moveTo(f.x1, f.y1);
+          ctx.lineTo(f.x2, f.y2);
+          ctx.stroke();
+          continue;
+        }
         if (f.ring) {
           var progress = 1 - a;
           ctx.strokeStyle = f.color + (a * 0.8).toFixed(3) + ')';
