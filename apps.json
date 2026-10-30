@@ -287,6 +287,23 @@
       "updatedAt": "2026-10-30T20:50:22+09:00"
     },
     {
+      "id": "school-chair-drift",
+      "path": "projects/_labs/school-chair-drift/",
+      "tag": "GAME",
+      "title": "放課後チェア・ドリフト",
+      "description": "放課後の校舎をオフィスチェアで滑り抜けるタイムアタック。椅子は自動で前進し、画面を左右にドラッグして曲がる。曲がりながら自動ドリフト、ゲージMAXで自動ブースト。机・ロッカー・バケツ・給食ワゴンを避け、給食のミルクで時間を回復しながら3つのフロアを制限時間内にゴールする。",
+      "tags": [
+        "レース",
+        "ドリフト",
+        "タイムアタック",
+        "アクション"
+      ],
+      "thumbnail": "projects/_labs/school-chair-drift/thumb.jpg",
+      "summary": "校舎を椅子でドリフトする、ドラッグ操作のタイムアタック。",
+      "createdAt": "2026-10-30",
+      "updatedAt": "2026-10-30T21:40:22+09:00"
+    },
+    {
       "id": "sleep-guard",
       "path": "projects/_labs/sleep-guard/",
       "tag": "GAME",

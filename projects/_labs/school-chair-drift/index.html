@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#07110d" />
+  <title>放課後チェア・ドリフト - 校舎を滑り抜けるタイムアタック</title>
+  <link rel="stylesheet" href="styles.css?v=1" />
+</head>
+<body>
+  <main id="app">
+    <div id="game-frame">
+      <canvas id="game" width="480" height="800" aria-label="放課後チェア・ドリフト"></canvas>
+
+      <header id="hud">
+        <div class="team you"><span>TIME</span><b id="time">36.0</b></div>
+        <div class="turn-box"><b id="turn">1F 渡り廊下</b><span id="shots">STAGE 1/3 · 0%</span></div>
+        <div class="team cpu"><span>SPEED</span><b id="speed">0</b></div>
+      </header>
+      <button id="btn-sound" class="icon-btn sound-btn" type="button" aria-label="BGMを消音">♪</button>
+      <button id="btn-pause" class="icon-btn hidden" type="button" aria-label="ポーズ">Ⅱ</button>
+
+      <div id="overlay">
+        <section id="screen-title" class="screen visible">
+          <p class="kicker">DRAG · DRIFT · SCHOOL</p>
+          <h1>放課後<br><span class="title-sub">チェア・ドリフト</span></h1>
+          <p class="subtitle">校舎を、椅子で滑り抜け。</p>
+          <ul class="rules">
+            <li>椅子は自動で前進。画面を左右にドラッグすると曲がる</li>
+            <li>指を離すと直進。曲がりながら自然にドリフトする</li>
+            <li>ドリフトゲージがMAXになると自動ブースト</li>
+            <li>机・ロッカー・バケツ・給食ワゴンを避ける</li>
+            <li>給食のミルクを取るとタイム+1.4秒</li>
+            <li>3つのフロアを制限時間内にゴールしよう</li>
+            <li>BGMつき。右上の♪で消音できる</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">ドリフト開始</button>
+          <p class="tiny">ドラッグで曲がる / 離すと直進 / ドリフトでブースト</p>
+        </section>
+
+        <section id="screen-over" class="screen">
+          <p class="kicker">TIME UP</p>
+          <h2 class="result-title lose">TIME UP</h2>
+          <p class="subtitle">チャイムまでに校門へたどり着けなかった。</p>
+          <div class="result-stats">
+            <div><span>TIME LEFT</span><b id="over-time">0.0</b></div>
+            <div><span>MILK</span><b id="over-milk">0</b></div>
+            <div><span>STAGE</span><b id="over-stage">1/3</b></div>
+          </div>
+          <button id="btn-retry" class="primary" type="button">もう一度</button>
+          <p class="tiny">Space / Enter でもう一度</p>
+        </section>
+
+        <section id="screen-stage" class="screen">
+          <p class="kicker">STAGE CLEAR</p>
+          <h2 class="result-title clear">NEXT FLOOR</h2>
+          <p class="subtitle" id="stage-clear-text">次のフロアへ。</p>
+          <button id="btn-next-stage" class="primary" type="button">次のフロアへ</button>
+          <p class="tiny">Space / Enter でも次へ</p>
+        </section>
+
+        <section id="screen-ending" class="screen">
+          <p class="kicker">ALL FLOORS CLEAR</p>
+          <h2 class="result-title clear">SCHOOL CLEAR</h2>
+          <p class="subtitle">放課後の校舎を、椅子で駆け抜けた。</p>
+          <button id="btn-ending-retry" class="primary" type="button">もう一度あそぶ</button>
+          <p class="tiny">タイトルへ</p>
+        </section>
+
+        <section id="screen-pause" class="screen pause-screen">
+          <p class="kicker">PAUSED</p>
+          <h2 class="result-title">PAUSED</h2>
+          <p class="subtitle">廊下の真ん中でひと休み。</p>
+          <button id="btn-resume" class="primary" type="button">再開</button>
+          <p class="tiny">P / Esc でも再開</p>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="audio.js?v=1"></script>
+  <script src="engine.js?v=1"></script>
+  <script src="game.js?v=1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
