@@ -277,25 +277,6 @@
     return true;
   }
 
-  function drawAlert(time) {
-    var x = viewW * 0.55;
-    var y = viewH * 0.45 + Math.sin(time * 7) * 2;
-    ctx.save();
-    ctx.fillStyle = 'rgba(20,26,50,.92)';
-    ctx.strokeStyle = 'rgba(255,130,200,.85)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.arc(x, y, 18, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.stroke();
-    ctx.fillStyle = '#ff82c8';
-    ctx.font = '900 22px system-ui, sans-serif';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('!', x, y + 1);
-    ctx.restore();
-  }
-
   function drawBed(time, awake) {
     var bedW = Math.min(viewW * 0.8, 430);
     var bedH = Math.min(viewH * 0.2, 160);
@@ -377,57 +358,22 @@
 
   function drawNoise(noise, time) {
     var active = noise.active !== false;
-    var pulse = 0.5 + 0.5 * Math.sin(time * (active ? 5 : 2.5) + noise.id);
     var sheet = images.noise[noise.type];
     var hasSheet = sheet && sheet.complete && sheet.naturalWidth;
+    var w = noise.w;
+    var h = noise.h;
     ctx.save();
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-
-    if (active) {
-      ctx.globalAlpha = 0.22 + pulse * 0.18;
-      ctx.strokeStyle = '#ff82c8';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(noise.x, noise.y, noise.size * (0.58 + pulse * 0.12), 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    } else {
-      var remaining = Math.max(0, (noise.activeAt || 0) - (state ? state.time : time));
-      var progress = 1 - clamp(remaining / E.NOISE_GRACE, 0, 1);
-      ctx.strokeStyle = 'rgba(109,183,255,.8)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.arc(noise.x, noise.y, noise.size * 0.62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
-      ctx.stroke();
-      ctx.globalAlpha = 0.68;
-    }
-
-    ctx.fillStyle = active ? 'rgba(40,22,58,.92)' : 'rgba(18,28,52,.9)';
-    ctx.beginPath();
-    ctx.arc(noise.x, noise.y, noise.size * 0.48, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = active ? 'rgba(255,130,200,.8)' : 'rgba(109,183,255,.55)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
     if (hasSheet) {
-      var frame = Math.floor((((state ? state.time : time) - noise.born) * (active ? 4 : 2)) % 2);
+      var frame = active ? Math.floor((((state ? state.time : time) - noise.born) * 4) % 2) : 0;
       var fw = sheet.naturalWidth / 2;
-      var size = noise.size;
       ctx.drawImage(sheet, frame * fw, 0, fw, sheet.naturalHeight,
-                    noise.x - size / 2, noise.y - size / 2, size, size);
+                    noise.x - w / 2, noise.y - h / 2, w, h);
     } else {
-      ctx.font = Math.round(noise.size * 0.58) + 'px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
-      ctx.fillText(noise.icon, noise.x, noise.y + 1);
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.font = Math.round(Math.min(w, h) * 0.7) + 'px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
+      ctx.fillText(noise.icon, noise.x, noise.y);
     }
-    ctx.globalAlpha = 1;
-    ctx.font = '700 8px system-ui, sans-serif';
-    ctx.fillStyle = active ? 'rgba(255,220,240,.9)' : 'rgba(160,205,255,.9)';
-    var labelX = clamp(noise.x, 38, viewW - 38);
-    var above = ['wall-clock', 'radiator', 'smartphone', 'window', 'neighbor-speaker', 'door'].indexOf(noise.type) >= 0;
-    var labelY = above ? noise.y - noise.size / 2 - 8 : noise.y + noise.size / 2 + 12;
-    labelY = clamp(labelY, 10, viewH - 6);
-    ctx.fillText(active ? noise.label : 'まもなく…', labelX, labelY);
     ctx.restore();
   }
 
@@ -459,13 +405,13 @@
     if (!hasBackground) drawBackdrop(time);
     var awake = !!(state && state.phase === 'run' && state.noises.some(function (noise) { return noise.active !== false; }));
     if (state && state.phase === 'over') awake = true;
-    if (hasBackground) {
-      if (awake) drawAlert(time);
-    } else {
-      drawBed(time, awake);
-    }
+    if (!hasBackground) drawBed(time, awake);
     if (state) {
-      for (var i = 0; i < state.noises.length; i++) drawNoise(state.noises[i], time);
+      var order = {};
+      E.NOISE_TYPES.forEach(function (type, index) { order[type.id] = index; });
+      state.noises.slice().sort(function (a, b) {
+        return (order[a.type] || 0) - (order[b.type] || 0);
+      }).forEach(function (noise) { drawNoise(noise, time); });
     }
     drawEffects();
     if (flash > 0) {
@@ -478,10 +424,14 @@
   function resizeCanvas() {
     if (!canvas) return;
     dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(window.devicePixelRatio, 2) : 1;
-    var w = canvas.clientWidth || 480;
-    var h = canvas.clientHeight || 800;
+    var stageW = els.stage ? els.stage.clientWidth : (window.innerWidth || 480);
+    var stageH = els.stage ? els.stage.clientHeight : (window.innerHeight || 800);
+    var w = Math.min(stageW, stageH * 9 / 16);
+    var h = w * 16 / 9;
     if (w <= 0) w = 480;
     if (h <= 0) h = 800;
+    canvas.style.width = w + 'px';
+    canvas.style.height = h + 'px';
     viewW = w;
     viewH = h;
     canvas.width = Math.max(2, Math.round(w * dpr));
