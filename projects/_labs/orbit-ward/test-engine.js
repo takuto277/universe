@@ -60,6 +60,41 @@ s = miss.getState();
 assert(s.hp < 10, 'シールドを外してもコアが傷つかない');
 assert(s.misses > 0 && s.combo === 0, 'ミスでチェーンが切れない');
 
+// 20秒でMODULE選択が入り、選ぶと再開する
+var draft = E.createGame();
+draft.start(20261031);
+guard = 0;
+while (draft.getState().phase === 'playing' && draft.getState().time < 20 && guard++ < 2000) draft.update(guard / 60, 1 / 60);
+s = draft.getState();
+assert(s.phase === 'upgrade', '20秒でMODULE選択にならない');
+assert(s.upgradeChoices && s.upgradeChoices.length === 3, 'MODULE候補が3つでない');
+var chosen = s.upgradeChoices[0].id;
+assert(draft.applyUpgrade(0) === true, 'MODULEを選択できない');
+s = draft.getState();
+assert(s.phase === 'playing', 'MODULE選択後に再開しない');
+assert(s.upgrades.length === 1 && s.upgrades[0] === chosen, 'MODULE選択が記録されない');
+assert(s.time >= 20 && s.time < 21, 'MODULE選択中の時間が飛ぶ');
+
+// PRISM: PERFECT迎撃で同方向の別シャードを反射破壊する
+var prism = E.createGame();
+prism.start(20261031);
+guard = 0;
+while (prism.getState().shards.length === 0 && guard++ < 400) prism.update(guard / 60, 1 / 60);
+var original = prism.getState().shards[0];
+original.r = 0.7;
+original.kind = 'basic';
+original.base = 100;
+var twin = {};
+for (var key in original) if (Object.prototype.hasOwnProperty.call(original, key)) twin[key] = original[key];
+twin.id = 999; twin.r = 0.8; twin.angle = original.angle + 0.04; twin.spin = 1.2;
+prism.state.shards.push(twin);
+prism.state.prism = 1;
+prism.setShieldAngle(original.angle);
+guard = 0;
+while (prism.getState().reflects === 0 && guard++ < 400) prism.update(guard / 60, 1 / 60);
+s = prism.getState();
+assert(s.reflects >= 1, 'PRISMの反射が起きない');
+
 // 自動プレイで60秒を終える（固定シード）
 var auto = E.createGame();
 auto.start(20261031);
@@ -76,5 +111,6 @@ assert(s.result.blocks > 0 && s.result.perfectBlocks > 0, '結果に迎撃数が
 assert(s.result.rank && s.result.rank !== '—', 'ランクがない');
 assert(s.result.time <= 60, '結果時間が60秒を超える');
 assert(s.result.hp >= 0, '結果HPが不正');
+assert(s.result.upgrades.length === 2, '60秒で2回のMODULE選択がない');
 
 print('engine tests OK (' + passed + ' assertions)');

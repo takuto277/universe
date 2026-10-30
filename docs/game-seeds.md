@@ -50,10 +50,10 @@
 
 ### ORBIT WARD
 
-- 状態: v1 実装済み（[`orbit-ward/`](../projects/_labs/orbit-ward/)）
+- 状態: v2 実装済み（[`orbit-ward/`](../projects/_labs/orbit-ward/)）
 - 一言: 星の周りを回るシールドで、全方位から迫るシャードを弾く60秒の360度ディフェンス
-- スルメ要素: シールドの角度を合わせるだけの単純な操作に、PERFECTの位置取り、PULSEをいつ使うか、分裂するSPLITTER、15/30/45秒のSURGE、10個のコアの管理が重なる。迎撃がPULSEチャージになるので、正確さが次のピンチを切り抜ける資源になる
-- 実装メモ: 60秒、10コア、シールド角度±1.1rad、PERFECT±0.18rad、BASIC/SPLITTER/FRAGMENT/GOLD/HEAVY、SPLITTERはリング手前で2分裂、15/30/45秒に同方向のSURGE、PULSEは全シャード消去、S/A/B/C/Dランク、ベスト保存、Canvasの星・軌道・シールド・シャード・粒子・衝撃波、WebAudioの環境音と効果音、固定シードの自動テスト
+- スルメ要素: シールドの角度を合わせるだけの単純な操作に、PERFECTの位置取り、PULSEをいつ使うか、分裂するSPLITTER、揺れるWEAVER、15/30/45秒のSURGE、10個のコアの管理、20/40秒のMODULEドラフトが重なる。周回ごとにWIDE ARC/PRISM/COOLANT/REPAIR/SLOW FIELD/FOCUS/OVERDRIVEから選んでビルドを作る
+- 実装メモ: 60秒、10コア、シールド角度±1.1rad、PERFECT±0.18rad、BASIC/SPLITTER/FRAGMENT/WEAVER/GOLD/HEAVY、SPLITTERはリング手前で2分裂、WEAVERはsin波で軌道が揺れる、15/30/45秒に同方向のSURGE、PULSEは全シャード消去、20/40秒にMODULEを3択（時間停止）、PRISMはPERFECT迎撃で同方向の別シャードを反射破壊、S/A/B/C/Dランク、ベスト保存、Canvasの星・軌道・シールド・シャード・粒子・反射レーザー・衝撃波、WebAudioの環境音と効果音、固定シードの自動テスト
 
 ### STILL WATER
 

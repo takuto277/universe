@@ -63,6 +63,9 @@
   function miss() { tone(105, 0.3, 0.075, 'sawtooth'); tone(70, 0.4, 0.05, 'square'); }
   function pulse() { tone(180, 0.45, 0.055, 'sawtooth'); tone(720, 0.4, 0.04, 'triangle', 0.06); tone(1080, 0.5, 0.025, 'sine', 0.12); }
   function surge() { tone(90, 0.35, 0.045, 'square'); tone(150, 0.3, 0.03, 'sawtooth', 0.08); }
+  function upgradeOffer() { tone(392, 0.25, 0.045, 'sine'); tone(587, 0.3, 0.035, 'sine', 0.08); }
+  function upgrade() { tone(523, 0.25, 0.05, 'triangle'); tone(784, 0.35, 0.04, 'sine', 0.06); }
+  function reflect() { tone(1040, 0.12, 0.045, 'triangle'); tone(1560, 0.18, 0.025, 'sine', 0.03); }
   function finish(win) {
     if (win) { tone(392, 0.4, 0.05, 'sine'); tone(523, 0.45, 0.05, 'sine', 0.08); tone(784, 0.7, 0.04, 'triangle', 0.18); }
     else { tone(180, 0.5, 0.05, 'sawtooth'); tone(110, 0.7, 0.04, 'square', 0.12); }
@@ -76,7 +79,7 @@
 
   root.OrbitWardAudio = {
     start: start, startTone: startTone, block: block, miss: miss,
-    pulse: pulse, surge: surge, finish: finish,
+    pulse: pulse, surge: surge, upgradeOffer: upgradeOffer, upgrade: upgrade, reflect: reflect, finish: finish,
     toggleMute: toggleMute, isEnabled: isEnabled
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);
