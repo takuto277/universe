@@ -15,6 +15,8 @@
     best: document.getElementById('best'),
     streak: document.getElementById('streak'),
     hint: document.getElementById('hint'),
+    lureLabel: document.getElementById('lure-label'),
+    hotLabel: document.getElementById('hot-label'),
     powerWrap: document.getElementById('power-wrap'),
     powerBar: document.getElementById('power-bar'),
     powerText: document.getElementById('power-text'),
@@ -30,6 +32,7 @@
     start: document.getElementById('start-overlay'),
     result: document.getElementById('result-overlay'),
     resultScore: document.getElementById('result-score'),
+    resultGrade: document.getElementById('result-grade'),
     resultSub: document.getElementById('result-sub'),
     resultMeta: document.getElementById('result-meta'),
     resultBest: document.getElementById('result-best'),
@@ -41,6 +44,7 @@
     btnResultSound: document.getElementById('btn-result-sound')
   };
 
+  var selectedLure = 'spoon';
   var best = 0;
   try { best = Number(root.localStorage && root.localStorage.getItem('stillwater-best')) || 0; } catch (e) { }
   var seenEvents = 0;
@@ -62,7 +66,7 @@
   }
 
   function begin() {
-    game.start();
+    game.start(selectedLure);
     if (audio) { audio.start(); soundLabel(); }
     seenEvents = 0;
     lastPhase = null;
@@ -75,6 +79,34 @@
     text(els.resultScore, '0');
   }
 
+  function activeSpot(state) {
+    for (var i = 0; i < E.SPOTS.length; i++) if (E.SPOTS[i].id === state.activeSpot) return E.SPOTS[i];
+    return E.SPOTS[1];
+  }
+
+  function lureInfo(id) {
+    for (var i = 0; i < E.LURES.length; i++) if (E.LURES[i].id === id) return E.LURES[i];
+    return E.LURES[1];
+  }
+
+  var lureButtons = [
+    document.getElementById('lure-worm'),
+    document.getElementById('lure-spoon'),
+    document.getElementById('lure-fly')
+  ];
+
+  function setLure(id, silent) {
+    selectedLure = id;
+    for (var i = 0; i < lureButtons.length; i++) {
+      var card = lureButtons[i];
+      if (!card) continue;
+      var on = card.getAttribute('data-lure') === id;
+      card.classList.toggle('selected', on);
+      card.setAttribute('aria-pressed', on ? 'true' : 'false');
+    }
+    if (!silent && audio && audio.tick) audio.tick();
+  }
+
   function phaseHint(state) {
     if (state.phase === 'aim') {
       var spot = E.SPOTS[0];
@@ -83,11 +115,13 @@
         var d = Math.abs(state.aimX - E.SPOTS[i].x);
         if (d < best) { best = d; spot = E.SPOTS[i]; }
       }
-      return spot.name + ' · DRAG TO AIM · HOLD TO CHARGE · RELEASE';
+      var hot = activeSpot(state);
+      if (state.castsLeft === 1) return 'LAST CAST · ' + hot.name + ' IS HOT · MAKE IT COUNT';
+      return (state.castIndex === 0 ? 'HOT: ' + hot.name + ' · ' : spot.name + ' · ') + 'DRAG TO AIM · HOLD TO CHARGE · RELEASE';
     }
     if (state.phase === 'wait') return 'WAIT FOR THE FLOAT TO DIP';
     if (state.phase === 'bite') return 'TAP TO HOOK IT';
-    if (state.phase === 'reel') return 'HOLD TO REEL · RELEASE TO EASE THE LINE';
+    if (state.phase === 'reel') return (state.fish ? state.fish.fight.toUpperCase() + ' · ' : '') + 'HOLD TO REEL · RELEASE TO EASE THE LINE';
     if (state.phase === 'caught') return 'CAUGHT';
     if (state.phase === 'escaped') return 'GONE';
     return 'THE LAKE IS QUIET';
@@ -113,6 +147,8 @@
     text(els.best, best);
     text(els.streak, state.streak);
     text(els.hint, phaseHint(state));
+    text(els.lureLabel, 'LURE · ' + lureInfo(state.lure).name);
+    text(els.hotLabel, 'HOT · ' + activeSpot(state).name);
 
     var aiming = state.phase === 'aim';
     var reeling = state.phase === 'reel';
@@ -142,8 +178,9 @@
       try { if (root.localStorage) root.localStorage.setItem('stillwater-best', String(best)); } catch (e) { }
     }
     text(els.resultScore, score);
+    text(els.resultGrade, 'RANK ' + (r.grade || '—'));
     text(els.resultSub, r.catchesCount ? 'A quiet kind of victory.' : 'The lake keeps its secrets.');
-    text(els.resultMeta, (E.CASTS - (state.castsLeft || 0)) + ' CASTS · ' + (r.catchesCount || 0) + ' CATCHES · ' + (r.totalCm || 0) + ' cm · STREAK ' + (r.bestStreak || 0) + ' · PERFECT ' + (r.perfectHooks || 0));
+    text(els.resultMeta, (r.lure || 'spoon').toUpperCase() + ' · ' + (E.CASTS - (state.castsLeft || 0)) + ' CASTS · ' + (r.catchesCount || 0) + ' CATCHES · ' + (r.totalCm || 0) + ' cm · STREAK ' + (r.bestStreak || 0) + ' · PERFECT HOOKS ' + (r.perfectHooks || 0) + ' · PERFECT CASTS ' + (r.perfectCasts || 0));
     text(els.resultBest, 'BEST ' + best);
     if (els.catchList) {
       els.catchList.innerHTML = '';
@@ -168,9 +205,9 @@
   function showCatchBanner(state) {
     if (state.phase === 'caught' && state.catches.length) {
       var c = state.catches[state.catches.length - 1];
-      text(els.bannerEyebrow, c.rarity === 'LEGENDARY' ? 'LEGENDARY CATCH' : 'CAUGHT');
+      text(els.bannerEyebrow, c.junk ? 'JUNK CATCH' : (c.rarity === 'LEGENDARY' ? 'LEGENDARY CATCH' : 'CAUGHT'));
       text(els.bannerTitle, c.name);
-      text(els.bannerSub, c.size + ' cm · +' + c.points + (c.streak > 1 ? ' · STREAK x' + c.streak : ''));
+      text(els.bannerSub, c.size + ' cm · ' + (c.junk ? 'NO POINTS · STREAK LOST' : '+' + c.points + (c.streak > 1 ? ' · STREAK x' + c.streak : '')));
       show(els.banner, true);
     } else if (state.phase === 'escaped') {
       var last = state.events.length ? state.events[state.events.length - 1] : null;
@@ -260,6 +297,11 @@
     root.addEventListener('resize', function () { if (renderer) renderer.resize(); });
   }
 
+  for (var li = 0; li < lureButtons.length; li++) {
+    if (!lureButtons[li]) continue;
+    lureButtons[li].addEventListener('click', function () { setLure(this.getAttribute('data-lure')); });
+  }
+  setLure(selectedLure, true);
   if (els.btnStart) els.btnStart.addEventListener('click', begin);
   if (els.btnRetry) els.btnRetry.addEventListener('click', begin);
   if (els.btnMute) els.btnMute.addEventListener('click', function () { if (audio) audio.toggleMute(); soundLabel(); });

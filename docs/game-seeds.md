@@ -50,10 +50,10 @@
 
 ### STILL WATER
 
-- 状態: v1 実装済み（[`still-water/`](../projects/_labs/still-water/)）
-- 一言: 夕暮れの湖で、8回のキャストから釣果を競う1ボタンの釣りゲーム
-- スルメ要素: キャストパワーで狙う深さとレア魚の確率が変わる。アタリのタップ、リールの押す/離すでテンションを保つ。魚ごとに引きの強さとスタミナが違う
-- 実装メモ: 8投、5種（BLUEGILL/BASS/KOI/GOLDEN CARP/OLD BOOT）、左右の狙いと3ポイント、キャストチャージ、アタリ1.05秒、PERFECT HOOK、ストリーク、テンション0〜100%、リール進捗、ミス/ラインブレイク、Canvasの夕暮れ湖・月・山・ウキ・魚影・泡、WebAudioの環境音と効果音、既知AIの自動プレイ
+- 状態: v1.2 実装済み（[`still-water/`](../projects/_labs/still-water/)）
+- 一言: 夕暮れの湖で、ルアーとHOTスポットを選びながら8投する1ボタンの釣りゲーム
+- スルメ要素: WORM/SPOON/FLYでアタリの速さ・引きの強さ・レア度が変わる。毎投変わるHOTスポットへ正確に投げるとPERFECT CAST。魚ごとの引きパターンを読み、押す/離すでテンションを保つ
+- 実装メモ: 8投、5種（BLUEGILL/BASS/KOI/GOLDEN CARP/OLD BOOT）、3ルアー、左右の狙いと3ポイント、毎投変わるHOTスポット、PERFECT CAST（アタリ短縮・釣果+15%）、PERFECT HOOK、ストリーク、魚別の引き波形（STEADY/DARTER/DIVER/THRASH/DEAD）、OLD BOOTは0点でストリーク終了、最終投レア寄り、S/A/B/C/Dランク、Canvasの夕暮れ湖・月・山・ウキ・魚影・泡、WebAudioの環境音と効果音、既知AIの自動プレイ
 
 ## 保留
 

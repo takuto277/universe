@@ -178,16 +178,17 @@
       "path": "projects/_labs/still-water/",
       "tag": "GAME",
       "title": "STILL WATER",
-      "description": "夕暮れの湖で、8回のキャストから釣果を競う1ボタンの釣りゲーム。左右に狙いを付けてキャストし、ウキが沈んだらタップでフッキング。リールは押して巻き、離してテンションを逃がす。3つのポイント（REEDS/OPEN WATER/DEEP ROCKS）で魚の傾向が変わり、早合わせのPERFECT HOOKと連続釣果のストリークでスコアが伸びる。5種の魚、8投、ベストスコア保存、環境音つき。",
+      "description": "夕暮れの湖で、8回のキャストから釣果を競う1ボタンの釣りゲーム。WORM/SPOON/FLYの3ルアーを選び、毎投変わるHOTスポットへ正確に投げるとPERFECT CAST。左右の狙いとキャストパワーで3つのポイント（REEDS/OPEN WATER/DEEP ROCKS）を攻め、魚ごとの引きを読んでリールのテンションを保つ。PERFECT HOOKとストリーク、最終投のレア寄り、S/A/B/C/Dランク、5種の魚、ベストスコア保存、環境音つき。",
       "createdAt": "2026-10-31",
-      "updatedAt": "2026-10-31T00:26:58+09:00",
+      "updatedAt": "2026-10-31T00:59:04+09:00",
       "tags": [
         "釣り",
-        "1ボタン"
+        "1ボタン",
+        "ルアー"
       ],
       "thumbnail": "projects/_labs/still-water/thumb.jpg",
       "thumbDelay": 5,
-      "summary": "夕暮れの湖で8回キャストし、テンションを保って魚を釣る1ボタン釣りゲーム。"
+      "summary": "夕暮れの湖でルアーとHOTスポットを選び、8回キャストして魚を釣る1ボタン釣りゲーム。"
     },
     {
       "id": "neon-stack",

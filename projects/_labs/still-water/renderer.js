@@ -159,17 +159,26 @@
         var x = width * (0.5 + sp.x * 0.32);
         var y = horizon + height * 0.19 + (i % 2) * 12;
         var near = state.phase === 'aim' && Math.abs(state.aimX - sp.x) < 0.18;
-        var a = near ? 0.48 : 0.16;
-        ctx.strokeStyle = 'rgba(128, 221, 205, ' + a.toFixed(3) + ')';
-        ctx.lineWidth = 1;
+        var hot = state.activeSpot === sp.id;
+        var a = near ? 0.58 : (hot ? 0.34 : 0.16);
+        ctx.strokeStyle = hot ? 'rgba(244, 201, 107, ' + a.toFixed(3) + ')' : 'rgba(128, 221, 205, ' + a.toFixed(3) + ')';
+        ctx.lineWidth = hot ? 1.4 : 1;
         for (var r = 0; r < 2; r++) {
-          var rr = 10 + r * 10 + Math.sin(t * 1.5 + i) * 3;
+          var rr = 10 + r * 10 + Math.sin(t * 1.5 + i) * 3 + (hot ? 4 : 0);
           ctx.beginPath();
           ctx.ellipse(x, y, rr, rr * 0.23, 0, 0, Math.PI * 2);
           ctx.stroke();
         }
-        drawFish(x + Math.sin(t * 0.9 + i) * 8, y + 22, 0.55 + i * 0.12,
-          i === 2 ? '#c79b5d' : (i === 0 ? '#7fbfac' : '#8caf8a'), i % 2 === 0, near ? 0.48 : 0.25);
+        if (hot) {
+          var pulse = 0.5 + 0.5 * Math.sin(t * 2.6);
+          ctx.strokeStyle = 'rgba(244, 201, 107, ' + (0.12 + pulse * 0.18).toFixed(3) + ')';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          ctx.ellipse(x, y, 30 + pulse * 12, (30 + pulse * 12) * 0.23, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        drawFish(x + Math.sin(t * 0.9 + i) * 8, y + 22, 0.55 + i * 0.12 + (hot ? 0.08 : 0),
+          hot ? '#e8c27a' : (i === 2 ? '#c79b5d' : (i === 0 ? '#7fbfac' : '#8caf8a')), i % 2 === 0, hot ? 0.62 : (near ? 0.48 : 0.25));
       }
     }
 
@@ -288,8 +297,11 @@
       if (state.phase !== 'aim') return;
       var y = height * 0.35 + 70 + state.charge * height * 0.38;
       var x = width * (0.5 + state.aimX * 0.32);
+      var hot = null;
+      for (var h = 0; h < spots.length; h++) if (spots[h].id === state.activeSpot) hot = spots[h];
+      var onHot = hot && Math.abs(state.aimX - hot.x) <= 0.14;
       ctx.save();
-      ctx.strokeStyle = 'rgba(114, 201, 189, ' + (0.35 + state.charge * 0.4).toFixed(3) + ')';
+      ctx.strokeStyle = onHot ? 'rgba(244, 201, 107, ' + (0.58 + state.charge * 0.32).toFixed(3) + ')' : 'rgba(114, 201, 189, ' + (0.35 + state.charge * 0.4).toFixed(3) + ')';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
       ctx.ellipse(x, y, 26 + state.charge * 12, 6 + state.charge * 3, 0, 0, Math.PI * 2);
@@ -307,8 +319,9 @@
       var f = state.fish;
       var size = f.rarity === 'LEGENDARY' ? 1.35 : (f.rarity === 'RARE' ? 1.15 : 0.9);
       var fight = state.phase === 'reel' ? state.tension : 0.15;
-      var x = bx + Math.sin(t * 4.4 + (f.id.length || 1)) * (10 + fight * 25);
-      var y = by + 24 + Math.sin(t * 3.2) * 5;
+      var speed = f.fight === 'thrash' ? 9.2 : (f.fight === 'darter' ? 5.8 : 4.4);
+      var x = bx + Math.sin(t * speed + (f.id.length || 1)) * (10 + fight * 25);
+      var y = by + 24 + Math.sin(t * (f.fight === 'diver' ? 2.0 : 3.2)) * (f.fight === 'diver' ? 9 : 5);
       drawFish(x, y, size * (0.85 + fight * 0.2), f.color, true, 0.42 + fight * 0.2);
       // bubbles
       if (state.phase === 'reel') {
@@ -358,6 +371,9 @@
         var x = ev.type === 'catch' ? bx : bx;
         var y = ev.type === 'catch' ? by : by;
         if (ev.type === 'cast' || ev.type === 'bite' || ev.type === 'hook') {
+          if (ev.type === 'cast' && ev.quality === 'perfect') {
+            fx.push({ x: width * (0.5 + ev.aimX * 0.32), y: height * 0.35 + 120, vx: 0, vy: -18, life: 1, max: 1, size: 10, color: 'rgba(244, 201, 107,', text: 'PERFECT CAST' });
+          }
           if (ev.type === 'hook' && ev.quality === 'perfect') {
             fx.push({ x: x, y: y - 20, vx: 0, vy: -20, life: .9, max: .9, size: 10, color: 'rgba(244, 201, 107,', text: 'PERFECT HOOK' });
           }
