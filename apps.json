@@ -372,6 +372,25 @@
       "createdAt": "2026-10-30",
       "updatedAt": "2026-10-30T23:19:01+09:00",
       "thumbNoAuto": true
+    },
+    {
+      "id": "beat-rush",
+      "path": "projects/_labs/beat-rush/",
+      "tag": "GAME",
+      "title": "BEAT RUSH",
+      "description": "4レーンに流れてくるノートを、ラインに合わせて叩く30秒リズムゲーム。D/F/J/Kキーまたは画面の4レーンをタップして、PERFECT/GOOD/OKの判定でスコアとコンボを伸ばす。BPM128のWebAudioビートに合わせてノートが落下し、30秒終了時の精度でS〜Dランクを判定。ネオンの4色レーン、ヒットパーティクル、判定表示、最大コンボ、PERFECT/GOOD/MISS数つき。",
+      "summary": "4レーンを叩く30秒リズムゲーム。精度でS〜Dランク。",
+      "tags": [
+        "リズム",
+        "音ゲー",
+        "4レーン",
+        "タイミング"
+      ],
+      "thumbnail": "projects/_labs/beat-rush/thumb.jpg",
+      "thumbDelay": 2.0,
+      "createdAt": "2026-10-31",
+      "updatedAt": "2026-10-31T00:04:50+09:00",
+      "thumbNoAuto": false
     }
   ]
 }

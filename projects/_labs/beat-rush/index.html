@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070510">
+  <meta name="description" content="4レーンに流れるノートを叩く30秒リズムゲーム。BEAT RUSH。">
+  <title>BEAT RUSH - 4レーンリズムゲーム</title>
+  <link rel="stylesheet" href="style.css?v=20261030-beatrush1">
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="hud-head">
+        <div class="brand"><b>BEAT</b><span>RUSH</span></div>
+        <div class="stats">
+          <div><span>TIME</span><b id="time">30.0</b></div>
+          <div><span>SCORE</span><b id="score">0</b></div>
+          <div><span>COMBO</span><b id="combo">0</b></div>
+        </div>
+      </div>
+      <div class="hud-sub"><span>4 LANE RHYTHM</span><b id="accuracy">100.0%</b></div>
+    </header>
+
+    <main id="stage">
+      <canvas id="arena" width="480" height="800" aria-label="4レーンに流れるノートを叩くリズムゲーム"></canvas>
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <p class="eyebrow">4 LANE RHYTHM / 30 SEC</p>
+          <h1>BEAT<br><span>RUSH</span></h1>
+          <p class="subtitle">流れてくるノートを、ラインに合わせて叩け。</p>
+          <ul class="rules">
+            <li>4レーンに落ちてくるノートをタップ</li>
+            <li>キーボードは <b>D / F / J / K</b></li>
+            <li>PERFECT / GOOD / OK でスコアとコンボ</li>
+            <li>30秒終了時の精度で S〜D ランク</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">START</button>
+          <p class="tiny">イヤホン推奨 / 4レーンをタップ</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <p class="eyebrow">RESULT</p>
+          <h2 id="end-rank">A</h2>
+          <p id="end-detail" class="end-detail"></p>
+          <div class="end-stats">
+            <div><span>SCORE</span><b id="end-score">0</b></div>
+            <div><span>ACCURACY</span><b id="end-acc">0%</b></div>
+            <div><span>MAX COMBO</span><b id="end-combo">0</b></div>
+          </div>
+          <div class="end-sub">
+            <span>PERFECT <b id="end-perfect">0</b></span>
+            <span>GOOD <b id="end-good">0</b></span>
+            <span>MISS <b id="end-miss">0</b></span>
+          </div>
+          <button id="btn-again" class="primary" type="button">RETRY</button>
+          <p class="tiny">タップ / Space でもう一度</p>
+        </section>
+      </div>
+    </main>
+
+    <footer id="tip">
+      <span>D F J K / 4レーンをタップ</span>
+      <span id="beat-dot" class="beat-dot"></span>
+    </footer>
+  </div>
+
+  <script src="engine.js?v=20261030-beatrush1"></script>
+  <script src="audio.js?v=20261030-beatrush1"></script>
+  <script src="game.js?v=20261030-beatrush1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
