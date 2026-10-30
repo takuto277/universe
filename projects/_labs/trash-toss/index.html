@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#140f12" />
+  <meta name="description" content="TRASH TOSS — swipe to toss trash into a moving bin in a cozy living room. 30 seconds, unlimited throws." />
+  <title>TRASH TOSS</title>
+  <link rel="stylesheet" href="style.css?v=20261030-trashtoss1" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <div>
+          <p class="eyebrow">LIVING ROOM / 30 SECONDS</p>
+          <h1>TRASH TOSS</h1>
+        </div>
+        <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+      </div>
+
+      <div class="score-row">
+        <div class="stat big"><span class="label">IN</span><strong id="score">0</strong></div>
+        <div class="stat"><span class="label">THROWS</span><strong id="throws">0</strong></div>
+        <div class="stat"><span class="label">TIME</span><strong id="time">30.0</strong></div>
+        <div class="stat"><span class="label">STREAK</span><strong id="streak">0</strong></div>
+      </div>
+      <div class="hud-bottom-row">
+        <span id="depth" class="depth">2D MOVES</span>
+        <span class="swipe-mini">SWIPE UP · LENGTH = DISTANCE</span>
+      </div>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">A COZY LIVING-ROOM TOSS GAME</p>
+        <h1>TRASH<br /><span>TOSS</span></h1>
+        <p class="lead">The bin is wandering across the living room. Swipe to throw your trash into it before the 30 seconds are up.</p>
+        <div class="rules">
+          <p><span class="rule-icon swipe">SWIPE</span> Drag upward.</p>
+          <p><span class="rule-icon length">LENGTH</span> A longer swipe throws deeper into the room.</p>
+          <p><span class="rule-icon aim">SIDE</span> The sideways direction aims left or right.</p>
+          <p><span class="rule-icon depth">15s</span> The bin starts moving forward and back halfway through.</p>
+        </div>
+        <button id="btn-start" class="primary big" type="button">START TOSSING</button>
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">30 seconds · unlimited throws · a translucent arc previews the landing</p>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay">
+      <div class="result-content">
+        <p class="eyebrow">TIME UP</p>
+        <h1>TRASH TOSS</h1>
+        <div class="result-score"><span id="result-score">0</span><small>IN</small></div>
+        <p id="result-sub" class="lead">The bin survived the storm.</p>
+        <div class="result-meta">
+          <span id="result-best">BEST 0</span>
+          <span id="result-throws">THROWS 0</span>
+          <span id="result-accuracy">ACC 0%</span>
+          <span id="result-perfect">PERFECT 0</span>
+          <span id="result-streak">STREAK 0</span>
+        </div>
+        <button id="btn-retry" class="primary big" type="button">TOSS AGAIN</button>
+        <button id="btn-result-sound" class="link-btn" type="button">SOUND: ON</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261030-trashtoss1"></script>
+  <script src="audio.js?v=20261030-trashtoss1"></script>
+  <script src="renderer.js?v=20261030-trashtoss1"></script>
+  <script src="game.js?v=20261030-trashtoss1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
