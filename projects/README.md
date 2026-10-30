@@ -27,7 +27,7 @@
 | `stick-soccer-players` | `_labs/` | 選手を投げてボールを動かす、継続的に遊べるサッカーゲーム。実験・改善を続ける |
 | `stick-colosseum` | `_labs/` | 5vs5で相手をリング外へ押し出す、継続的に遊べるバトルゲーム。実験・改善を続ける |
 | `school-chair-drift` | `_labs/` | 日本の校舎を椅子で走る3Dレース。実験・改善を続ける |
-| `night-mini-golf` | `_labs/` | 月夜の9ホールを回るミニゴルフ。実験・改善を続ける |
+| `night-mini-golf` | `_labs/` | CPUとターン制で戦う3Dミニゴルフ。実験・改善を続ける |
 | `neon-stack` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `graph-cross` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |
 | `exponential-balls` | `_labs/` | 継続的に遊べるゲーム。実験・改善を続ける |

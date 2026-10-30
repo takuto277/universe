@@ -255,3 +255,9 @@ h1 {
 .drift-hud i { display: block; width: 0%; height: 100%; background: linear-gradient(90deg, var(--mint), var(--gold), var(--pink)); }
 #flash { position: absolute; inset: 0; z-index: 6; background: #eafff4; opacity: 0; pointer-events: none; }
 .title-sub { display:block; color:var(--mint); font-size:0.46em; letter-spacing:0.16em; margin-top:2px; }
+.hit-btn { position:absolute; z-index:8; right:16px; bottom:max(18px, env(safe-area-inset-bottom)); width:84px; height:84px; border-radius:50%; border:2px solid rgba(255,209,102,.8); background:radial-gradient(circle at 35% 30%, #ffe9aa, #ff9f68 60%, #ff6f9f); color:#1b1008; font-family:inherit; font-size:16px; font-weight:900; cursor:pointer; box-shadow:0 0 24px rgba(255,180,90,.28); }
+.hit-btn:disabled { opacity:.38; filter:grayscale(.4); }
+.hit-btn.charging { transform:scale(.96); }
+.power-hud { position:absolute; z-index:7; left:50%; bottom:46px; transform:translateX(-50%); width:220px; pointer-events:none; color:var(--muted); font-size:8px; font-weight:900; letter-spacing:1px; }
+.power-hud > div { height:10px; margin-top:4px; border:1px solid rgba(125,245,199,.28); border-radius:999px; overflow:hidden; background:rgba(4,14,10,.78); }
+.power-hud i { display:block; width:0%; height:100%; background:linear-gradient(90deg,var(--mint),var(--gold),var(--pink)); }

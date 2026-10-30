@@ -4,66 +4,71 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#070b16" />
-  <title>月夜のミニゴルフ - 9ホールのナイトパット</title>
-  <link rel="stylesheet" href="styles.css?v=1" />
+  <title>月夜のミニゴルフ MATCH - CPUと3Dパット対決</title>
+  <link rel="stylesheet" href="styles.css?v=3" />
 </head>
 <body>
   <main id="app">
     <div id="game-frame">
-      <canvas id="game" width="480" height="800" aria-label="月夜のミニゴルフ"></canvas>
-
+      <canvas id="game" width="480" height="800" aria-label="月夜のミニゴルフ MATCH"></canvas>
       <header id="hud">
-        <div class="team you"><span>HOLE</span><b id="hole">1/3</b></div>
-        <div class="turn-box"><b id="turn">月夜の庭</b><span id="par">PAR 2 · STROKES 0</span></div>
-        <div class="team cpu"><span>STROKES</span><b id="strokes">0</b></div>
+        <div class="team you"><span>YOU</span><b id="you">0</b></div>
+        <div class="turn-box"><b id="turn">YOUR TURN</b><span id="shots">HOLE 1/3 · PAR 2</span></div>
+        <div class="team cpu"><span>CPU</span><b id="cpu">0</b></div>
       </header>
+      <button id="btn-hit" class="hit-btn" type="button">HIT</button>
+      <div class="power-hud"><span>POWER</span><div><i id="power-fill"></i></div></div>
       <button id="btn-sound" class="icon-btn sound-btn" type="button" aria-label="BGMを消音">♪</button>
       <button id="btn-pause" class="icon-btn hidden" type="button" aria-label="ポーズ">Ⅱ</button>
 
       <div id="overlay">
         <section id="screen-title" class="screen visible">
-          <p class="kicker">NIGHT · PUTT · GLOW</p>
-          <h1>月夜の<br><span class="title-sub">ミニゴルフ</span></h1>
-          <p class="subtitle">静かな夜の9ホールを、少ない打数で。</p>
-          <p class="tiny" id="best">BEST --</p>
+          <p class="kicker">3D PUTT · TURN · MATCH</p>
+          <h1>月夜の<br><span class="title-sub">ミニゴルフ MATCH</span></h1>
+          <p class="subtitle">CPUと交互に打つ、3Dミニゴルフ対決。</p>
           <ul class="rules">
-            <li>ボールをドラッグして離すとショット。引いた方向と逆へ転がる</li>
-            <li>壁やバンパーで跳ね返る。砂は減速、水はペナルティ</li>
-            <li>カップに近づいて速度が落ちると沈む</li>
-            <li>各ホールのPARを意識して、少ない打数でカップイン</li>
-            <li>3ホール × 3コース = 全9ホール</li>
-            <li>BGMつき。右上の♪で消音できる</li>
+            <li>ドラッグでカメラを回し、打つ方向を決める</li>
+            <li>HITを押し続けてパワーを溜め、離すとショット</li>
+            <li>CPUと交互にプレイ。先にカップインした方がホール獲得</li>
+            <li>3ホールで先に2勝した方がコース勝利</li>
+            <li>壁・バンパー・砂・水を避けてカップへ</li>
+            <li>3コース制。負けるとコースをやり直し</li>
+            <li>BGM・効果音つき。右上の♪で消音</li>
           </ul>
-          <button id="btn-start" class="primary" type="button">ティーオフ</button>
-          <p class="tiny">ドラッグで狙う / 離してショット / 少ない打数で</p>
+          <button id="btn-start" class="primary" type="button">マッチ開始</button>
+          <p class="tiny">ドラッグでカメラ / HIT長押しでパワー / 離してショット</p>
+        </section>
+
+        <section id="screen-over" class="screen">
+          <p class="kicker">COURSE LOST</p>
+          <h2 class="result-title lose">CPU WIN</h2>
+          <p class="subtitle">コースを落とした。もう一度挑戦しよう。</p>
+          <div class="result-stats">
+            <div><span>YOUR HOLES</span><b id="over-you">0</b></div>
+            <div><span>CPU HOLES</span><b id="over-cpu">0</b></div>
+            <div><span>COURSE</span><b id="over-stage">1/3</b></div>
+          </div>
+          <button id="btn-retry" class="primary" type="button">このコースを再挑戦</button>
+          <p class="tiny">Space / Enter でも再挑戦</p>
         </section>
 
         <section id="screen-stage" class="screen">
-          <p class="kicker">COURSE CLEAR</p>
-          <h2 class="result-title clear">NICE ROUND</h2>
-          <div class="result-score"><span>SCORE</span><b id="stage-score">0</b></div>
+          <p class="kicker">COURSE WIN</p>
+          <h2 class="result-title clear">COURSE CLEAR</h2>
           <p class="subtitle" id="stage-clear-text">次のコースへ。</p>
           <div class="result-stats">
-            <div><span>STROKES</span><b id="stage-strokes">0</b></div>
-            <div><span>PAR</span><b id="stage-par">0</b></div>
-            <div><span>TOTAL</span><b id="stage-total">0</b></div>
-            <div><span>SHARDS</span><b id="stage-shards">0</b></div>
+            <div><span>YOUR HOLES</span><b id="stage-you">0</b></div>
+            <div><span>CPU HOLES</span><b id="stage-cpu">0</b></div>
+            <div><span>COURSE</span><b id="stage-num">1/3</b></div>
           </div>
           <button id="btn-next-stage" class="primary" type="button">次のコースへ</button>
           <p class="tiny">Space / Enter でも次へ</p>
         </section>
 
         <section id="screen-ending" class="screen">
-          <p class="kicker">9 HOLES COMPLETE</p>
+          <p class="kicker">ALL COURSES CLEAR</p>
           <h2 class="result-title clear">NIGHT CHAMPION</h2>
-          <p class="subtitle">月夜の9ホールを駆け抜けた。</p>
-          <p class="tiny" id="ending-best">BEST --</p>
-          <div class="result-stats">
-            <div><span>TOTAL STROKES</span><b id="ending-strokes">0</b></div>
-            <div><span>PAR</span><b id="ending-par">0</b></div>
-            <div><span>SCORE</span><b id="ending-score">0</b></div>
-            <div><span>SHARDS</span><b id="ending-shards">0</b></div>
-          </div>
+          <p class="subtitle">3コースを制圧した。</p>
           <button id="btn-ending-retry" class="primary" type="button">もう一度あそぶ</button>
           <p class="tiny">タイトルへ</p>
         </section>
@@ -78,9 +83,10 @@
       </div>
     </div>
   </main>
+  <script src="vendor/three.min.js"></script>
   <script src="audio.js?v=2"></script>
-  <script src="engine.js?v=3"></script>
-  <script src="game.js?v=3"></script>
+  <script src="engine.js?v=5"></script>
+  <script src="game.js?v=5"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>
