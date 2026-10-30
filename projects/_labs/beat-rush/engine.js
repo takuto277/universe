@@ -11,6 +11,7 @@
   var BPM = 128;
   var BEAT = 60 / BPM;
   var APPROACH = 1.7;
+  var CHART_START = 2.4;
   var LANES = 4;
   var WINDOWS = { perfect: 0.055, good: 0.11, ok: 0.18 };
   var MAX_DT = 0.05;
@@ -38,7 +39,7 @@
     var notes = [];
     var id = 1;
     var step = 0;
-    for (var t = 2; t < DURATION - 1.1; t += BEAT) {
+    for (var t = CHART_START; t < DURATION - 1.1; t += BEAT) {
       var lane = PATTERN[step % PATTERN.length];
       notes.push({ id: id++, lane: lane, time: t, hit: false, judgment: null, offset: 0 });
       if (step % 8 === 7) {
@@ -63,6 +64,8 @@
     state.missed = 0;
     state.weighted = 0;
     state.judged = 0;
+    state.early = 0;
+    state.late = 0;
     state.over = false;
     state.result = null;
     state.events = [];
@@ -119,6 +122,8 @@
     best.hit = true;
     best.judgment = judgment;
     best.offset = state.time - best.time;
+    if (best.offset < -0.015) state.early++;
+    else if (best.offset > 0.015) state.late++;
     state.judged++;
     state.combo++;
     state.maxCombo = Math.max(state.maxCombo, state.combo);
@@ -175,7 +180,10 @@
       missed: state.missed,
       total: state.totalNotes,
       accuracy: acc,
-      rank: rank(acc)
+      rank: rank(acc),
+      early: state.early,
+      late: state.late,
+      fullCombo: state.missed === 0 && state.judged > 0
     };
     pushEvent(state, { type: 'finish', result: state.result });
   }
@@ -222,6 +230,8 @@
       ok: state.ok,
       missed: state.missed,
       judged: state.judged,
+      early: state.early,
+      late: state.late,
       totalNotes: state.totalNotes,
       accuracy: accuracy(state),
       rank: rank(accuracy(state)),
@@ -245,6 +255,7 @@
     BPM: BPM,
     BEAT: BEAT,
     APPROACH: APPROACH,
+    CHART_START: CHART_START,
     LANES: LANES,
     WINDOWS: WINDOWS,
     createGame: createGame,

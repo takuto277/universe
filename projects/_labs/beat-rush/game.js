@@ -22,8 +22,34 @@
   var els = {};
   var COLORS = ['#5df4ff', '#ff68d4', '#ffd166', '#6dffb0'];
   var KEYS = ['d', 'f', 'j', 'k'];
+  var best = 0;
+  var muted = false;
+  var flash = 0;
+  var comboPop = 0;
 
   function $(id) { return document.getElementById(id); }
+
+  function loadStore(key, fallback) {
+    try {
+      var value = localStorage.getItem(key);
+      return value == null ? fallback : value;
+    } catch (e) { return fallback; }
+  }
+
+  function saveStore(key, value) {
+    try { localStorage.setItem(key, String(value)); } catch (e) { }
+  }
+
+  function updateBestUi() {
+    if (els.best) els.best.textContent = String(best);
+    if (els.bestStart) els.bestStart.textContent = 'BEST ' + best;
+    if (els.endBest) els.endBest.textContent = String(best);
+  }
+
+  function updateSoundUi() {
+    if (!els.btnSound) return;
+    els.btnSound.textContent = muted ? 'SOUND OFF' : 'SOUND ON';
+  }
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
 
   function roundRect(x, y, w, h, r) {
@@ -58,6 +84,7 @@
     if (els.score) els.score.textContent = String(state.score);
     if (els.combo) els.combo.textContent = String(state.combo);
     if (els.accuracy) els.accuracy.textContent = E.accuracy(state).toFixed(1) + '%';
+    if (els.progressFill) els.progressFill.style.width = clamp((E.DURATION - state.remaining) / E.DURATION * 100, 0, 100) + '%';
   }
 
   function showStart() {
@@ -69,7 +96,8 @@
   function begin() {
     if (!state) return;
     E.start(state);
-    if (audio) audio.start();
+    if (audio) { audio.setMuted(muted); audio.start(); }
+    updateBestUi();
     showScreen(els.start, false);
     showScreen(els.end, false);
     endShown = false;
@@ -77,6 +105,9 @@
     judgment = null;
     particles = [];
     laneFlash = [0, 0, 0, 0];
+    flash = 0;
+    comboPop = 0;
+    if (els.progressFill) els.progressFill.style.width = '0%';
     updateHud();
   }
 
@@ -85,14 +116,22 @@
     endShown = true;
     var r = state.result;
     if (audio) audio.finish();
+    if (r.score > best) {
+      best = r.score;
+      saveStore('beat-rush-best', best);
+    }
+    updateBestUi();
     if (els.endRank) els.endRank.textContent = r.rank;
-    if (els.endDetail) els.endDetail.textContent = r.total + 'ノート / 精度 ' + r.accuracy.toFixed(1) + '%';
+    if (els.endDetail) els.endDetail.textContent = r.total + 'ノート / 精度 ' + r.accuracy.toFixed(1) + '%' + (r.fullCombo ? ' / FULL COMBO' : '');
     if (els.endScore) els.endScore.textContent = String(r.score);
     if (els.endAcc) els.endAcc.textContent = r.accuracy.toFixed(1) + '%';
     if (els.endCombo) els.endCombo.textContent = String(r.maxCombo);
     if (els.endPerfect) els.endPerfect.textContent = String(r.perfect);
     if (els.endGood) els.endGood.textContent = String(r.good);
     if (els.endMiss) els.endMiss.textContent = String(r.missed);
+    if (els.endEarly) els.endEarly.textContent = String(r.early);
+    if (els.endLate) els.endLate.textContent = String(r.late);
+    if (els.endFc) els.endFc.classList.toggle('show', !!r.fullCombo);
     showScreen(els.end, true);
   }
 
@@ -123,10 +162,14 @@
         laneFlash[ev.lane] = 1;
         judgment = { text: ev.judgment, life: 0.32, max: 0.32, color: ev.judgment === 'PERFECT' ? COLORS[ev.lane] : (ev.judgment === 'GOOD' ? '#ffd166' : '#a9b1d0') };
         burst(ev.lane, COLORS[ev.lane]);
+        comboPop = 1;
+        flash = ev.judgment === 'PERFECT' ? 0.12 : 0.05;
         if (audio) audio.hit(ev.judgment);
       } else if (ev.type === 'miss') {
         judgment = { text: 'MISS', life: 0.32, max: 0.32, color: '#ff5b7a' };
         shake = 0.8;
+        flash = 0.22;
+        comboPop = 0;
         if (audio) audio.miss();
       } else if (ev.type === 'empty') {
         laneFlash[ev.lane] = 0.35;
@@ -138,6 +181,8 @@
 
   function updateEffects(dt) {
     if (shake > 0) shake = Math.max(0, shake - dt * 5);
+    if (flash > 0) flash = Math.max(0, flash - dt * 2.4);
+    if (comboPop > 0) comboPop = Math.max(0, comboPop - dt * 2.2);
     if (judgment) {
       judgment.life -= dt;
       if (judgment.life <= 0) judgment = null;
@@ -193,6 +238,20 @@
       var gy = viewH * (0.12 + g * 0.15);
       ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(viewW, gy); ctx.stroke();
     }
+
+    // lane beams
+    for (var b = 0; b < 4; b++) {
+      if (laneFlash[b] <= 0) continue;
+      var bx = b * laneW();
+      var beam = ctx.createLinearGradient(0, 0, 0, hitY());
+      beam.addColorStop(0, 'rgba(255,255,255,0)');
+      beam.addColorStop(0.65, COLORS[b]);
+      beam.addColorStop(1, 'rgba(255,255,255,0)');
+      ctx.globalAlpha = laneFlash[b] * 0.12;
+      ctx.fillStyle = beam;
+      ctx.fillRect(bx + 3, 0, laneW() - 6, hitY());
+      ctx.globalAlpha = 1;
+    }
   }
 
   function drawNotes(time) {
@@ -212,6 +271,13 @@
       var nh = viewH * 0.028;
 
       ctx.save();
+      ctx.globalAlpha = dt < 0 ? 0.62 : 1;
+      var trail = ctx.createLinearGradient(0, y - viewH * 0.09, 0, y);
+      trail.addColorStop(0, 'rgba(255,255,255,0)');
+      trail.addColorStop(1, color);
+      ctx.globalAlpha *= 0.18;
+      ctx.fillStyle = trail;
+      ctx.fillRect(x - nw * 0.12, y - viewH * 0.09, nw * 0.24, viewH * 0.09);
       ctx.globalAlpha = dt < 0 ? 0.62 : 1;
       ctx.shadowColor = color;
       ctx.shadowBlur = 18;
@@ -294,6 +360,48 @@
     ctx.restore();
   }
 
+  function drawCombo() {
+    if (!state || state.phase !== 'run' || state.combo < 5) return;
+    var size = viewW * (0.15 + comboPop * 0.018);
+    ctx.save();
+    ctx.globalAlpha = 0.16 + comboPop * 0.12;
+    ctx.fillStyle = '#ffffff';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.font = '900 ' + Math.round(size) + 'px system-ui, sans-serif';
+    ctx.fillText(String(state.combo), viewW / 2, viewH * 0.42);
+    ctx.globalAlpha = 0.45 + comboPop * 0.2;
+    ctx.font = '900 ' + Math.round(viewW * 0.022) + 'px system-ui, sans-serif';
+    ctx.fillStyle = '#ff68d4';
+    ctx.fillText('COMBO', viewW / 2, viewH * 0.42 + size * 0.54);
+    ctx.restore();
+  }
+
+  function drawCountdown() {
+    if (!state || state.phase !== 'run') return;
+    var remain = E.CHART_START - state.time;
+    var text = '';
+    var progress = 0;
+    if (remain > 0) {
+      text = String(Math.min(3, Math.ceil(remain / 0.8)));
+      progress = 1 - (remain % 0.8) / 0.8;
+    } else if (state.time - E.CHART_START < 0.34) {
+      text = 'GO!';
+      progress = (state.time - E.CHART_START) / 0.34;
+    }
+    if (!text) return;
+    ctx.save();
+    ctx.globalAlpha = 0.62 + (1 - progress) * 0.3;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = remain > 0 ? '#5df4ff' : '#ffd166';
+    ctx.shadowColor = ctx.fillStyle;
+    ctx.shadowBlur = 24;
+    ctx.font = '900 ' + Math.round(viewW * (remain > 0 ? 0.20 : 0.13)) + 'px system-ui, sans-serif';
+    ctx.fillText(text, viewW / 2, viewH * 0.43);
+    ctx.restore();
+  }
+
   function draw(time) {
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, viewW, viewH);
@@ -304,6 +412,12 @@
     drawPads();
     drawEffects();
     drawJudgment();
+    drawCombo();
+    drawCountdown();
+    if (flash > 0) {
+      ctx.fillStyle = 'rgba(200,250,255,' + (flash * 0.26) + ')';
+      ctx.fillRect(0, 0, viewW, viewH);
+    }
     ctx.restore();
   }
 
@@ -378,7 +492,11 @@
       score: $('score'),
       combo: $('combo'),
       accuracy: $('accuracy'),
+      best: $('best'),
+      bestStart: $('best-start'),
+      progressFill: $('progress-fill'),
       beatDot: $('beat-dot'),
+      btnSound: $('btn-sound'),
       btnStart: $('btn-start'),
       btnAgain: $('btn-again'),
       endRank: $('end-rank'),
@@ -388,11 +506,27 @@
       endCombo: $('end-combo'),
       endPerfect: $('end-perfect'),
       endGood: $('end-good'),
-      endMiss: $('end-miss')
+      endMiss: $('end-miss'),
+      endEarly: $('end-early'),
+      endLate: $('end-late'),
+      endFc: $('end-fc'),
+      endBest: $('end-best')
     };
+    best = Number(loadStore('beat-rush-best', 0)) || 0;
+    muted = loadStore('beat-rush-muted', '0') === '1';
+    if (audio) audio.setMuted(muted);
+    updateBestUi();
+    updateSoundUi();
     state = E.createGame({ width: viewW, height: viewH });
     if (els.btnStart) els.btnStart.addEventListener('click', begin);
     if (els.btnAgain) els.btnAgain.addEventListener('click', begin);
+    if (els.btnSound) els.btnSound.addEventListener('click', function (e) {
+      if (e && e.preventDefault) e.preventDefault();
+      muted = !muted;
+      saveStore('beat-rush-muted', muted ? '1' : '0');
+      if (audio) audio.setMuted(muted);
+      updateSoundUi();
+    });
     canvas.addEventListener('pointerdown', onPointer);
     window.addEventListener('keydown', onKey);
     window.addEventListener('resize', resizeCanvas);
