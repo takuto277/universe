@@ -121,12 +121,14 @@
       aimAt(x, z);
       var to = { x: state.aim.x, y: AIM_Y, z: state.aim.z };
       var path = trajectory(ORIGIN, to);
+      var types = ['bag', 'bottle', 'can'];
       state.projectiles.push({
         from: { x: ORIGIN.x, y: ORIGIN.y, z: ORIGIN.z },
         to: to,
         arc: path.arc,
         duration: path.duration,
-        t: 0
+        t: 0,
+        type: types[state.throws % types.length]
       });
       state.throws += 1;
       state.cooldown = THROW_COOLDOWN;
@@ -251,7 +253,7 @@
           return {
             from: { x: p.from.x, y: p.from.y, z: p.from.z },
             to: { x: p.to.x, y: p.to.y, z: p.to.z },
-            arc: p.arc, duration: p.duration, t: p.t
+            arc: p.arc, duration: p.duration, t: p.t, type: p.type
           };
         }),
         result: state.result,
