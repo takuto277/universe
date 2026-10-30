@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#090b13">
   <meta name="description" content="0.1秒でドアを開閉して、ドレスとスーツを仕分ける30秒エレベータードアマン。">
   <title>0.1秒ドアマン - エレベーター仕分けゲーム</title>
-  <link rel="stylesheet" href="style.css?v=20261030-doorman1">
+  <link rel="stylesheet" href="style.css?v=20261030-doorman2">
 </head>
 <body>
   <div id="app">
@@ -28,20 +28,20 @@
         <section id="screen-start" class="screen visible">
           <p class="eyebrow">0.1 SECOND DOORMAN</p>
           <h1>0.1秒<br><span>ドアマン</span></h1>
-          <p class="subtitle">0.1秒で、入れる人と入れない人を仕分けろ。</p>
+          <p class="subtitle">エレベーターの中から、0.1秒で仕分けろ。</p>
           <div class="rule-card">
             <span>本日のドレスコード</span>
             <b class="ok">ドレス OK</b>
             <b class="ng">スーツ NG</b>
           </div>
           <ul class="rules">
-            <li>奥から走ってくる人の服を見る</li>
+            <li>閉まった扉の向こうから走ってくる人の服を見る</li>
             <li><b class="ok">ドレス</b>は「開ける」、<b class="ng">スーツ</b>は「閉じる」</li>
-            <li>ドアは0.1秒で開閉。0.45秒で自動反転するので連打でキープ</li>
+            <li>ドアは0.1秒で開閉。0.65秒で自動反転するので連打でキープ</li>
             <li>30秒で何組仕分けられる？</li>
           </ul>
           <button id="btn-start" class="primary" type="button">ドアマン開始</button>
-          <p class="tiny">ボタン連打 / ←閉じる →開ける</p>
+          <p class="tiny">右の操作盤をタップ / ←閉じる →開ける</p>
         </section>
 
         <section id="screen-end" class="screen">
@@ -58,20 +58,20 @@
           <p class="tiny">タップ / Space でもう一度</p>
         </section>
       </div>
-    </main>
 
-    <footer id="controls">
-      <button id="btn-close" class="door-btn close" type="button">
-        <span>閉じる</span><small>スーツを止める</small>
-      </button>
-      <button id="btn-open" class="door-btn open" type="button">
-        <span>開ける</span><small>ドレスを通す</small>
-      </button>
-    </footer>
+      <div id="controls" aria-label="ドア操作">
+        <button id="btn-close" class="door-btn close" type="button">
+          <span>閉じる</span><small>スーツを止める</small>
+        </button>
+        <button id="btn-open" class="door-btn open" type="button">
+          <span>開ける</span><small>ドレスを通す</small>
+        </button>
+      </div>
+    </main>
   </div>
 
-  <script src="engine.js?v=20261030-doorman1"></script>
-  <script src="game.js?v=20261030-doorman1"></script>
+  <script src="engine.js?v=20261030-doorman2"></script>
+  <script src="game.js?v=20261030-doorman2"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

@@ -8,7 +8,7 @@
   'use strict';
 
   var DURATION = 30;
-  var DOOR_HOLD = 0.45;
+  var DOOR_HOLD = 0.65;
   var DOOR_SPEED = 10;
   var DOOR_LINE = 0.82;
   var MAX_PASSENGERS = 6;

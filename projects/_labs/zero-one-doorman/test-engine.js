@@ -35,7 +35,7 @@ assert(g.doorOpen < 0.1, '閉じると0.1秒で閉まる: ' + g.doorOpen);
 g = E.createGame({ rng: E.mulberry32(2) });
 E.start(g);
 E.press(g, 'open');
-for (i = 0; i < 12; i++) E.update(g, 0.05);
+for (i = 0; i < 16; i++) E.update(g, 0.05);
 assert(g.doorTarget === 0, '放置するとドアが自動で反転する');
 
 g = E.createGame({ rng: E.mulberry32(3) });
