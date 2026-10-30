@@ -10,22 +10,23 @@ tryLoad(['game.js', 'projects/_labs/night-mini-golf/game.js']);
 
 Harness.run({
   name: 'night-mini-golf',
-  maxSteps: 30000,
+  maxSteps: 60000,
   afterDone: 200,
   check: function (state, h) {
     if (!state) { h.assert(false, '状態が取得できない'); return; }
     h.assert(state.over === true, 'ゲームが終了しない');
-    h.assert(state.phase === 'clear' || state.phase === 'ending', '終了状態が不正: ' + state.phase);
-    h.assert(state.stage >= 0 && state.stage < state.stageTotal, 'ステージ番号が不正');
-    h.assert(state.hole >= 0 && state.hole < state.holeTotal, 'ホール番号が不正');
-    h.assert(state.par >= 2, 'PARが不正');
-    h.assert(state.totalStrokes >= 3, 'ストローク数が不正');
+    h.assert(state.phase === 'clear' || state.phase === 'over' || state.phase === 'ending', '終了状態が不正: ' + state.phase);
+    h.assert(state.holesWon && state.holesWon.player >= 0 && state.holesWon.cpu >= 0, 'ホール勝敗が不正');
+    h.assert(state.strokes && state.strokes.player >= 0 && state.strokes.cpu >= 0, 'ストロークが不正');
     var els = h.elements;
-    h.assert(els['screen-stage'] && els['screen-stage'].classList.contains('visible'), 'ステージクリア画面が出ていない');
-    h.assert(els['hole'] && els['hole'].textContent.indexOf('/') >= 0, 'HOLE HUDが不正');
-    h.assert(els['par'] && els['par'].textContent.indexOf('PAR') >= 0, 'PAR HUDが不正');
+    var resultVisible = ['screen-stage', 'screen-over', 'screen-ending'].some(function (id) {
+      return els[id] && els[id].classList.contains('visible');
+    });
+    h.assert(resultVisible, 'リザルト画面が出ていない');
+    h.assert(els['you'] && els['cpu'], 'スコアHUDがない');
+    h.assert(els['turn'] && els['shots'], 'ターンHUDがない');
   },
   summary: function (state) {
-    print('  最終: ' + state.stageName + ' / ' + state.totalStrokes + ' strokes');
+    print('  最終: ' + state.phase + ' / YOU ' + state.holesWon.player + ' - ' + state.holesWon.cpu + ' CPU');
   }
 });

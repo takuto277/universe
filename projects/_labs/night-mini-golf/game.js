@@ -4,219 +4,78 @@
   var root = typeof window !== 'undefined' ? window : globalThis;
   var E = root.NightMiniGolfEngine;
   if (!E) return;
+  var T = root.THREE;
   var Audio = root.SoccerAudio;
 
-  var C = { w: 480, h: 800 };
-  var F = E.FIELD;
-  var canvas = null;
-  var ctx = null;
+  var canvas, renderer, scene, camera, stageGroup;
+  var ballMeshes = [], aimLine = null, activeRing = null;
   var els = {};
   var game = null;
   var mode = 'title';
   var shownScreen = 'screen-title';
   var stageIndex = 0;
   var holeIndex = 0;
-  var stageStrokes = 0;
-  var totalStrokes = 0;
-  var stagePar = 0;
-  var totalPar = 0;
-  var stageShards = 0;
-  var totalShards = 0;
-  var lastTs = 0;
-  var scaleX = 1;
-  var scaleY = 1;
+  var holesWon = { player: 0, cpu: 0 };
+  var yaw = 0;
+  var power = 0;
+  var charging = false;
+  var cpuTimer = 0;
+  var holeTimer = 0;
   var pointer = null;
-  var effects = null;
-  var trail = [];
-  var advanceTimer = 0;
-  var holeFinalized = false;
-  var sinkBanner = null;
-  var BEST_KEY = 'night-mini-golf-best-v2';
-  var best = loadBest();
+  var lastTs = 0;
+  var scaleX = 1, scaleY = 1;
+  var S = 0.025;
 
   function $(id) { return document.getElementById(id); }
-  function clamp(v, a, b) { return v < a ? a : (v > b ? b : v); }
-  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }  function loadBest() {
-    try {
-      var raw = typeof localStorage !== 'undefined' ? localStorage.getItem(BEST_KEY) : null;
-      if (!raw) return null;
-      var parsed = JSON.parse(raw);
-      if (parsed && typeof parsed.score === 'number') return parsed;
-    } catch (e) { }
-    return null;
-  }
-  function saveBest() {
-    var score = totalStrokes - totalPar;
-    if (!best || score < best.score || (score === best.score && totalShards > (best.shards || 0))) {
-      best = { score: score, strokes: totalStrokes, shards: totalShards };
-      try { if (typeof localStorage !== 'undefined') localStorage.setItem(BEST_KEY, JSON.stringify(best)); } catch (e) { }
-    }
-    syncBestUI();
-  }
-  function syncBestUI() {
-    var text = best ? ('BEST ' + scoreText(best.score) + ' · ' + (best.shards || 0) + ' SHARDS') : 'BEST --';
-    if (els.best) els.best.textContent = text;
-    if (els.endingBest) els.endingBest.textContent = text;
-  }
-
-
+  function clamp(v,a,b) { return v<a?a:(v>b?b:v); }
+  function nowMs() { return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now(); }
+  function mapX(x) { return (x - 240) * S; }
+  function mapZ(y) { return (y - 410) * S; }
 
   function setScreen(name) {
     if (name === shownScreen) return;
     shownScreen = name;
-    var screens = [
-      ['screen-title', els.screenTitle], ['screen-stage', els.screenStage],
-      ['screen-ending', els.screenEnding], ['screen-pause', els.screenPause]
+    var list = [
+      ['screen-title', els.screenTitle], ['screen-over', els.screenOver],
+      ['screen-stage', els.screenStage], ['screen-ending', els.screenEnding],
+      ['screen-pause', els.screenPause]
     ];
-    for (var i = 0; i < screens.length; i++) {
-      if (screens[i][1]) screens[i][1].classList.toggle('visible', screens[i][0] === name);
-    }
-  }
-
-  function resetEffects() {
-    effects = { particles: [], popups: [], rings: [], shake: 0, flash: 0, flashColor: '220,255,230', banner: null, fireworks: 0, fireTimer: 0 };
-    trail = [];
-    sinkBanner = null;
+    for (var i=0;i<list.length;i++) if (list[i][1]) list[i][1].classList.toggle('visible', list[i][0]===name);
   }
 
   function showTitle() {
-    mode = 'title';
-    game = null;
-    stageIndex = 0;
-    holeIndex = 0;
-    stageStrokes = 0;
-    totalStrokes = 0;
-    stagePar = 0;
-    totalPar = 0;
-    stageShards = 0;
-    totalShards = 0;
-    pointer = null;
-    resetEffects();
-    syncBestUI();
+    mode = 'title'; game = null; stageIndex = 0; holeIndex = 0;
+    holesWon = { player: 0, cpu: 0 }; charging = false; power = 0;
     setScreen('screen-title');
     if (els.hud) els.hud.classList.add('hidden');
+    if (els.hit) els.hit.classList.add('hidden');
+    if (els.powerHud) els.powerHud.style.display = 'none';
     if (els.pause) els.pause.classList.add('hidden');
+    if (stageGroup) clearHole();
     lastTs = 0;
   }
 
-  function startTour() {
-    stageIndex = 0;
-    holeIndex = 0;
-    stageStrokes = 0;
-    totalStrokes = 0;
-    stagePar = 0;
-    totalPar = 0;
-    stageShards = 0;
-    totalShards = 0;
-    beginHole();
-  }
-
-  function beginHole() {
+  function beginHole(firstTurn) {
     if (Audio) Audio.start();
     mode = 'hole';
-    game = E.createGame({ stage: stageIndex, hole: holeIndex });
-    pointer = null;
-    advanceTimer = 0;
-    holeFinalized = false;
-    resetEffects();
+    game = E.createGame({ stage: stageIndex, hole: holeIndex, firstTurn: firstTurn || 'player' });
+    charging = false; power = 0; cpuTimer = game.turn === 'cpu' ? 0.85 : 0; holeTimer = 0; pointer = null;
+    yaw = angleToTarget(game.turn);
     setScreen(null);
     if (els.hud) els.hud.classList.remove('hidden');
+    if (els.hit) els.hit.classList.remove('hidden');
+    if (els.powerHud) els.powerHud.style.display = '';
     if (els.pause) els.pause.classList.remove('hidden');
+    if (renderer) buildHole();
     lastTs = 0;
     syncUI();
   }
 
-  function syncUI() {
-    if (els.hud) els.hud.classList.toggle('hidden', mode !== 'hole');
-    if (!game) return;
-    var st = E.getState(game);
-    if (els.hole) els.hole.textContent = (st.hole + 1) + '/' + st.holeTotal;
-    if (els.turn) els.turn.textContent = st.stageName;
-    if (els.par) els.par.textContent = 'PAR ' + st.par + ' · STROKES ' + st.strokes + ' · ★' + stageShards;
-    if (els.strokes) els.strokes.textContent = String(totalStrokes + (holeFinalized ? 0 : st.strokes));
-    if (els.pause) els.pause.classList.toggle('hidden', mode !== 'hole' || game.paused);
+  function angleToTarget(turn) {
+    if (!game) return 0;
+    var b = game.balls[turn];
+    return Math.atan2(game.target.x - b.x, game.target.y - b.y);
   }
-
-  function stageClear() {
-    mode = 'stage';
-    game.phase = 'clear';
-    if (stageIndex + 1 < E.STAGES.length) {
-      setScreen('screen-stage');
-      if (els.stageStrokes) els.stageStrokes.textContent = String(stageStrokes);
-      if (els.stagePar) els.stagePar.textContent = String(stagePar);
-      if (els.stageTotal) els.stageTotal.textContent = String(totalStrokes);
-      if (els.stageShards) els.stageShards.textContent = String(stageShards);
-      if (els.stageScore) els.stageScore.textContent = scoreText(stageStrokes - stagePar);
-      if (els.stageClearText) els.stageClearText.textContent = '次は ' + E.STAGES[stageIndex + 1].name + '。';
-    } else {
-      mode = 'ending';
-      setScreen('screen-ending');
-      if (els.endingStrokes) els.endingStrokes.textContent = String(totalStrokes);
-      if (els.endingPar) els.endingPar.textContent = String(totalPar);
-      if (els.endingScore) els.endingScore.textContent = scoreText(totalStrokes - totalPar);
-      if (els.endingShards) els.endingShards.textContent = String(totalShards);
-      saveBest();
-    }
-    if (els.pause) els.pause.classList.add('hidden');
-  }
-
-  function scoreText(n) { return n === 0 ? 'EVEN' : (n > 0 ? '+' + n : String(n)); }
-
-  function finishHole() {
-    if (holeFinalized) return;
-    holeFinalized = true;
-    stageStrokes += game.strokes;
-    totalStrokes += game.strokes;
-    stagePar += game.par;
-    totalPar += game.par;
-    advanceTimer = 1.15;
-    var diff = game.strokes - game.par;
-    var title = game.strokes === 1 ? 'HOLE IN ONE!' : (diff < 0 ? 'BIRDIE!' : (diff === 0 ? 'PAR' : (diff === 1 ? 'BOGEY' : 'HOLE CLEAR')));
-    sinkBanner = { text: title, sub: game.strokes + ' STROKES / PAR ' + game.par, color: diff <= 0 ? '#7df5c7' : '#ffd166' };
-    effects.flash = 0.8;
-    effects.flashColor = '180,255,220';
-    effects.shake = 0.5;
-    effects.fireworks = 1.6;
-    effects.fireTimer = 0;
-    confettiBurst(game.target.x, game.target.y, 80, ['#7df5c7', '#ffd166', '#ffffff', '#5ee7ff'], 300, 1.5);
-    shockwave(game.target.x, game.target.y, '#7df5c7', 150, 0.8, 4);
-    syncUI();
-  }
-
-  function nextHole() {
-    if (holeIndex + 1 < E.STAGES[stageIndex].holes.length) {
-      holeIndex++;
-      beginHole();
-    } else {
-      stageClear();
-    }
-  }
-
-  function nextStage() {
-    if (stageIndex + 1 >= E.STAGES.length) { showTitle(); return; }
-    stageIndex++;
-    holeIndex = 0;
-    stageStrokes = 0;
-    stagePar = 0;
-    stageShards = 0;
-    beginHole();
-  }
-
-  function pauseGame() {
-    if (!game || mode !== 'hole' || game.paused) return;
-    pointer = null;
-    E.setPaused(game, true);
-    game.paused = true;
-    setScreen('screen-pause');
-  }
-  function resumeGame() {
-    if (!game || !game.paused) return;
-    game.paused = false;
-    E.setPaused(game, false);
-    setScreen(null);
-    lastTs = 0;
-  }
-  function togglePause() { if (!game || mode !== 'hole') return; if (game.paused) resumeGame(); else pauseGame(); }
 
   function syncAudioButton() {
     if (!els.sound) return;
@@ -226,515 +85,249 @@
   }
   function toggleAudio() { if (Audio) { Audio.toggle(); syncAudioButton(); } }
 
-  function roundRect(x, y, w, h, r) {
-    var rr = Math.max(0, Math.min(r, w / 2, h / 2));
-    ctx.beginPath();
-    ctx.moveTo(x + rr, y);
-    ctx.lineTo(x + w - rr, y);
-    ctx.quadraticCurveTo(x + w, y, x + w, y + rr);
-    ctx.lineTo(x + w, y + h - rr);
-    ctx.quadraticCurveTo(x + w, y + h, x + w - rr, y + h);
-    ctx.lineTo(x + rr, y + h);
-    ctx.quadraticCurveTo(x, y + h, x, y + h - rr);
-    ctx.lineTo(x, y + rr);
-    ctx.quadraticCurveTo(x, y, x + rr, y);
-    ctx.closePath();
-  }
-  function mod(n, m) { return ((n % m) + m) % m; }
-
-  function drawBackdrop(time) {
-    var bg = ctx.createLinearGradient(0, 0, 0, C.h);
-    bg.addColorStop(0, '#080d1b');
-    bg.addColorStop(0.55, '#0b1b1a');
-    bg.addColorStop(1, '#030807');
-    ctx.fillStyle = bg;
-    ctx.fillRect(0, 0, C.w, C.h);
-    for (var i = 0; i < 52; i++) {
-      var x = mod(i * 97 + 19 - time * (2 + i % 4), C.w);
-      var y = mod(i * 53 + 7, 90);
-      ctx.fillStyle = 'rgba(190, 230, 255, ' + (0.04 + (i % 4) * 0.02) + ')';
-      ctx.fillRect(x, y, 1.4, 1.4);
+  function syncUI() {
+    if (els.hud) els.hud.classList.toggle('hidden', mode !== 'hole');
+    if (!game) return;
+    var st = E.getState(game);
+    if (els.you) els.you.textContent = String(holesWon.player);
+    if (els.cpu) els.cpu.textContent = String(holesWon.cpu);
+    if (els.turn) els.turn.textContent = st.phase === 'holeover' ? 'HOLE WIN' : (st.turn === 'player' ? 'YOUR TURN' : 'CPU TURN');
+    if (els.shots) els.shots.textContent = 'H' + (holeIndex + 1) + '/3 · PAR ' + st.par + ' · ' + st.strokes.player + '-' + st.strokes.cpu;
+    if (els.hit) els.hit.disabled = !(st.phase === 'aim' && st.turn === 'player' && mode === 'hole');
+    if (els.powerFill) els.powerFill.style.width = Math.round(power * 100) + '%';
+    var target = null;
+    if (mode === 'stage') target = 'screen-stage';
+    else if (mode === 'over') target = 'screen-over';
+    else if (mode === 'ending') target = 'screen-ending';
+    else if (game.paused) target = 'screen-pause';
+    setScreen(target);
+    if (els.pause) els.pause.classList.toggle('hidden', !(mode === 'hole' && !game.paused));
+    if (mode === 'stage') {
+      if (els.stageYou) els.stageYou.textContent = String(holesWon.player);
+      if (els.stageCpu) els.stageCpu.textContent = String(holesWon.cpu);
+      if (els.stageNum) els.stageNum.textContent = (stageIndex + 1) + '/' + E.STAGES.length;
+      if (els.stageClearText) els.stageClearText.textContent = '次は ' + (E.STAGES[stageIndex + 1] ? E.STAGES[stageIndex + 1].name : '') + '。';
     }
-    ctx.fillStyle = 'rgba(255, 244, 190, 0.18)';
-    ctx.beginPath();
-    ctx.arc(400, 62, 3, 0, Math.PI * 2);
-    ctx.fill();
-  }
-
-  function drawField() {
-    var grd = ctx.createLinearGradient(0, F.y, 0, F.bottom);
-    grd.addColorStop(0, '#163a32');
-    grd.addColorStop(0.5, '#102b27');
-    grd.addColorStop(1, '#0b1e1b');
-    ctx.fillStyle = grd;
-    roundRect(F.x, F.y, F.w, F.h, 18);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(125, 245, 199, 0.42)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    for (var i = 0; i < 9; i++) {
-      ctx.fillStyle = i % 2 === 0 ? 'rgba(180, 255, 220, 0.022)' : 'rgba(0, 0, 0, 0.035)';
-      ctx.fillRect(F.x + 2, F.y + i * F.h / 9, F.w - 4, F.h / 9);
-    }
-    ctx.strokeStyle = 'rgba(160, 240, 210, 0.1)';
-    ctx.lineWidth = 1;
-    for (i = 1; i < 5; i++) {
-      ctx.beginPath();
-      ctx.moveTo(F.x, F.y + F.h * i / 5);
-      ctx.lineTo(F.right, F.y + F.h * i / 5);
-      ctx.stroke();
+    if (mode === 'over') {
+      if (els.overYou) els.overYou.textContent = String(holesWon.player);
+      if (els.overCpu) els.overCpu.textContent = String(holesWon.cpu);
+      if (els.overStage) els.overStage.textContent = (stageIndex + 1) + '/' + E.STAGES.length;
     }
   }
 
-  function drawHazards(st) {
-    for (var i = 0; i < st.walls.length; i++) {
-      var w = st.walls[i];
-      ctx.save();
-      ctx.shadowColor = 'rgba(255, 143, 189, 0.45)';
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = 'rgba(86, 45, 65, 0.9)';
-      ctx.strokeStyle = 'rgba(255, 143, 189, 0.72)';
-      ctx.lineWidth = 2;
-      roundRect(w.x, w.y, w.w, w.h, 8);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-    for (i = 0; i < st.bumpers.length; i++) {
-      var b = st.bumpers[i];
-      ctx.save();
-      ctx.shadowColor = 'rgba(125, 245, 199, 0.8)';
-      ctx.shadowBlur = 16;
-      ctx.fillStyle = 'rgba(45, 135, 110, 0.75)';
-      ctx.strokeStyle = '#a8ffe0';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.restore();
-    }
-    for (i = 0; i < (st.rotors || []).length; i++) {
-      var rot = st.rotors[i];
-      ctx.save();
-      ctx.translate(rot.x, rot.y);
-      ctx.strokeStyle = 'rgba(255, 209, 102, 0.72)';
-      ctx.fillStyle = 'rgba(255, 209, 102, 0.8)';
-      ctx.shadowColor = 'rgba(255, 209, 102, 0.7)';
-      ctx.shadowBlur = 10;
-      for (var arm = 0; arm < rot.arms; arm++) {
-        var aa = rot.angle + arm * Math.PI * 2 / rot.arms;
-        var px = Math.cos(aa) * rot.r;
-        var py = Math.sin(aa) * rot.r;
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.moveTo(0, 0);
-        ctx.lineTo(px, py);
-        ctx.stroke();
-        ctx.beginPath();
-        ctx.arc(px, py, 8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#7df5c7';
-      ctx.beginPath();
-      ctx.arc(0, 0, 7, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-    for (i = 0; i < (st.shards || []).length; i++) {
-      var sh = st.shards[i];
-      if (sh.taken) continue;
-      ctx.save();
-      ctx.translate(sh.x, sh.y);
-      ctx.rotate(0.785);
-      ctx.shadowColor = 'rgba(255, 209, 102, 0.9)';
-      ctx.shadowBlur = 18;
-      ctx.fillStyle = '#ffd166';
-      ctx.beginPath();
-      ctx.moveTo(0, -11);
-      ctx.lineTo(8, 0);
-      ctx.lineTo(0, 11);
-      ctx.lineTo(-8, 0);
-      ctx.closePath();
-      ctx.fill();
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = 'rgba(255,255,255,0.75)';
-      ctx.beginPath();
-      ctx.arc(-2, -2, 2.5, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-    for (i = 0; i < (st.portals || []).length; i++) {
-      var po = st.portals[i];
-      ctx.save();
-      for (var pr = 0; pr < 3; pr++) {
-        ctx.globalAlpha = 0.62 - pr * 0.15;
-        ctx.strokeStyle = i % 2 === 0 ? '#5ee7ff' : '#ff8fbd';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(po.x, po.y, po.r - pr * 4, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 0.25;
-      ctx.fillStyle = i % 2 === 0 ? '#5ee7ff' : '#ff8fbd';
-      ctx.beginPath();
-      ctx.arc(po.x, po.y, po.r - 6, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.restore();
-    }
-    for (i = 0; i < st.sand.length; i++) {
-      var s = st.sand[i];
-      ctx.fillStyle = 'rgba(190, 156, 90, 0.7)';
-      ctx.strokeStyle = 'rgba(255, 220, 140, 0.5)';
-      ctx.lineWidth = 1;
-      roundRect(s.x, s.y, s.w, s.h, 12);
-      ctx.fill();
-      ctx.stroke();
-    }
-    for (i = 0; i < st.water.length; i++) {
-      var wa = st.water[i];
-      ctx.fillStyle = 'rgba(45, 125, 165, 0.72)';
-      ctx.strokeStyle = 'rgba(120, 230, 255, 0.55)';
-      ctx.lineWidth = 1;
-      roundRect(wa.x, wa.y, wa.w, wa.h, 12);
-      ctx.fill();
-      ctx.stroke();
-      ctx.save();
-      ctx.strokeStyle = 'rgba(190, 250, 255, 0.28)';
-      for (var k = 1; k < 4; k++) {
-        ctx.beginPath();
-        ctx.moveTo(wa.x + 6, wa.y + wa.h * k / 4);
-        ctx.lineTo(wa.x + wa.w - 6, wa.y + wa.h * k / 4);
-        ctx.stroke();
-      }
-      ctx.restore();
-    }
+  function pauseGame() {
+    if (!game || mode !== 'hole' || game.paused) return;
+    pointer = null; charging = false;
+    E.setPaused(game, true); game.paused = true;
+    setScreen('screen-pause');
   }
+  function resumeGame() {
+    if (!game || !game.paused) return;
+    game.paused = false; E.setPaused(game, false);
+    setScreen(null); lastTs = 0;
+  }
+  function togglePause() { if (game && mode === 'hole') { if (game.paused) resumeGame(); else pauseGame(); } }
 
-  function drawHole(st) {
-    var h = st.target;
-    ctx.save();
-    ctx.shadowColor = 'rgba(125, 245, 199, 0.85)';
-    ctx.shadowBlur = 22;
-    ctx.fillStyle = 'rgba(2, 10, 8, 0.9)';
-    ctx.beginPath();
-    ctx.arc(h.x, h.y, h.r, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(170, 255, 220, 0.76)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#7df5c7';
-    ctx.font = '900 8px ui-monospace, Menlo, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('CUP', h.x, h.y);
-    ctx.strokeStyle = 'rgba(235, 255, 245, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(h.x, h.y - h.r);
-    ctx.lineTo(h.x, h.y - 66);
-    ctx.stroke();
-    ctx.fillStyle = '#ff8fbd';
-    ctx.beginPath();
-    ctx.moveTo(h.x, h.y - 66);
-    ctx.lineTo(h.x + 28, h.y - 56);
-    ctx.lineTo(h.x, h.y - 46);
-    ctx.closePath();
-    ctx.fill();
-    ctx.restore();
+  function startMatch() {
+    stageIndex = 0; holeIndex = 0; holesWon = { player: 0, cpu: 0 };
+    beginHole('player');
   }
-
-  function drawBall(st) {
-    var b = st.ball;
-    for (var i = 0; i < trail.length; i++) {
-      var p = trail[i];
-      ctx.fillStyle = 'rgba(235, 255, 246, ' + ((i + 1) / trail.length * 0.2) + ')';
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, E.BALL_R * (0.3 + 0.5 * (i + 1) / trail.length), 0, Math.PI * 2);
-      ctx.fill();
-    }
-    ctx.save();
-    ctx.shadowColor = 'rgba(235, 255, 245, 0.95)';
-    ctx.shadowBlur = 16;
-    var grad = ctx.createRadialGradient(b.x - 2, b.y - 3, 1, b.x, b.y, E.BALL_R);
-    grad.addColorStop(0, '#ffffff');
-    grad.addColorStop(0.65, '#d9fff0');
-    grad.addColorStop(1, '#7bcaa8');
-    ctx.fillStyle = grad;
-    ctx.beginPath();
-    ctx.arc(b.x, b.y, E.BALL_R, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
+  function retryCourse() {
+    holesWon = { player: 0, cpu: 0 }; holeIndex = 0;
+    beginHole('player');
   }
-
-  function drawAim(st) {
-    if (!pointer || st.phase !== 'aim') return;
-    var b = st.ball;
-    var dx = pointer.x - pointer.startX;
-    var dy = pointer.y - pointer.startY;
-    var len = Math.sqrt(dx * dx + dy * dy);
-    if (len < 6) return;
-    var preview = E.previewDrag(game, dx, dy);
-    if (preview && preview.length > 1) {
-      ctx.save();
-      for (var pi = 1; pi < preview.length; pi += 2) {
-        var pp = preview[pi];
-        ctx.globalAlpha = 0.32 * (1 - pi / preview.length);
-        ctx.fillStyle = '#bfffdf';
-        ctx.beginPath();
-        ctx.arc(pp.x, pp.y, 2.2, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.globalAlpha = 1;
-      ctx.restore();
-    }
-    var max = 150;
-    if (len > max) { dx = dx / len * max; dy = dy / len * max; len = max; }
-    ctx.save();
-    ctx.strokeStyle = 'rgba(255, 243, 180, 0.55)';
-    ctx.lineWidth = 2;
-    ctx.setLineDash([5, 6]);
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(b.x + dx, b.y + dy);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    ctx.strokeStyle = '#7df5c7';
-    ctx.fillStyle = '#7df5c7';
-    ctx.shadowColor = '#7df5c7';
-    ctx.shadowBlur = 12;
-    var sx = b.x - dx, sy = b.y - dy;
-    var angle = Math.atan2(-dy, -dx);
-    ctx.lineWidth = 3;
-    ctx.beginPath();
-    ctx.moveTo(b.x, b.y);
-    ctx.lineTo(sx, sy);
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.moveTo(sx, sy);
-    ctx.lineTo(sx - Math.cos(angle - 0.4) * 12, sy - Math.sin(angle - 0.4) * 12);
-    ctx.lineTo(sx - Math.cos(angle + 0.4) * 12, sy - Math.sin(angle + 0.4) * 12);
-    ctx.closePath();
-    ctx.fill();
-    ctx.shadowBlur = 0;
-    ctx.fillStyle = '#eafff4';
-    ctx.font = '900 8px ui-monospace, Menlo, monospace';
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText(Math.round(len / max * 100) + '%', b.x + dx, b.y + dy - 14);
-    ctx.restore();
+  function nextStage() {
+    if (stageIndex + 1 >= E.STAGES.length) { mode = 'ending'; setScreen('screen-ending'); return; }
+    stageIndex++; holeIndex = 0; holesWon = { player: 0, cpu: 0 };
+    beginHole('player');
   }
-
-  function drawBanner() {
-    if (sinkBanner) {
-      var b = sinkBanner;
-      ctx.save();
-      ctx.fillStyle = 'rgba(3,12,8,0.82)';
-      roundRect(70, 250, 340, 72, 14);
-      ctx.fill();
-      ctx.strokeStyle = b.color;
-      ctx.lineWidth = 1.4;
-      roundRect(70, 250, 340, 72, 14);
-      ctx.stroke();
-      ctx.fillStyle = b.color;
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 18;
-      ctx.font = '900 26px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText(b.text, C.w / 2, 280);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#eafff4';
-      ctx.font = '800 10px ui-monospace, Menlo, monospace';
-      ctx.fillText(b.sub, C.w / 2, 306);
-      ctx.restore();
-    }
-    if (effects.banner) {
-      var eb = effects.banner;
-      var a = clamp(eb.life / eb.max, 0, 1);
-      ctx.globalAlpha = Math.min(1, a * 1.7);
-      ctx.fillStyle = eb.color;
-      ctx.font = '900 16px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(eb.text, C.w / 2, 170);
-      ctx.globalAlpha = 1;
-    }
+  function stageClear() {
+    mode = 'stage'; game.phase = 'clear';
+    setScreen('screen-stage'); syncUI();
   }
-
-  function drawEffects() {
-    for (var i = 0; i < effects.particles.length; i++) {
-      var p = effects.particles[i];
-      ctx.globalAlpha = clamp(p.life / p.max, 0, 1);
-      ctx.fillStyle = p.color;
-      ctx.shadowColor = p.color;
-      ctx.shadowBlur = p.shape === 'rect' ? 4 : 9;
-      if (p.shape === 'rect') {
-        ctx.save(); ctx.translate(p.x, p.y); ctx.rotate(p.rot || 0);
-        ctx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h); ctx.restore();
-      } else {
-        ctx.beginPath(); ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2); ctx.fill();
-      }
-    }
-    ctx.globalAlpha = 1;
-    ctx.shadowBlur = 0;
-    for (i = 0; i < effects.rings.length; i++) {
-      var r = effects.rings[i];
-      ctx.globalAlpha = clamp(r.life / r.maxLife, 0, 1) * 0.75;
-      ctx.strokeStyle = r.color;
-      ctx.lineWidth = r.width;
-      ctx.beginPath(); ctx.arc(r.x, r.y, r.r, 0, Math.PI * 2); ctx.stroke();
-    }
-    ctx.globalAlpha = 1;
-    drawBanner();
+  function courseOver() {
+    mode = 'over'; game.phase = 'over';
+    setScreen('screen-over'); syncUI();
   }
-
-  function draw(time) {
-    ctx.setTransform(scaleX, 0, 0, scaleY, 0, 0);
-    ctx.clearRect(0, 0, C.w, C.h);
-    drawBackdrop(time);
-    if (game) {
-      drawField();
-      var st = E.getState(game);
-      drawHazards(st);
-      drawHole(st);
-      drawAim(st);
-      drawBall(st);
-      drawEffects();
-      ctx.fillStyle = 'rgba(170, 210, 195, 0.66)';
-      ctx.font = '800 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('ボールをドラッグして離す / 少ない打数でカップへ', C.w / 2, 758);
-    } else {
-      drawEffects();
-      ctx.fillStyle = 'rgba(170, 210, 195, 0.55)';
-      ctx.font = '800 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('月夜の9ホール', C.w / 2, 758);
+  function advanceHole() {
+    var winner = game.holeWinner;
+    if (!winner) return;
+    holesWon[winner]++;
+    if (holesWon.player >= 2) { stageClear(); return; }
+    if (holesWon.cpu >= 2) { courseOver(); return; }
+    if (holeIndex >= 2) {
+      if (holesWon.player > holesWon.cpu) stageClear(); else courseOver();
+      return;
     }
-    if (effects.flash > 0) {
-      ctx.fillStyle = 'rgba(' + effects.flashColor + ', ' + Math.min(0.7, effects.flash * 0.6) + ')';
-      ctx.fillRect(0, 0, C.w, C.h);
-    }
+    holeIndex++;
+    beginHole(winner === 'player' ? 'cpu' : 'player');
   }
-
-  function burst(x, y, count, colors, speed, life) {
-    for (var i = 0; i < count; i++) {
-      var a = Math.random() * Math.PI * 2;
-      var sp = speed * (0.35 + Math.random() * 0.9);
-      effects.particles.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 40, g: 420, life: life * (0.6 + Math.random() * 0.5), max: life, size: 1.5 + Math.random() * 3.2, color: colors[Math.floor(Math.random() * colors.length)] });
-    }
-  }
-  function confettiBurst(x, y, count, colors, speed, life) {
-    for (var i = 0; i < count; i++) {
-      var a = Math.random() * Math.PI * 2;
-      var sp = speed * (0.25 + Math.random() * 1.05);
-      effects.particles.push({ x: x, y: y, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp - 100, g: 560, life: life * (0.65 + Math.random() * 0.7), max: life, shape: 'rect', w: 3 + Math.random() * 5, h: 2 + Math.random() * 5, rot: Math.random() * Math.PI * 2, vr: (Math.random() - 0.5) * 14, color: colors[Math.floor(Math.random() * colors.length)] });
-    }
-  }
-  function shockwave(x, y, color, maxR, life, width) { effects.rings.push({ x: x, y: y, r: 10, maxR: maxR, life: life, maxLife: life, color: color, width: width || 3 }); }
-  function popup(text, x, y, color, size) { effects.popups.push({ text: text, x: x, y: y, life: 0.8, max: 0.8, color: color, size: size || 14 }); }
-  function showBanner(text, color) { effects.banner = { text: text, color: color || '#8ff0d0', life: 1.2, max: 1.2 }; }
 
   function processEvents() {
     if (!game) return;
     var events = E.consumeEvents(game);
-    for (var i = 0; i < events.length; i++) {
+    for (var i=0;i<events.length;i++) {
       var ev = events[i];
       if (ev.type === 'shoot') { if (Audio) Audio.playSfx('shot'); }
-      else if (ev.type === 'sunk') { if (Audio) Audio.playSfx('sink'); finishHole(); }
-      else if (ev.type === 'water') { if (Audio) Audio.playSfx('water'); effects.flash = 0.5; effects.flashColor = '80,190,255'; burst(ev.x, ev.y, 26, ['#5ee7ff', '#ffffff', '#7df5c7'], 240, 0.8); showBanner('WATER +1', '#5ee7ff'); }
-      else if (ev.type === 'bumper' || ev.type === 'rotor') { if (Audio) Audio.playSfx('bumper'); burst(ev.x, ev.y, 10, ['#7df5c7', '#ffffff'], 160, 0.4); }
-      else if (ev.type === 'shard') { if (Audio) Audio.playSfx('shard'); stageShards++; totalShards++; effects.flash = 0.35; effects.flashColor = '255,220,120'; burst(ev.x, ev.y, 22, ['#ffd166', '#ffffff', '#7df5c7'], 220, 0.7); showBanner('★ MOON SHARD!', '#ffd166'); }
-      else if (ev.type === 'portal') { if (Audio) Audio.playSfx('portal'); effects.flash = 0.28; effects.flashColor = '94,231,255'; burst(ev.x, ev.y, 20, ['#5ee7ff', '#7df5c7', '#ffffff'], 220, 0.7); }
-    }
-  }
-
-  function updateEffects(dt) {
-    for (var i = effects.particles.length - 1; i >= 0; i--) {
-      var p = effects.particles[i];
-      p.life -= dt;
-      if (p.life <= 0) { effects.particles.splice(i, 1); continue; }
-      p.vy += p.g * dt; p.x += p.vx * dt; p.y += p.vy * dt;
-      p.vx *= Math.exp(-dt * 1.1);
-      if (p.shape === 'rect') p.rot += (p.vr || 0) * dt;
-    }
-    for (i = effects.rings.length - 1; i >= 0; i--) {
-      var r = effects.rings[i];
-      r.life -= dt;
-      r.r += (r.maxR - r.r) * Math.min(1, dt * 7);
-      if (r.life <= 0) effects.rings.splice(i, 1);
-    }
-    if (effects.shake > 0) effects.shake = Math.max(0, effects.shake - dt * 2.6);
-    if (effects.flash > 0) effects.flash = Math.max(0, effects.flash - dt * 2.4);
-    if (effects.banner) { effects.banner.life -= dt; if (effects.banner.life <= 0) effects.banner = null; }
-    if (effects.fireworks > 0) {
-      effects.fireworks -= dt;
-      effects.fireTimer -= dt;
-      if (effects.fireTimer <= 0) {
-        effects.fireTimer = 0.18;
-        burst(80 + Math.random() * 320, 150 + Math.random() * 250, 16, ['#7df5c7', '#ffd166', '#ffffff', '#5ee7ff'], 240, 0.8);
+      else if (ev.type === 'bumper') { if (Audio) Audio.playSfx('bumper'); }
+      else if (ev.type === 'water') { if (Audio) Audio.playSfx('water'); }
+      else if (ev.type === 'holehole') {
+        if (Audio) Audio.playSfx('sink');
+        holeTimer = 1.1;
+        if (Audio) Audio.playSfx('sink');
+      } else if (ev.type === 'turn') {
+        if (ev.turn === 'cpu') { cpuTimer = 0.85; yaw = angleToTarget('cpu'); }
+        else { yaw = angleToTarget('player'); }
       }
     }
   }
 
-  function pointerPos(e) {
-    var rect = canvas.getBoundingClientRect ? canvas.getBoundingClientRect() : { left: 0, top: 0, width: 480, height: 800 };
-    return { x: (e.clientX - rect.left) / (rect.width || 480) * C.w, y: (e.clientY - rect.top) / (rect.height || 800) * C.h };
-  }
-  function nearBall(pos) {
-    if (!game) return false;
-    var b = game.ball;
-    var dx = pos.x - b.x, dy = pos.y - b.y;
-    return Math.sqrt(dx * dx + dy * dy) < 80;
-  }
-  function onPointerDown(e) {
+  function startHit(e) {
+    if (!game || mode !== 'hole' || game.paused || game.phase !== 'aim' || game.turn !== 'player') return;
     e.preventDefault && e.preventDefault();
-    if (!game || mode !== 'hole' || game.phase !== 'aim' || game.paused || pointer) return;
-    var pos = pointerPos(e);
-    if (!nearBall(pos)) return;
-    pointer = { id: e.pointerId == null ? 1 : e.pointerId, startX: pos.x, startY: pos.y, x: pos.x, y: pos.y };
+    charging = true; power = 0.05;
+    try { if (els.hit.setPointerCapture && e.pointerId != null) els.hit.setPointerCapture(e.pointerId); } catch (err) { }
+  }
+  function releaseHit(e) {
+    if (!charging) return;
+    e.preventDefault && e.preventDefault();
+    charging = false;
+    if (!game || game.phase !== 'aim' || game.turn !== 'player') { power = 0; return; }
+    var p = power; power = 0;
+    if (E.playerShoot(game, yaw, p)) { processEvents(); syncUI(); }
+  }
+  function onCanvasDown(e) {
+    if (!game || mode !== 'hole' || game.paused || game.phase !== 'aim' || game.turn !== 'player') return;
+    e.preventDefault && e.preventDefault();
+    pointer = { id: e.pointerId == null ? 1 : e.pointerId, x: e.clientX };
     try { canvas.setPointerCapture && canvas.setPointerCapture(pointer.id); } catch (err) { }
   }
-  function onPointerMove(e) {
+  function onCanvasMove(e) {
     if (!pointer) return;
     if ((e.pointerId == null ? 1 : e.pointerId) !== pointer.id) return;
-    var pos = pointerPos(e);
-    pointer.x = pos.x; pointer.y = pos.y;
+    yaw += (e.clientX - pointer.x) * 0.008;
+    pointer.x = e.clientX;
   }
-  function onPointerUp(e) {
-    e.preventDefault && e.preventDefault();
+  function onCanvasUp(e) {
     if (!pointer) return;
-    var id = e.pointerId == null ? 1 : e.pointerId;
-    if (id !== pointer.id) return;
-    var p = pointer;
     pointer = null;
-    if (canvas.releasePointerCapture) { try { canvas.releasePointerCapture(id); } catch (err) { } }
-    if (!game || mode !== 'hole' || game.phase !== 'aim' || game.paused) return;
-    var dx = p.x - p.startX, dy = p.y - p.startY;
-    if (E.shootDrag(game, dx, dy)) { processEvents(); syncUI(); }
+    try { canvas.releasePointerCapture && canvas.releasePointerCapture(e.pointerId == null ? 1 : e.pointerId); } catch (err) { }
   }
 
   function onKeyDown(e) {
     var k = e.key || '';
     if (k === 'm' || k === 'M') { toggleAudio(); return; }
     if (k === 'p' || k === 'P' || k === 'Escape') { if (game && mode === 'hole') { e.preventDefault && e.preventDefault(); togglePause(); } return; }
-    if (k === ' ' || k === 'Spacebar' || k === 'Enter' || e.code === 'Space') {
+    if (k === 'ArrowLeft' || k === 'a' || k === 'A') { if (game && game.turn === 'player' && game.phase === 'aim') yaw -= 0.08; return; }
+    if (k === 'ArrowRight' || k === 'd' || k === 'D') { if (game && game.turn === 'player' && game.phase === 'aim') yaw += 0.08; return; }
+    if (k === ' ') {
       e.preventDefault && e.preventDefault();
-      if (mode === 'title') startTour();
+      if (mode === 'title') startMatch();
       else if (mode === 'stage') nextStage();
+      else if (mode === 'over') retryCourse();
       else if (mode === 'ending') showTitle();
       else if (game && game.paused) resumeGame();
+      else if (game && game.phase === 'aim' && game.turn === 'player' && !charging) startHit({ preventDefault: function(){} });
     }
   }
+  function onKeyUp(e) {
+    if ((e.key || '') === ' ' && charging) releaseHit({ preventDefault: function(){} });
+  }
 
-  function resize() {
-    var dpr = (typeof window !== 'undefined' && window.devicePixelRatio) ? Math.min(2, Math.max(1, window.devicePixelRatio)) : 1;
-    var w = Math.round(C.w * dpr), h = Math.round(C.h * dpr);
-    canvas.width = w; canvas.height = h;
-    scaleX = w / C.w; scaleY = h / C.h;
+  function mat(color, emissive) {
+    return new T.MeshStandardMaterial({
+      color: color, roughness: 0.8, metalness: 0.03,
+      emissive: emissive || 0x000000, emissiveIntensity: 0.55, side: T.DoubleSide
+    });
+  }
+  function boxMesh(group, w, h, d, x, y, z, color, emissive) {
+    var m = new T.Mesh(new T.BoxGeometry(w, h, d), mat(color, emissive));
+    m.position.set(x, y, z); group.add(m); return m;
+  }
+  function clearHole() {
+    if (!stageGroup) return;
+    scene.remove(stageGroup);
+    stageGroup.traverse(function (o) {
+      if (o.geometry) o.geometry.dispose();
+      if (o.material) {
+        if (o.material.map) o.material.map.dispose();
+        o.material.dispose();
+      }
+    });
+    stageGroup = null; ballMeshes = []; aimLine = null; activeRing = null;
+  }
+  function buildHole() {
+    clearHole();
+    stageGroup = new T.Group(); scene.add(stageGroup);
+    var fw = E.FIELD.w * S, fd = E.FIELD.h * S;
+    boxMesh(stageGroup, fw, 0.12, fd, 0, 0, 0, 0x173c2d);
+    boxMesh(stageGroup, fw + 0.24, 0.08, fd + 0.24, 0, -0.03, 0, 0x091713);
+    for (var i=0;i<game.walls.length;i++) {
+      var w=game.walls[i];
+      boxMesh(stageGroup, w.w*S, 0.62, w.h*S, mapX(w.x+w.w/2), 0.31, mapZ(w.y+w.h/2), 0x68475a, 0x2d1824);
+    }
+    for (i=0;i<game.bumpers.length;i++) {
+      var b=game.bumpers[i];
+      var m=new T.Mesh(new T.CylinderGeometry(b.r*S, b.r*S, 0.7, 16), mat(0x2b8c78, 0x1a5b4d));
+      m.position.set(mapX(b.x), 0.35, mapZ(b.y)); stageGroup.add(m);
+    }
+    for (i=0;i<game.sand.length;i++) {
+      var sd=game.sand[i];
+      boxMesh(stageGroup, sd.w*S, 0.035, sd.h*S, mapX(sd.x+sd.w/2), 0.06, mapZ(sd.y+sd.h/2), 0xb49758);
+    }
+    for (i=0;i<game.water.length;i++) {
+      var wa=game.water[i];
+      boxMesh(stageGroup, wa.w*S, 0.035, wa.h*S, mapX(wa.x+wa.w/2), 0.06, mapZ(wa.y+wa.h/2), 0x2f7890);
+    }
+    var cup = new T.Mesh(new T.CylinderGeometry(E.HOLE_R*S, E.HOLE_R*S, 0.09, 24), new T.MeshBasicMaterial({ color: 0x010403 }));
+    cup.position.set(mapX(game.target.x), 0.02, mapZ(game.target.y)); stageGroup.add(cup);
+    boxMesh(stageGroup, 0.035, 1.65, 0.035, mapX(game.target.x), 0.83, mapZ(game.target.y), 0xe9fff4);
+    var flag = new T.Mesh(new T.PlaneGeometry(0.8, 0.42), new T.MeshBasicMaterial({ color: 0xff8fbd, side: T.DoubleSide }));
+    flag.position.set(mapX(game.target.x) + 0.4, 1.35, mapZ(game.target.y)); stageGroup.add(flag);
+
+    ballMeshes = [];
+    var colors = { player: 0x7df5c7, cpu: 0xff8fbd };
+    for (i=0;i<2;i++) {
+      var key = i === 0 ? 'player' : 'cpu';
+      var ball = new T.Mesh(new T.SphereGeometry(0.22, 18, 12), mat(colors[key], colors[key]));
+      stageGroup.add(ball);
+      ballMeshes.push(ball);
+    }
+    activeRing = new T.Mesh(new T.TorusGeometry(0.35, 0.025, 6, 24), new T.MeshBasicMaterial({ color: 0xffd166 }));
+    activeRing.rotation.x = Math.PI / 2; stageGroup.add(activeRing);
+    var aimGeo = new T.BufferGeometry().setFromPoints([new T.Vector3(0,0,0), new T.Vector3(0,0,-1)]);
+    aimLine = new T.Line(aimGeo, new T.LineBasicMaterial({ color: 0xffe6a3, transparent: true, opacity: 0.85 }));
+    stageGroup.add(aimLine);
+  }
+
+  function ballWorld(key) {
+    var b = game.balls[key];
+    return new T.Vector3(mapX(b.x), 0.23, mapZ(b.y));
+  }
+
+  function updateScene(time) {
+    if (!renderer || !game || !stageGroup) return;
+    for (var i=0;i<2;i++) {
+      var key = i === 0 ? 'player' : 'cpu';
+      ballMeshes[i].position.copy(ballWorld(key));
+    }
+    var active = game.turn;
+    var ballPos = ballWorld(active);
+    activeRing.position.set(ballPos.x, 0.06, ballPos.z);
+    activeRing.visible = game.phase === 'aim' || game.phase === 'moving';
+    var dir = new T.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+    if (game.phase === 'aim' && game.turn === 'player') {
+      aimLine.visible = true;
+      var len = 1.3 + power * 2.2;
+      aimLine.geometry.setFromPoints([new T.Vector3(ballPos.x, 0.3, ballPos.z), new T.Vector3(ballPos.x + dir.x * len, 0.3, ballPos.z + dir.z * len)]);
+    } else {
+      aimLine.visible = false;
+    }
+    var camPos = new T.Vector3(ballPos.x - dir.x * 4.2, 2.25, ballPos.z - dir.z * 4.2);
+    var look = new T.Vector3(ballPos.x + dir.x * 3.3, 0.25, ballPos.z + dir.z * 3.3);
+    camera.position.lerp(camPos, 0.24);
+    camera.lookAt(look);
+    renderer.render(scene, camera);
   }
 
   function frame(ts) {
@@ -744,92 +337,107 @@
     lastTs = ts;
     dt = clamp(dt, 0, 0.05);
     if (game && mode === 'hole' && !game.paused) {
+      if (charging && game.phase === 'aim' && game.turn === 'player') power = Math.min(1, power + dt * 0.9);
       E.update(game, dt);
-      if (game.phase === 'moving') {
-        trail.push({ x: game.ball.x, y: game.ball.y });
-        if (trail.length > 14) trail.shift();
-      } else if (game.phase === 'aim') {
-        if (trail.length) trail = [];
-      }
-      if (game.phase === 'sunk' && !holeFinalized) processEvents();
-      if (advanceTimer > 0) {
-        advanceTimer -= dt;
-        if (advanceTimer <= 0) { sinkBanner = null; nextHole(); }
-      }
       processEvents();
+      if (game.phase === 'holeover' && holeTimer > 0) {
+        holeTimer -= dt;
+        if (holeTimer <= 0) advanceHole();
+      }
+      if (game.phase === 'aim' && game.turn === 'cpu' && !game.paused) {
+        cpuTimer -= dt;
+        if (cpuTimer <= 0) {
+          if (E.cpuShot(game)) { processEvents(); syncUI(); }
+        }
+      }
       syncUI();
     }
-    updateEffects(dt);
-    draw(ts / 1000);
+    if (renderer) updateScene(ts / 1000);
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
   }
 
   function autoPlayStep() {
-    if (mode === 'title') { startTour(); return; }
+    if (mode === 'title') { startMatch(); return; }
     if (mode !== 'hole' || !game || game.paused) return;
-    if (game.phase === 'aim') {
-      E.autoShot(game);
-      processEvents();
-      syncUI();
+    if (game.phase === 'aim' && game.turn === 'player') {
+      yaw = angleToTarget('player');
+      if (E.autoShot(game)) { processEvents(); syncUI(); }
     }
   }
 
   function init() {
     canvas = $('game');
-    els.hud = $('hud'); els.hole = $('hole'); els.turn = $('turn'); els.par = $('par'); els.strokes = $('strokes');
+    els.hud = $('hud'); els.you = $('you'); els.cpu = $('cpu'); els.turn = $('turn'); els.shots = $('shots');
+    els.hit = $('btn-hit'); els.powerHud = document.querySelector ? document.querySelector('.power-hud') : null; els.powerFill = $('power-fill');
     els.sound = $('btn-sound'); els.pause = $('btn-pause');
-    els.screenTitle = $('screen-title'); els.screenStage = $('screen-stage'); els.screenEnding = $('screen-ending'); els.screenPause = $('screen-pause');
-    els.stageStrokes = $('stage-strokes'); els.stagePar = $('stage-par'); els.stageTotal = $('stage-total'); els.stageScore = $('stage-score'); els.stageShards = $('stage-shards'); els.stageClearText = $('stage-clear-text');
-    els.endingShards = $('ending-shards');
-    els.endingStrokes = $('ending-strokes'); els.endingPar = $('ending-par'); els.endingScore = $('ending-score'); els.endingShards = $('ending-shards'); els.best = $('best'); els.endingBest = $('ending-best');
-    if (canvas && typeof canvas.getContext === 'function') {
-      try { ctx = canvas.getContext('2d'); } catch (err) { ctx = null; }
+    els.screenTitle = $('screen-title'); els.screenOver = $('screen-over'); els.screenStage = $('screen-stage'); els.screenEnding = $('screen-ending'); els.screenPause = $('screen-pause');
+    els.overYou = $('over-you'); els.overCpu = $('over-cpu'); els.overStage = $('over-stage');
+    els.stageYou = $('stage-you'); els.stageCpu = $('stage-cpu'); els.stageNum = $('stage-num'); els.stageClearText = $('stage-clear-text');
+
+    if (T && canvas) {
+      try {
+        renderer = new T.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(1);
+        renderer.setSize(480, 800, false);
+        scene = new T.Scene();
+        scene.background = new T.Color(0x070b16);
+        scene.fog = new T.Fog(0x070b16, 12, 26);
+        camera = new T.PerspectiveCamera(58, 480 / 800, 0.05, 80);
+        scene.add(new T.HemisphereLight(0xeafff5, 0x14231f, 2.2));
+        var sun = new T.DirectionalLight(0xfff0c8, 2.2);
+        sun.position.set(5, 12, -8); scene.add(sun);
+        var fill = new T.DirectionalLight(0x8ff0d0, 0.9);
+        fill.position.set(-8, 6, 8); scene.add(fill);
+      } catch (err) { renderer = null; scene = null; camera = null; }
     }
-    resetEffects(); syncBestUI(); resize();
     if (els.screenTitle) els.screenTitle.classList.add('visible');
     if (els.pause) els.pause.classList.add('hidden');
-    var start = $('btn-start'), next = $('btn-next-stage'), ending = $('btn-ending-retry'), resume = $('btn-resume'), retry = $('btn-retry');
-    if (start) start.addEventListener('click', startTour);
+    if (els.hit) els.hit.classList.add('hidden');
+    if (els.powerHud) els.powerHud.style.display = 'none';
+
+    var start = $('btn-start'), retry = $('btn-retry'), resume = $('btn-resume'), next = $('btn-next-stage'), ending = $('btn-ending-retry');
+    if (start) start.addEventListener('click', startMatch);
+    if (retry) retry.addEventListener('click', retryCourse);
     if (next) next.addEventListener('click', nextStage);
     if (ending) ending.addEventListener('click', showTitle);
     if (resume) resume.addEventListener('click', resumeGame);
-    if (retry) retry.addEventListener('click', beginHole);
     if (els.pause) els.pause.addEventListener('click', togglePause);
+    if (els.hit) {
+      els.hit.addEventListener('pointerdown', startHit, false);
+      els.hit.addEventListener('pointerup', releaseHit, false);
+      els.hit.addEventListener('pointercancel', releaseHit, false);
+      els.hit.addEventListener('contextmenu', function (e) { e.preventDefault && e.preventDefault(); }, false);
+    }
     if (els.sound) els.sound.addEventListener('click', toggleAudio);
     syncAudioButton();
     if (canvas) {
-      canvas.addEventListener('pointerdown', onPointerDown, false);
-      canvas.addEventListener('pointermove', onPointerMove, false);
-      canvas.addEventListener('pointerup', onPointerUp, false);
+      canvas.addEventListener('pointerdown', onCanvasDown, false);
+      canvas.addEventListener('pointermove', onCanvasMove, false);
+      canvas.addEventListener('pointerup', onCanvasUp, false);
       canvas.addEventListener('pointercancel', function () { pointer = null; }, false);
       canvas.addEventListener('contextmenu', function (e) { e.preventDefault && e.preventDefault(); }, false);
       canvas.addEventListener('dblclick', function (e) { e.preventDefault && e.preventDefault(); }, false);
     }
     window.addEventListener('keydown', onKeyDown, false);
+    window.addEventListener('keyup', onKeyUp, false);
     window.addEventListener('blur', pauseGame, false);
-    window.addEventListener('resize', resize, false);
+    window.addEventListener('resize', function () { renderer && renderer.setSize(480, 800, false); }, false);
     document.addEventListener('visibilitychange', function () { if (document.hidden) pauseGame(); }, false);
-    document.addEventListener('gesturestart', function (e) { e.preventDefault && e.preventDefault(); }, false);
-    document.addEventListener('gesturechange', function (e) { e.preventDefault && e.preventDefault(); }, false);
-    document.addEventListener('gestureend', function (e) { e.preventDefault && e.preventDefault(); }, false);
     if (typeof requestAnimationFrame !== 'undefined') requestAnimationFrame(frame);
+
     root.__GAME__ = {
-      id: 'night-mini-golf', title: '月夜のミニゴルフ',
-      start: startTour, autoPlayStep: autoPlayStep,
-      isDone: function () { return mode === 'stage' || mode === 'ending'; },
+      id: 'night-mini-golf', title: '月夜のミニゴルフ MATCH',
+      start: startMatch, autoPlayStep: autoPlayStep,
+      isDone: function () { return mode === 'stage' || mode === 'over' || mode === 'ending'; },
       getState: function () {
         if (!game) return { id: 'night-mini-golf', phase: mode, stage: stageIndex, hole: holeIndex };
-        var state = E.getState(game);
-        state.stageStrokes = stageStrokes;
-        state.totalStrokes = totalStrokes;
-        state.stagePar = stagePar;
-        state.totalPar = totalPar;
-        state.stageShards = stageShards;
-        state.totalShards = totalShards;
-        if (mode === 'stage') state.phase = 'clear';
-        if (mode === 'ending') state.phase = 'ending';
-        state.over = mode === 'stage' || mode === 'ending';
-        return state;
+        var st = E.getState(game);
+        st.mode = mode; st.holesWon = { player: holesWon.player, cpu: holesWon.cpu };
+        if (mode === 'stage') st.phase = 'clear';
+        if (mode === 'over') st.phase = 'over';
+        if (mode === 'ending') st.phase = 'ending';
+        st.over = mode === 'stage' || mode === 'over' || mode === 'ending';
+        return st;
       }
     };
   }

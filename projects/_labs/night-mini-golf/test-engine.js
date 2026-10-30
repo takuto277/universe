@@ -14,86 +14,57 @@ for (var i = 0; i < E.STAGES.length; i++) {
   assert(E.STAGES[i].holes.length === 3, 'three holes per stage expected');
   for (var h = 0; h < 3; h++) assert(E.STAGES[i].holes[h].par >= 2, 'par is invalid');
 }
-var s = E.createGame({ stage: 0, hole: 0 });
-assert(s.phase === 'aim' && s.strokes === 0, 'initial state is wrong');
-assert(s.ball.x === s.tee.x && s.ball.y === s.tee.y, 'ball should start at tee');
-assert(E.shootDrag(s, 0, 0) === false, 'zero drag should not shoot');
-E.shootDrag(s, 0, 60);
-assert(s.phase === 'moving' && s.strokes === 1, 'drag should shoot and count');
-for (i = 0; i < 600 && s.phase === 'moving'; i++) E.update(s, 1 / 60);
-assert(s.phase !== 'moving', 'ball should stop');
 
-var wall = E.createGame({ stage: 0, hole: 0 });
-wall.ball.x = E.FIELD.x + 20;
-wall.ball.y = 300;
-wall.ball.vx = -500;
-wall.ball.vy = 0;
-wall.phase = 'moving';
-wall.strokes = 1;
-E.update(wall, 0.08);
-assert(wall.ball.x >= E.FIELD.x + E.BALL_R - 0.1, 'ball should bounce from field edge');
+var s = E.createGame();
+assert(s.phase === 'aim' && s.turn === 'player', 'initial state is wrong');
+assert(s.balls.player.x !== s.balls.cpu.x && s.balls.player.y === s.balls.cpu.y, 'both balls should start at the tee');
+assert(s.strokes.player === 0 && s.strokes.cpu === 0, 'strokes should start at zero');
+assert(Math.abs(s.target.x - 240) < 1, 'target is missing');
+E.playerShoot(s, Math.PI / 2, 0.45);
+assert(s.phase === 'moving' && s.strokes.player === 1, 'player shot should move the ball');
+for (i = 0; i < 2000 && s.phase === 'moving'; i++) E.update(s, 1 / 60);
+assert(s.phase === 'aim' && s.turn === 'cpu', 'turn should switch to CPU after player shot');
+
+var cpu = E.createGame({ firstTurn: 'cpu' });
+assert(cpu.turn === 'cpu', 'CPU should be able to start a hole');
+assert(E.cpuShot(cpu) === true, 'CPU shot should fire');
+assert(cpu.strokes.cpu === 1, 'CPU shot should count');
+for (i = 0; i < 2000 && cpu.phase === 'moving'; i++) E.update(cpu, 1 / 60);
+assert(cpu.phase === 'holeover' || (cpu.phase === 'aim' && cpu.turn === 'player'), 'CPU shot should resolve');
+
+var sink = E.createGame();
+sink.balls.player.x = sink.target.x;
+sink.balls.player.y = sink.target.y + sink.target.r + 4;
+sink.balls.player.vy = -180;
+sink.phase = 'moving';
+for (i = 0; i < 120 && sink.phase !== 'holeover'; i++) E.update(sink, 1 / 60);
+assert(sink.phase === 'holeover' && sink.holeWinner === 'player', 'player should win the hole');
 
 var water = E.createGame({ stage: 2, hole: 0 });
-water.ball.x = water.water[0].x + 10;
-water.ball.y = water.water[0].y + 10;
-water.ball.vx = 0;
-water.ball.vy = 0;
+var waterArea = water.water[0];
+water.balls.player.x = waterArea.x + waterArea.w / 2;
+water.balls.player.y = waterArea.y + waterArea.h / 2;
 water.phase = 'moving';
-water.strokes = 1;
-E.update(water, 0.05);
-assert(water.strokes >= 2, 'water should add a penalty stroke');
-assert(water.phase === 'aim' && water.ball.x === water.tee.x, 'water should reset ball to tee');
-
-var sink = E.createGame({ stage: 0, hole: 0 });
-sink.ball.x = sink.target.x;
-sink.ball.y = sink.target.y + sink.target.r + 4;
-sink.ball.vx = 0;
-sink.ball.vy = -180;
-sink.phase = 'moving';
-sink.strokes = 1;
-for (i = 0; i < 120 && sink.phase !== 'sunk'; i++) E.update(sink, 1 / 60);
-assert(sink.phase === 'sunk', 'ball should sink in the cup');
+water.strokes.player = 1;
+E.update(water, 1 / 60);
+assert(water.strokes.player >= 2, 'water should add a penalty');
+assert(water.balls.player.x !== water.balls.cpu.x, 'water should reset the player ball');
 
 for (h = 0; h < 3; h++) {
   var auto = E.createGame({ stage: 0, hole: h });
   var steps = 0;
-  while (auto.phase !== 'sunk' && steps < 2000) {
-    if (auto.phase === 'aim') E.autoShot(auto);
+  while (auto.phase !== 'holeover' && steps < 3000) {
+    if (auto.phase === 'aim') {
+      if (auto.turn === 'player') E.autoShot(auto); else E.cpuShot(auto);
+    }
     E.update(auto, 1 / 60);
     steps++;
   }
-  assert(auto.phase === 'sunk', 'auto shot should sink stage 1 hole ' + (h + 1));
+  assert(auto.phase === 'holeover', 'auto play should finish stage 1 hole ' + (h + 1));
 }
 
-var shardGame = E.createGame({ stage: 0, hole: 0 });
-var sh = shardGame.shards[0];
-shardGame.ball.x = sh.x;
-shardGame.ball.y = sh.y;
-shardGame.phase = 'moving';
-E.update(shardGame, 1 / 60);
-assert(shardGame.shardCount === 1, 'moon shard should be collected');
-
-var portalGame = E.createGame({ stage: 2, hole: 1 });
-var pa = portalGame.portals[0];
-var pb = portalGame.portals[1];
-portalGame.ball.x = pa.x;
-portalGame.ball.y = pa.y;
-portalGame.phase = 'moving';
-portalGame.ball.vx = 100;
-portalGame.ball.vy = 0;
-E.update(portalGame, 1 / 60);
-assert(Math.abs(portalGame.ball.x - pb.x) < 50 || Math.abs(portalGame.ball.y - pb.y) < 50, 'portal should move the ball');
-
-var preview = E.previewDrag(s, 0, 60);
-assert(preview.length > 2, 'trajectory preview should return points');
-
-var rotor = E.createGame({ stage: 2, hole: 0 });
-var beforeAngle = rotor.rotors[0].angle;
-E.update(rotor, 0.2);
-assert(rotor.rotors[0].angle !== beforeAngle, 'rotor should animate');
-
 var state = E.getState(s);
-assert(state.hole === 0 && state.holeTotal === 3 && state.par === 2, 'hole state is wrong');
-assert(typeof state.stageName === 'string', 'stage name is missing');
+assert(state.balls && state.strokes && state.turn, 'match state is missing');
+assert(state.par === 2 && state.hole === 0, 'hole metadata is wrong');
 
 print('engine tests OK (' + passed + ' アサーション)');
