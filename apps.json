@@ -410,6 +410,26 @@
       "thumbnail": "projects/_labs/orbit-ward/thumb.jpg",
       "thumbDelay": 4,
       "summary": "星の周りでシールドを回し、全方位のシャードを弾く60秒の360度ディフェンス。"
+    },
+    {
+
+      "id": "one-card-dungeon",
+      "path": "projects/_labs/one-card-dungeon/",
+      "tag": "GAME",
+      "title": "ONE CARD DUNGEON",
+      "description": "1ターンに手札3枚から1枚だけ選んで戦う、6階層のデッキ構築ローグライト。敵の次の行動を見て、攻撃・防御・回復・状態異常を使い分ける。敵を倒すたびにカードを1枚デッキへ追加し、60HPとHP+8回復を頼りに魔王の待つ6階層を目指す。ベスト到達階層を保存。カード選択とリスク管理が中心のターン制。",
+      "summary": "1ターン1枚だけ選ぶ、6階層のデッキ構築ローグライト。",
+      "tags": [
+        "デッキ構築",
+        "ローグライト",
+        "カード",
+        "ターン制"
+      ],
+      "thumbnail": "projects/_labs/one-card-dungeon/thumb.jpg",
+      "thumbDelay": 1.2,
+      "createdAt": "2026-10-31",
+      "updatedAt": "2026-10-31T01:51:48+09:00",
+      "thumbNoAuto": true
     }
   ]
 }

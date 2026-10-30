@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c0710">
+  <meta name="description" content="1ターン1枚だけカードを選んで戦う、6階層のデッキ構築ローグライト。ONE CARD DUNGEON。">
+  <title>ONE CARD DUNGEON - 1ターン1枚のデッキ構築</title>
+  <link rel="stylesheet" href="style.css?v=20261031-onecard1">
+</head>
+<body>
+  <div id="app">
+    <header id="hud">
+      <div class="hud-top">
+        <div class="brand">ONE CARD <span>DUNGEON</span></div>
+        <div class="floor-box">FLOOR <b id="floor">1</b><small>/6</small></div>
+      </div>
+      <div class="hud-bars">
+        <div class="hp-box">
+          <div class="bar-label"><span>HP</span><b id="hp-text">60 / 60</b></div>
+          <div class="bar"><i id="hp-fill"></i></div>
+        </div>
+        <div class="mini-stats">
+          <span>SHIELD <b id="shield">0</b></span>
+          <span>FOCUS <b id="focus">0</b></span>
+          <span>TURN <b id="turn">0</b></span>
+        </div>
+      </div>
+    </header>
+
+    <main id="stage">
+      <section id="enemy-panel">
+        <div class="enemy-head">
+          <div>
+            <p class="eyebrow">ENEMY</p>
+            <h2 id="enemy-name">スライム</h2>
+          </div>
+          <div id="enemy-status" class="enemy-status"></div>
+        </div>
+        <div id="enemy-avatar" class="enemy-avatar" data-floor="1">
+          <span class="eye left"></span><span class="eye right"></span><span class="mouth"></span>
+        </div>
+        <div class="enemy-hp">
+          <div class="bar"><i id="enemy-hp-fill"></i></div>
+          <b id="enemy-hp-text">0 / 0</b>
+        </div>
+        <div id="intent" class="intent">
+          <span>次の行動</span><b id="intent-label">攻撃 5</b>
+        </div>
+      </section>
+
+      <section id="log" aria-live="polite"></section>
+
+      <section id="hand-area">
+        <div class="hand-head">
+          <span>CHOOSE ONE CARD</span>
+          <span id="pile-info">DRAW 0 / DISCARD 0</span>
+        </div>
+        <div id="hand" class="hand"></div>
+      </section>
+
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <p class="eyebrow">1 CARD PER TURN / ROGUELITE</p>
+          <h1>ONE CARD<br><span>DUNGEON</span></h1>
+          <p class="subtitle">1ターンに選べるのは、たった1枚。</p>
+          <ul class="rules">
+            <li>手札3枚から1枚だけ選んで戦う</li>
+            <li>敵の「次の行動」を見て、攻撃・防御・回復を選ぶ</li>
+            <li>敵を倒すたびにカードを1枚デッキへ追加</li>
+            <li>6階層の魔王を倒せばクリア</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">ENTER DUNGEON</button>
+          <p class="tiny" id="best-start">BEST FLOOR 0</p>
+        </section>
+
+        <section id="screen-reward" class="screen">
+          <p class="eyebrow">FLOOR CLEAR</p>
+          <h2>カードを1枚選ぶ</h2>
+          <p class="subtitle">デッキに追加して、次の階へ。</p>
+          <div id="reward-hand" class="reward-hand"></div>
+          <p class="tiny">HP+8 / 数字キーでも選択可</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <p class="eyebrow" id="end-eyebrow">RESULT</p>
+          <h2 id="end-rank">A</h2>
+          <p id="end-detail" class="end-detail"></p>
+          <div class="end-stats">
+            <div><span>FLOOR</span><b id="end-floor">1</b></div>
+            <div><span>HP</span><b id="end-hp">0</b></div>
+            <div><span>TURNS</span><b id="end-turns">0</b></div>
+          </div>
+          <p class="deck-summary" id="end-deck"></p>
+          <p class="end-best">BEST FLOOR <b id="end-best">0</b></p>
+          <button id="btn-again" class="primary" type="button">RETRY</button>
+          <p class="tiny">タップ / Space でもう一度</p>
+        </section>
+      </div>
+
+      <div id="fx" class="fx"></div>
+    </main>
+  </div>
+
+  <script src="engine.js?v=20261031-onecard1"></script>
+  <script src="game.js?v=20261031-onecard1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
