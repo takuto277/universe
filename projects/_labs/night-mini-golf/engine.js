@@ -10,6 +10,7 @@
   FIELD.right = FIELD.x + FIELD.w;
   FIELD.bottom = FIELD.y + FIELD.h;
   var BALL_R = 7;
+  var E_BALL_R = BALL_R;
   var HOLE_R = 17;
   var FRICTION = 145;
   var SAND_FRICTION = 420;
@@ -21,17 +22,18 @@
   function wall(x, y, w, h) { return { x: x, y: y, w: w, h: h }; }
   function bumper(x, y, r) { return { x: x, y: y, r: r }; }
   function area(x, y, w, h, kind) { return { x: x, y: y, w: w, h: h, kind: kind }; }
-  function hole(par, teeX, teeY, holeX, holeY, walls, bumpers, sand, water) {
+  function rotor(x, y, r, arms, speed, phase) { return { x: x, y: y, r: r, arms: arms, speed: speed, phase: phase || 0, angle: phase || 0 }; }
+  function hole(par, teeX, teeY, holeX, holeY, walls, bumpers, sand, water, rotors) {
     return {
       par: par, tee: { x: teeX, y: teeY }, hole: { x: holeX, y: holeY, r: HOLE_R },
-      walls: walls || [], bumpers: bumpers || [], sand: sand || [], water: water || []
+      walls: walls || [], bumpers: bumpers || [], sand: sand || [], water: water || [], rotors: rotors || []
     };
   }
 
   var STAGES = [
     {
       id: 'garden', name: '月夜の庭', holes: [
-        hole(2, 240, 660, 240, 155, [], [], [area(55, 500, 80, 80, 'sand')], [area(360, 360, 65, 75, 'water')]),
+        hole(2, 240, 660, 240, 155, [], [], [area(55, 500, 80, 80, 'sand')], [area(360, 360, 65, 75, 'water')], [rotor(380, 480, 30, 2, 1.3, 0)]),
         hole(2, 105, 650, 375, 165, [], [], [area(315, 500, 85, 75, 'sand')], [area(55, 310, 65, 80, 'water')]),
         hole(3, 375, 650, 105, 165, [], [], [area(60, 500, 80, 75, 'sand')], [area(330, 255, 65, 80, 'water')])
       ]
@@ -41,15 +43,15 @@
         hole(3, 75, 660, 405, 155,
           [wall(205, 340, 150, 34)],
           [bumper(128, 430, 28)],
-          [area(300, 520, 110, 70, 'sand')], []),
+          [area(300, 520, 110, 70, 'sand')], [], [rotor(240, 410, 55, 2, 1.2, 0)]),
         hole(3, 405, 660, 75, 155,
           [wall(120, 380, 120, 32)],
           [bumper(350, 430, 30)],
-          [], [area(205, 300, 90, 120, 'water')]),
+          [], [area(205, 300, 90, 120, 'water')], [rotor(240, 390, 52, 3, -1.0, 0.4)]),
         hole(4, 240, 660, 240, 145,
           [wall(100, 300, 75, 30), wall(305, 300, 75, 30)],
           [bumper(240, 390, 32)],
-          [area(55, 500, 90, 80, 'sand')], [])
+          [area(55, 500, 90, 80, 'sand')], [], [rotor(240, 400, 50, 2, 1.5, 0.8)])
       ]
     },
     {
@@ -57,15 +59,15 @@
         hole(3, 105, 660, 375, 155,
           [wall(215, 300, 50, 150)],
           [bumper(335, 455, 28)],
-          [], [area(70, 240, 100, 90, 'water')]),
+          [], [area(70, 240, 100, 90, 'water')], [rotor(250, 390, 56, 3, -1.4, 0.2)]),
         hole(4, 375, 660, 105, 155,
           [wall(160, 380, 90, 28), wall(300, 260, 85, 28)],
           [bumper(85, 430, 26)],
-          [area(300, 520, 110, 80, 'sand')], []),
+          [area(300, 520, 110, 80, 'sand')], [], [rotor(235, 410, 50, 2, 1.7, 0.5)]),
         hole(5, 240, 660, 240, 140,
           [wall(80, 350, 95, 28), wall(300, 350, 100, 28), wall(200, 250, 80, 28)],
           [bumper(240, 450, 32), bumper(130, 260, 24)],
-          [area(55, 510, 80, 65, 'sand')], [area(340, 250, 70, 90, 'water')])
+          [area(55, 510, 80, 65, 'sand')], [area(340, 250, 70, 90, 'water')], [rotor(240, 410, 58, 3, -1.8, 1.1)])
       ]
     }
   ];
@@ -86,6 +88,7 @@
       ball: { x: h.tee.x, y: h.tee.y, vx: 0, vy: 0 },
       tee: { x: h.tee.x, y: h.tee.y }, target: { x: h.hole.x, y: h.hole.y, r: h.hole.r },
       walls: h.walls, bumpers: h.bumpers, sand: h.sand, water: h.water,
+      rotors: h.rotors.map(function (r) { return { x: r.x, y: r.y, r: r.r, arms: r.arms, speed: r.speed, phase: r.phase, angle: r.angle }; }),
       events: []
     };
   }
@@ -171,9 +174,40 @@
     s.phase = 'aim';
   }
 
+  function updateRotors(s, dt) {
+    for (var i = 0; i < s.rotors.length; i++) s.rotors[i].angle += s.rotors[i].speed * dt;
+  }
+
+  function hitRotors(s, b) {
+    for (var r = 0; r < s.rotors.length; r++) {
+      var rot = s.rotors[r];
+      for (var a = 0; a < rot.arms; a++) {
+        var ang = rot.angle + a * Math.PI * 2 / rot.arms;
+        var px = rot.x + Math.cos(ang) * rot.r;
+        var py = rot.y + Math.sin(ang) * rot.r;
+        var dx = b.x - px, dy = b.y - py;
+        var d = Math.sqrt(dx * dx + dy * dy) || 0.001;
+        var rr = E_BALL_R + 8;
+        if (d < rr) {
+          var nx = dx / d, ny = dy / d;
+          b.x = px + nx * rr;
+          b.y = py + ny * rr;
+          var vn = b.vx * nx + b.vy * ny;
+          if (vn < 0) {
+            b.vx -= 1.8 * vn * nx;
+            b.vy -= 1.8 * vn * ny;
+          }
+          event(s, 'rotor', { x: px, y: py });
+        }
+      }
+    }
+  }
+
   function update(s, dt) {
-    if (!s || s.paused || s.phase !== 'moving') return s;
+    if (!s || s.paused) return s;
     dt = clamp(Number(dt) || 0, 0, 0.05);
+    updateRotors(s, dt);
+    if (s.phase !== 'moving') return s;
     var b = s.ball;
     var steps = Math.max(1, Math.ceil(Math.sqrt(b.vx * b.vx + b.vy * b.vy) * dt / 5));
     var h = dt / steps;
@@ -185,6 +219,7 @@
       if (b.y - BALL_R < FIELD.y) { b.y = FIELD.y + BALL_R; b.vy = Math.abs(b.vy) * 0.72; }
       else if (b.y + BALL_R > FIELD.bottom) { b.y = FIELD.bottom - BALL_R; b.vy = -Math.abs(b.vy) * 0.72; }
       for (var i = 0; i < s.walls.length; i++) circleRectCollision(b, s.walls[i]);
+      hitRotors(s, b);
       for (i = 0; i < s.bumpers.length; i++) {
         var bp = s.bumpers[i];
         var dx = b.x - bp.x, dy = b.y - bp.y;
@@ -233,6 +268,25 @@
     return s;
   }
 
+  function previewDrag(s, dx, dy) {
+    if (!s || s.phase !== 'aim') return [];
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 8) return [];
+    if (len > MAX_DRAG) { dx = dx / len * MAX_DRAG; dy = dy / len * MAX_DRAG; }
+    var sim = {
+      phase: 'moving', ball: { x: s.ball.x, y: s.ball.y, vx: -dx * POWER, vy: -dy * POWER },
+      walls: s.walls, bumpers: s.bumpers, sand: s.sand, water: s.water,
+      rotors: s.rotors.map(function (r) { return { x: r.x, y: r.y, r: r.r, arms: r.arms, speed: r.speed, phase: r.phase, angle: r.angle }; }),
+      target: s.target, tee: s.tee, strokes: 1, events: []
+    };
+    var points = [{ x: sim.ball.x, y: sim.ball.y }];
+    for (var i = 0; i < 42 && sim.phase === 'moving'; i++) {
+      update(sim, 1 / 60);
+      points.push({ x: sim.ball.x, y: sim.ball.y });
+    }
+    return points;
+  }
+
   function getState(s) {
     if (!s) return null;
     return {
@@ -242,7 +296,7 @@
       par: s.par, strokes: s.strokes,
       ball: { x: s.ball.x, y: s.ball.y, vx: s.ball.vx, vy: s.ball.vy },
       tee: s.tee, target: s.target, walls: s.walls, bumpers: s.bumpers,
-      sand: s.sand, water: s.water
+      sand: s.sand, water: s.water, rotors: s.rotors
     };
   }
 
@@ -252,6 +306,6 @@
   return {
     FIELD: FIELD, BALL_R: BALL_R, HOLE_R: HOLE_R, STAGES: STAGES,
     createGame: createGame, shootDrag: shootDrag, autoShot: autoShot,
-    update: update, getState: getState, consumeEvents: consumeEvents, setPaused: setPaused
+    update: update, previewDrag: previewDrag, getState: getState, consumeEvents: consumeEvents, setPaused: setPaused
   };
 });

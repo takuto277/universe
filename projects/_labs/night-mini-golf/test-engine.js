@@ -65,6 +65,14 @@ for (h = 0; h < 3; h++) {
   assert(auto.phase === 'sunk', 'auto shot should sink stage 1 hole ' + (h + 1));
 }
 
+var preview = E.previewDrag(s, 0, 60);
+assert(preview.length > 2, 'trajectory preview should return points');
+
+var rotor = E.createGame({ stage: 2, hole: 0 });
+var beforeAngle = rotor.rotors[0].angle;
+E.update(rotor, 0.2);
+assert(rotor.rotors[0].angle !== beforeAngle, 'rotor should animate');
+
 var state = E.getState(s);
 assert(state.hole === 0 && state.holeTotal === 3 && state.par === 2, 'hole state is wrong');
 assert(typeof state.stageName === 'string', 'stage name is missing');
