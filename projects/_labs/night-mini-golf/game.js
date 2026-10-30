@@ -219,14 +219,10 @@
       ctx.fillStyle = 'rgba(190, 230, 255, ' + (0.04 + (i % 4) * 0.02) + ')';
       ctx.fillRect(x, y, 1.4, 1.4);
     }
-    ctx.save();
-    ctx.shadowColor = 'rgba(255, 240, 170, 0.7)';
-    ctx.shadowBlur = 26;
-    ctx.fillStyle = 'rgba(255, 244, 190, 0.9)';
+    ctx.fillStyle = 'rgba(255, 244, 190, 0.18)';
     ctx.beginPath();
-    ctx.arc(78, 62, 22, 0, Math.PI * 2);
+    ctx.arc(400, 62, 3, 0, Math.PI * 2);
     ctx.fill();
-    ctx.restore();
   }
 
   function drawField() {
@@ -280,6 +276,34 @@
       ctx.arc(b.x, b.y, b.r, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
+      ctx.restore();
+    }
+    for (i = 0; i < (st.rotors || []).length; i++) {
+      var rot = st.rotors[i];
+      ctx.save();
+      ctx.translate(rot.x, rot.y);
+      ctx.strokeStyle = 'rgba(255, 209, 102, 0.72)';
+      ctx.fillStyle = 'rgba(255, 209, 102, 0.8)';
+      ctx.shadowColor = 'rgba(255, 209, 102, 0.7)';
+      ctx.shadowBlur = 10;
+      for (var arm = 0; arm < rot.arms; arm++) {
+        var aa = rot.angle + arm * Math.PI * 2 / rot.arms;
+        var px = Math.cos(aa) * rot.r;
+        var py = Math.sin(aa) * rot.r;
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.moveTo(0, 0);
+        ctx.lineTo(px, py);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(px, py, 8, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.shadowBlur = 0;
+      ctx.fillStyle = '#7df5c7';
+      ctx.beginPath();
+      ctx.arc(0, 0, 7, 0, Math.PI * 2);
+      ctx.fill();
       ctx.restore();
     }
     for (i = 0; i < st.sand.length; i++) {
@@ -375,6 +399,20 @@
     var dy = pointer.y - pointer.startY;
     var len = Math.sqrt(dx * dx + dy * dy);
     if (len < 6) return;
+    var preview = E.previewDrag(game, dx, dy);
+    if (preview && preview.length > 1) {
+      ctx.save();
+      for (var pi = 1; pi < preview.length; pi += 2) {
+        var pp = preview[pi];
+        ctx.globalAlpha = 0.32 * (1 - pi / preview.length);
+        ctx.fillStyle = '#bfffdf';
+        ctx.beginPath();
+        ctx.arc(pp.x, pp.y, 2.2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+      ctx.globalAlpha = 1;
+      ctx.restore();
+    }
     var max = 150;
     if (len > max) { dx = dx / len * max; dy = dy / len * max; len = max; }
     ctx.save();
