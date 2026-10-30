@@ -223,3 +223,27 @@ h1 {
 .formation-choice b { display: block; color: var(--gold); font-size: 18px; line-height: 1.1; }
 .formation-choice span { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; letter-spacing: 1px; }
 .formation-choice:active { transform: translateY(1px); }
+.item-btn {
+  position: absolute;
+  z-index: 8;
+  right: 14px;
+  bottom: max(16px, env(safe-area-inset-bottom));
+  min-width: 76px;
+  min-height: 48px;
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 209, 102, 0.65);
+  border-radius: 14px;
+  background: rgba(8, 24, 17, 0.9);
+  color: var(--gold);
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow: 0 0 18px rgba(255, 209, 102, 0.14);
+}
+.item-btn.hidden { display: none; }
+.item-btn:disabled { opacity: 0.42; cursor: default; }
+.item-btn.milk { color: #8ff0d0; border-color: rgba(143, 240, 208, 0.7); }
+.item-btn.eraser { color: #ff8fbd; border-color: rgba(255, 143, 189, 0.7); }
+.item-btn.tray { color: #5ee7ff; border-color: rgba(94, 231, 255, 0.7); }
