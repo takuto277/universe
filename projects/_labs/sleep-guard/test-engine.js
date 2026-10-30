@@ -35,7 +35,7 @@ for (i = 0; i < 30 && g.noises.length === 0; i++) E.update(g, 0.1);
 assert(g.noises.length > 0 && g.noises[0].active === false, '出現直後はまだ鳴っていない');
 var graceSleep = g.sleep;
 for (i = 0; i < 15; i++) E.update(g, 0.05);
-assert(g.noises[0].active === false && g.sleep === graceSleep, '2秒前はゲージが減らない');
+assert(g.noises[0].active === false && g.sleep > graceSleep, '2秒前はゲージが減らない（静穏ゲージは増える）');
 for (i = 0; i < 30; i++) E.update(g, 0.05);
 assert(g.noises[0].active === true, '2秒後に騒音が鳴り始める');
 var afterActive = g.sleep;

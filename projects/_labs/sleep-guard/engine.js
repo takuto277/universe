@@ -30,7 +30,7 @@
 
   var SLOTS = [
     { x: 0.16, y: 0.27 }, { x: 0.84, y: 0.27 },
-    { x: 0.14, y: 0.53 }, { x: 0.86, y: 0.53 },
+    { x: 0.10, y: 0.41 }, { x: 0.88, y: 0.50 },
     { x: 0.28, y: 0.79 }, { x: 0.72, y: 0.79 },
     { x: 0.5, y: 0.16 }
   ];
@@ -142,10 +142,11 @@
       }
     }
 
-    if (state.noises.length === 0) {
+    var drain = activeDrain(state);
+    if (drain === 0) {
       state.sleep += QUIET_GAIN * dt;
     } else {
-      state.sleep -= activeDrain(state) * dt;
+      state.sleep -= drain * dt;
     }
     state.sleep = clamp(state.sleep, 0, MAX_SLEEP);
 

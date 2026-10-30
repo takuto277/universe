@@ -395,7 +395,8 @@
       ctx.stroke();
       ctx.globalAlpha = 1;
     } else {
-      var progress = 1 - clamp((noise.activeIn || 0) / E.NOISE_GRACE, 0, 1);
+      var remaining = Math.max(0, (noise.activeAt || 0) - (state ? state.time : time));
+      var progress = 1 - clamp(remaining / E.NOISE_GRACE, 0, 1);
       ctx.strokeStyle = 'rgba(109,183,255,.8)';
       ctx.lineWidth = 3;
       ctx.beginPath();
