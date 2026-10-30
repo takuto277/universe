@@ -31,7 +31,7 @@ body {
   margin: 0 auto;
   padding: 10px 12px 12px;
   display: grid;
-  grid-template-rows: auto minmax(0, 1fr) auto;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
 }
 #hud {
@@ -210,21 +210,29 @@ h2 { font-size: clamp(28px, 9vw, 44px); }
 }
 .end-sub b { color: var(--pink); }
 #controls {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  position: absolute;
+  z-index: 5;
+  top: 50%;
+  right: 10px;
+  transform: translateY(-50%);
+  display: flex;
+  flex-direction: column;
   gap: 8px;
-  opacity: .35;
+  width: 76px;
+  opacity: 0;
   pointer-events: none;
   transition: opacity .15s ease;
 }
 #controls.live { opacity: 1; pointer-events: auto; }
 .door-btn {
-  min-height: 70px;
-  border: 1px solid rgba(255,255,255,.16);
+  width: 76px;
+  min-height: 92px;
+  padding: 8px 4px;
+  border: 1px solid rgba(255,255,255,.2);
   border-radius: 14px;
   color: #fff;
-  font: 900 20px/1 "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
-  letter-spacing: 1px;
+  font: 900 15px/1.1 "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif;
+  letter-spacing: .5px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -232,16 +240,17 @@ h2 { font-size: clamp(28px, 9vw, 44px); }
   gap: 4px;
   cursor: pointer;
   touch-action: manipulation;
-  box-shadow: 0 8px 0 rgba(0,0,0,.35), 0 14px 24px rgba(0,0,0,.3);
+  box-shadow: 0 7px 0 rgba(0,0,0,.4), 0 14px 24px rgba(0,0,0,.35);
   transition: transform .05s ease, filter .08s ease;
 }
-.door-btn small { font-size: 8px; font-weight: 700; letter-spacing: .8px; opacity: .72; }
+.door-btn small { font-size: 7px; font-weight: 700; letter-spacing: .2px; opacity: .72; }
 .door-btn.close { background: linear-gradient(180deg, #ff7b89, #e33f57 60%, #a91d35); }
 .door-btn.open { background: linear-gradient(180deg, #8ed2ff, #3f8dff 60%, #1f5fc4); }
 .door-btn:active, .door-btn.pressed { transform: translateY(5px) scale(.985); filter: brightness(1.18); box-shadow: 0 3px 0 rgba(0,0,0,.35), 0 6px 14px rgba(0,0,0,.3); }
 @media (max-height: 700px) {
   .hud-title b { font-size: 24px; }
-  .door-btn { min-height: 58px; font-size: 17px; }
+  #controls { width: 68px; }
+  .door-btn { width: 68px; min-height: 76px; font-size: 13px; }
   .screen { padding: 13px; }
   .rules { gap: 4px; font-size: 9.5px; }
 }

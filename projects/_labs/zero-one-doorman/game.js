@@ -43,7 +43,7 @@
   }
 
   function doorRect() {
-    return { x: viewW * 0.15, y: viewH * 0.60, w: viewW * 0.70, h: viewH * 0.38 };
+    return { x: viewW * 0.18, y: viewH * 0.09, w: viewW * 0.62, h: viewH * 0.83 };
   }
 
   function setControls(live) {
@@ -173,101 +173,166 @@
     }
   }
 
-  function drawHallway(time) {
-    var horizon = viewH * 0.18;
-    var cx = viewW / 2;
+  function drawSideWall(x0, x1, top, bottom, left) {
+    var w = x1 - x0;
+    var cream = ctx.createLinearGradient(x0, top, x1, bottom);
+    cream.addColorStop(0, left ? '#d8c4a6' : '#b9a184');
+    cream.addColorStop(0.55, '#ead9bd');
+    cream.addColorStop(1, left ? '#9f876c' : '#d6c1a2');
+    ctx.fillStyle = cream;
+    ctx.fillRect(x0, top, w, bottom - top);
+
+    ctx.fillStyle = 'rgba(90,55,27,.22)';
+    ctx.fillRect(x0, top, w, 7);
+    ctx.fillRect(x0, bottom - 12, w, 12);
+    ctx.fillStyle = '#4b2d18';
+    ctx.fillRect(x0, top, left ? 7 : 0, bottom - top);
+    ctx.fillRect(x1 - (left ? 0 : 7), top, left ? 0 : 7, bottom - top);
+
+    // wood panel frames
+    ctx.strokeStyle = 'rgba(94,54,24,.72)';
+    ctx.lineWidth = 3;
+    ctx.strokeRect(x0 + w * 0.16, top + (bottom - top) * 0.16, w * 0.68, (bottom - top) * 0.58);
+    ctx.strokeStyle = 'rgba(255,239,200,.28)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(x0 + w * 0.16 + 4, top + (bottom - top) * 0.16 + 4, w * 0.68 - 8, (bottom - top) * 0.58 - 8);
+
+    // handrail
+    var railY = top + (bottom - top) * 0.70;
+    ctx.fillStyle = '#a8792c';
+    ctx.fillRect(x0 + 2, railY, w - 4, 5);
+    ctx.fillStyle = 'rgba(255,220,130,.55)';
+    ctx.fillRect(x0 + 4, railY + 1, w - 8, 1);
+  }
+
+  function drawElevatorShell(time) {
+    var d = doorRect();
     var bg = ctx.createLinearGradient(0, 0, 0, viewH);
-    bg.addColorStop(0, '#0b1020');
-    bg.addColorStop(0.42, '#17233c');
-    bg.addColorStop(1, '#090b12');
+    bg.addColorStop(0, '#1b110b');
+    bg.addColorStop(0.42, '#352116');
+    bg.addColorStop(1, '#0d0906');
     ctx.fillStyle = bg;
     ctx.fillRect(0, 0, viewW, viewH);
 
-    // ceiling glow
-    var ceiling = ctx.createRadialGradient(cx, horizon * 0.65, 10, cx, horizon * 0.65, viewW * 0.75);
-    ceiling.addColorStop(0, 'rgba(105,145,220,.18)');
-    ceiling.addColorStop(1, 'rgba(105,145,220,0)');
-    ctx.fillStyle = ceiling;
-    ctx.fillRect(0, 0, viewW, horizon * 2.4);
+    // ceiling cove
+    ctx.fillStyle = '#3b2415';
+    ctx.fillRect(0, 0, viewW, d.y);
+    var cove = ctx.createLinearGradient(0, 0, 0, d.y);
+    cove.addColorStop(0, 'rgba(255,225,160,.36)');
+    cove.addColorStop(1, 'rgba(255,225,160,0)');
+    ctx.fillStyle = cove;
+    ctx.fillRect(0, 0, viewW, d.y);
+    ctx.fillStyle = 'rgba(255,231,175,.9)';
+    ctx.fillRect(viewW * 0.30, d.y * 0.30, viewW * 0.40, 3);
+    ctx.fillStyle = 'rgba(255,231,175,.24)';
+    ctx.fillRect(viewW * 0.22, d.y * 0.30 - 6, viewW * 0.56, 14);
 
-    // walls
-    ctx.fillStyle = '#111a2d';
-    ctx.beginPath();
-    ctx.moveTo(0, 0); ctx.lineTo(cx - viewW * 0.13, horizon);
-    ctx.lineTo(0, viewH); ctx.closePath(); ctx.fill();
-    ctx.beginPath();
-    ctx.moveTo(viewW, 0); ctx.lineTo(cx + viewW * 0.13, horizon);
-    ctx.lineTo(viewW, viewH); ctx.closePath(); ctx.fill();
-
-    // wall panels
-    ctx.strokeStyle = 'rgba(135,165,225,.13)';
-    ctx.lineWidth = 1;
-    for (var i = 1; i < 5; i++) {
-      var t = i / 5;
-      var y = lerp(horizon, viewH, t);
-      var left = lerp(cx - viewW * 0.13, 0, t);
-      var right = lerp(cx + viewW * 0.13, viewW, t);
-      ctx.beginPath(); ctx.moveTo(left, y); ctx.lineTo(right, y); ctx.stroke();
-    }
-    for (var j = 0; j < 5; j++) {
-      var bx = j / 5 * viewW;
-      ctx.beginPath(); ctx.moveTo(cx, horizon); ctx.lineTo(bx, viewH); ctx.stroke();
-    }
+    drawSideWall(0, d.x, d.y, d.y + d.h, true);
+    drawSideWall(d.x + d.w, viewW, d.y, d.y + d.h, false);
 
     // floor
-    var floor = ctx.createLinearGradient(0, horizon, 0, viewH);
-    floor.addColorStop(0, '#293349');
-    floor.addColorStop(0.55, '#151c2c');
-    floor.addColorStop(1, '#080b12');
+    var floorY = d.y + d.h;
+    var floor = ctx.createLinearGradient(0, floorY, 0, viewH);
+    floor.addColorStop(0, '#4b3421');
+    floor.addColorStop(0.45, '#2a1b10');
+    floor.addColorStop(1, '#120c08');
+    ctx.fillStyle = floor;
+    ctx.fillRect(0, floorY, viewW, viewH - floorY);
+    ctx.strokeStyle = 'rgba(255,220,150,.22)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, floorY + 1); ctx.lineTo(viewW, floorY + 1); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,220,150,.10)';
+    ctx.lineWidth = 1;
+    for (var i = 0; i < 4; i++) {
+      var y = floorY + 12 + i * 12;
+      ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(viewW, y); ctx.stroke();
+    }
+
+    // control panel plate (buttons are HTML on top)
+    var px = viewW * 0.835;
+    var py = viewH * 0.33;
+    var pw = viewW * 0.13;
+    var ph = viewH * 0.34;
+    var plate = ctx.createLinearGradient(px, py, px + pw, py + ph);
+    plate.addColorStop(0, '#d3a74a');
+    plate.addColorStop(0.5, '#8b6325');
+    plate.addColorStop(1, '#4b2e0f');
+    ctx.fillStyle = plate;
+    roundRect(px, py, pw, ph, 6);
+    ctx.fill();
+    ctx.strokeStyle = 'rgba(255,235,170,.75)';
+    ctx.lineWidth = 1;
+    roundRect(px + 3, py + 3, pw - 6, ph - 6, 4);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(255,235,170,.7)';
+    for (var s = 0; s < 4; s++) {
+      ctx.beginPath();
+      ctx.arc(px + 6 + (s % 2) * (pw - 12), py + 7 + Math.floor(s / 2) * (ph - 14), 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  function drawCorridor(time) {
+    var d = doorRect();
+    var cx = viewW / 2;
+    var horizon = d.y + d.h * 0.18;
+    var bg = ctx.createLinearGradient(0, d.y, 0, d.y + d.h);
+    bg.addColorStop(0, '#2b2118');
+    bg.addColorStop(0.5, '#1b1713');
+    bg.addColorStop(1, '#0b0907');
+    ctx.fillStyle = bg;
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+
+    // corridor ceiling glow
+    var glow = ctx.createRadialGradient(cx, horizon * 0.9, 4, cx, horizon * 0.9, d.w * 0.7);
+    glow.addColorStop(0, 'rgba(255,220,155,.24)');
+    glow.addColorStop(1, 'rgba(255,220,155,0)');
+    ctx.fillStyle = glow;
+    ctx.fillRect(d.x, d.y, d.w, d.h);
+
+    // walls / floor
+    ctx.fillStyle = '#201811';
+    ctx.beginPath();
+    ctx.moveTo(d.x, d.y); ctx.lineTo(cx - d.w * 0.16, horizon);
+    ctx.lineTo(cx - d.w * 0.16, d.y + d.h); ctx.lineTo(d.x, d.y + d.h); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(d.x + d.w, d.y); ctx.lineTo(cx + d.w * 0.16, horizon);
+    ctx.lineTo(cx + d.w * 0.16, d.y + d.h); ctx.lineTo(d.x + d.w, d.y + d.h); ctx.closePath(); ctx.fill();
+
+    var floor = ctx.createLinearGradient(0, horizon, 0, d.y + d.h);
+    floor.addColorStop(0, '#3c2d1e');
+    floor.addColorStop(1, '#120d08');
     ctx.fillStyle = floor;
     ctx.beginPath();
-    ctx.moveTo(cx - viewW * 0.13, horizon);
-    ctx.lineTo(cx + viewW * 0.13, horizon);
-    ctx.lineTo(viewW, viewH);
-    ctx.lineTo(0, viewH);
+    ctx.moveTo(cx - d.w * 0.16, horizon);
+    ctx.lineTo(cx + d.w * 0.16, horizon);
+    ctx.lineTo(d.x + d.w, d.y + d.h);
+    ctx.lineTo(d.x, d.y + d.h);
     ctx.closePath();
     ctx.fill();
 
-    ctx.strokeStyle = 'rgba(190,210,255,.10)';
-    for (var k = 0; k <= 8; k++) {
-      var fx = k / 8 * viewW;
-      ctx.beginPath(); ctx.moveTo(cx, horizon); ctx.lineTo(fx, viewH); ctx.stroke();
+    ctx.strokeStyle = 'rgba(255,225,170,.12)';
+    ctx.lineWidth = 1;
+    for (var i = 0; i <= 6; i++) {
+      var fx = d.x + d.w * i / 6;
+      ctx.beginPath(); ctx.moveTo(cx, horizon); ctx.lineTo(fx, d.y + d.h); ctx.stroke();
     }
-    for (var m = 1; m < 7; m++) {
-      var fy = horizon + Math.pow(m / 7, 1.8) * (viewH - horizon);
-      ctx.beginPath(); ctx.moveTo(0, fy); ctx.lineTo(viewW, fy); ctx.stroke();
+    for (var j = 1; j < 5; j++) {
+      var fy = horizon + Math.pow(j / 5, 1.7) * (d.y + d.h - horizon);
+      ctx.beginPath(); ctx.moveTo(d.x, fy); ctx.lineTo(d.x + d.w, fy); ctx.stroke();
     }
 
-    // ceiling lights
-    for (var l = 0; l < 4; l++) {
-      var ly = horizon * (0.3 + l * 0.23);
-      var lw = lerp(10, 80, l / 3);
-      var lh = lerp(2, 10, l / 3);
-      var glow = ctx.createRadialGradient(cx, ly, 0, cx, ly, lw * 1.6);
-      glow.addColorStop(0, 'rgba(255,225,155,.45)');
-      glow.addColorStop(1, 'rgba(255,225,155,0)');
-      ctx.fillStyle = glow;
-      ctx.fillRect(cx - lw * 1.6, ly - lw, lw * 3.2, lw * 2);
-      ctx.fillStyle = 'rgba(255,236,184,.82)';
-      roundRect(cx - lw / 2, ly - lh / 2, lw, lh, lh / 2);
+    // corridor lights
+    for (var l = 0; l < 3; l++) {
+      var ly = horizon * (0.55 + l * 0.22);
+      var lw = 8 + l * 16;
+      ctx.fillStyle = 'rgba(255,226,165,.55)';
+      roundRect(cx - lw / 2, ly, lw, 2 + l, 2);
       ctx.fill();
+      ctx.fillStyle = 'rgba(255,226,165,.10)';
+      ctx.beginPath(); ctx.arc(cx, ly, lw * 1.4, 0, Math.PI * 2); ctx.fill();
     }
-
-    // elevator interior behind the doors
-    var d = doorRect();
-    var inner = ctx.createLinearGradient(d.x, d.y, d.x, d.y + d.h);
-    inner.addColorStop(0, '#2a2330');
-    inner.addColorStop(0.5, '#191b28');
-    inner.addColorStop(1, '#090b12');
-    ctx.fillStyle = inner;
-    roundRect(d.x, d.y, d.w, d.h, 10);
-    ctx.fill();
-
-    var light = ctx.createRadialGradient(cx, d.y + d.h * 0.28, 4, cx, d.y + d.h * 0.28, d.w * 0.55);
-    light.addColorStop(0, 'rgba(255,220,160,.34)');
-    light.addColorStop(1, 'rgba(255,220,160,0)');
-    ctx.fillStyle = light;
-    ctx.fillRect(d.x, d.y, d.w, d.h);
   }
 
   function drawDress(time, p) {
@@ -455,15 +520,15 @@
 
   function drawDoorPanel(x, w, top, h) {
     var metal = ctx.createLinearGradient(x, 0, x + w, 0);
-    metal.addColorStop(0, '#59677e');
-    metal.addColorStop(0.18, '#b7c3d3');
-    metal.addColorStop(0.5, '#74839b');
-    metal.addColorStop(0.82, '#c6d0dd');
-    metal.addColorStop(1, '#4a586f');
+    metal.addColorStop(0, '#4d3213');
+    metal.addColorStop(0.18, '#d8ab52');
+    metal.addColorStop(0.5, '#8d6326');
+    metal.addColorStop(0.82, '#f0ce82');
+    metal.addColorStop(1, '#5a3a16');
     ctx.fillStyle = metal;
     ctx.fillRect(x, top, w, h);
 
-    ctx.strokeStyle = 'rgba(255,255,255,.24)';
+    ctx.strokeStyle = 'rgba(255,235,175,.25)';
     ctx.lineWidth = 1;
     for (var i = 1; i < 4; i++) {
       var yy = top + h * i / 4;
@@ -509,22 +574,22 @@
 
     // header
     ctx.fillStyle = 'rgba(7,10,18,.82)';
-    roundRect(viewW / 2 - 45, d.y - 34, 90, 24, 7);
+    roundRect(viewW / 2 - 45, d.y + 9, 90, 24, 7);
     ctx.fill();
     ctx.strokeStyle = 'rgba(255,209,102,.5)';
     ctx.lineWidth = 1;
-    roundRect(viewW / 2 - 45, d.y - 34, 90, 24, 7);
+    roundRect(viewW / 2 - 45, d.y + 9, 90, 24, 7);
     ctx.stroke();
     ctx.fillStyle = '#ffd166';
     ctx.font = '900 11px "Hiragino Kaku Gothic ProN", system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('0.1  DOOR', viewW / 2, d.y - 21);
+    ctx.fillText('0.1  DOOR', viewW / 2, d.y + 21);
 
     // status light
     ctx.fillStyle = open > 0.5 ? '#58e6b0' : '#ff5c72';
     ctx.beginPath();
-    ctx.arc(viewW / 2, d.y + 12, 3.5, 0, Math.PI * 2);
+    ctx.arc(viewW / 2, d.y + 44, 3.5, 0, Math.PI * 2);
     ctx.fill();
   }
 
@@ -566,8 +631,14 @@
     if (shake > 0) {
       ctx.translate((Math.random() - 0.5) * 12 * shake, (Math.random() - 0.5) * 10 * shake);
     }
-    drawHallway(time);
+    drawElevatorShell(time);
+    var d = doorRect();
+    ctx.save();
+    roundRect(d.x, d.y, d.w, d.h, 8);
+    ctx.clip();
+    drawCorridor(time);
     drawPassengers(time);
+    ctx.restore();
     drawDoors();
     drawSlam();
     drawParticles();
