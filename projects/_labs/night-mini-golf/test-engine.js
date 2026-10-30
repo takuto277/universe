@@ -63,6 +63,30 @@ for (h = 0; h < 3; h++) {
   assert(auto.phase === 'holeover', 'auto play should finish stage 1 hole ' + (h + 1));
 }
 
+var obstacle = E.createGame({ stage: 0, hole: 0 });
+assert(obstacle.rotors.length === 1, 'stage 1 hole 1 should have a rotor');
+var rotorAngle = obstacle.rotors[0].angle;
+E.update(obstacle, 0.25);
+assert(obstacle.rotors[0].angle !== rotorAngle, 'rotor should keep turning during aim');
+var sliderHole = E.createGame({ stage: 0, hole: 1 });
+assert(sliderHole.sliders.length === 1, 'stage 1 hole 2 should have a slider');
+var sliderX = sliderHole.sliders[0].x;
+E.update(sliderHole, 0.3);
+assert(sliderHole.sliders[0].x !== sliderX, 'slider should keep moving during aim');
+var rotorHit = E.createGame({ stage: 0, hole: 0 });
+var rh = rotorHit.rotors[0];
+rotorHit.balls.player.x = rh.x + Math.cos(rh.angle) * rh.r;
+rotorHit.balls.player.y = rh.y + Math.sin(rh.angle) * rh.r;
+rotorHit.phase = 'moving';
+E.update(rotorHit, 1 / 60);
+var rotorEvents = E.consumeEvents(rotorHit);
+assert(rotorEvents.some(function (ev) { return ev.type === 'rotor'; }), 'ball should bounce off a rotor');
+var sliderHit = E.createGame({ stage: 0, hole: 1 });
+var sh = sliderHit.sliders[0];
+sliderHit.balls.player.x = sh.x; sliderHit.balls.player.y = sh.y; sliderHit.phase = 'moving';
+E.update(sliderHit, 1 / 60);
+var sliderEvents = E.consumeEvents(sliderHit);
+assert(sliderEvents.some(function (ev) { return ev.type === 'slider'; }), 'ball should bounce off a slider');
 var state = E.getState(s);
 assert(state.balls && state.strokes && state.turn, 'match state is missing');
 assert(state.par === 2 && state.hole === 0, 'hole metadata is wrong');

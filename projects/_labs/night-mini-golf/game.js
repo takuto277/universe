@@ -9,6 +9,7 @@
 
   var canvas, renderer, scene, camera, stageGroup;
   var ballMeshes = [], aimLine = null, activeRing = null;
+  var rotorMeshes = [], sliderMeshes = [];
   var els = {};
   var game = null;
   var mode = 'title';
@@ -254,7 +255,7 @@
         o.material.dispose();
       }
     });
-    stageGroup = null; ballMeshes = []; aimLine = null; activeRing = null;
+    stageGroup = null; ballMeshes = []; aimLine = null; activeRing = null; rotorMeshes = []; sliderMeshes = [];
   }
   function buildHole() {
     clearHole();
@@ -278,6 +279,31 @@
     for (i=0;i<game.water.length;i++) {
       var wa=game.water[i];
       boxMesh(stageGroup, wa.w*S, 0.035, wa.h*S, mapX(wa.x+wa.w/2), 0.06, mapZ(wa.y+wa.h/2), 0x2f7890);
+    }
+    rotorMeshes = [];
+    for (i=0;i<game.rotors.length;i++) {
+      var rt=game.rotors[i];
+      var rg=new T.Group(); rg.position.set(mapX(rt.x), 0, mapZ(rt.y)); stageGroup.add(rg);
+      var hub=new T.Mesh(new T.CylinderGeometry(0.18, 0.24, 0.62, 12), mat(0xffcf7a, 0x6b4619));
+      hub.position.y=0.31; rg.add(hub);
+      var arms=[];
+      for (var a=0;a<rt.arms;a++) {
+        var arm=new T.Mesh(new T.BoxGeometry(rt.r*S, 0.18, 0.16), mat(0xffb45e, 0x6b3d12));
+        arm.position.y=0.32; rg.add(arm);
+        var cap=new T.Mesh(new T.CylinderGeometry(0.18, 0.18, 0.26, 10), mat(0xffe2a8, 0x7b511d));
+        cap.position.y=0.32; rg.add(cap);
+        arms.push({ mesh: arm, cap: cap });
+      }
+      rotorMeshes.push({ group: rg, arms: arms });
+    }
+    sliderMeshes = [];
+    for (i=0;i<game.sliders.length;i++) {
+      var sl=game.sliders[i];
+      var sm=new T.Mesh(new T.BoxGeometry(sl.w*S, 0.55, sl.h*S), mat(0x9c79d8, 0x3d245f));
+      sm.position.set(mapX(sl.x), 0.31, mapZ(sl.y)); stageGroup.add(sm);
+      var edge=new T.Mesh(new T.BoxGeometry(sl.w*S+0.06, 0.06, sl.h*S+0.06), mat(0xd9c2ff, 0x5b3e85));
+      edge.position.y=0.34; sm.add(edge);
+      sliderMeshes.push(sm);
     }
     var cup = new T.Mesh(new T.CylinderGeometry(E.HOLE_R*S, E.HOLE_R*S, 0.09, 24), new T.MeshBasicMaterial({ color: 0x010403 }));
     cup.position.set(mapX(game.target.x), 0.02, mapZ(game.target.y)); stageGroup.add(cup);
@@ -310,6 +336,22 @@
     for (var i=0;i<2;i++) {
       var key = i === 0 ? 'player' : 'cpu';
       ballMeshes[i].position.copy(ballWorld(key));
+    }
+    for (var r=0;r<rotorMeshes.length;r++) {
+      var rot=game.rotors[r], rm=rotorMeshes[r];
+      for (var a=0;a<rot.arms;a++) {
+        var ang=rot.angle + a * Math.PI * 2 / rot.arms;
+        var len=rot.r*S;
+        rm.arms[a].mesh.position.x=Math.cos(ang)*len/2;
+        rm.arms[a].mesh.position.z=Math.sin(ang)*len/2;
+        rm.arms[a].mesh.rotation.y=-ang;
+        rm.arms[a].cap.position.x=Math.cos(ang)*len;
+        rm.arms[a].cap.position.z=Math.sin(ang)*len;
+      }
+    }
+    for (var q=0;q<sliderMeshes.length;q++) {
+      var sd=game.sliders[q];
+      sliderMeshes[q].position.set(mapX(sd.x), 0.31, mapZ(sd.y));
     }
     var active = game.turn;
     var ballPos = ballWorld(active);
