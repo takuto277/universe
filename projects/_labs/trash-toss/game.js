@@ -34,7 +34,8 @@
     btnRetry: document.getElementById('btn-retry'),
     btnMute: document.getElementById('btn-mute'),
     btnSound: document.getElementById('btn-sound'),
-    btnResultSound: document.getElementById('btn-result-sound')
+    btnResultSound: document.getElementById('btn-result-sound'),
+    hand: document.getElementById('hand')
   };
 
   var best = 0;
@@ -42,6 +43,7 @@
   var seenEvents = 0;
   var lastPhase = null;
   var lastNow = null;
+  var handTimer = null;
   var swiping = false;
   var startX = 0, startY = 0, swipeLen = 0;
 
@@ -66,6 +68,9 @@
     show(els.start, false);
     show(els.result, false);
     hide(els.hud, false);
+    hide(els.hand, false);
+    if (handTimer && root.clearTimeout) root.clearTimeout(handTimer);
+    handTimer = null;
   }
 
   function processEvents(state) {
@@ -77,6 +82,13 @@
       else if (ev.type === 'perfect' && audio.perfect) audio.perfect();
       else if (ev.type === 'miss' && audio.miss) audio.miss();
       else if (ev.type === 'depth' && audio.depth) audio.depth();
+      else if (ev.type === 'throw') {
+        hide(els.hand, true);
+        if (handTimer && root.clearTimeout) root.clearTimeout(handTimer);
+        if (root.setTimeout) handTimer = root.setTimeout(function () {
+          if (game.state.phase === 'playing') hide(els.hand, false);
+        }, 260);
+      }
       else if (ev.type === 'finish' && audio.finish) audio.finish();
     }
     seenEvents = state.events.length;
@@ -106,6 +118,7 @@
     text(els.resultStreak, 'STREAK ' + (r.bestStreak || 0));
     show(els.result, true);
     hide(els.hud, true);
+    hide(els.hand, true);
   }
 
   function syncOverlay(state) {
@@ -116,6 +129,7 @@
     } else if (state.phase === 'playing') {
       show(els.result, false);
       hide(els.hud, false);
+      hide(els.hand, false);
     }
   }
 

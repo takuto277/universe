@@ -41,7 +41,9 @@ trash-toss/
 ├── style.css         # リビング風HUD・オーバーレイ・縦パネル
 ├── engine.js         # スワイプ座標、投擲、ゴミ箱移動、スコア、30秒
 ├── audio.js          # WebAudioの効果音
-├── renderer-webgl.js # WebGLの3Dリビング・ゴミ箱・光・影・軌道
+├── assets/textures/  # 床・壁・ラグ・ソファ・ゴミ箱・TV・窓の生成画像
+├── assets/sprites/   # ゴミ袋・ペットボトル・空き缶・手元・接地影
+├── renderer-webgl.js # WebGLの3Dリビング・テクスチャ・ゴミ箱・軌道
 ├── renderer.js       # WebGL非対応時のCanvasフォールバック
 ├── game.js           # スワイプ入力、描画ループ、HUD、ベスト保存、window.__GAME__
 ├── test-engine.js    # スワイプ・IN/PERFECT・ミス・前後移動・30秒
@@ -68,7 +70,7 @@ jsc test-smoke.js
 
 ## 既知の制限と次に試すこと
 
-- リビングはプリミティブ形状とプロシージャルな色・光・影。画像テクスチャ・GLTFモデル・BGMは未実装。
+- リビングはプリミティブ形状＋生成テクスチャ。GLTFモデル・BGM・壁のポスターは未実装。
 - 箱の動きは等速の追従で、イージングやフェイントはまだない。
 - リムに当たって跳ねる物理、風、複数箱、難易度選択は未実装。
 - WebGLは素の実装。Three.jsのようなライブラリは使っていないため、本格的なPBRマテリアルやポストプロセス、影のマップはまだない。

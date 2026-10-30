@@ -451,7 +451,6 @@
       drawProjectiles(c, state);
       drawBin(c, state, t);
       drawPreview(c, state, t);
-      drawHand(c, state, t);
       spawnEffects(c, state);
       drawEffects(c, dt);
 

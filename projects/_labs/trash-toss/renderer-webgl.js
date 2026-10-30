@@ -22,6 +22,53 @@
     var seenEvents = 0;
     var lost = false;
     var fallback = null;
+    var textures = {};
+    var whiteTexture = null;
+
+    /* ---------- textures ---------- */
+    function makeTexture(repeatS, repeatT) {
+      var t = gl.createTexture();
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE,
+        new Uint8Array([255, 255, 255, 255]));
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, repeatS ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+      gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, repeatT ? gl.REPEAT : gl.CLAMP_TO_EDGE);
+      return { tex: t, loaded: false };
+    }
+
+    function loadTexture(name, path, repeatS, repeatT) {
+      var holder = makeTexture(repeatS, repeatT);
+      textures[name] = holder;
+      var ImageCtor = root.Image;
+      if (!ImageCtor) return;
+      var img = new ImageCtor();
+      img.onload = function () {
+        gl.bindTexture(gl.TEXTURE_2D, holder.tex);
+        gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+        gl.pixelStorei(gl.UNPACK_PREMULTIPLY_ALPHA_WEBGL, false);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img);
+        holder.loaded = true;
+      };
+      img.src = path;
+    }
+
+    function initTextures() {
+      whiteTexture = makeTexture(false, false);
+      whiteTexture.loaded = true;
+      loadTexture('floor', 'assets/textures/floor-wood.jpg', true, true);
+      loadTexture('rug', 'assets/textures/rug.jpg', false, false);
+      loadTexture('wall', 'assets/textures/wall-plaster.jpg', true, true);
+      loadTexture('sofa', 'assets/textures/sofa-fabric.jpg', true, true);
+      loadTexture('canWrap', 'assets/textures/can-wrap.jpg', true, false);
+      loadTexture('tv', 'assets/textures/tv-screen.jpg', false, false);
+      loadTexture('window', 'assets/textures/window-night.jpg', false, false);
+      loadTexture('bag', 'assets/sprites/trash-bag.png', false, false);
+      loadTexture('bottle', 'assets/sprites/bottle.png', false, false);
+      loadTexture('can', 'assets/sprites/can.png', false, false);
+      loadTexture('shadow', 'assets/sprites/soft-shadow.png', false, false);
+    }
 
     /* ---------- tiny mat4 ---------- */
     function identity() {
@@ -68,6 +115,26 @@
         1
       ]);
     }
+    function cameraBasis() {
+      var fx = cameraLook.x - cameraPos.x;
+      var fy = cameraLook.y - cameraPos.y;
+      var fz = cameraLook.z - cameraPos.z;
+      var fl = Math.sqrt(fx * fx + fy * fy + fz * fz) || 1;
+      var forward = { x: fx / fl, y: fy / fl, z: fz / fl };
+      // Screen right in this mirrored projection is world +x.
+      var right = { x: forward.z, y: 0, z: -forward.x };
+      var rl = Math.sqrt(right.x * right.x + right.z * right.z) || 1;
+      right.x /= rl; right.z /= rl;
+      var up = {
+        x: forward.y * right.z - forward.z * right.y,
+        y: forward.z * right.x - forward.x * right.z,
+        z: forward.x * right.y - forward.y * right.x
+      };
+      var ul = Math.sqrt(up.x * up.x + up.y * up.y + up.z * up.z) || 1;
+      up.x /= ul; up.y /= ul; up.z /= ul;
+      return { cam: cameraPos, forward: forward, right: right, up: up };
+    }
+
     function model(x, y, z, sx, sy, sz) {
       return new Float32Array([
         sx, 0, 0, 0,
@@ -88,20 +155,22 @@
 
     /* ---------- shaders ---------- */
     var litVs = [
-      'attribute vec3 aPos; attribute float aShade;',
-      'uniform mat4 uViewProj; uniform mat4 uModel; uniform vec3 uColor;',
-      'varying vec3 vColor; varying float vShade;',
+      'attribute vec3 aPos; attribute vec2 aUV; attribute float aShade;',
+      'uniform mat4 uViewProj; uniform mat4 uModel; uniform vec3 uColor; uniform vec2 uUVScale;',
+      'varying vec2 vUV; varying vec3 vColor; varying float vShade;',
       'void main(){',
       ' vec4 world=uModel*vec4(aPos,1.0);',
-      ' vColor=uColor; vShade=aShade;',
+      ' vColor=uColor; vShade=aShade; vUV=aUV*uUVScale;',
       ' gl_Position=uViewProj*world;',
       '}'
     ].join('\n');
     var litFs = [
       'precision mediump float;',
-      'varying vec3 vColor; varying float vShade;',
+      'uniform sampler2D uTex; uniform float uUseTex;',
+      'varying vec2 vUV; varying vec3 vColor; varying float vShade;',
       'void main(){',
-      ' gl_FragColor=vec4(clamp(vColor*vShade,0.0,1.0),1.0);',
+      ' vec4 tex=uUseTex>0.5?texture2D(uTex,vUV):vec4(1.0);',
+      ' gl_FragColor=vec4(clamp(tex.rgb*vColor*vShade,0.0,1.0),1.0);',
       '}'
     ].join('\n');
     var unlitVs = [
@@ -111,6 +180,17 @@
     var unlitFs = [
       'precision mediump float; uniform vec4 uColor;',
       'void main(){ gl_FragColor=uColor; }'
+    ].join('\n');
+    var texVs = [
+      'attribute vec3 aPos; attribute vec2 aUV;',
+      'uniform mat4 uViewProj; uniform mat4 uModel; uniform vec2 uUVScale;',
+      'varying vec2 vUV;',
+      'void main(){ vUV=aUV*uUVScale; gl_Position=uViewProj*uModel*vec4(aPos,1.0); }'
+    ].join('\n');
+    var texFs = [
+      'precision mediump float; uniform sampler2D uTex; uniform vec4 uColor;',
+      'varying vec2 vUV;',
+      'void main(){ vec4 t=texture2D(uTex,vUV); gl_FragColor=vec4(t.rgb*uColor.rgb,t.a*uColor.a); }'
     ].join('\n');
 
     function compile(type, source) {
@@ -131,26 +211,37 @@
       return {
         p: p,
         aPos: gl.getAttribLocation(p, 'aPos'),
+        aUV: gl.getAttribLocation(p, 'aUV'),
         aShade: gl.getAttribLocation(p, 'aShade'),
         uViewProj: gl.getUniformLocation(p, 'uViewProj'),
         uModel: gl.getUniformLocation(p, 'uModel'),
-        uColor: gl.getUniformLocation(p, 'uColor')
+        uColor: gl.getUniformLocation(p, 'uColor'),
+        uTex: gl.getUniformLocation(p, 'uTex'),
+        uUseTex: gl.getUniformLocation(p, 'uUseTex'),
+        uUVScale: gl.getUniformLocation(p, 'uUVScale')
       };
     }
 
-    var lit, unlit;
+    var lit, unlit, texProg;
     try {
       lit = program(litVs, litFs);
       unlit = program(unlitVs, unlitFs);
+      texProg = program(texVs, texFs);
     } catch (e) {
       return null;
     }
 
     /* ---------- meshes ---------- */
-    function mesh(vertices, normals, indices) {
+    function mesh(vertices, normals, indices, uvs) {
       var vbo = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, vbo);
       gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+      var ubo = null;
+      if (uvs) {
+        ubo = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, ubo);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(uvs), gl.STATIC_DRAW);
+      }
       var shades = new Float32Array(normals.length / 3);
       var lx = -0.35, ly = 0.75, lz = 0.55;
       var ll = Math.sqrt(lx * lx + ly * ly + lz * lz) || 1;
@@ -165,7 +256,7 @@
       var ibo = gl.createBuffer();
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ibo);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
-      return { vbo: vbo, sbo: sbo, ibo: ibo, count: indices.length };
+      return { vbo: vbo, ubo: ubo, sbo: sbo, ibo: ibo, count: indices.length };
     }
 
     function cubeMesh() {
@@ -274,30 +365,184 @@
       return mesh(p, n, idx);
     }
 
+    function cubeTexturedMesh() {
+      var p = [], n = [], uv = [], idx = [];
+      var faces = [
+        { n: [0, 0, 1], v: [[-.5, -.5, .5], [.5, -.5, .5], [.5, .5, .5], [-.5, .5, .5]] },
+        { n: [0, 0, -1], v: [[.5, -.5, -.5], [-.5, -.5, -.5], [-.5, .5, -.5], [.5, .5, -.5]] },
+        { n: [1, 0, 0], v: [[.5, -.5, .5], [.5, -.5, -.5], [.5, .5, -.5], [.5, .5, .5]] },
+        { n: [-1, 0, 0], v: [[-.5, -.5, -.5], [-.5, -.5, .5], [-.5, .5, .5], [-.5, .5, -.5]] },
+        { n: [0, 1, 0], v: [[-.5, .5, .5], [.5, .5, .5], [.5, .5, -.5], [-.5, .5, -.5]] },
+        { n: [0, -1, 0], v: [[-.5, -.5, -.5], [.5, -.5, -.5], [.5, -.5, .5], [-.5, -.5, .5]] }
+      ];
+      var uvs = [[0, 0, 1, 0, 1, 1, 0, 1]];
+      for (var f = 0; f < faces.length; f++) {
+        var base = p.length / 3;
+        for (var v = 0; v < 4; v++) { p.push.apply(p, faces[f].v[v]); n.push.apply(n, faces[f].n); }
+        uv.push(0, 0, 1, 0, 1, 1, 0, 1);
+        idx.push(base, base + 1, base + 2, base, base + 2, base + 3);
+      }
+      return mesh(p, n, idx, uv);
+    }
+
+    function cylinderTexturedMesh(segments) {
+      segments = segments || 24;
+      var p = [], n = [], uv = [], idx = [];
+      for (var i = 0; i <= segments; i++) {
+        var a = i / segments * Math.PI * 2;
+        var cx = Math.cos(a), sz = Math.sin(a);
+        p.push(cx, -.5, sz); n.push(cx, 0, sz); uv.push(i / segments, 0);
+        p.push(cx, .5, sz); n.push(cx, 0, sz); uv.push(i / segments, 1);
+      }
+      for (var i2 = 0; i2 < segments; i2++) {
+        var a0 = i2 * 2, b0 = a0 + 1, a1 = a0 + 2, b1 = a0 + 3;
+        idx.push(a0, b0, b1, a0, b1, a1);
+      }
+      var base = p.length / 3;
+      p.push(0, .5, 0); n.push(0, 1, 0); uv.push(0.5, 0.5);
+      for (var t = 0; t <= segments; t++) {
+        var at = t / segments * Math.PI * 2;
+        p.push(Math.cos(at), .5, Math.sin(at)); n.push(0, 1, 0);
+        uv.push(0.5 + Math.cos(at) * 0.5, 0.5 + Math.sin(at) * 0.5);
+      }
+      for (var t2 = 0; t2 < segments; t2++) idx.push(base, base + 1 + t2, base + 2 + t2);
+      var base2 = p.length / 3;
+      p.push(0, -.5, 0); n.push(0, -1, 0); uv.push(0.5, 0.5);
+      for (var b = 0; b <= segments; b++) {
+        var ab = b / segments * Math.PI * 2;
+        p.push(Math.cos(ab), -.5, Math.sin(ab)); n.push(0, -1, 0);
+        uv.push(0.5 + Math.cos(ab) * 0.5, 0.5 + Math.sin(ab) * 0.5);
+      }
+      for (var b2 = 0; b2 < segments; b2++) idx.push(base2, base2 + 1 + b2, base2 + 2 + b2);
+      return mesh(p, n, idx, uv);
+    }
+
+    function quadXZ() {
+      return mesh(
+        [-.5, 0, -.5, .5, 0, -.5, .5, 0, .5, -.5, 0, .5],
+        [0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1, 0],
+        [0, 2, 1, 0, 3, 2],
+        [0, 0, 1, 0, 1, 1, 0, 1]
+      );
+    }
+    function quadXY() {
+      return mesh(
+        [-.5, -.5, 0, .5, -.5, 0, .5, .5, 0, -.5, .5, 0],
+        [0, 0, 1, 0, 0, 1, 0, 0, 1, 0, 0, 1],
+        [0, 1, 2, 0, 2, 3],
+        [0, 0, 1, 0, 1, 1, 0, 1]
+      );
+    }
+
     meshes.cube = cubeMesh();
+    meshes.cubeTex = cubeTexturedMesh();
     meshes.cylinder = cylinderMesh(24);
+    meshes.cylinderTex = cylinderTexturedMesh(24);
     meshes.sphere = sphereMesh(8, 14);
     meshes.torus = torusMesh(28, 8);
     meshes.disk = diskMesh(28);
+    meshes.quadXZ = quadXZ();
+    meshes.quadXY = quadXY();
 
     function bindMesh(m) {
       gl.bindBuffer(gl.ARRAY_BUFFER, m.vbo);
       gl.enableVertexAttribArray(lit.aPos);
       gl.vertexAttribPointer(lit.aPos, 3, gl.FLOAT, false, 0, 0);
+      if (m.ubo) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, m.ubo);
+        gl.enableVertexAttribArray(lit.aUV);
+        gl.vertexAttribPointer(lit.aUV, 2, gl.FLOAT, false, 0, 0);
+      } else if (lit.aUV >= 0) {
+        gl.disableVertexAttribArray(lit.aUV);
+      }
       gl.bindBuffer(gl.ARRAY_BUFFER, m.sbo);
       gl.enableVertexAttribArray(lit.aShade);
       gl.vertexAttribPointer(lit.aShade, 1, gl.FLOAT, false, 0, 0);
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ibo);
     }
 
-    function drawMesh(name, mtx, color) {
+    function drawMesh(name, mtx, color, texture, uvScale, useTexture) {
       var m = meshes[name];
       gl.useProgram(lit.p);
       gl.uniformMatrix4fv(lit.uViewProj, false, viewProj);
       gl.uniformMatrix4fv(lit.uModel, false, mtx);
       gl.uniform3fv(lit.uColor, color);
+      var scale = uvScale || [1, 1];
+      gl.uniform2f(lit.uUVScale, scale[0], scale[1]);
+      var use = !!(useTexture && texture && texture.loaded);
+      gl.uniform1f(lit.uUseTex, use ? 1 : 0);
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, use ? texture.tex : whiteTexture.tex);
+      gl.uniform1i(lit.uTex, 0);
       bindMesh(m);
       gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
+    }
+
+    function useTextureUnit(texture) {
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D, texture && texture.loaded ? texture.tex : whiteTexture.tex);
+      gl.uniform1i(texProg.uTex, 0);
+    }
+
+    function drawTexturedQuad(mtx, texture, tint, uvScale) {
+      var m = meshes.quadXY;
+      gl.useProgram(texProg.p);
+      gl.uniformMatrix4fv(texProg.uViewProj, false, viewProj);
+      gl.uniformMatrix4fv(texProg.uModel, false, mtx);
+      gl.uniform4fv(texProg.uColor, tint);
+      gl.uniform2f(texProg.uUVScale, uvScale ? uvScale[0] : 1, uvScale ? uvScale[1] : 1);
+      useTextureUnit(texture);
+      gl.enableVertexAttribArray(texProg.aPos);
+      gl.bindBuffer(gl.ARRAY_BUFFER, m.vbo);
+      gl.vertexAttribPointer(texProg.aPos, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(texProg.aUV);
+      gl.bindBuffer(gl.ARRAY_BUFFER, m.ubo);
+      gl.vertexAttribPointer(texProg.aUV, 2, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, m.ibo);
+      gl.drawElements(gl.TRIANGLES, m.count, gl.UNSIGNED_SHORT, 0);
+    }
+
+    function billboardModel(basis, x, y, z, w, h) {
+      var r = basis.right, u = basis.up;
+      return new Float32Array([
+        r.x * w, r.y * w, r.z * w, 0,
+        u.x * h, u.y * h, u.z * h, 0,
+        0, 0, 1, 0,
+        x, y, z, 1
+      ]);
+    }
+
+    function drawBillboard(basis, texture, x, y, z, w, h, tint) {
+      gl.enable(gl.BLEND);
+      gl.depthMask(false);
+      drawTexturedQuad(billboardModel(basis, x, y, z, w, h), texture, tint || [1, 1, 1, 1], [1, 1]);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
+    }
+
+    function drawShadow(basis, x, z, w, h, alpha) {
+      if (!textures.shadow || !textures.shadow.loaded) return;
+      gl.enable(gl.BLEND);
+      gl.depthMask(false);
+      var m = model(x, 0.035, z, w, 1, h);
+      // quadXZ uses an XZ plane; draw it with the textured program.
+      gl.useProgram(texProg.p);
+      gl.uniformMatrix4fv(texProg.uViewProj, false, viewProj);
+      gl.uniformMatrix4fv(texProg.uModel, false, m);
+      gl.uniform4fv(texProg.uColor, [1, 1, 1, alpha]);
+      gl.uniform2f(texProg.uUVScale, 1, 1);
+      useTextureUnit(textures.shadow);
+      var q = meshes.quadXZ;
+      gl.enableVertexAttribArray(texProg.aPos);
+      gl.bindBuffer(gl.ARRAY_BUFFER, q.vbo);
+      gl.vertexAttribPointer(texProg.aPos, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(texProg.aUV);
+      gl.bindBuffer(gl.ARRAY_BUFFER, q.ubo);
+      gl.vertexAttribPointer(texProg.aUV, 2, gl.FLOAT, false, 0, 0);
+      gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, q.ibo);
+      gl.drawElements(gl.TRIANGLES, q.count, gl.UNSIGNED_SHORT, 0);
+      gl.depthMask(true);
+      gl.disable(gl.BLEND);
     }
 
     function color(hex) {
@@ -340,53 +585,46 @@
     }
 
     /* ---------- scene ---------- */
-    function drawRoom() {
-      // floor
-      box(-3.6, 3.6, -0.12, 0, -0.2, 7.2, '#6b4a33');
-      // floor boards
-      var lines = [];
-      for (var z = 0; z <= 7; z += 0.42) lines.push(-3.55, 0.012, z, 3.55, 0.012, z);
-      for (var x = -3.0; x <= 3.0; x += 0.7) lines.push(x, 0.012, 0, x, 0.012, 7);
-      drawLines(lines, [0.42, 0.27, 0.15, 0.7], gl.LINES);
+    function boxTex(x0, x1, y0, y1, z0, z1, texture, uvScale) {
+      drawMesh('cubeTex', model((x0 + x1) / 2, (y0 + y1) / 2, (z0 + z1) / 2, x1 - x0, y1 - y0, z1 - z0),
+        [1, 1, 1], texture, uvScale || [1, 1], true);
+    }
 
+    function drawRoom(c) {
+      var white = [1, 1, 1];
+
+      // wood floor
+      drawMesh('quadXZ', model(0, 0.006, 3.5, 7.2, 1, 7.4), white, textures.floor, [4, 4], true);
       // walls
-      box(-3.6, 3.6, 0, 3.0, 7.2, 7.35, '#3d2d29');
-      box(-3.6, -3.45, 0, 3.0, -0.2, 7.2, '#322725');
-      box(3.45, 3.6, 0, 3.0, -0.2, 7.2, '#322725');
+      drawMesh('quadXY', model(0, 1.5, 7.19, 7.2, 3, 1), white, textures.wall, [2, 1], true);
+      boxTex(-3.6, -3.45, 0, 3, -0.2, 7.2, textures.wall, [1, 1]);
+      boxTex(3.45, 3.6, 0, 3, -0.2, 7.2, textures.wall, [1, 1]);
 
       // rug
-      box(-2.45, 2.45, 0.012, 0.026, 1.7, 5.6, '#3f5a58');
-      box(-2.28, 2.28, 0.028, 0.035, 1.85, 5.45, '#58736d');
-      box(-2.5, 2.5, 0.029, 0.036, 1.65, 1.72, '#a9825a');
-      box(-2.5, 2.5, 0.029, 0.036, 5.58, 5.65, '#a9825a');
-      for (var rz = 2.05; rz < 5.3; rz += 0.42) {
-        drawLines([-2.2, 0.041, rz, 2.2, 0.041, rz], [0.22, 0.37, 0.35, 0.34], gl.LINES);
-      }
+      drawMesh('quadXZ', model(0, 0.035, 3.65, 4.9, 1, 3.9), white, textures.rug, [1, 1], true);
       // soft shadow under the sofa
-      drawUnlitMesh('disk', model(0, 0.043, 6.35, 2.3, 1, 0.25), [0.01, 0.008, 0.008, 0.22]);
+      drawShadow(c, 0, 6.35, 4.6, 0.9, 0.28);
 
-      // window
-      drawUnlitMesh('cube', model(-1.95, 1.65, 7.17, 1.45, 1.1, 0.02), [0.025, 0.075, 0.12, 1]);
-      drawLines([-1.95, 1.1, 7.15, -1.95, 2.2, 7.15], [0.5, 0.8, 0.95, 0.28], gl.LINES);
-      drawLines([-2.67, 1.65, 7.15, -1.23, 1.65, 7.15], [0.5, 0.8, 0.95, 0.28], gl.LINES);
+      // window with the generated night view, plus a simple frame
+      box(-2.75, -1.15, 1.02, 2.28, 7.17, 7.22, '#2a2423');
+      if (textures.window.loaded) drawTexturedQuad(model(-1.95, 1.65, 7.155, 1.45, 1.1, 1), textures.window, [1, 1, 1, 1], [1, 1]);
+      drawLines([-1.95, 1.1, 7.14, -1.95, 2.2, 7.14], [0.8, 0.9, 1, 0.28], gl.LINES);
+      drawLines([-2.67, 1.65, 7.14, -1.23, 1.65, 7.14], [0.8, 0.9, 1, 0.28], gl.LINES);
 
       // sofa
-      box(-2.15, 2.15, 0.0, 0.58, 5.85, 6.75, '#5b4036');
-      box(-2.15, 2.15, 0.58, 1.35, 6.38, 6.8, '#755347');
-      box(-2.4, -1.98, 0, 0.82, 5.8, 6.8, '#67483d');
-      box(1.98, 2.4, 0, 0.82, 5.8, 6.8, '#67483d');
-      box(-1.72, -0.08, 0.6, 0.95, 5.9, 6.48, '#936c58');
-      box(0.08, 1.72, 0.6, 0.95, 5.9, 6.48, '#9a705a');
+      boxTex(-2.15, 2.15, 0.0, 0.58, 5.85, 6.75, textures.sofa, [2, 2]);
+      boxTex(-2.15, 2.15, 0.58, 1.35, 6.38, 6.8, textures.sofa, [2, 2]);
+      boxTex(-2.4, -1.98, 0, 0.82, 5.8, 6.8, textures.sofa, [2, 2]);
+      boxTex(1.98, 2.4, 0, 0.82, 5.8, 6.8, textures.sofa, [2, 2]);
+      boxTex(-1.72, -0.08, 0.6, 0.95, 5.9, 6.48, textures.sofa, [2, 2]);
+      boxTex(0.08, 1.72, 0.6, 0.95, 5.9, 6.48, textures.sofa, [2, 2]);
 
-      // TV
-      box(-1.05, 1.05, 1.15, 2.25, 7.08, 7.2, '#0d1013');
-      drawUnlitMesh('cube', model(0, 1.7, 7.06, 1.8, 0.92, 0.01), [0.025, 0.12, 0.14, 1]);
-      // TV glow line
-      drawLines([-0.85, 1.28, 7.04, 0.85, 1.28, 7.04], [0.2, 0.9, 0.8, 0.35], gl.LINES);
+      // TV frame + generated screen
+      box(-1.05, 1.05, 1.15, 2.25, 7.08, 7.2, '#141414');
+      if (textures.tv.loaded) drawTexturedQuad(model(0, 1.7, 7.06, 1.8, 0.92, 1), textures.tv, [1, 1, 1, 1], [1, 1]);
 
-      // side table
+      // side table / lamp
       box(-3.0, -2.35, 0, 0.44, 2.25, 3.25, '#4a372d');
-      // lamp
       drawMesh('cylinder', model(-2.68, 0.92, 2.75, 0.025, 0.92, 0.025), color('#b88c58'));
       drawMesh('cylinder', model(-2.68, 1.4, 2.75, 0.22, 0.28, 0.22), color('#e0b26e'));
       drawUnlitMesh('sphere', model(-2.68, 1.42, 2.75, 0.09, 0.09, 0.09), [1.0, 0.72, 0.35, 1]);
@@ -400,12 +638,12 @@
       }
     }
 
-    function drawBin(state) {
+    function drawBin(c, state) {
       var b = state.bin;
-      // shadow
-      drawUnlitMesh('disk', model(b.x, 0.032, b.z, 0.5, 1, 0.3), [0.01, 0.01, 0.02, 0.34]);
-      // body
-      drawMesh('cylinder', model(b.x, 0.56, b.z, 0.36, 1.12, 0.36), color('#78959a'));
+      // generated soft contact shadow
+      drawShadow(c, b.x, b.z, 0.9, 0.45, 0.42);
+      // body wrapped in the generated can texture
+      drawMesh('cylinderTex', model(b.x, 0.56, b.z, 0.36, 1.12, 0.36), [1, 1, 1], textures.canWrap, [1, 1], true);
       // dark inner opening
       drawUnlitMesh('disk', model(b.x, 1.125, b.z, 0.34, 1, 0.34), [0.02, 0.055, 0.065, 1]);
       // rim
@@ -439,30 +677,22 @@
       }
     }
 
-    function drawProjectiles(state) {
-      for (var i = 0; i < state.projectiles.length; i++) {
-        var pr = state.projectiles[i];
+    function drawProjectiles(c, state) {
+      var list = state.projectiles.slice().sort(function (a, b) { return b.t - a.t; });
+      for (var i = 0; i < list.length; i++) {
+        var pr = list[i];
         var t = Math.max(0, Math.min(1, pr.t / pr.duration));
-        // soft shadow on the floor
+        var px = pr.from.x + (pr.to.x - pr.from.x) * t;
+        var py = pr.from.y + (pr.to.y - pr.from.y) * t + Math.sin(Math.PI * t) * pr.arc;
+        var pz = pr.from.z + (pr.to.z - pr.from.z) * t;
         var gx = pr.from.x + (pr.to.x - pr.from.x) * t;
         var gz = pr.from.z + (pr.to.z - pr.from.z) * t;
-        drawUnlitMesh('disk', model(gx, 0.04, gz, 0.09, 1, 0.06), [0.01, 0.01, 0.015, 0.2]);
-        for (var j = 4; j >= 0; j--) {
-          var tt = Math.max(0, t - j * 0.035);
-          var px = pr.from.x + (pr.to.x - pr.from.x) * tt;
-          var py = pr.from.y + (pr.to.y - pr.from.y) * tt + Math.sin(Math.PI * tt) * pr.arc;
-          var pz = pr.from.z + (pr.to.z - pr.from.z) * tt;
-          var s = j === 0 ? 0.075 : 0.035;
-          drawMesh('sphere', model(px, py, pz, s, s, s), color(j === 0 ? '#f4c96b' : '#d7b773'));
-        }
+        drawShadow(c, gx, gz, 0.34, 0.14, 0.26);
+        var tex = textures[pr.type] || textures.bag;
+        var w = pr.type === 'bottle' ? 0.28 : (pr.type === 'can' ? 0.26 : 0.42);
+        var h = pr.type === 'bottle' ? 0.58 : (pr.type === 'can' ? 0.38 : 0.42);
+        drawBillboard(c, tex, px, py, pz, w, h, [1, 1, 1, 1]);
       }
-    }
-
-    function drawHand(state) {
-      // hand/body at the lower foreground
-      drawMesh('sphere', model(0, 0.82, -1.4, 0.15, 0.18, 0.12), color('#b98262'));
-      drawMesh('sphere', model(0, 0.96, -1.4, 0.12, 0.12, 0.12), color('#597f61'));
-      drawMesh('sphere', model(0, 0.94, -1.28, 0.06, 0.06, 0.06), color('#d7ad56'));
     }
 
     function spawnEffects(state) {
@@ -553,18 +783,19 @@
       gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
       gl.useProgram(lit.p);
       gl.uniformMatrix4fv(lit.uViewProj, false, viewProj);
+      var c = cameraBasis();
 
-      drawRoom();
-      drawBin(state);
+      drawRoom(c);
+      drawBin(c, state);
       drawPreview(state);
-      drawProjectiles(state);
-      drawHand(state);
+      drawProjectiles(c, state);
       spawnEffects(state);
       drawParticles(dt);
 
       gl.disable(gl.BLEND);
     }
 
+    initTextures();
     resize();
     return { resize: resize, draw: draw, kind: 'webgl' };
   }
