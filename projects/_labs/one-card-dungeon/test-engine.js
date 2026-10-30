@@ -32,6 +32,34 @@ var reward = g.rewardChoices[0];
 E.chooseReward(g, 0);
 assert(g.floor === 2 && g.phase === 'run' && g.deck.length === 9, '報酬を選んで次の階へ');
 
+g = E.createGame({ rng: E.mulberry32(9) });
+E.start(g);
+g.floor = 2;
+g.phase = 'reward';
+g.rewardChoices = ['strike'];
+E.chooseReward(g, 0);
+assert(g.phase === 'relic' && g.relicChoices.length === 3, '2階クリア後にレリック選択');
+var relicId = g.relicChoices[0];
+E.chooseRelic(g, 0);
+assert(g.floor === 3 && g.phase === 'run' && g.relics[0] === relicId, 'レリックを取得して3階へ');
+
+g = E.createGame({ rng: E.mulberry32(10) });
+E.start(g);
+g.floor = 1;
+g.phase = 'reward';
+g.rewardChoices = ['strike'];
+g.player.hp = 50;
+E.skipReward(g);
+assert(g.phase === 'run' && g.floor === 2 && g.player.hp === 60 && g.deck.length === 8, '休憩で回復して次の階へ');
+
+g = E.createGame({ rng: E.mulberry32(11) });
+E.start(g);
+g.relics = ['whetstone'];
+g.hand = [{ uid: 99, id: 'strike', name: 'ストライク', icon: '⚔', color: '#ff6b6b', desc: '8ダメージ' }];
+g.enemy.hp = 30;
+E.playCard(g, 0);
+assert(g.enemy.hp === 20, '砥石で攻撃+2');
+
 g = E.createGame({ rng: E.mulberry32(4) });
 E.autoStep(g);
 for (var i = 0; i < 500 && !g.over; i++) E.autoStep(g);
