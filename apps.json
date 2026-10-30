@@ -270,6 +270,23 @@
       "updatedAt": "2026-10-30T20:08:07+09:00"
     },
     {
+      "id": "stick-colosseum",
+      "path": "projects/_labs/stick-colosseum/",
+      "tag": "GAME",
+      "title": "スティック・コロシアム",
+      "description": "5人vs5人のターン制押し出しバトル。自分の選手を引っ張って突進させ、相手をリングの外へ押し出す。各選手は1回だけ「ふんばり」でリング際に踏ん張るため、先攻の一撃では落ちず、先に3人リングアウトさせた方が勝ち。失点側が次の先攻。3ステージのCPU強化、フォーメーション3種類、紙吹雪と花火のリングアウト演出つき。",
+      "tags": [
+        "バトル",
+        "ターン制",
+        "アクション",
+        "ステージ"
+      ],
+      "thumbnail": "projects/_labs/stick-colosseum/thumb.jpg",
+      "summary": "5vs5で相手をリング外へ押し出す、ふんばりつきターン制バトル。",
+      "createdAt": "2026-10-30",
+      "updatedAt": "2026-10-30T20:50:22+09:00"
+    },
+    {
       "id": "sleep-guard",
       "path": "projects/_labs/sleep-guard/",
       "tag": "GAME",
