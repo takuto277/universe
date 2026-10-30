@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#050b14" />
   <meta name="description" content="THERMO — exchange heat with water, ice and doors. Keep your body in the safe band and escape five rooms." />
   <title>THERMO</title>
-  <link rel="stylesheet" href="style.css?v=20261030-thermo1" />
+  <link rel="stylesheet" href="style.css?v=20261030-thermo2" />
 </head>
 <body>
   <div id="app">
@@ -37,7 +37,7 @@
 
       <div class="meta">
         <span id="moves">MOVES 0</span>
-        <span id="time">TIME 0.0</span>
+        <span id="time">TIME 45.0</span>
       </div>
 
       <p id="prompt" class="prompt">MOVE NEXT TO A WATER, ICE, EMBER OR DOOR</p>
@@ -47,7 +47,7 @@
       <div class="start-content">
         <p class="eyebrow">A FIVE-ROOM THERMAL PUZZLE</p>
         <h1>THERMO</h1>
-        <p class="lead">You are a heat-bearing spark in a cold facility. Swap heat with the room, keep your body between <strong>20°C and 80°C</strong>, and reach the exit.</p>
+        <p class="lead">You are a heat-bearing spark in a cold facility. Swap heat with the room, keep your body between <strong>15°C and 80°C</strong>, and reach the exit before the 45-second room timer runs out.</p>
         <div class="rules">
           <p><span class="rule-icon warm">+15</span> Absorb water or embers to warm up. Water freezes into a walkable floor.</p>
           <p><span class="rule-icon cool">-15</span> Emit heat into ice or a heat door. Doors open; ice turns back to water.</p>
@@ -55,7 +55,7 @@
         </div>
         <button id="btn-start" class="primary big" type="button">ENTER FACILITY</button>
         <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
-        <p class="tiny">Five rooms · no timer · the safe band is the puzzle</p>
+        <p class="tiny">Five rooms · 45 seconds each · the room slowly drains your heat</p>
       </div>
     </div>
 
@@ -85,10 +85,10 @@
     </div>
   </div>
 
-  <script src="engine.js?v=20261030-thermo1"></script>
-  <script src="audio.js?v=20261030-thermo1"></script>
-  <script src="renderer.js?v=20261030-thermo1"></script>
-  <script src="game.js?v=20261030-thermo1"></script>
+  <script src="engine.js?v=20261030-thermo2"></script>
+  <script src="audio.js?v=20261030-thermo2"></script>
+  <script src="renderer.js?v=20261030-thermo2"></script>
+  <script src="game.js?v=20261030-thermo2"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

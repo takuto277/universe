@@ -46,6 +46,15 @@
       ctx.fillStyle = glow;
       ctx.fillRect(0, 0, width, height);
 
+      var hotness = Math.max(0, Math.min(1, (state.temp - 50) / 35));
+      var coldness = Math.max(0, Math.min(1, (50 - state.temp) / 35));
+      if (hotness > 0.01 || coldness > 0.01) {
+        ctx.fillStyle = hotness >= coldness
+          ? 'rgba(112, 22, 24, ' + (0.06 + hotness * 0.16).toFixed(3) + ')'
+          : 'rgba(15, 44, 104, ' + (0.06 + coldness * 0.16).toFixed(3) + ')';
+        ctx.fillRect(0, 0, width, height);
+      }
+
       // board shadow
       ctx.fillStyle = 'rgba(0, 0, 0, 0.24)';
       ctx.fillRect(ox - 5, oy - 5, gridW + 10, gridH + 10);
@@ -168,6 +177,16 @@
 
       // player
       var p = state.player;
+      if (hotness > 0.01 || coldness > 0.01) {
+        var vg = ctx.createRadialGradient(width / 2, height / 2, width * 0.22, width / 2, height / 2, width * 0.82);
+        vg.addColorStop(0, 'rgba(0, 0, 0, 0)');
+        vg.addColorStop(1, hotness >= coldness
+          ? 'rgba(90, 16, 20, ' + (0.12 + hotness * 0.18).toFixed(3) + ')'
+          : 'rgba(8, 30, 78, ' + (0.14 + coldness * 0.2).toFixed(3) + ')');
+        ctx.fillStyle = vg;
+        ctx.fillRect(0, 0, width, height);
+      }
+
       var px = sx(p.x) + cell / 2;
       var py = sy(p.y) + cell / 2;
       var hot = Math.max(0, Math.min(1, (state.temp - 20) / 60));

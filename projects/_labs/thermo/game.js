@@ -84,13 +84,13 @@
   function updateHUD(state) {
     text(els.room, 'ROOM ' + state.level + ' / ' + state.levelCount);
     text(els.roomName, state.levelName);
-    text(els.tempValue, state.temp);
+    text(els.tempValue, Math.round(state.temp));
     text(els.moves, 'MOVES ' + state.levelMoves);
-    text(els.time, 'TIME ' + state.levelTime.toFixed(1));
+    text(els.time, 'TIME ' + state.timeLeft.toFixed(1));
     if (els.tempMark) {
       els.tempMark.style.left = Math.max(0, Math.min(100, state.temp)) + '%';
-      var hot = Math.max(0, Math.min(1, (state.temp - state.safeMin) / (state.safeMax - state.safeMin)));
-      els.tempMark.style.background = hot > 0.55 ? '#ff9a5a' : '#6fd6c3';
+      var hot = Math.max(0, Math.min(1, (state.temp - 50) / 35));
+      els.tempMark.style.background = hot > 0.45 ? '#ff9a5a' : (state.temp < 40 ? '#6f9bd6' : '#6fd6c3');
     }
     var target = state.target;
     var prompt = 'MOVE NEXT TO A WATER, ICE, EMBER OR DOOR';
@@ -130,10 +130,17 @@
       text(els.stateStats, 'MOVES ' + (r.moves || 0) + ' · TIME ' + (r.time || 0).toFixed(1) + 's');
       text(els.btnState, 'NEXT ROOM');
     } else if (state.phase === 'failed') {
-      text(els.stateEyebrow, state.reason === 'FREEZE' ? 'TOO COLD' : 'OVERHEATED');
-      text(els.stateTitle, state.reason === 'FREEZE' ? 'FROZEN' : 'BURNED OUT');
-      text(els.stateSub, 'The safe band is 20°C to 80°C.');
-      text(els.stateStats, 'BODY ' + state.temp + '°C · MOVES ' + state.levelMoves);
+      var reason = state.reason;
+      if (reason === 'TIME') {
+        text(els.stateEyebrow, 'TIME UP');
+        text(els.stateTitle, 'ROOM LOCKED');
+        text(els.stateSub, 'The room closed before you escaped.');
+      } else {
+        text(els.stateEyebrow, reason === 'FREEZE' ? 'TOO COLD' : 'OVERHEATED');
+        text(els.stateTitle, reason === 'FREEZE' ? 'FROZEN' : 'BURNED OUT');
+        text(els.stateSub, 'The safe band is 15°C to 80°C.');
+      }
+      text(els.stateStats, 'BODY ' + Math.round(state.temp) + '°C · MOVES ' + state.levelMoves);
       text(els.btnState, 'RETRY ROOM');
     } else if (state.phase === 'finished') {
       text(els.stateEyebrow, 'ALL CLEAR');
