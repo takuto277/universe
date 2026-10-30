@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#0a111b" />
+  <meta name="description" content="STILL WATER — a one-button fishing game. Charge the cast, hook the bite, and ease the line to land eight fish." />
+  <title>STILL WATER</title>
+  <link rel="stylesheet" href="style.css?v=20261031-stillwater1" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-top">
+        <div>
+          <p class="eyebrow">A ONE-BUTTON FISHING STORY</p>
+          <h1>STILL WATER</h1>
+        </div>
+        <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+      </div>
+      <div class="stats">
+        <div class="stat"><span class="label">CASTS</span><strong id="casts">8</strong></div>
+        <div class="stat big"><span class="label">SCORE</span><strong id="score">0</strong></div>
+        <div class="stat"><span class="label">BEST</span><strong id="best">0</strong></div>
+        <div class="stat"><span class="label">TOTAL</span><strong id="total">0 cm</strong></div>
+      </div>
+
+      <div id="power-wrap" class="meter-wrap is-hidden">
+        <div class="meter-label"><span>CAST POWER</span><span id="power-text">0%</span></div>
+        <div class="meter power"><span id="power-bar"></span></div>
+      </div>
+      <div id="reel-wrap" class="meter-wrap is-hidden">
+        <div class="meter-label"><span>LINE TENSION</span><span id="tension-text">0%</span></div>
+        <div class="meter tension"><span class="safe-zone"></span><span id="tension-bar"></span></div>
+        <div class="meter-label sub"><span>REEL</span><span id="progress-text">0%</span></div>
+        <div class="meter progress"><span id="progress-bar"></span></div>
+      </div>
+
+      <p id="hint" class="hint">HOLD TO CHARGE · RELEASE TO CAST</p>
+    </div>
+
+    <div id="catch-banner" class="catch-banner">
+      <span id="catch-eyebrow">CAUGHT</span>
+      <strong id="catch-title">BLUEGILL</strong>
+      <span id="catch-sub">24 cm · +24</span>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">EIGHT CASTS. ONE QUIET LAKE.</p>
+        <h1>STILL<br /><span>WATER</span></h1>
+        <p class="lead">A one-button fishing game. Read the water, time the bite, and keep the line from snapping.</p>
+        <div class="rules">
+          <p><span class="rule-icon cast">CAST</span> Hold to charge, release to cast.</p>
+          <p><span class="rule-icon wait">WAIT</span> When the float dips, tap to hook.</p>
+          <p><span class="rule-icon reel">REEL</span> Hold to reel. Release before the line snaps. Keep tension in the green band.</p>
+          <p><span class="rule-icon deep">DEEP</span> Longer casts reach rarer fish.</p>
+        </div>
+        <button id="btn-start" class="primary big" type="button">CAST OFF</button>
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">8 casts · 5 kinds of catch · best score saved</p>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay">
+      <div class="result-content">
+        <p class="eyebrow">THE LAKE GOES QUIET</p>
+        <h1>STILL WATER</h1>
+        <div class="result-score"><span id="result-score">0</span><small>PTS</small></div>
+        <p id="result-sub" class="lead">Good things come to those who wait.</p>
+        <p id="result-meta" class="result-meta">8 CASTS · 0 CATCHES · 0 cm</p>
+        <ul id="catch-list" class="catch-list"></ul>
+        <p id="result-best" class="tiny">BEST 0</p>
+        <button id="btn-retry" class="primary big" type="button">CAST AGAIN</button>
+        <button id="btn-result-sound" class="link-btn" type="button">SOUND: ON</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261031-stillwater1"></script>
+  <script src="audio.js?v=20261031-stillwater1"></script>
+  <script src="renderer.js?v=20261031-stillwater1"></script>
+  <script src="game.js?v=20261031-stillwater1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
