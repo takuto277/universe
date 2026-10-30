@@ -8,8 +8,9 @@
   var Audio = root.SoccerAudio;
 
   var canvas, renderer, scene, camera, stageGroup;
-  var ballMeshes = [], aimLine = null, activeRing = null;
+  var ballMeshes = [], aimLine = null, activeRing = null, previewDots = null;
   var rotorMeshes = [], sliderMeshes = [];
+  var previewAt = -1, previewPower = -1, previewYaw = 0;
   var els = {};
   var game = null;
   var mode = 'title';
@@ -96,6 +97,7 @@
     if (els.shots) els.shots.textContent = 'H' + (holeIndex + 1) + '/3 · PAR ' + st.par + ' · ' + st.strokes.player + '-' + st.strokes.cpu;
     if (els.hit) els.hit.disabled = !(st.phase === 'aim' && st.turn === 'player' && mode === 'hole');
     if (els.powerFill) els.powerFill.style.width = Math.round(power * 100) + '%';
+    if (els.powerPct) els.powerPct.textContent = Math.round(power * 100) + '%';
     var target = null;
     if (mode === 'stage') target = 'screen-stage';
     else if (mode === 'over') target = 'screen-over';
@@ -170,7 +172,7 @@
     for (var i=0;i<events.length;i++) {
       var ev = events[i];
       if (ev.type === 'shoot') { if (Audio) Audio.playSfx('shot'); }
-      else if (ev.type === 'bumper') { if (Audio) Audio.playSfx('bumper'); }
+      else if (ev.type === 'bumper' || ev.type === 'rotor' || ev.type === 'slider') { if (Audio) Audio.playSfx('bumper'); }
       else if (ev.type === 'water') { if (Audio) Audio.playSfx('water'); }
       else if (ev.type === 'holehole') {
         if (Audio) Audio.playSfx('sink');
@@ -255,7 +257,8 @@
         o.material.dispose();
       }
     });
-    stageGroup = null; ballMeshes = []; aimLine = null; activeRing = null; rotorMeshes = []; sliderMeshes = [];
+    stageGroup = null; ballMeshes = []; aimLine = null; activeRing = null; previewDots = null; rotorMeshes = []; sliderMeshes = [];
+    previewAt = -1; previewPower = -1; previewYaw = 0;
   }
   function buildHole() {
     clearHole();
@@ -324,6 +327,10 @@
     var aimGeo = new T.BufferGeometry().setFromPoints([new T.Vector3(0,0,0), new T.Vector3(0,0,-1)]);
     aimLine = new T.Line(aimGeo, new T.LineBasicMaterial({ color: 0xffe6a3, transparent: true, opacity: 0.85 }));
     stageGroup.add(aimLine);
+    previewDots = new T.Points(new T.BufferGeometry().setFromPoints([new T.Vector3(0, 0, 0)]),
+      new T.PointsMaterial({ color: 0xffe6a3, size: 0.14, transparent: true, opacity: 0.5, depthWrite: false }));
+    previewDots.visible = false;
+    stageGroup.add(previewDots);
   }
 
   function ballWorld(key) {
@@ -362,8 +369,28 @@
       aimLine.visible = true;
       var len = 1.3 + power * 2.2;
       aimLine.geometry.setFromPoints([new T.Vector3(ballPos.x, 0.3, ballPos.z), new T.Vector3(ballPos.x + dir.x * len, 0.3, ballPos.z + dir.z * len)]);
+      var previewValue = charging ? power : 0.5;
+      if (previewDots && (previewAt < 0 || time - previewAt > 0.08 || Math.abs(previewValue - previewPower) > 0.015 || Math.abs(yaw - previewYaw) > 0.004)) {
+        var preview = E.previewShot(game, yaw, previewValue);
+        var vecs = [];
+        for (var p=0;p<preview.length;p++) vecs.push(new T.Vector3(mapX(preview[p].x), 0.18, mapZ(preview[p].y)));
+        if (vecs.length > 1) {
+          var oldGeo = previewDots.geometry;
+          previewDots.geometry = new T.BufferGeometry().setFromPoints(vecs);
+          oldGeo.dispose();
+          previewDots.visible = true;
+          previewDots.material.opacity = charging ? 0.95 : 0.38;
+          var last = preview[preview.length - 1];
+          var reach = Math.sqrt((last.x - game.target.x) * (last.x - game.target.x) + (last.y - game.target.y) * (last.y - game.target.y));
+          previewDots.material.color.setHex(reach < game.target.r + 8 ? 0x8ff0d0 : 0xffd166);
+        } else {
+          previewDots.visible = false;
+        }
+        previewAt = time; previewPower = previewValue; previewYaw = yaw;
+      }
     } else {
       aimLine.visible = false;
+      if (previewDots) previewDots.visible = false;
     }
     var camPos = new T.Vector3(ballPos.x - dir.x * 4.2, 2.25, ballPos.z - dir.z * 4.2);
     var look = new T.Vector3(ballPos.x + dir.x * 3.3, 0.25, ballPos.z + dir.z * 3.3);
@@ -410,7 +437,7 @@
   function init() {
     canvas = $('game');
     els.hud = $('hud'); els.you = $('you'); els.cpu = $('cpu'); els.turn = $('turn'); els.shots = $('shots');
-    els.hit = $('btn-hit'); els.powerHud = document.querySelector ? document.querySelector('.power-hud') : null; els.powerFill = $('power-fill');
+    els.hit = $('btn-hit'); els.powerHud = document.querySelector ? document.querySelector('.power-hud') : null; els.powerFill = $('power-fill'); els.powerPct = $('power-pct');
     els.sound = $('btn-sound'); els.pause = $('btn-pause');
     els.screenTitle = $('screen-title'); els.screenOver = $('screen-over'); els.screenStage = $('screen-stage'); els.screenEnding = $('screen-ending'); els.screenPause = $('screen-pause');
     els.overYou = $('over-you'); els.overCpu = $('over-cpu'); els.overStage = $('over-stage');

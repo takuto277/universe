@@ -87,6 +87,11 @@ sliderHit.balls.player.x = sh.x; sliderHit.balls.player.y = sh.y; sliderHit.phas
 E.update(sliderHit, 1 / 60);
 var sliderEvents = E.consumeEvents(sliderHit);
 assert(sliderEvents.some(function (ev) { return ev.type === 'slider'; }), 'ball should bounce off a slider');
+var previewGame = E.createGame();
+var preview = E.previewShot(previewGame, Math.PI / 2, 0.55);
+assert(preview.length > 2, 'preview should contain trajectory points');
+assert(previewGame.phase === 'aim' && previewGame.strokes.player === 0, 'preview should not mutate the match');
+assert(previewGame.balls.player.y === previewGame.tee.y, 'preview should leave the ball at the tee');
 var state = E.getState(s);
 assert(state.balls && state.strokes && state.turn, 'match state is missing');
 assert(state.par === 2 && state.hole === 0, 'hole metadata is wrong');

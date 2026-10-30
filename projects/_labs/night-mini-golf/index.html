@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#070b16" />
   <title>月夜のミニゴルフ MATCH - CPUと3Dパット対決</title>
-  <link rel="stylesheet" href="styles.css?v=3" />
+  <link rel="stylesheet" href="styles.css?v=4" />
 </head>
 <body>
   <main id="app">
@@ -17,7 +17,7 @@
         <div class="team cpu"><span>CPU</span><b id="cpu">0</b></div>
       </header>
       <button id="btn-hit" class="hit-btn" type="button">HIT</button>
-      <div class="power-hud"><span>POWER</span><div><i id="power-fill"></i></div></div>
+      <div class="power-hud"><span>POWER <b id="power-pct">0%</b></span><div><i id="power-fill"></i></div></div>
       <button id="btn-sound" class="icon-btn sound-btn" type="button" aria-label="BGMを消音">♪</button>
       <button id="btn-pause" class="icon-btn hidden" type="button" aria-label="ポーズ">Ⅱ</button>
 
@@ -31,7 +31,7 @@
             <li>HITを押し続けてパワーを溜め、離すとショット</li>
             <li>CPUと交互にプレイ。先にカップインした方がホール獲得</li>
             <li>3ホールで先に2勝した方がコース勝利</li>
-            <li>壁・バンパー・砂・水を避けてカップへ</li>
+            <li>点線の予測軌道を見ながら、壁・水・動く障害物を避ける</li>
             <li>3コース制。負けるとコースをやり直し</li>
             <li>BGM・効果音つき。右上の♪で消音</li>
           </ul>
@@ -85,8 +85,8 @@
   </main>
   <script src="vendor/three.min.js"></script>
   <script src="audio.js?v=2"></script>
-  <script src="engine.js?v=6"></script>
-  <script src="game.js?v=6"></script>
+  <script src="engine.js?v=8"></script>
+  <script src="game.js?v=8"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

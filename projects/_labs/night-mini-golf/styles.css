@@ -259,5 +259,6 @@ h1 {
 .hit-btn:disabled { opacity:.38; filter:grayscale(.4); }
 .hit-btn.charging { transform:scale(.96); }
 .power-hud { position:absolute; z-index:7; left:50%; bottom:46px; transform:translateX(-50%); width:220px; pointer-events:none; color:var(--muted); font-size:8px; font-weight:900; letter-spacing:1px; }
+.power-hud b { margin-left:6px; color:var(--gold); }
 .power-hud > div { height:10px; margin-top:4px; border:1px solid rgba(125,245,199,.28); border-radius:999px; overflow:hidden; background:rgba(4,14,10,.78); }
 .power-hud i { display:block; width:0%; height:100%; background:linear-gradient(90deg,var(--mint),var(--gold),var(--pink)); }
