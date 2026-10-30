@@ -22,7 +22,7 @@
 
   var STAGES = [
     {
-      id: 'corridor', name: '1F 渡り廊下', length: 3000, halfWidth: 150, baseSpeed: 300, maxSpeed: 360, turns: 2,
+      id: 'corridor', name: '1F 昇降口〜廊下', length: 3000, halfWidth: 150, baseSpeed: 300, maxSpeed: 360, turns: 2,
       curveAmp: 76,
       obstacles: [
         obstacle(480, -86, 128, 50, 'locker'), obstacle(760, 92, 52, 52, 'bucket'),
@@ -33,7 +33,7 @@
       itemBoxes: [itemBox(300, 0), itemBox(850, -58), itemBox(1350, 62), itemBox(1900, 0), itemBox(2450, -58), itemBox(2850, 62)]
     },
     {
-      id: 'special', name: '特別棟', length: 3800, halfWidth: 140, baseSpeed: 320, maxSpeed: 385, turns: 3,
+      id: 'special', name: '2F 特別教室', length: 3800, halfWidth: 140, baseSpeed: 320, maxSpeed: 385, turns: 3,
       curveAmp: 92,
       obstacles: [
         obstacle(420, -74, 120, 50, 'locker'), obstacle(720, 84, 104, 46, 'desk'),
@@ -45,7 +45,7 @@
       itemBoxes: [itemBox(280, 0), itemBox(800, 58), itemBox(1300, -62), itemBox(1850, 0), itemBox(2400, 58), itemBox(3000, -62), itemBox(3550, 0)]
     },
     {
-      id: 'entrance', name: '3F エントランス', length: 4500, halfWidth: 130, baseSpeed: 340, maxSpeed: 410, turns: 4,
+      id: 'entrance', name: '3F 渡り廊下', length: 4500, halfWidth: 130, baseSpeed: 340, maxSpeed: 410, turns: 4,
       curveAmp: 108,
       obstacles: [
         obstacle(380, -68, 118, 50, 'locker'), obstacle(680, 78, 118, 50, 'desk'),

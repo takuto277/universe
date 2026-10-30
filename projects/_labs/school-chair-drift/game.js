@@ -273,6 +273,8 @@
       drawWall(c1 + st.halfWidth, c2 + st.halfWidth, s1, s2, d, d2w, '#203d31', '#6fe6b8');
     }
 
+    drawSchoolDetails();
+
     // overhead lights
     for (d = 260; d < VIEW_DEPTH; d += 420) {
       s1 = wrapS(p.s + d, st.length);
@@ -311,6 +313,107 @@
     ctx.moveTo(f1.x, f1.y - h1);
     ctx.lineTo(f2.x, f2.y - h2);
     ctx.stroke();
+  }
+
+  function panelQuad(s, x, d, height, fill, edge, inset) {
+    var p = playerRacer();
+    var st = stageData();
+    var s2 = s + 150;
+    var d2 = wrapS(s2 - p.s, st.length);
+    if (d < 70 || d > 1900 || d2 < 70 || d2 > 1900) return null;
+    var p1 = project(s, x, d);
+    var p2 = project(s2, x, d2);
+    if (!p1 || !p2) return null;
+    var top1 = p1.y - height * p1.scale;
+    var top2 = p2.y - height * p2.scale;
+    ctx.fillStyle = fill;
+    ctx.beginPath();
+    ctx.moveTo(p1.x, p1.y);
+    ctx.lineTo(p2.x, p2.y);
+    ctx.lineTo(p2.x, top2);
+    ctx.lineTo(p1.x, top1);
+    ctx.closePath();
+    ctx.fill();
+    if (edge) {
+      ctx.strokeStyle = edge;
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+    return { x1: p1.x, x2: p2.x, y1: p1.y, y2: p2.y, top1: top1, top2: top2 };
+  }
+
+  function drawWallText(text, s, x, d, yOffset, size) {
+    var p = playerRacer();
+    var st = stageData();
+    var pr = project(s, x, d);
+    if (!pr) return;
+    var px = pr.x;
+    var py = pr.y - yOffset * pr.scale;
+    if (px < -60 || px > C.VIEW_W + 60 || py < 0 || py > C.VIEW_H) return;
+    ctx.save();
+    ctx.fillStyle = 'rgba(237, 255, 244, 0.82)';
+    ctx.font = '900 ' + Math.max(6, size * pr.scale) + 'px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(text, px, py);
+    ctx.restore();
+  }
+
+  function drawSchoolDetails() {
+    var p = playerRacer();
+    var st = stageData();
+    var base = Math.floor((p.s - 200) / 260) * 260;
+    for (var s = base; s < p.s + 1900; s += 260) {
+      var d = wrapS(s - p.s, st.length);
+      if (d < 90 || d > 1900) continue;
+      var center = E.trackCenter(st, s);
+      var leftX = center - st.halfWidth;
+      var rightX = center + st.halfWidth;
+      var index = Math.floor(s / 260);
+      var side = index % 4;
+      // opposite walls get doors/windows; near the start, shoe lockers.
+      if (s >= -260 && s < 320) {
+        panelQuad(s + 20, leftX, wrapS(s + 20 - p.s, st.length), 96, 'rgba(57, 100, 132, 0.75)', 'rgba(182, 233, 255, 0.45)');
+        panelQuad(s + 20, rightX, wrapS(s + 20 - p.s, st.length), 96, 'rgba(57, 100, 132, 0.75)', 'rgba(182, 233, 255, 0.45)');
+        drawWallText('下駄箱', s + 70, leftX, wrapS(s + 70 - p.s, st.length), 58, 10);
+        drawWallText('昇降口', s + 70, rightX, wrapS(s + 70 - p.s, st.length), 58, 10);
+      } else if (side === 0 || side === 3) {
+        panelQuad(s, leftX, d, 90, 'rgba(26, 62, 48, 0.8)', 'rgba(143, 240, 208, 0.35)');
+        drawWallText(index % 3 === 0 ? '教室' : '特別教室', s + 10, leftX, wrapS(s + 10 - p.s, st.length), 52, 9);
+      } else if (side === 1) {
+        // classroom door
+        panelQuad(s, leftX, d, 86, 'rgba(101, 69, 40, 0.9)', 'rgba(255, 209, 102, 0.5)');
+        panelQuad(s + 8, leftX, wrapS(s + 8 - p.s, st.length), 70, 'rgba(171, 121, 69, 0.55)', 'rgba(255, 226, 150, 0.35)');
+        drawWallText('1-A', s + 14, leftX, wrapS(s + 14 - p.s, st.length), 62, 8);
+      } else {
+        // windows along the right wall
+        panelQuad(s, rightX, d, 74, 'rgba(97, 181, 196, 0.26)', 'rgba(180, 247, 255, 0.55)');
+        for (var w = 1; w < 4; w++) {
+          var ws = s + w * 34;
+          var wd = wrapS(ws - p.s, st.length);
+          var wp = project(ws, rightX, wd);
+          if (wp) {
+            ctx.strokeStyle = 'rgba(207, 252, 255, 0.33)';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(wp.x, wp.y - 70 * wp.scale);
+            ctx.lineTo(wp.x, wp.y - 10 * wp.scale);
+            ctx.stroke();
+          }
+        }
+      }
+      if (index % 2 === 1) {
+        panelQuad(s, rightX, d, 68, 'rgba(38, 81, 67, 0.64)', 'rgba(160, 245, 214, 0.28)');
+      }
+    }
+    // stairs signs at fixed sections of each floor
+    var stairS = st.id === 'corridor' ? 1500 : (st.id === 'special' ? 2300 : 3300);
+    var stairD = wrapS(stairS - p.s, st.length);
+    if (stairD < 1600) {
+      var sc = E.trackCenter(st, stairS);
+      drawWallText('階段', stairS, sc - st.halfWidth, stairD, 62, 10);
+      drawWallText('↑', stairS + 18, sc - st.halfWidth, wrapS(stairS + 18 - p.s, st.length), 48, 12);
+    }
   }
 
   function drawFinish() {
