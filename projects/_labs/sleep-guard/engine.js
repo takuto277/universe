@@ -20,21 +20,21 @@
   var MAX_EVENTS = 80;
 
   var NOISE_TYPES = [
-    { id: 'window', icon: '🪟', label: '窓', drain: 1.2, x: 0.72, y: 0.36, size: 0.52 },
-    { id: 'door', icon: '🚪', label: 'ドア', drain: 1.1, x: 0.10, y: 0.37, size: 0.18 },
-    { id: 'wall-clock', icon: '🕰️', label: '時計', drain: 1.0, x: 0.22, y: 0.25, size: 0.13 },
-    { id: 'ceiling-fan', icon: '🌀', label: 'ファン', drain: 1.3, x: 0.49, y: 0.22, size: 0.40 },
-    { id: 'tv', icon: '📺', label: 'TV', drain: 1.2, x: 0.90, y: 0.55, size: 0.20 },
-    { id: 'radio', icon: '📻', label: 'ラジオ', drain: 1.1, x: 0.92, y: 0.42, size: 0.14 },
-    { id: 'alarm-clock', icon: '⏰', label: '目覚まし', drain: 1.0, x: 0.24, y: 0.53, size: 0.09 },
-    { id: 'smartphone', icon: '📱', label: 'スマホ', drain: 0.9, x: 0.30, y: 0.54, size: 0.06 },
-    { id: 'vacuum', icon: '🧹', label: '掃除機', drain: 1.4, x: 0.12, y: 0.67, size: 0.22 },
-    { id: 'cat', icon: '🐱', label: '猫', drain: 0.8, x: 0.52, y: 0.75, size: 0.22 },
-    { id: 'music-box', icon: '🎵', label: 'オルゴール', drain: 0.9, x: 0.20, y: 0.39, size: 0.13 },
-    { id: 'radiator', icon: '♨️', label: '暖房', drain: 1.2, x: 0.13, y: 0.53, size: 0.10 },
-    { id: 'wind-chime', icon: '🎐', label: '風鈴', drain: 0.7, x: 0.85, y: 0.32, size: 0.10 },
-    { id: 'neighbor-speaker', icon: '🔊', label: 'スピーカー', drain: 1.3, x: 0.95, y: 0.23, size: 0.10 },
-    { id: 'bird', icon: '🐦', label: '鳥', drain: 0.8, x: 0.74, y: 0.37, size: 0.07 }
+    { id: 'window', icon: '🪟', drain: 1.2, x: 0.708, y: 0.379, w: 0.389, h: 0.227 },
+    { id: 'door', icon: '🚪', drain: 1.1, x: 0.050, y: 0.420, w: 0.100, h: 0.390 },
+    { id: 'wall-clock', icon: '🕰️', drain: 1.0, x: 0.226, y: 0.281, w: 0.150, h: 0.094 },
+    { id: 'ceiling-fan', icon: '🌀', drain: 1.3, x: 0.514, y: 0.220, w: 0.417, h: 0.115 },
+    { id: 'tv', icon: '📺', drain: 1.2, x: 0.889, y: 0.508, w: 0.222, h: 0.109 },
+    { id: 'radio', icon: '📻', drain: 1.1, x: 0.951, y: 0.395, w: 0.097, h: 0.055 },
+    { id: 'alarm-clock', icon: '⏰', drain: 1.0, x: 0.233, y: 0.516, w: 0.069, h: 0.047 },
+    { id: 'smartphone', icon: '📱', drain: 0.9, x: 0.294, y: 0.525, w: 0.032, h: 0.031 },
+    { id: 'vacuum', icon: '🧹', drain: 1.4, x: 0.215, y: 0.658, w: 0.431, h: 0.137 },
+    { id: 'cat', icon: '🐱', drain: 0.8, x: 0.604, y: 0.727, w: 0.444, h: 0.078 },
+    { id: 'music-box', icon: '🎵', drain: 0.9, x: 0.205, y: 0.371, w: 0.110, h: 0.063 },
+    { id: 'radiator', icon: '♨️', drain: 1.2, x: 0.247, y: 0.522, w: 0.160, h: 0.137 },
+    { id: 'wind-chime', icon: '🎐', drain: 0.7, x: 0.847, y: 0.348, w: 0.056, h: 0.148 },
+    { id: 'neighbor-speaker', icon: '🔊', drain: 1.3, x: 0.944, y: 0.238, w: 0.111, h: 0.070 },
+    { id: 'bird', icon: '🐦', drain: 0.8, x: 0.756, y: 0.383, w: 0.069, h: 0.031 }
   ];
 
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
@@ -107,16 +107,17 @@
     var free = NOISE_TYPES.filter(function (type) { return !used[type.id]; });
     if (!free.length) return null;
     var type = free[Math.floor(state.rng() * free.length)];
-    var size = Math.max(24, type.size * state.width);
+    var w = Math.max(12, type.w * state.width);
+    var h = Math.max(12, type.h * state.height);
     var noise = {
       id: state.nextNoiseId++,
       type: type.id,
       icon: type.icon,
-      label: type.label,
       x: type.x * state.width,
       y: type.y * state.height,
-      size: size,
-      r: size / 2,
+      w: w,
+      h: h,
+      r: Math.max(w, h) / 2,
       born: state.time,
       active: false,
       activeAt: state.time + NOISE_GRACE
@@ -178,21 +179,30 @@
 
   function tapAt(state, x, y) {
     if (!state || state.phase !== 'run') return null;
-    for (var i = state.noises.length - 1; i >= 0; i--) {
-      var noise = state.noises[i];
-      var dx = x - noise.x;
-      var dy = y - noise.y;
-      var hitRadius = noise.size ? Math.max(30, noise.size * 0.58) : noise.r * 1.8;
-      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
-        state.noises.splice(i, 1);
-        state.sleep = clamp(state.sleep + TAP_GAIN, 0, MAX_SLEEP);
-        state.score += 10;
-        state.stopped++;
-        pushEvent(state, { type: 'silence', noise: noise });
-        return noise;
+    var bestIndex = -1;
+    var bestScore = Infinity;
+    var bestRadius = Infinity;
+    for (var i = 0; i < state.noises.length; i++) {
+      var candidate = state.noises[i];
+      var dx = x - candidate.x;
+      var dy = y - candidate.y;
+      var hitRadius = candidate.w ? Math.max(26, Math.max(candidate.w, candidate.h) * 0.55) : candidate.r * 1.8;
+      var dist2 = dx * dx + dy * dy;
+      if (dist2 > hitRadius * hitRadius) continue;
+      var score = dist2 / (hitRadius * hitRadius);
+      if (score < bestScore || (score === bestScore && hitRadius < bestRadius)) {
+        bestScore = score;
+        bestRadius = hitRadius;
+        bestIndex = i;
       }
     }
-    return null;
+    if (bestIndex < 0) return null;
+    var noise = state.noises.splice(bestIndex, 1)[0];
+    state.sleep = clamp(state.sleep + TAP_GAIN, 0, MAX_SLEEP);
+    state.score += 10;
+    state.stopped++;
+    pushEvent(state, { type: 'silence', noise: noise });
+    return noise;
   }
 
   function autoStep(state) {
@@ -217,8 +227,9 @@
       if (type) {
         noise.x = type.x * state.width;
         noise.y = type.y * state.height;
-        noise.size = Math.max(24, type.size * state.width);
-        noise.r = noise.size / 2;
+        noise.w = Math.max(12, type.w * state.width);
+        noise.h = Math.max(12, type.h * state.height);
+        noise.r = Math.max(noise.w, noise.h) / 2;
       } else {
         noise.x = noise.x / oldW * state.width;
         noise.y = noise.y / oldH * state.height;
@@ -246,8 +257,8 @@
       over: state.over,
       result: state.result,
       noises: state.noises.map(function (noise) {
-        return { id: noise.id, type: noise.type, icon: noise.icon, label: noise.label,
-                 x: noise.x, y: noise.y, r: noise.r, size: noise.size,
+        return { id: noise.id, type: noise.type, icon: noise.icon,
+                 x: noise.x, y: noise.y, w: noise.w, h: noise.h, r: noise.r,
                  age: Math.max(0, state.time - noise.born),
                  active: noise.active !== false,
                  activeIn: Math.max(0, noise.activeAt - state.time) };

@@ -5,7 +5,7 @@ var passed = 0;
 function assert(cond, msg) { if (!cond) throw new Error('assert failed: ' + msg); passed++; }
 function log(msg) { print(msg); }
 
-assert(E.NOISE_TYPES.length === 15 && E.NOISE_TYPES.every(function (t) { return t.x >= 0 && t.x <= 1 && t.y >= 0 && t.y <= 1 && t.size > 0; }), '背景に合わせた15種類の騒音位置');
+assert(E.NOISE_TYPES.length === 15 && E.NOISE_TYPES.every(function (t) { return t.x >= 0 && t.x <= 1 && t.y >= 0 && t.y <= 1 && t.w > 0 && t.h > 0; }), '背景に合わせた15種類の騒音位置');
 
 var g = E.createGame({ rng: E.mulberry32(1) });
 assert(g.phase === 'idle' && g.sleep === E.START_SLEEP, '開始前は1/3ゲージ');
@@ -22,6 +22,14 @@ assert(tapped && tapped.id === noise.id, '騒音をタップで止められる')
 assert(g.noises.length === 0, 'タップ後に騒音が消える');
 assert(g.sleep > beforeTap, 'タップでゲージが少し回復');
 assert(g.score === 10 && g.stopped === 1, 'スコアと停止数');
+
+g = E.createGame({ rng: E.mulberry32(6) });
+E.start(g);
+g.noises = [
+  { id: 1, type: 'window', x: 100, y: 100, w: 200, h: 200, r: 100 },
+  { id: 2, type: 'bird', x: 100, y: 100, w: 30, h: 30, r: 15 }
+];
+assert(E.tapAt(g, 100, 100).id === 2, '重なった場合は小さいオブジェクトを優先');
 
 g = E.createGame({ rng: E.mulberry32(2) });
 E.start(g);
