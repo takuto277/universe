@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#0a111b" />
   <meta name="description" content="STILL WATER — a one-button fishing game. Charge the cast, hook the bite, and ease the line to land eight fish." />
   <title>STILL WATER</title>
-  <link rel="stylesheet" href="style.css?v=20261031-stillwater1" />
+  <link rel="stylesheet" href="style.css?v=20261031-stillwater2" />
 </head>
 <body>
   <div id="app">
@@ -24,7 +24,7 @@
         <div class="stat"><span class="label">CASTS</span><strong id="casts">8</strong></div>
         <div class="stat big"><span class="label">SCORE</span><strong id="score">0</strong></div>
         <div class="stat"><span class="label">BEST</span><strong id="best">0</strong></div>
-        <div class="stat"><span class="label">TOTAL</span><strong id="total">0 cm</strong></div>
+        <div class="stat"><span class="label">STREAK</span><strong id="streak">0</strong></div>
       </div>
 
       <div id="power-wrap" class="meter-wrap is-hidden">
@@ -38,7 +38,7 @@
         <div class="meter progress"><span id="progress-bar"></span></div>
       </div>
 
-      <p id="hint" class="hint">HOLD TO CHARGE · RELEASE TO CAST</p>
+      <p id="hint" class="hint">DRAG TO AIM · HOLD TO CHARGE · RELEASE TO CAST</p>
     </div>
 
     <div id="catch-banner" class="catch-banner">
@@ -51,16 +51,16 @@
       <div class="start-content">
         <p class="eyebrow">EIGHT CASTS. ONE QUIET LAKE.</p>
         <h1>STILL<br /><span>WATER</span></h1>
-        <p class="lead">A one-button fishing game. Read the water, time the bite, and keep the line from snapping.</p>
+        <p class="lead">A one-button fishing game. Drag to aim at a feeding spot, time the bite, and keep the line from snapping.</p>
         <div class="rules">
-          <p><span class="rule-icon cast">CAST</span> Hold to charge, release to cast.</p>
+          <p><span class="rule-icon cast">CAST</span> Hold and drag sideways to aim. Release to cast.</p>
           <p><span class="rule-icon wait">WAIT</span> When the float dips, tap to hook.</p>
           <p><span class="rule-icon reel">REEL</span> Hold to reel. Release before the line snaps. Keep tension in the green band.</p>
-          <p><span class="rule-icon deep">DEEP</span> Longer casts reach rarer fish.</p>
+          <p><span class="rule-icon deep">DEEP</span> Reeds, open water, and deep rocks have different fish. Tap fast for a PERFECT hook and streak bonus.</p>
         </div>
         <button id="btn-start" class="primary big" type="button">CAST OFF</button>
         <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
-        <p class="tiny">8 casts · 5 kinds of catch · best score saved</p>
+        <p class="tiny">8 casts · 3 feeding spots · 5 kinds of catch · best score saved</p>
       </div>
     </div>
 
@@ -79,10 +79,10 @@
     </div>
   </div>
 
-  <script src="engine.js?v=20261031-stillwater1"></script>
-  <script src="audio.js?v=20261031-stillwater1"></script>
-  <script src="renderer.js?v=20261031-stillwater1"></script>
-  <script src="game.js?v=20261031-stillwater1"></script>
+  <script src="engine.js?v=20261031-stillwater2"></script>
+  <script src="audio.js?v=20261031-stillwater2"></script>
+  <script src="renderer.js?v=20261031-stillwater2"></script>
+  <script src="game.js?v=20261031-stillwater2"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

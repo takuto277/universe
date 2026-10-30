@@ -17,6 +17,11 @@
         phase: Math.random() * Math.PI * 2
       });
     }
+    var spots = root.StillWaterEngine ? root.StillWaterEngine.SPOTS : [
+      { id: 'reeds', name: 'REEDS', x: -0.66 },
+      { id: 'open', name: 'OPEN WATER', x: 0 },
+      { id: 'rocks', name: 'DEEP ROCKS', x: 0.66 }
+    ];
 
     function resize() {
       if (!canvas) return;
@@ -147,6 +152,27 @@
       }
     }
 
+    function drawSpots(state, t) {
+      var horizon = height * 0.35;
+      for (var i = 0; i < spots.length; i++) {
+        var sp = spots[i];
+        var x = width * (0.5 + sp.x * 0.32);
+        var y = horizon + height * 0.19 + (i % 2) * 12;
+        var near = state.phase === 'aim' && Math.abs(state.aimX - sp.x) < 0.18;
+        var a = near ? 0.48 : 0.16;
+        ctx.strokeStyle = 'rgba(128, 221, 205, ' + a.toFixed(3) + ')';
+        ctx.lineWidth = 1;
+        for (var r = 0; r < 2; r++) {
+          var rr = 10 + r * 10 + Math.sin(t * 1.5 + i) * 3;
+          ctx.beginPath();
+          ctx.ellipse(x, y, rr, rr * 0.23, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+        drawFish(x + Math.sin(t * 0.9 + i) * 8, y + 22, 0.55 + i * 0.12,
+          i === 2 ? '#c79b5d' : (i === 0 ? '#7fbfac' : '#8caf8a'), i % 2 === 0, near ? 0.48 : 0.25);
+      }
+    }
+
     function drawFish(x, y, scale, color, flip, alpha) {
       ctx.save();
       ctx.globalAlpha = alpha == null ? 1 : alpha;
@@ -227,18 +253,19 @@
 
       if (state.phase === 'aim') {
         var targetY = height * 0.35 + 70 + state.charge * height * 0.38;
+        var targetX = width * (0.5 + state.aimX * 0.32);
         ctx.save();
         ctx.setLineDash([4, 7]);
         ctx.strokeStyle = 'rgba(114, 201, 189, 0.5)';
         ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(tipX, tipY);
-        ctx.quadraticCurveTo(width * 0.5, (tipY + targetY) * 0.35, width * 0.54, targetY);
+        ctx.quadraticCurveTo(width * 0.5, (tipY + targetY) * 0.35, targetX, targetY);
         ctx.stroke();
         ctx.setLineDash([]);
         ctx.strokeStyle = 'rgba(232, 194, 122, 0.8)';
         ctx.beginPath();
-        ctx.ellipse(width * 0.54, targetY, 20, 5, 0, 0, Math.PI * 2);
+        ctx.ellipse(targetX, targetY, 20, 5, 0, 0, Math.PI * 2);
         ctx.stroke();
         ctx.restore();
         return;
@@ -260,12 +287,18 @@
     function drawAimTarget(state) {
       if (state.phase !== 'aim') return;
       var y = height * 0.35 + 70 + state.charge * height * 0.38;
+      var x = width * (0.5 + state.aimX * 0.32);
       ctx.save();
       ctx.strokeStyle = 'rgba(114, 201, 189, ' + (0.35 + state.charge * 0.4).toFixed(3) + ')';
       ctx.lineWidth = 1.5;
       ctx.beginPath();
-      ctx.ellipse(width * 0.54, y, 26 + state.charge * 12, 6 + state.charge * 3, 0, 0, Math.PI * 2);
+      ctx.ellipse(x, y, 26 + state.charge * 12, 6 + state.charge * 3, 0, 0, Math.PI * 2);
       ctx.stroke();
+      ctx.strokeStyle = 'rgba(232, 194, 122, 0.8)';
+      ctx.beginPath();
+      ctx.arc(x, y, 2.5, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(232, 194, 122, 0.8)';
+      ctx.fill();
       ctx.restore();
     }
 
@@ -325,6 +358,9 @@
         var x = ev.type === 'catch' ? bx : bx;
         var y = ev.type === 'catch' ? by : by;
         if (ev.type === 'cast' || ev.type === 'bite' || ev.type === 'hook') {
+          if (ev.type === 'hook' && ev.quality === 'perfect') {
+            fx.push({ x: x, y: y - 20, vx: 0, vy: -20, life: .9, max: .9, size: 10, color: 'rgba(244, 201, 107,', text: 'PERFECT HOOK' });
+          }
           for (var r = 0; r < (ev.type === 'cast' ? 14 : 8); r++) {
             var ang = Math.random() * Math.PI * 2;
             var sp = 15 + Math.random() * 50;
@@ -379,10 +415,11 @@
       ctx.clearRect(0, 0, width, height);
       drawSky(t);
       drawWater(t, state);
+      drawSpots(state, t);
 
       var horizon = height * 0.35;
       var power = state.phase === 'aim' ? state.charge : state.power;
-      var bx = width * 0.54 + Math.sin(t * 0.7) * 4;
+      var bx = width * (0.5 + state.aimX * 0.32) + Math.sin(t * 0.7) * 4;
       var by = horizon + 70 + power * height * 0.38;
 
       if (state.phase === 'aim') drawAimTarget(state);
