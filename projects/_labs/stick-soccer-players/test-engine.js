@@ -16,10 +16,12 @@ assert(E.OBSTACLES.filter(function (c) { return c.team === 'cpu'; }).length === 
 assert(E.FORMATION_SLOTS.length === 9, 'nine formation slots expected');
 assert(E.FORMATION_LINES.length === 4 && E.CPU_LINES.length === 4, 'four lines expected');
 assert(E.isValidFormation(E.DEFAULT_FORMATION), 'default formation should be legal');
+assert(E.DEFAULT_FORMATION[E.DEFAULT_FORMATION.length - 1].role === 'gk', 'default goalkeeper should be the last formation token');
 assert(E.STAGES.length === 3, 'three stages expected');
 for (var stage = 0; stage < E.STAGES.length; stage++) {
   assert(E.isValidFormation(E.STAGES[stage].cpuFormation), 'CPU formation should be legal');
   assert(E.STAGES[stage].cpuFormation.length === 11, 'CPU formation should have 11');
+  assert(E.STAGES[stage].cpuFormation[0].role === 'gk', 'CPU goalkeeper should be the first formation token');
 }
 assert(!E.isValidFormation([{ line: 0, slot: 0 }, { line: 0, slot: 1 }]), 'adjacent players should be rejected');
 assert(E.isValidFormation([{ line: 0, slot: 0 }, { line: 1, slot: 1 }]), 'different lines may share adjacent slots');
@@ -64,9 +66,52 @@ var charPush = (1 + E.CHAR_REST) / 2;
 var ratio = charPush / ballPush;
 assert(ratio > 0.3 && ratio < 0.36, 'character knockback should be about 1/3 of ball knockback: ' + ratio.toFixed(3));
 
+
+var keeperGame = E.createGame();
+var playerKeeper = keeperGame.chars.filter(function (c) { return c.team === 'player' && c.role === 'gk'; })[0];
+assert(playerKeeper, 'player goalkeeper role is missing');
+assert(playerKeeper.y > E.FIELD.bottom - 100, 'default goalkeeper should start at the back');
+keeperGame.ball.x = playerKeeper.x;
+keeperGame.ball.y = playerKeeper.y - 20;
+keeperGame.ball.vx = 0;
+keeperGame.ball.vy = -40;
+keeperGame.phase = 'moving';
+E.update(keeperGame, 1 / 60);
+assert(keeperGame.phase === 'keeperHold' && keeperGame.turn === 'player', 'goalkeeper should catch inside the penalty area');
+assert(keeperGame.ball.y < playerKeeper.y, 'caught ball should be fixed in front of the goalkeeper');
+for (i = 0; i < 90 && keeperGame.phase === 'keeperHold'; i++) E.update(keeperGame, 1 / 60);
+assert(keeperGame.phase === 'keeperKick', 'keeper catch should lead to a keeper kick');
+var keeperY = playerKeeper.y;
+assert(E.pullKeeperBall(keeperGame, 0, 50) === true, 'keeper should kick the ball');
+assert(Math.abs(keeperGame.ball.vy) > 100, 'keeper kick should launch the ball');
+assert(Math.abs(playerKeeper.vy) < 0.001 && Math.abs(playerKeeper.y - keeperY) < 0.001, 'keeper should stay fixed while kicking');
+
+var outside = E.createGame({ formation: [{ line: 2, slot: 4, role: 'gk' }] });
+var outsideKeeper = outside.chars[0];
+outsideKeeper.y = 500;
+outsideKeeper.homeY = 500;
+outside.ball.x = outsideKeeper.x;
+outside.ball.y = outsideKeeper.y + 20;
+outside.ball.vy = -100;
+outside.phase = 'moving';
+E.update(outside, 1 / 60);
+assert(outside.phase !== 'keeperHold', 'keeper outside the penalty area should not catch');
+assert(!E.inKeeperZone(outsideKeeper), 'moved keeper should be outside the catch zone');
+
+var cpuKeeperGame = E.createGame();
+var cpuKeeper = cpuKeeperGame.chars.filter(function (c) { return c.team === 'cpu' && c.role === 'gk'; })[0];
+cpuKeeperGame.ball.x = cpuKeeper.x;
+cpuKeeperGame.ball.y = cpuKeeper.y + 20;
+cpuKeeperGame.ball.vy = 40;
+cpuKeeperGame.phase = 'moving';
+E.update(cpuKeeperGame, 1 / 60);
+assert(cpuKeeperGame.phase === 'keeperHold' && cpuKeeperGame.turn === 'cpu', 'CPU goalkeeper should catch and take the next turn');
+for (i = 0; i < 240 && (cpuKeeperGame.phase === 'keeperHold' || cpuKeeperGame.phase === 'keeperThink' || cpuKeeperGame.phase === 'keeperAim'); i++) E.update(cpuKeeperGame, 1 / 60);
+assert(cpuKeeperGame.phase !== 'keeperHold', 'CPU keeper should release the ball');
+
 var goal = E.createGame();
 goal.ball.x = E.CENTER.x;
-goal.ball.y = E.FIELD.y + 40;
+goal.ball.y = E.FIELD.y + 5;
 goal.ball.vy = -600;
 goal.phase = 'moving';
 goal.shots = 1;
@@ -77,7 +122,7 @@ assert(goal.turn === 'cpu', 'conceding side should kick off');
 
 var cpuGoal = E.createGame();
 cpuGoal.ball.x = E.CENTER.x;
-cpuGoal.ball.y = E.FIELD.bottom - 40;
+cpuGoal.ball.y = E.FIELD.bottom - 5;
 cpuGoal.ball.vy = 600;
 cpuGoal.phase = 'moving';
 cpuGoal.shots = 1;
@@ -87,7 +132,7 @@ assert(cpuGoal.score.cpu === 1 && cpuGoal.phase === 'goal', 'bottom goal should 
 var finish = E.createGame();
 finish.score.player = 2;
 finish.ball.x = E.CENTER.x;
-finish.ball.y = E.FIELD.y + 40;
+finish.ball.y = E.FIELD.y + 5;
 finish.ball.vy = -600;
 finish.phase = 'moving';
 E.update(finish, 0.08);

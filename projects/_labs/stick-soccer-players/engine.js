@@ -20,6 +20,7 @@
   var STOP_SPEED = 18;
   var SHOT_LIMIT = 9;
   var WIN_SCORE = 3;
+  var KEEPER_DEPTH = 82;
   var BALL_MASS = 1;
   var CHAR_MASS = 3;
   var BALL_REST = 0.95;
@@ -43,11 +44,11 @@
     { line: 0, slot: 2 }, { line: 0, slot: 4 }, { line: 0, slot: 6 },
     { line: 1, slot: 1 }, { line: 1, slot: 4 }, { line: 1, slot: 7 },
     { line: 2, slot: 1 }, { line: 2, slot: 3 }, { line: 2, slot: 5 }, { line: 2, slot: 7 },
-    { line: 3, slot: 4 }
+    { line: 3, slot: 4, role: 'gk' }
   ];
 
   function cpuFormation(gk, df, mf, fw) {
-    var out = [{ line: 0, slot: gk }];
+    var out = [{ line: 0, slot: gk, role: 'gk' }];
     var i;
     for (i = 0; i < df.length; i++) out.push({ line: 1, slot: df[i] });
     for (i = 0; i < mf.length; i++) out.push({ line: 2, slot: mf[i] });
@@ -101,7 +102,7 @@
       out.push({
         x: x, y: line.y, vx: 0, vy: 0, r: CHAR_R,
         homeX: x, homeY: line.y, line: p.line, slot: p.slot,
-        index: out.length, team: team || 'player'
+        index: out.length, team: team || 'player', role: p.role || 'field'
       });
     }
     return out;
@@ -140,6 +141,10 @@
       goalTimer: 0,
       cpuTimer: 0,
       cpuPlan: null,
+      keeper: null,
+      keeperTimer: 0,
+      keeperPlan: null,
+      catch: null,
       movingTime: 0,
       settleTime: 0,
       winner: null,
@@ -169,6 +174,30 @@
     if (!events) return;
     events.push({ type: 'hit', kind: kind, x: x, y: y, power: power || 0 });
     if (events.length > 100) events.shift();
+  }
+
+  function inKeeperZone(c) {
+    var inX = c.x >= FIELD.x + 75 && c.x <= FIELD.right - 75;
+    if (c.team === 'player') return inX && c.y >= FIELD.bottom - KEEPER_DEPTH;
+    return inX && c.y <= FIELD.y + KEEPER_DEPTH;
+  }
+
+  function keeperCatch(world, ball, c, events) {
+    if (!c || c.role !== 'gk' || !inKeeperZone(c)) return false;
+    var dx = ball.x - c.x;
+    var dy = ball.y - c.y;
+    var d = Math.sqrt(dx * dx + dy * dy) || 0.0001;
+    if (d >= BALL_R + c.r) return false;
+    var front = c.team === 'player' ? -1 : 1;
+    ball.x = c.x;
+    ball.y = c.y + front * (c.r + BALL_R + 2);
+    ball.vx = 0;
+    ball.vy = 0;
+    c.vx = 0;
+    c.vy = 0;
+    world.catch = { team: c.team, index: c.index };
+    if (events) events.push({ type: 'catch', team: c.team, index: c.index, x: c.x, y: c.y });
+    return true;
   }
 
   function collideBallChar(ball, c, events) {
@@ -255,6 +284,7 @@
         else if (p.x + p.r > FIELD.right) { p.x = FIELD.right - p.r; if (p.vx > 0) p.vx = -p.vx * 0.55; }
         if (p.y - p.r < FIELD.y) { p.y = FIELD.y + p.r; if (p.vy < 0) p.vy = -p.vy * 0.55; }
         else if (p.y + p.r > FIELD.bottom) { p.y = FIELD.bottom - p.r; if (p.vy > 0) p.vy = -p.vy * 0.55; }
+        if (keeperCatch(world, b, p, events)) return 'catch';
         collideBallChar(b, p, events);
       }
       for (i = 0; i < world.chars.length; i++) {
@@ -311,6 +341,7 @@
     var elapsed = 0;
     while (elapsed < 3.2) {
       var goal = stepWorld(world, 1 / 60, null);
+      if (goal === 'catch') break;
       if (goal) return { goal: goal, x: world.ball.x, y: world.ball.y };
       slowWorld(world, 1 / 60);
       if (!worldMoving(world)) break;
@@ -411,7 +442,12 @@
   }
 
   function autoShot(s, side) {
-    if (!s || s.phase !== 'aim' || s.turn !== side || s.paused) return false;
+    if (!s || s.turn !== side || s.paused) return false;
+    if (s.phase === 'keeperKick') {
+      var keeperPlan = chooseKeeperKick(s, side);
+      return kickKeeperBall(s, keeperPlan.vx, keeperPlan.vy);
+    }
+    if (s.phase !== 'aim') return false;
     var plan = choosePlan(s, side);
     return applyLaunch(s, plan.charIndex, plan.vx, plan.vy);
   }
@@ -426,6 +462,75 @@
       if (d < bestD) { bestD = d; best = i; }
     }
     return best;
+  }
+
+  function keeperCaught(s) {
+    var caught = s.catch;
+    s.catch = null;
+    if (!caught) return;
+    s.phase = 'keeperHold';
+    s.turn = caught.team;
+    s.keeper = { team: caught.team, index: caught.index };
+    s.keeperTimer = 0.75;
+    s.cpuPlan = null;
+    s.goalSide = null;
+    stopWorld(s);
+    event(s, 'keeperCatch', { team: caught.team, index: caught.index });
+  }
+
+  function startKeeperKick(s) {
+    if (!s.keeper) { nextTurn(s); return; }
+    if (s.turn === 'cpu') {
+      s.phase = 'keeperThink';
+      s.cpuTimer = aiFor(s).think;
+    } else {
+      s.phase = 'keeperKick';
+    }
+    event(s, 'keeperReady', { team: s.turn, index: s.keeper.index });
+  }
+
+  function chooseKeeperKick(s, side) {
+    var ai = side === 'cpu' ? aiFor(s) : { angleNoise: 0.02, power: 0.95, powerNoise: 0.03 };
+    var targetY = side === 'player' ? FIELD.y + 120 : FIELD.bottom - 120;
+    var targetX = CENTER.x + (Math.random() - 0.5) * 150;
+    var base = Math.atan2(targetY - s.ball.y, targetX - s.ball.x);
+    if (!isFinite(base)) base = side === 'player' ? -Math.PI / 2 : Math.PI / 2;
+    var angle = base + (Math.random() - 0.5) * ai.angleNoise;
+    var max = MAX_PULL * PULL_POWER * ai.power;
+    var power = max * (1 - ai.powerNoise / 2 + Math.random() * ai.powerNoise);
+    return { vx: Math.cos(angle) * power, vy: Math.sin(angle) * power };
+  }
+
+  function kickKeeperBall(s, vx, vy) {
+    if (!s || !s.keeper || s.phase === 'over') return false;
+    var speed = Math.sqrt(vx * vx + vy * vy);
+    if (speed < 80) return false;
+    var max = MAX_PULL * PULL_POWER;
+    if (speed > max) {
+      vx = vx / speed * max;
+      vy = vy / speed * max;
+    }
+    s.ball.vx = vx;
+    s.ball.vy = vy;
+    s.phase = 'moving';
+    s.shots++;
+    s.movingTime = 0;
+    s.settleTime = 0;
+    s.keeperPlan = null;
+    event(s, 'launch', { team: s.keeper.team, index: s.keeper.index, x: s.ball.x, y: s.ball.y, keeper: true });
+    s.keeper = null;
+    return true;
+  }
+
+  function pullKeeperBall(s, dx, dy) {
+    if (!s || s.phase !== 'keeperKick' || s.turn !== 'player' || s.paused) return false;
+    var len = Math.sqrt(dx * dx + dy * dy);
+    if (len < 8) return false;
+    if (len > MAX_PULL) {
+      dx = dx / len * MAX_PULL;
+      dy = dy / len * MAX_PULL;
+    }
+    return kickKeeperBall(s, -dx * PULL_POWER, -dy * PULL_POWER);
   }
 
   function finish(s) {
@@ -488,6 +593,7 @@
     if (s.phase === 'moving') {
       s.movingTime += dt;
       var goal = stepWorld(s, dt, s.events);
+      if (goal === 'catch') { keeperCaught(s); return s; }
       if (goal) { goalScored(s, goal); return s; }
       slowWorld(s, dt);
       if (!worldMoving(s)) s.settleTime += dt;
@@ -496,6 +602,20 @@
     } else if (s.phase === 'goal') {
       s.goalTimer -= dt;
       if (s.goalTimer <= 0) afterGoal(s);
+    } else if (s.phase === 'keeperHold') {
+      s.keeperTimer -= dt;
+      if (s.keeperTimer <= 0) startKeeperKick(s);
+    } else if (s.phase === 'keeperThink') {
+      s.cpuTimer -= dt;
+      if (s.cpuTimer <= 0) {
+        s.keeperPlan = chooseKeeperKick(s, 'cpu');
+        s.phase = 'keeperAim';
+        s.cpuTimer = aiFor(s).aim;
+        event(s, 'keeperAim', { vx: s.keeperPlan.vx, vy: s.keeperPlan.vy });
+      }
+    } else if (s.phase === 'keeperAim') {
+      s.cpuTimer -= dt;
+      if (s.cpuTimer <= 0 && s.keeperPlan) kickKeeperBall(s, s.keeperPlan.vx, s.keeperPlan.vy);
     } else if (s.phase === 'cpuThink') {
       s.cpuTimer -= dt;
       if (s.cpuTimer <= 0) {
@@ -537,6 +657,8 @@
       obstacles: s.chars,
       goalSide: s.goalSide,
       cpuAim: (s.phase === 'cpuAim' && s.cpuPlan) ? { index: s.cpuPlan.charIndex, vx: s.cpuPlan.vx, vy: s.cpuPlan.vy } : null,
+      keeper: s.keeper,
+      keeperAim: (s.phase === 'keeperAim' && s.keeperPlan) ? { vx: s.keeperPlan.vx, vy: s.keeperPlan.vy } : null,
       winner: s.winner,
       reason: s.reason,
       over: s.phase === 'over'
@@ -574,6 +696,8 @@
     createGame: createGame,
     update: update,
     pullCharacter: pullCharacter,
+    pullKeeperBall: pullKeeperBall,
+    inKeeperZone: inKeeperZone,
     charAt: charAt,
     autoShot: autoShot,
     choosePlan: choosePlan,

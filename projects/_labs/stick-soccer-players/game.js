@@ -26,10 +26,11 @@
   var formation = copyFormation(E.DEFAULT_FORMATION);
   var formationDrag = null;
   var stageIndex = 0;
+  var sprites = {};
 
   function copyFormation(src) {
     var out = [];
-    for (var i = 0; i < src.length; i++) out.push({ line: src[i].line, slot: src[i].slot });
+    for (var i = 0; i < src.length; i++) out.push({ line: src[i].line, slot: src[i].slot, role: src[i].role });
     return out;
   }
 
@@ -37,6 +38,30 @@
     return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
   }
   function $(id) { return document.getElementById(id); }
+
+  function loadSprites() {
+    if (typeof Image === 'undefined') return;
+    var files = {
+      playerField: 'assets/player-field.png',
+      playerGk: 'assets/player-gk.png',
+      cpuField: 'assets/cpu-field.png',
+      cpuGk: 'assets/cpu-gk.png',
+      ball: 'assets/ball.png'
+    };
+    for (var key in files) {
+      if (!Object.prototype.hasOwnProperty.call(files, key)) continue;
+      var img = new Image();
+      img.src = files[key];
+      sprites[key] = img;
+    }
+  }
+
+  function spriteFor(o) {
+    if (o.role === 'gk') return o.team === 'cpu' ? sprites.cpuGk : sprites.playerGk;
+    return o.team === 'cpu' ? sprites.cpuField : sprites.playerField;
+  }
+
+
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
 
   function setScreen(name) {
@@ -114,6 +139,8 @@
       if (st.phase === 'over') label = 'FULL TIME';
       else if (st.phase === 'goal') label = 'GOAL!';
       else if (st.phase === 'cpuThink' || st.phase === 'cpuAim') label = 'CPU TURN';
+      else if (st.phase === 'keeperKick') label = 'GK KICK';
+      else if (st.phase === 'keeperThink' || st.phase === 'keeperAim' || st.phase === 'keeperHold') label = st.turn === 'player' ? 'GK BALL' : 'CPU GK';
       else if (st.phase === 'moving') label = st.turn === 'player' ? 'SHOT!' : 'CPU SHOT!';
       else if (st.phase === 'aim' && st.turn === 'cpu') label = 'CPU TURN';
       els.turn.textContent = label;
@@ -310,6 +337,26 @@
     var x = o.x;
     var y = o.y;
     var color = o.team === 'cpu' ? (index % 2 === 0 ? '#ff8fbd' : '#ff6fa8') : (index % 2 === 0 ? '#7df5c7' : '#ffd166');
+    var sprite = spriteFor(o);
+    if (sprite && sprite.complete && sprite.naturalWidth) {
+      var sh = o.role === 'gk' ? 76 : 72;
+      var sw = sh * sprite.naturalWidth / sprite.naturalHeight;
+      var bob = Math.sin(time * 1.8 + index) * 1.4;
+      ctx.save();
+      ctx.shadowColor = color;
+      ctx.shadowBlur = o.role === 'gk' ? 20 : 12;
+      ctx.drawImage(sprite, x - sw / 2, y - sh / 2 + bob, sw, sh);
+      if (o.role === 'gk') {
+        ctx.shadowBlur = 0;
+        ctx.strokeStyle = 'rgba(255, 209, 102, 0.85)';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.ellipse(x, y + sh / 2 - 3, sw * 0.34, 5, 0, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+      ctx.restore();
+      return;
+    }
     var sway = Math.sin(time * 1.8 + index) * 2;
     ctx.save();
     ctx.translate(x, y);
@@ -360,6 +407,15 @@
   function drawBall() {
     if (!game) return;
     var b = game.ball;
+    if (sprites.ball && sprites.ball.complete && sprites.ball.naturalWidth) {
+      var size = E.BALL_R * 2.9;
+      ctx.save();
+      ctx.shadowColor = 'rgba(125, 245, 199, 0.9)';
+      ctx.shadowBlur = 15;
+      ctx.drawImage(sprites.ball, b.x - size / 2, b.y - size / 2, size, size);
+      ctx.restore();
+      return;
+    }
     ctx.save();
     ctx.shadowColor = 'rgba(220, 255, 240, 0.95)';
     ctx.shadowBlur = 18;
@@ -388,7 +444,12 @@
     var anchor = null;
     var active = false;
     var color = st.turn === 'player' ? '#7df5c7' : '#ff8fbd';
-    if (st.phase === 'aim' && st.turn === 'player' && pointer && pointer.index != null) {
+    if (st.phase === 'keeperKick' && st.turn === 'player' && pointer && pointer.mode === 'keeper') {
+      anchor = game.ball;
+      pullX = pointer.x - anchor.x;
+      pullY = pointer.y - anchor.y;
+      active = true;
+    } else if (st.phase === 'aim' && st.turn === 'player' && pointer && pointer.index != null) {
       anchor = game.chars[pointer.index];
       if (anchor) {
         pullX = pointer.x - anchor.x;
@@ -402,6 +463,11 @@
         pullY = -st.cpuAim.vy / E.PULL_POWER;
         active = true;
       }
+    } else if (st.phase === 'keeperAim' && st.keeperAim) {
+      anchor = game.ball;
+      pullX = -st.keeperAim.vx / E.PULL_POWER;
+      pullY = -st.keeperAim.vy / E.PULL_POWER;
+      active = true;
     }
     if (!active || !anchor) return;
     var len = Math.sqrt(pullX * pullX + pullY * pullY);
@@ -569,8 +635,8 @@
         break;
       }
     }
-    next[index] = { line: line, slot: slot };
-    if (occupant >= 0) next[occupant] = { line: old.line, slot: old.slot };
+    next[index] = { line: line, slot: slot, role: old.role };
+    if (occupant >= 0) next[occupant] = { line: old.line, slot: old.slot, role: next[occupant].role };
     return next;
   }
 
@@ -605,7 +671,7 @@
         var cp = stage.cpuFormation[ci];
         var cLine = E.CPU_LINES[cp.line];
         if (!cLine) continue;
-        drawStickFigure({ x: E.FORMATION_SLOTS[cp.slot], y: cLine.y, r: E.PLAYER_R, team: 'cpu' }, ci, time);
+        drawStickFigure({ x: E.FORMATION_SLOTS[cp.slot], y: cLine.y, r: E.PLAYER_R, team: 'cpu', role: cp.role }, ci, time);
       }
       ctx.restore();
       ctx.save();
@@ -656,24 +722,24 @@
     for (var i = 0; i < formation.length; i++) {
       var p = formationSlotPoint(formation[i].line, formation[i].slot);
       if (formationDrag && formationDrag.index === i) continue;
-      drawStickFigure(p, i, time);
+      drawStickFigure({ x: p.x, y: p.y, r: E.PLAYER_R, team: 'player', role: formation[i].role }, i, time);
       ctx.save();
       ctx.fillStyle = 'rgba(230, 255, 242, 0.82)';
       ctx.font = '900 8px ui-monospace, Menlo, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(i + 1), p.x, p.y + 30);
+      ctx.fillText(formation[i].role === 'gk' ? 'GK' : String(i + 1), p.x, p.y + 34);
       ctx.restore();
     }
     if (formationDrag) {
-      var dp = { x: formationDrag.x, y: formationDrag.y, r: E.PLAYER_R };
+      var dp = { x: formationDrag.x, y: formationDrag.y, r: E.PLAYER_R, role: formation[formationDrag.index].role };
       drawStickFigure(dp, formationDrag.index, time);
       ctx.save();
       ctx.fillStyle = '#ffe6a3';
       ctx.font = '900 9px ui-monospace, Menlo, monospace';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText(String(formationDrag.index + 1), dp.x, dp.y + 30);
+      ctx.fillText(formation[formationDrag.index].role === 'gk' ? 'GK' : String(formationDrag.index + 1), dp.x, dp.y + 34);
       ctx.restore();
     }
     ctx.save();
@@ -706,13 +772,17 @@
       drawField(time);
       drawObstacles(time);
       drawTrail();
-      drawAim(E.getState(game));
+      var liveState = E.getState(game);
+      drawAim(liveState);
       drawBall();
       ctx.fillStyle = 'rgba(145, 190, 168, 0.62)';
       ctx.font = '800 9px "Hiragino Kaku Gothic ProN", "Yu Gothic", system-ui, sans-serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('自分の選手を引っ張って離す / ボールに当ててゴールへ', C.VIEW_W / 2, 752);
+      var hint = '自分の選手を引っ張って離す / ボールに当ててゴールへ';
+      if (liveState.phase === 'keeperKick' && liveState.turn === 'player') hint = 'GK: ボールを引っ張ってキック / キーパーは動かない';
+      else if (liveState.phase === 'keeperHold') hint = 'キャッチ！ 次のターンはキーパーがキック';
+      ctx.fillText(hint, C.VIEW_W / 2, 752);
       drawEffects();
     } else {
       drawBackdrop(time);
@@ -806,6 +876,14 @@
         burst(G.x, gy, 70, confettiColors, 460, 1.4);
         shockwave(G.x, gy, goalColor, 220, 0.8, 6);
         shockwave(G.x, G.y, goalColor, 280, 1.0, 3);
+      } else if (ev.type === 'keeperCatch') {
+        effects.flash = 0.35;
+        effects.shake = 0.5;
+        showBanner('CATCH!', ev.team === 'player' ? 'YOUR KEEPER' : 'CPU KEEPER', ev.team === 'player' ? '#7df5c7' : '#ff8fbd');
+        burst(game.ball.x, game.ball.y, 22, ['#7df5c7', '#ffd166', '#ffffff', '#ff8fbd'], 220, 0.7);
+        shockwave(game.ball.x, game.ball.y, ev.team === 'player' ? '#7df5c7' : '#ff8fbd', 80, 0.6, 3);
+      } else if (ev.type === 'keeperReady') {
+        showBanner('GK KICK', ev.team === 'player' ? 'ボールを引っ張ってキック' : 'CPUキーパーが蹴る', ev.team === 'player' ? '#7df5c7' : '#ff8fbd');
       } else if (ev.type === 'turn') {
         if (ev.turn === 'player') showBanner('YOUR TURN', '自分の選手を引っ張って離す', '#7df5c7');
         else showBanner('CPU TURN', 'CPUが選手を引っ張っています', '#ff8fbd');
@@ -873,6 +951,13 @@
     return E.charAt(game, pos.x, pos.y, 'player') >= 0;
   }
 
+  function nearBall(pos) {
+    if (!game) return false;
+    var dx = pos.x - game.ball.x;
+    var dy = pos.y - game.ball.y;
+    return Math.sqrt(dx * dx + dy * dy) < 70;
+  }
+
   function onPointerDown(e) {
     if (e && e.preventDefault) e.preventDefault();
     var pos = pointerPosition(e);
@@ -884,7 +969,14 @@
       try { if (canvas.setPointerCapture) canvas.setPointerCapture(formationDrag.id); } catch (err) { }
       return;
     }
-    if (!game || game.paused || game.phase !== 'aim' || game.turn !== 'player' || pointer) return;
+    if (!game || game.paused || game.turn !== 'player' || pointer) return;
+    if (game.phase === 'keeperKick') {
+      if (!nearBall(pos)) return;
+      pointer = { id: e.pointerId == null ? 1 : e.pointerId, mode: 'keeper', startX: pos.x, startY: pos.y, x: pos.x, y: pos.y };
+      try { if (canvas.setPointerCapture) canvas.setPointerCapture(pointer.id); } catch (err) { }
+      return;
+    }
+    if (game.phase !== 'aim') return;
     var index = E.charAt(game, pos.x, pos.y, 'player');
     if (index < 0) return;
     pointer = {
@@ -912,7 +1004,7 @@
         if (mode === 'formation') {
           canvas.style.cursor = formationTokenAt(p.x, p.y) >= 0 ? 'grab' : 'default';
         } else {
-          canvas.style.cursor = nearPlayer(p) && game && game.phase === 'aim' && game.turn === 'player' ? 'grab' : 'default';
+          canvas.style.cursor = ((game && game.phase === 'keeperKick' && nearBall(p)) || (nearPlayer(p) && game && game.phase === 'aim' && game.turn === 'player')) ? 'grab' : 'default';
         }
       }
       return;
@@ -944,7 +1036,14 @@
     var p = pointer;
     pointer = null;
     try { if (canvas.releasePointerCapture) canvas.releasePointerCapture(id); } catch (err) { }
-    if (!game || game.paused || game.phase !== 'aim' || game.turn !== 'player') return;
+    if (!game || game.paused || game.turn !== 'player') return;
+    if (p.mode === 'keeper') {
+      var bdx = p.x - game.ball.x;
+      var bdy = p.y - game.ball.y;
+      if (E.pullKeeperBall(game, bdx, bdy)) { processEvents(); syncUI(); }
+      return;
+    }
+    if (game.phase !== 'aim') return;
     var anchor = game.chars[p.index];
     if (!anchor) return;
     var dx = p.x - anchor.x;
@@ -1034,7 +1133,7 @@
     }
     if (!game) return;
     if (game.paused) return;
-    if (game.phase === 'aim' && game.turn === 'player') {
+    if ((game.phase === 'aim' || game.phase === 'keeperKick') && game.turn === 'player') {
       E.autoShot(game, 'player');
       processEvents();
       syncUI();
@@ -1068,6 +1167,7 @@
       try { ctx = canvas.getContext('2d'); } catch (e) { ctx = null; }
     }
     resetEffects();
+    loadSprites();
     resizeCanvas();
 
     if (els.screenTitle) els.screenTitle.classList.add('visible');
