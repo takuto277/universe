@@ -14,25 +14,27 @@
   var BASE_DRAIN = 5.0;
   var SPAWN_BASE = 2.0;
   var SPAWN_MIN = 0.65;
-  var MAX_NOISES = 6;
+  var MAX_NOISES = 8;
   var NOISE_GRACE = 2.0;
   var MAX_DT = 0.05;
   var MAX_EVENTS = 80;
 
   var NOISE_TYPES = [
-    { id: 'clock', icon: '⏰', label: '目覚まし時計', drain: 1.0 },
-    { id: 'phone', icon: '📱', label: 'スマホの通知', drain: 0.85 },
-    { id: 'tv', icon: '📺', label: 'テレビ', drain: 1.15 },
-    { id: 'door', icon: '🚪', label: 'ドアの物音', drain: 1.25 },
-    { id: 'vacuum', icon: '🧹', label: '掃除機', drain: 1.35 },
-    { id: 'bird', icon: '🐦', label: '朝の鳥', drain: 0.75 }
-  ];
-
-  var SLOTS = [
-    { x: 0.16, y: 0.27 }, { x: 0.84, y: 0.27 },
-    { x: 0.10, y: 0.41 }, { x: 0.88, y: 0.50 },
-    { x: 0.28, y: 0.79 }, { x: 0.72, y: 0.79 },
-    { x: 0.5, y: 0.16 }
+    { id: 'window', icon: '🪟', label: '窓', drain: 1.2, x: 0.66, y: 0.35, size: 0.30 },
+    { id: 'door', icon: '🚪', label: 'ドア', drain: 1.1, x: 0.10, y: 0.37, size: 0.18 },
+    { id: 'wall-clock', icon: '🕰️', label: '時計', drain: 1.0, x: 0.22, y: 0.25, size: 0.13 },
+    { id: 'ceiling-fan', icon: '🌀', label: 'ファン', drain: 1.3, x: 0.49, y: 0.22, size: 0.40 },
+    { id: 'tv', icon: '📺', label: 'TV', drain: 1.2, x: 0.90, y: 0.55, size: 0.20 },
+    { id: 'radio', icon: '📻', label: 'ラジオ', drain: 1.1, x: 0.92, y: 0.42, size: 0.14 },
+    { id: 'alarm-clock', icon: '⏰', label: '目覚まし', drain: 1.0, x: 0.24, y: 0.53, size: 0.09 },
+    { id: 'smartphone', icon: '📱', label: 'スマホ', drain: 0.9, x: 0.30, y: 0.54, size: 0.06 },
+    { id: 'vacuum', icon: '🧹', label: '掃除機', drain: 1.4, x: 0.12, y: 0.67, size: 0.22 },
+    { id: 'cat', icon: '🐱', label: '猫', drain: 0.8, x: 0.52, y: 0.75, size: 0.22 },
+    { id: 'music-box', icon: '🎵', label: 'オルゴール', drain: 0.9, x: 0.20, y: 0.39, size: 0.13 },
+    { id: 'radiator', icon: '♨️', label: '暖房', drain: 1.2, x: 0.13, y: 0.53, size: 0.10 },
+    { id: 'wind-chime', icon: '🎐', label: '風鈴', drain: 0.7, x: 0.85, y: 0.32, size: 0.10 },
+    { id: 'neighbor-speaker', icon: '🔊', label: 'スピーカー', drain: 1.3, x: 0.95, y: 0.23, size: 0.10 },
+    { id: 'bird', icon: '🐦', label: '鳥', drain: 0.8, x: 0.74, y: 0.37, size: 0.07 }
   ];
 
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
@@ -100,26 +102,21 @@
 
   function spawnNoise(state) {
     if (!state || state.noises.length >= MAX_NOISES) return null;
-    var free = SLOTS.filter(function (slot) {
-      for (var i = 0; i < state.noises.length; i++) {
-        var noise = state.noises[i];
-        var dx = noise.x - slot.x * state.width;
-        var dy = noise.y - slot.y * state.height;
-        if (Math.sqrt(dx * dx + dy * dy) < 76) return false;
-      }
-      return true;
-    });
+    var used = {};
+    for (var i = 0; i < state.noises.length; i++) used[state.noises[i].type] = true;
+    var free = NOISE_TYPES.filter(function (type) { return !used[type.id]; });
     if (!free.length) return null;
-    var slot = free[Math.floor(state.rng() * free.length)];
-    var type = NOISE_TYPES[Math.floor(state.rng() * NOISE_TYPES.length)];
+    var type = free[Math.floor(state.rng() * free.length)];
+    var size = Math.max(24, type.size * state.width);
     var noise = {
       id: state.nextNoiseId++,
       type: type.id,
       icon: type.icon,
       label: type.label,
-      x: slot.x * state.width,
-      y: slot.y * state.height,
-      r: Math.max(22, Math.min(state.width, state.height) * 0.055),
+      x: type.x * state.width,
+      y: type.y * state.height,
+      size: size,
+      r: size / 2,
       born: state.time,
       active: false,
       activeAt: state.time + NOISE_GRACE
@@ -185,7 +182,8 @@
       var noise = state.noises[i];
       var dx = x - noise.x;
       var dy = y - noise.y;
-      if (dx * dx + dy * dy <= Math.pow(noise.r * 1.8, 2)) {
+      var hitRadius = noise.size ? Math.max(30, noise.size * 0.58) : noise.r * 1.8;
+      if (dx * dx + dy * dy <= hitRadius * hitRadius) {
         state.noises.splice(i, 1);
         state.sleep = clamp(state.sleep + TAP_GAIN, 0, MAX_SLEEP);
         state.score += 10;
@@ -214,9 +212,17 @@
     state.width = Math.max(280, Number(width) || state.width);
     state.height = Math.max(360, Number(height) || state.height);
     for (var i = 0; i < state.noises.length; i++) {
-      state.noises[i].x = state.noises[i].x / oldW * state.width;
-      state.noises[i].y = state.noises[i].y / oldH * state.height;
-      state.noises[i].r = Math.max(22, Math.min(state.width, state.height) * 0.055);
+      var noise = state.noises[i];
+      var type = NOISE_TYPES.filter(function (item) { return item.id === noise.type; })[0];
+      if (type) {
+        noise.x = type.x * state.width;
+        noise.y = type.y * state.height;
+        noise.size = Math.max(24, type.size * state.width);
+        noise.r = noise.size / 2;
+      } else {
+        noise.x = noise.x / oldW * state.width;
+        noise.y = noise.y / oldH * state.height;
+      }
     }
     return state;
   }
@@ -241,7 +247,8 @@
       result: state.result,
       noises: state.noises.map(function (noise) {
         return { id: noise.id, type: noise.type, icon: noise.icon, label: noise.label,
-                 x: noise.x, y: noise.y, r: noise.r, age: Math.max(0, state.time - noise.born),
+                 x: noise.x, y: noise.y, r: noise.r, size: noise.size,
+                 age: Math.max(0, state.time - noise.born),
                  active: noise.active !== false,
                  activeIn: Math.max(0, noise.activeAt - state.time) };
       })

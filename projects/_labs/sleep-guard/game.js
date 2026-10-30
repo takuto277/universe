@@ -21,7 +21,7 @@
   var shake = 0;
   var flash = 0;
   var muted = loadMuted();
-  var images = { bg: null, sleep: null, awake: null, noise: {} };
+  var images = { bg: null, noise: {} };
   var bgLayout = null;
 
   function nowMs() {
@@ -49,12 +49,10 @@
 
   function preloadAssets() {
     images.bg = loadImage('assets/bg-bedroom.jpg');
-    images.sleep = loadImage('assets/character-sleep.png');
-    images.awake = loadImage('assets/character-awake.png');
     if (!E) return;
     for (var i = 0; i < E.NOISE_TYPES.length; i++) {
       var type = E.NOISE_TYPES[i];
-      images.noise[type.id] = loadImage('assets/noise-' + type.id + '-sheet.png');
+      images.noise[type.id] = loadImage('assets/' + type.id + '-sheet.png');
     }
   }
   function clamp(v, min, max) { return v < min ? min : (v > max ? max : v); }
@@ -279,23 +277,23 @@
     return true;
   }
 
-  function drawCharacterImage(time, awake) {
-    var img = awake ? images.awake : images.sleep;
-    if (!img || !img.complete || !img.naturalWidth || !bgLayout) return false;
-    var scale = bgLayout.scale;
-    var size = 360 * scale;
-    var cx = bgLayout.dx + 165 * scale;
-    var cy = bgLayout.dy + 610 * scale;
-    var bob = awake ? Math.sin(time * 26) * 2.2 * scale : Math.sin(time * 1.7) * 1.8 * scale;
+  function drawAlert(time) {
+    var x = viewW * 0.55;
+    var y = viewH * 0.45 + Math.sin(time * 7) * 2;
     ctx.save();
-    ctx.globalAlpha = 0.25;
-    ctx.fillStyle = '#050816';
+    ctx.fillStyle = 'rgba(20,26,50,.92)';
+    ctx.strokeStyle = 'rgba(255,130,200,.85)';
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.ellipse(cx, cy + size * 0.27, size * 0.23, size * 0.06, 0, 0, Math.PI * 2);
+    ctx.arc(x, y, 18, 0, Math.PI * 2);
     ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#ff82c8';
+    ctx.font = '900 22px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('!', x, y + 1);
     ctx.restore();
-    ctx.drawImage(img, cx - size / 2, cy - size / 2 + bob, size, size);
-    return true;
   }
 
   function drawBed(time, awake) {
@@ -391,7 +389,7 @@
       ctx.strokeStyle = '#ff82c8';
       ctx.lineWidth = 2;
       ctx.beginPath();
-      ctx.arc(noise.x, noise.y, noise.r * (1.25 + pulse * 0.28), 0, Math.PI * 2);
+      ctx.arc(noise.x, noise.y, noise.size * (0.58 + pulse * 0.12), 0, Math.PI * 2);
       ctx.stroke();
       ctx.globalAlpha = 1;
     } else {
@@ -400,14 +398,14 @@
       ctx.strokeStyle = 'rgba(109,183,255,.8)';
       ctx.lineWidth = 3;
       ctx.beginPath();
-      ctx.arc(noise.x, noise.y, noise.r * 1.35, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
+      ctx.arc(noise.x, noise.y, noise.size * 0.62, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * progress);
       ctx.stroke();
       ctx.globalAlpha = 0.68;
     }
 
     ctx.fillStyle = active ? 'rgba(40,22,58,.92)' : 'rgba(18,28,52,.9)';
     ctx.beginPath();
-    ctx.arc(noise.x, noise.y, noise.r, 0, Math.PI * 2);
+    ctx.arc(noise.x, noise.y, noise.size * 0.48, 0, Math.PI * 2);
     ctx.fill();
     ctx.strokeStyle = active ? 'rgba(255,130,200,.8)' : 'rgba(109,183,255,.55)';
     ctx.lineWidth = 2;
@@ -415,17 +413,21 @@
     if (hasSheet) {
       var frame = Math.floor((((state ? state.time : time) - noise.born) * (active ? 4 : 2)) % 2);
       var fw = sheet.naturalWidth / 2;
-      var size = noise.r * 3.2;
+      var size = noise.size;
       ctx.drawImage(sheet, frame * fw, 0, fw, sheet.naturalHeight,
                     noise.x - size / 2, noise.y - size / 2, size, size);
     } else {
-      ctx.font = Math.round(noise.r * 1.15) + 'px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
+      ctx.font = Math.round(noise.size * 0.58) + 'px "Apple Color Emoji","Segoe UI Emoji",sans-serif';
       ctx.fillText(noise.icon, noise.x, noise.y + 1);
     }
     ctx.globalAlpha = 1;
     ctx.font = '700 8px system-ui, sans-serif';
     ctx.fillStyle = active ? 'rgba(255,220,240,.9)' : 'rgba(160,205,255,.9)';
-    ctx.fillText(active ? noise.label : 'まもなく…', noise.x, noise.y + noise.r + 12);
+    var labelX = clamp(noise.x, 38, viewW - 38);
+    var above = ['wall-clock', 'radiator', 'smartphone', 'window', 'neighbor-speaker', 'door'].indexOf(noise.type) >= 0;
+    var labelY = above ? noise.y - noise.size / 2 - 8 : noise.y + noise.size / 2 + 12;
+    labelY = clamp(labelY, 10, viewH - 6);
+    ctx.fillText(active ? noise.label : 'まもなく…', labelX, labelY);
     ctx.restore();
   }
 
@@ -457,8 +459,11 @@
     if (!hasBackground) drawBackdrop(time);
     var awake = !!(state && state.phase === 'run' && state.noises.some(function (noise) { return noise.active !== false; }));
     if (state && state.phase === 'over') awake = true;
-    if (hasBackground) drawCharacterImage(time, awake);
-    else drawBed(time, awake);
+    if (hasBackground) {
+      if (awake) drawAlert(time);
+    } else {
+      drawBed(time, awake);
+    }
     if (state) {
       for (var i = 0; i < state.noises.length; i++) drawNoise(state.noises[i], time);
     }
