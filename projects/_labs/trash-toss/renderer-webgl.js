@@ -527,6 +527,9 @@
       canvas.height = Math.round(height * dpr);
       gl.viewport(0, 0, canvas.width, canvas.height);
       proj = perspective(68 * Math.PI / 180, width / height, 0.1, 40);
+      // The fixed camera looks toward +z. Mirror the projection so world +x
+      // lands on screen +x, matching the swipe-to-left/right mapping.
+      proj[0] = -proj[0];
       view = lookAt(cameraPos, cameraLook, { x: 0, y: 1, z: 0 });
       viewProj = mul(proj, view);
       if (fallback) fallback.resize();
