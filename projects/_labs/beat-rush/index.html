@@ -6,7 +6,7 @@
   <meta name="theme-color" content="#070510">
   <meta name="description" content="4レーンに流れるノートを叩く30秒リズムゲーム。BEAT RUSH。">
   <title>BEAT RUSH - 4レーンリズムゲーム</title>
-  <link rel="stylesheet" href="style.css?v=20261030-beatrush1">
+  <link rel="stylesheet" href="style.css?v=20261030-beatrush2">
 </head>
 <body>
   <div id="app">
@@ -19,7 +19,8 @@
           <div><span>COMBO</span><b id="combo">0</b></div>
         </div>
       </div>
-      <div class="hud-sub"><span>4 LANE RHYTHM</span><b id="accuracy">100.0%</b></div>
+      <div class="hud-sub"><span>4 LANE RHYTHM</span><span class="best">BEST <b id="best">0</b></span><b id="accuracy">100.0%</b></div>
+      <div id="progress"><i id="progress-fill"></i></div>
     </header>
 
     <main id="stage">
@@ -36,6 +37,7 @@
             <li>30秒終了時の精度で S〜D ランク</li>
           </ul>
           <button id="btn-start" class="primary" type="button">START</button>
+          <p class="tiny" id="best-start">BEST 0</p>
           <p class="tiny">イヤホン推奨 / 4レーンをタップ</p>
         </section>
 
@@ -53,6 +55,12 @@
             <span>GOOD <b id="end-good">0</b></span>
             <span>MISS <b id="end-miss">0</b></span>
           </div>
+          <div class="end-sub">
+            <span>EARLY <b id="end-early">0</b></span>
+            <span>LATE <b id="end-late">0</b></span>
+            <b id="end-fc" class="fc">FULL COMBO</b>
+          </div>
+          <p class="end-best">BEST <b id="end-best">0</b></p>
           <button id="btn-again" class="primary" type="button">RETRY</button>
           <p class="tiny">タップ / Space でもう一度</p>
         </section>
@@ -61,13 +69,14 @@
 
     <footer id="tip">
       <span>D F J K / 4レーンをタップ</span>
+      <button id="btn-sound" class="sound-btn" type="button">SOUND ON</button>
       <span id="beat-dot" class="beat-dot"></span>
     </footer>
   </div>
 
-  <script src="engine.js?v=20261030-beatrush1"></script>
-  <script src="audio.js?v=20261030-beatrush1"></script>
-  <script src="game.js?v=20261030-beatrush1"></script>
+  <script src="engine.js?v=20261030-beatrush2"></script>
+  <script src="audio.js?v=20261030-beatrush2"></script>
+  <script src="game.js?v=20261030-beatrush2"></script>
   <script src="../../_shared/game-back.js"></script>
 </body>
 </html>

@@ -35,6 +35,7 @@ E.start(g);
 g.time = E.DURATION - 0.01;
 E.update(g, 0.02);
 assert(g.phase === 'over' && g.result && g.result.rank.length === 1, '30秒で終了してランクが出る');
+assert(g.result.early === 0 && g.result.late === 0, '未操作ならEARLY/LATEなし');
 
 g = E.createGame({ rng: E.mulberry32(5) });
 E.autoStep(g);
@@ -44,5 +45,6 @@ for (var i = 0; i < 2400 && g.phase === 'run'; i++) {
 }
 assert(g.phase === 'over' && g.score > 0, '自動操作で30秒完走');
 assert(g.result.accuracy > 90, '自動操作は高精度: ' + g.result.accuracy);
+assert(g.result.fullCombo === true, '自動操作はフルコンボ');
 
 log('engine tests OK (' + passed + ' assertions)');
