@@ -142,6 +142,22 @@
       "summary": "熱を吸って凍らせ、放って扉を開く。体温を保つ5部屋の温度パズル。"
     },
     {
+      "id": "bin-bang",
+      "path": "projects/_labs/bin-bang/",
+      "tag": "GAME",
+      "title": "BIN BANG",
+      "description": "ゴミ箱型キャノンで、降ってくるゴミの嵐を撃ち抜く60秒のネオンシューター。ゴミ箱を左右に動かして自動連射し、BANGで扇状ブラスト。袋・瓶・缶・爆弾・金のゴミ・巨大ボスを撃破し、コンボとOVERDRIVEでスコアを伸ばす。画面シェイク、粒子、リング、スコアポップ、効果音、ベスト保存つき。",
+      "createdAt": "2026-10-30",
+      "updatedAt": "2026-10-30T20:02:04+09:00",
+      "tags": [
+        "シューティング",
+        "アーケード"
+      ],
+      "thumbnail": "projects/_labs/bin-bang/thumb.jpg",
+      "thumbDelay": 2.2,
+      "summary": "ゴミ箱キャノンでゴミの嵐を撃ち抜く、60秒のネオンシューター。"
+    },
+    {
       "id": "neon-stack",
       "path": "projects/_labs/neon-stack/",
       "tag": "GAME",

@@ -61,6 +61,7 @@ universe/
 ├── projects/
 │   ├── _labs/                 # 実験・検証・継続開発中のゲーム
 │   │   ├── baseball-game/
+│   │   ├── bin-bang/
 │   │   ├── exponential-balls/
 │   │   ├── graph-cross/
 │   │   ├── gravity-flip/
