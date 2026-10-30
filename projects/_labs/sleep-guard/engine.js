@@ -20,7 +20,7 @@
   var MAX_EVENTS = 80;
 
   var NOISE_TYPES = [
-    { id: 'window', icon: '🪟', label: '窓', drain: 1.2, x: 0.66, y: 0.35, size: 0.30 },
+    { id: 'window', icon: '🪟', label: '窓', drain: 1.2, x: 0.72, y: 0.36, size: 0.52 },
     { id: 'door', icon: '🚪', label: 'ドア', drain: 1.1, x: 0.10, y: 0.37, size: 0.18 },
     { id: 'wall-clock', icon: '🕰️', label: '時計', drain: 1.0, x: 0.22, y: 0.25, size: 0.13 },
     { id: 'ceiling-fan', icon: '🌀', label: 'ファン', drain: 1.3, x: 0.49, y: 0.22, size: 0.40 },
