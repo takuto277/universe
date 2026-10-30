@@ -13,7 +13,7 @@
     casts: document.getElementById('casts'),
     score: document.getElementById('score'),
     best: document.getElementById('best'),
-    total: document.getElementById('total'),
+    streak: document.getElementById('streak'),
     hint: document.getElementById('hint'),
     powerWrap: document.getElementById('power-wrap'),
     powerBar: document.getElementById('power-bar'),
@@ -47,6 +47,7 @@
   var lastPhase = null;
   var lastNow = null;
   var lastReelTick = 0;
+  var aimingPointer = false;
 
   function show(el, on) { if (el) el.classList.toggle('visible', !!on); }
   function hide(el, on) { if (el) el.classList.toggle('is-hidden', !!on); }
@@ -75,7 +76,15 @@
   }
 
   function phaseHint(state) {
-    if (state.phase === 'aim') return 'HOLD TO CHARGE · RELEASE TO CAST';
+    if (state.phase === 'aim') {
+      var spot = E.SPOTS[0];
+      var best = 9;
+      for (var i = 0; i < E.SPOTS.length; i++) {
+        var d = Math.abs(state.aimX - E.SPOTS[i].x);
+        if (d < best) { best = d; spot = E.SPOTS[i]; }
+      }
+      return spot.name + ' · DRAG TO AIM · HOLD TO CHARGE · RELEASE';
+    }
     if (state.phase === 'wait') return 'WAIT FOR THE FLOAT TO DIP';
     if (state.phase === 'bite') return 'TAP TO HOOK IT';
     if (state.phase === 'reel') return 'HOLD TO REEL · RELEASE TO EASE THE LINE';
@@ -102,7 +111,7 @@
     text(els.casts, state.castsLeft);
     text(els.score, state.score);
     text(els.best, best);
-    text(els.total, state.totalCm + ' cm');
+    text(els.streak, state.streak);
     text(els.hint, phaseHint(state));
 
     var aiming = state.phase === 'aim';
@@ -134,7 +143,7 @@
     }
     text(els.resultScore, score);
     text(els.resultSub, r.catchesCount ? 'A quiet kind of victory.' : 'The lake keeps its secrets.');
-    text(els.resultMeta, (E.CASTS - (state.castsLeft || 0)) + ' CASTS · ' + (r.catchesCount || 0) + ' CATCHES · ' + (r.totalCm || 0) + ' cm');
+    text(els.resultMeta, (E.CASTS - (state.castsLeft || 0)) + ' CASTS · ' + (r.catchesCount || 0) + ' CATCHES · ' + (r.totalCm || 0) + ' cm · STREAK ' + (r.bestStreak || 0) + ' · PERFECT ' + (r.perfectHooks || 0));
     text(els.resultBest, 'BEST ' + best);
     if (els.catchList) {
       els.catchList.innerHTML = '';
@@ -161,7 +170,7 @@
       var c = state.catches[state.catches.length - 1];
       text(els.bannerEyebrow, c.rarity === 'LEGENDARY' ? 'LEGENDARY CATCH' : 'CAUGHT');
       text(els.bannerTitle, c.name);
-      text(els.bannerSub, c.size + ' cm · +' + c.points);
+      text(els.bannerSub, c.size + ' cm · +' + c.points + (c.streak > 1 ? ' · STREAK x' + c.streak : ''));
       show(els.banner, true);
     } else if (state.phase === 'escaped') {
       var last = state.events.length ? state.events[state.events.length - 1] : null;
@@ -206,16 +215,33 @@
     afterInput();
   }
 
+  function setAimFromPointer(event) {
+    if (!canvas || !canvas.getBoundingClientRect) return;
+    var rect = canvas.getBoundingClientRect();
+    if (!rect.width) return;
+    var nx = ((event.clientX - rect.left) / rect.width - 0.5) / 0.32;
+    game.setAimX(nx);
+  }
+
   if (canvas && canvas.addEventListener) {
     canvas.addEventListener('pointerdown', function (event) {
       if (event && event.preventDefault) event.preventDefault();
+      aimingPointer = game.state.phase === 'aim';
+      if (aimingPointer) setAimFromPointer(event);
       press();
+    });
+    canvas.addEventListener('pointermove', function (event) {
+      if (!aimingPointer || game.state.phase !== 'aim') return;
+      if (event && event.preventDefault) event.preventDefault();
+      setAimFromPointer(event);
+      afterInput();
     });
     canvas.addEventListener('pointerup', function (event) {
       if (event && event.preventDefault) event.preventDefault();
+      aimingPointer = false;
       release();
     });
-    canvas.addEventListener('pointercancel', release);
+    canvas.addEventListener('pointercancel', function () { aimingPointer = false; release(); });
   }
   if (root.addEventListener) {
     root.addEventListener('keydown', function (event) {

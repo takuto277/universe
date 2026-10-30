@@ -20,6 +20,11 @@
     { id: 'golden', name: 'GOLDEN CARP', min: 52, max: 86, rarity: 'LEGENDARY', mult: 5, pull: 0.58, stamina: 1.45, color: '#f4c96b' },
     { id: 'boot', name: 'OLD BOOT', min: 24, max: 30, rarity: 'JUNK', mult: 0, pull: 0.2, stamina: 0.6, color: '#77685a' }
   ];
+  var SPOTS = [
+    { id: 'reeds', name: 'REEDS', x: -0.66 },
+    { id: 'open', name: 'OPEN WATER', x: 0 },
+    { id: 'rocks', name: 'DEEP ROCKS', x: 0.66 }
+  ];
 
   function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 
@@ -37,6 +42,9 @@
       castIndex: 0,
       charge: 0,
       power: 0,
+      aimX: 0,
+      spot: 'open',
+      hookQuality: '',
       holding: false,
       waitTimer: 0,
       biteTimer: 0,
@@ -47,6 +55,9 @@
       slack: 0,
       score: 0,
       totalCm: 0,
+      streak: 0,
+      bestStreak: 0,
+      perfectHooks: 0,
       bestCatch: null,
       catches: [],
       misses: 0,
@@ -68,6 +79,9 @@
       state.castIndex = 0;
       state.charge = 0;
       state.power = 0;
+      state.aimX = 0;
+      state.spot = 'open';
+      state.hookQuality = '';
       state.holding = false;
       state.waitTimer = 0;
       state.biteTimer = 0;
@@ -78,6 +92,9 @@
       state.slack = 0;
       state.score = 0;
       state.totalCm = 0;
+      state.streak = 0;
+      state.bestStreak = 0;
+      state.perfectHooks = 0;
       state.bestCatch = null;
       state.catches = [];
       state.misses = 0;
@@ -92,23 +109,51 @@
       return true;
     }
 
-    function chooseFish(power) {
+    function nearestSpot(aimX) {
+      var best = SPOTS[1];
+      var bestD = 999;
+      for (var i = 0; i < SPOTS.length; i++) {
+        var d = Math.abs(aimX - SPOTS[i].x);
+        if (d < bestD) { bestD = d; best = SPOTS[i]; }
+      }
+      return best;
+    }
+
+    function chooseFish(power, spot) {
       var r = rand();
-      if (power < 0.34) {
-        if (r < 0.12) return FISH[4];
-        if (r < 0.38) return FISH[1];
+      var deep = power >= 0.66;
+      if (spot === 'reeds') {
+        if (deep) {
+          if (r < 0.18) return FISH[4];
+          if (r < 0.7) return FISH[1];
+          return FISH[0];
+        }
+        if (r < 0.16) return FISH[4];
+        if (r < 0.45) return FISH[1];
         return FISH[0];
       }
-      if (power < 0.7) {
-        if (r < 0.1) return FISH[4];
-        if (r < 0.42) return FISH[2];
-        if (r < 0.78) return FISH[1];
-        return FISH[0];
+      if (spot === 'rocks') {
+        if (deep) {
+          if (r < 0.14) return FISH[4];
+          if (r < 0.46) return FISH[3];
+          if (r < 0.82) return FISH[2];
+          return FISH[1];
+        }
+        if (r < 0.18) return FISH[4];
+        if (r < 0.38) return FISH[3];
+        if (r < 0.75) return FISH[2];
+        return FISH[1];
       }
-      if (r < 0.1) return FISH[4];
-      if (r < 0.34) return FISH[3];
-      if (r < 0.76) return FISH[2];
-      return FISH[1];
+      if (deep) {
+        if (r < 0.14) return FISH[4];
+        if (r < 0.34) return FISH[3];
+        if (r < 0.82) return FISH[2];
+        return FISH[1];
+      }
+      if (r < 0.16) return FISH[4];
+      if (r < 0.58) return FISH[2];
+      if (r < 0.82) return FISH[1];
+      return FISH[0];
     }
 
     function cast() {
@@ -118,32 +163,40 @@
       state.charge = 0;
       state.castsLeft -= 1;
       state.castIndex += 1;
-      state.fish = chooseFish(state.power);
+      state.spot = nearestSpot(state.aimX).id;
+      state.fish = chooseFish(state.power, state.spot);
       state.fish.seed = rand() * Math.PI * 2;
       state.phase = 'wait';
       state.waitTimer = 1.0 + rand() * 1.5;
-      emit('cast', { power: state.power });
+      emit('cast', { power: state.power, spot: state.spot, aimX: state.aimX });
       return true;
     }
 
     function hook() {
       if (state.phase !== 'bite') return false;
       state.phase = 'reel';
-      state.tension = 0.42;
-      state.progress = 0;
+      state.hookQuality = state.biteTimer > BITE_WINDOW * 0.64 ? 'perfect' : 'good';
+      state.tension = state.hookQuality === 'perfect' ? 0.48 : 0.42;
+      state.progress = state.hookQuality === 'perfect' ? 0.08 : 0;
       state.slack = 0;
       state.holding = true;
-      emit('hook', { fish: state.fish.id });
+      if (state.hookQuality === 'perfect') state.perfectHooks += 1;
+      emit('hook', { fish: state.fish.id, quality: state.hookQuality });
       return true;
     }
 
     function catchFish() {
       var f = state.fish;
       var size = Math.round(f.min + rand() * (f.max - f.min));
-      var points = Math.round(size * f.mult);
+      var streakMult = 1 + Math.min(state.streak, 5) * 0.1;
+      var hookMult = state.hookQuality === 'perfect' ? 1.2 : 1;
+      var points = Math.round(size * f.mult * streakMult * hookMult);
+      state.streak += 1;
+      state.bestStreak = Math.max(state.bestStreak, state.streak);
       var caught = {
         id: f.id, name: f.name, rarity: f.rarity, size: size,
-        points: points, color: f.color
+        points: points, color: f.color, quality: state.hookQuality,
+        streak: state.streak
       };
       state.score += points;
       state.totalCm += size;
@@ -161,6 +214,7 @@
       state.endTimer = 0.95;
       state.holding = false;
       state.misses += 1;
+      state.streak = 0;
       emit('escape', { reason: reason });
     }
 
@@ -172,7 +226,9 @@
         totalCm: state.totalCm,
         misses: state.misses,
         bestCatch: state.bestCatch,
-        catchesCount: state.catches.length
+        catchesCount: state.catches.length,
+        bestStreak: state.bestStreak,
+        perfectHooks: state.perfectHooks
       };
       emit('finish');
     }
@@ -182,11 +238,20 @@
       state.phase = 'aim';
       state.charge = 0;
       state.power = 0;
+      state.aimX = 0;
+      state.spot = 'open';
+      state.hookQuality = '';
       state.holding = false;
       state.fish = null;
       state.progress = 0;
       state.tension = 0.42;
       state.slack = 0;
+    }
+
+    function setAimX(value) {
+      if (state.phase !== 'aim') return false;
+      state.aimX = clamp(value, -1, 1);
+      return true;
     }
 
     function press() {
@@ -253,7 +318,7 @@
 
     function autoStep() {
       if (state.phase === 'aim') {
-        if (!state.holding) press();
+        if (!state.holding) { setAimX(SPOTS[state.castIndex % SPOTS.length].x); press(); }
         else if (state.charge >= 0.74) release();
       } else if (state.phase === 'bite') {
         press();
@@ -271,6 +336,9 @@
         castsUsed: CASTS - state.castsLeft,
         charge: state.charge,
         power: state.power,
+        aimX: state.aimX,
+        spot: state.spot,
+        hookQuality: state.hookQuality,
         holding: state.holding,
         tension: state.tension,
         progress: state.progress,
@@ -279,6 +347,9 @@
         catches: state.catches.slice(),
         catchesCount: state.catches.length,
         bestCatch: state.bestCatch,
+        streak: state.streak,
+        bestStreak: state.bestStreak,
+        perfectHooks: state.perfectHooks,
         misses: state.misses,
         fish: state.fish ? {
           id: state.fish.id, name: state.fish.name, rarity: state.fish.rarity,
@@ -295,6 +366,7 @@
       start: start,
       reset: reset,
       update: update,
+      setAimX: setAimX,
       press: press,
       release: release,
       autoStep: autoStep,
@@ -302,5 +374,5 @@
     };
   }
 
-  return { createGame: createGame, CASTS: CASTS, FISH: FISH };
+  return { createGame: createGame, CASTS: CASTS, FISH: FISH, SPOTS: SPOTS };
 });
