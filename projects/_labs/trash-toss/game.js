@@ -6,7 +6,13 @@
 
   var canvas = document.getElementById('canvas');
   var game = E.createGame();
-  var renderer = root.TrashTossRenderer ? root.TrashTossRenderer.create(canvas) : null;
+  var force2d = !!(root.location && /[?&]renderer=2d(?:&|$)/.test(root.location.search));
+  var renderer = null;
+  if (!force2d && root.TrashTossWebGLRenderer) {
+    try { renderer = root.TrashTossWebGLRenderer.create(canvas); } catch (e) { renderer = null; }
+  }
+  if (!renderer && root.TrashTossRenderer) renderer = root.TrashTossRenderer.create(canvas);
+  if (canvas && canvas.setAttribute) canvas.setAttribute('data-renderer', renderer ? (renderer.kind || '2d') : 'none');
   var audio = root.TrashTossAudio;
   var els = {
     hud: document.getElementById('hud'),
