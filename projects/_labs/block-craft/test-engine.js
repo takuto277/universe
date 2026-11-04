@@ -26,12 +26,6 @@ for (var x = 0; x < E.WORLD.x; x++) for (var z = 0; z < E.WORLD.z; z++) {
 assert(found > 0, 'world should have stone below the surface');
 assert(sandCount > 0, 'world should have at least one sand column');
 
-var sand = 0;
-for (x = 0; x < E.WORLD.x; x++) for (var sy = 0; sy < E.WORLD.y; sy++) for (var sz = 0; sz < E.WORLD.z; sz++) {
-  if (E.getBlock(g.world, x, sy, sz) === E.BLOCKS.SAND) sand++;
-}
-assert(sand > 0, 'world should have sand for the beach');
-
 var start = { x: g.position.x, y: g.position.y, z: g.position.z };
 E.setInput(g, { forward: 1 });
 for (var i = 0; i < 60; i++) E.update(g, 1 / 60);
