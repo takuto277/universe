@@ -154,7 +154,7 @@
 
   function getTarget(s) {
     var p = eyePosition(s), d = lookDir(s);
-    return raycastWorld(s.world, p.x, p.y, p.z, d.x, d.y, d.z, 7);
+    return raycastWorld(s.world, p.x, p.y, p.z, d.x, d.y, d.z, 9.5);
   }
 
   function intersectsPlayer(s, x, y, z) {
