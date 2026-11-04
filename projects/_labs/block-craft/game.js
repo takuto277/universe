@@ -13,6 +13,7 @@
   var keys = { w: false, a: false, s: false, d: false };
   var pointer = null;
   var joy = { id: null };
+  var joyInput = { forward: 0, right: 0 };
   var autoStep = 0;
   var lastTs = 0;
   var lastHud = '';
@@ -183,9 +184,9 @@
     lastTs = ts;
     dt = clamp(dt, 0, 0.05);
     if (game && mode === 'play') {
-      var f = (keys.w ? 1 : 0) - (keys.s ? 1 : 0);
-      var r = (keys.d ? 1 : 0) - (keys.a ? 1 : 0);
-      E.setInput(game, { forward: f, right: r });
+      var f = (keys.w ? 1 : 0) - (keys.s ? 1 : 0) + joyInput.forward;
+      var r = (keys.d ? 1 : 0) - (keys.a ? 1 : 0) + joyInput.right;
+      E.setInput(game, { forward: clamp(f, -1, 1), right: clamp(r, -1, 1) });
       E.update(game, dt);
       consumeEdits();
       syncHud();
@@ -218,10 +219,10 @@
 
   function onKeyDown(e) {
     var k = e.key || '';
-    if (k === 'w' || k === 'W') keys.w = true;
-    else if (k === 'a' || k === 'A') keys.a = true;
-    else if (k === 's' || k === 'S') keys.s = true;
-    else if (k === 'd' || k === 'D') keys.d = true;
+    if (k === 'w' || k === 'W' || k === 'ArrowUp') keys.w = true;
+    else if (k === 'a' || k === 'A' || k === 'ArrowLeft') keys.a = true;
+    else if (k === 's' || k === 'S' || k === 'ArrowDown') keys.s = true;
+    else if (k === 'd' || k === 'D' || k === 'ArrowRight') keys.d = true;
     else if (k === ' ' || k === 'Spacebar') {
       e.preventDefault && e.preventDefault();
       if (mode === 'play' && game) E.setInput(game, { jump: true });
@@ -234,10 +235,10 @@
   }
   function onKeyUp(e) {
     var k = e.key || '';
-    if (k === 'w' || k === 'W') keys.w = false;
-    else if (k === 'a' || k === 'A') keys.a = false;
-    else if (k === 's' || k === 'S') keys.s = false;
-    else if (k === 'd' || k === 'D') keys.d = false;
+    if (k === 'w' || k === 'W' || k === 'ArrowUp') keys.w = false;
+    else if (k === 'a' || k === 'A' || k === 'ArrowLeft') keys.a = false;
+    else if (k === 's' || k === 'S' || k === 'ArrowDown') keys.s = false;
+    else if (k === 'd' || k === 'D' || k === 'ArrowRight') keys.d = false;
   }
 
   function onCanvasDown(e) {
@@ -286,7 +287,8 @@
     if (len > max) { dx = dx / len * max; dy = dy / len * max; }
     if (els.joyKnob) els.joyKnob.style.transform = 'translate(calc(-50% + ' + dx + 'px), calc(-50% + ' + dy + 'px))';
     var nx = dx / max, ny = dy / max;
-    E.setInput(game, { forward: -ny, right: nx });
+    joyInput.forward = -ny;
+    joyInput.right = nx;
   }
   function startJoy(e) {
     if (!game || mode !== 'play') return;
@@ -305,7 +307,7 @@
     if (e && (e.pointerId == null ? 1 : e.pointerId) !== joy.id) return;
     joy.id = null;
     if (els.joyKnob) els.joyKnob.style.transform = 'translate(-50%, -50%)';
-    if (game) E.setInput(game, { forward: 0, right: 0 });
+    joyInput.forward = 0; joyInput.right = 0;
   }
 
   function makeRenderer() {
@@ -383,7 +385,7 @@
     }
     window.addEventListener('keydown', onKeyDown, false);
     window.addEventListener('keyup', onKeyUp, false);
-    window.addEventListener('blur', function () { keys.w = keys.a = keys.s = keys.d = false; });
+    window.addEventListener('blur', function () { keys.w = keys.a = keys.s = keys.d = false; joyInput.forward = 0; joyInput.right = 0; });
     window.addEventListener('resize', function () { renderer && renderer.setSize(480, 800, false); }, false);
     if (('ontouchstart' in window) || (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0)) document.body.classList.add('touch');
     if (els.screenTitle) els.screenTitle.classList.add('visible');
