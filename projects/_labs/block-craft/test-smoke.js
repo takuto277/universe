@@ -5,6 +5,7 @@ function tryLoad(paths) {
   throw new Error('load failed: ' + paths.join(' / '));
 }
 tryLoad(['../../../tools/harness.js', 'tools/harness.js']);
+// サンドボックスには終了条件がないため、Harness.run の代わりに start と autoPlayStep を直接実行する。
 tryLoad(['engine.js', 'projects/_labs/block-craft/engine.js']);
 tryLoad(['game.js', 'projects/_labs/block-craft/game.js']);
 
@@ -16,6 +17,7 @@ G.start();
 var started = G.getState();
 assert(started && started.phase === 'play', 'game did not start');
 assert(started.size && started.size.x === 30, 'world size is missing');
+assert(typeof started.seed === 'number', 'world seed should be numeric');
 for (var i = 0; i < 240; i++) G.autoPlayStep();
 var state = G.getState();
 assert(state.phase === 'play', 'sandbox should stay in play mode');

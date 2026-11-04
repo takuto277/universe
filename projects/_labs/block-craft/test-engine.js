@@ -16,11 +16,15 @@ assert(E.HOTBAR.length === 5, 'hotbar should have five blocks');
 assert(g.position.y > 0 && g.position.y < E.WORLD.y, 'spawn height is invalid');
 assert(E.getBlock(g.world, Math.floor(g.position.x), Math.floor(g.position.y) - 1, Math.floor(g.position.z)) !== 0, 'spawn should be on solid ground');
 
-var found = 0;
+var found = 0, sandCount = 0;
 for (var x = 0; x < E.WORLD.x; x++) for (var z = 0; z < E.WORLD.z; z++) {
   if (E.getBlock(g.world, x, 0, z) === E.BLOCKS.STONE) found++;
+  for (var sy = E.WORLD.y - 1; sy >= 0; sy--) {
+    if (E.getBlock(g.world, x, sy, z) === E.BLOCKS.SAND) { sandCount++; break; }
+  }
 }
 assert(found > 0, 'world should have stone below the surface');
+assert(sandCount > 0, 'world should have at least one sand column');
 
 var sand = 0;
 for (x = 0; x < E.WORLD.x; x++) for (var sy = 0; sy < E.WORLD.y; sy++) for (var sz = 0; sz < E.WORLD.z; sz++) {

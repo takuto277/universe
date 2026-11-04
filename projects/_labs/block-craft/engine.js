@@ -47,7 +47,8 @@
     for (x = 0; x < SX; x++) {
       for (z = 0; z < SZ; z++) {
         var h = 5 + Math.floor(2.1 * Math.sin(x * 0.34 + seed * 0.07) + 1.7 * Math.cos(z * 0.29) + 1.0 * Math.sin((x + z) * 0.13));
-        h = clamp(h, 3, SY - 5);
+        if (Math.abs(x - 15) <= 2 && Math.abs(z - 15) <= 2) h = Math.max(h, 3);
+        h = clamp(h, 2, SY - 5);
         heights[x + z * SX] = h;
         for (y = 0; y <= h; y++) {
           var type;
@@ -80,7 +81,7 @@
       if (pathTop >= 0 && pathTop < SY - 1) setBlock({ blocks: blocks }, 15, pathTop, z, BLOCKS.STONE);
     }
     var decor = [];
-    var spots = [[12, 12], [16, 12], [11, 14], [19, 13], [14, 10], [18, 10], [10, 10], [20, 16], [13, 16], [17, 15], [9, 15], [21, 14]];
+    var spots = [[12, 12], [16, 12], [11, 14], [19, 13], [14, 10], [18, 10], [10, 10], [20, 16], [13, 16], [17, 15], [9, 15], [21, 14], [13, 14], [17, 14], [14, 13], [16, 13]];
     for (var d = 0; d < spots.length; d++) {
       var dx = spots[d][0], dz = spots[d][1];
       var dy = surfaceY({ blocks: blocks }, dx, dz);

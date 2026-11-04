@@ -34,18 +34,10 @@
     }
   }
 
-  function showTitle() {
-    mode = 'title'; game = null;
-    setScreen('screen-title');
-    if (els.hud) els.hud.classList.add('hidden');
-    if (els.crosshair) els.crosshair.classList.add('hidden');
-    if (els.hotbar) els.hotbar.classList.add('hidden');
-    if (worldGroup) clearWorld();
-    invalidateHud();
-  }
-
   function startGame(seed) {
-    game = E.createGame({ seed: seed == null ? 20261104 : seed });
+    seed = Number(seed);
+    if (!isFinite(seed) || seed <= 0) seed = 20261104;
+    game = E.createGame({ seed: seed });
     mode = 'play';
     pointer = null; joy.id = null;
     autoStep = 0;
@@ -71,10 +63,6 @@
 
   function invalidateHud() { lastHud = ''; }
 
-  function slotColor(index) {
-    var info = E.BLOCK_INFO[E.HOTBAR[index]];
-    return '#' + ('000000' + info.color.toString(16)).slice(-6);
-  }
   function syncHud() {
     if (!game) return;
     var st = E.getState(game);
@@ -366,10 +354,9 @@
     els.screenTitle = $('screen-title'); els.screenHelp = $('screen-help');
     els.slots = document.querySelectorAll ? document.querySelectorAll('.slot') : [];
     els.hotbar = $('hotbar'); els.joystick = $('joystick'); els.joyKnob = $('joy-knob');
-    els.sound = null;
     makeRenderer();
     var start = $('btn-start'), help = $('btn-help'), close = $('btn-help-close');
-    if (start) start.addEventListener('click', startGame);
+    if (start) start.addEventListener('click', function () { setTimeout(function () { startGame(); }, 0); });
     if (help) help.addEventListener('click', showHelp);
     if (close) close.addEventListener('click', closeHelp);
     for (var i = 0; i < els.slots.length; i++) {
