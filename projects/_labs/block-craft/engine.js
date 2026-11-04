@@ -51,7 +51,7 @@
         heights[x + z * SX] = h;
         for (y = 0; y <= h; y++) {
           var type;
-          if (y === h) type = h <= 2 ? BLOCKS.SAND : BLOCKS.GRASS;
+          if (y === h) type = h <= 3 ? BLOCKS.SAND : BLOCKS.GRASS;
           else if (y >= h - 2) type = BLOCKS.DIRT;
           else type = BLOCKS.STONE;
           blocks[idx(x, y, z)] = type;
