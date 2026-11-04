@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#06202a" />
+  <title>LOOP WORKS — Line Lab</title>
+  <link rel="stylesheet" href="style.css?v=looplab1" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud">
+      <div class="hud-top">
+        <div>
+          <p class="eyebrow">LOOP WORKS · PROTOTYPE</p>
+          <h1>LINE LAB</h1>
+        </div>
+        <div id="slow" class="slow">SLOW 0.25×</div>
+      </div>
+      <p id="hint" class="hint">GRAB A GLOWING JOINT · DRAG TO REROUTE · RELEASE TO SNAP</p>
+    </div>
+
+    <div class="bottom-bar">
+      <div class="delivered"><span>DELIVERED</span><strong id="count">0</strong></div>
+      <button id="btn-reset" class="reset" type="button">RESET</button>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">A LIVE ROUTING EXPERIMENT</p>
+        <h1>LINE<br /><span>LAB</span></h1>
+        <p class="lead">The line is running. Grab a glowing joint, drag it somewhere else, and watch the crates follow.</p>
+        <div class="rules">
+          <p><span>01</span> Press and drag one of the two glowing joints.</p>
+          <p><span>02</span> Time slows while you drag. The crates ride the moving line.</p>
+          <p><span>03</span> Release on open floor to snap the new route.</p>
+        </div>
+        <button id="btn-start" class="primary" type="button">START THE LINE</button>
+        <p class="tiny">No orders yet. Just the hand feel of moving a live line.</p>
+      </div>
+    </div>
+  </div>
+
+  <script src="audio.js?v=looplab1"></script>
+  <script src="engine.js?v=looplab1"></script>
+  <script src="renderer.js?v=looplab1"></script>
+  <script src="game.js?v=looplab1"></script>
+  <script src="../../../_shared/game-back.js"></script>
+</body>
+</html>
