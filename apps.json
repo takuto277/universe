@@ -454,6 +454,25 @@
       "createdAt": "2026-10-31",
       "updatedAt": "2026-10-31T02:43:56+09:00",
       "thumbNoAuto": true
+    },
+    {
+      "id": "worm-rush",
+      "path": "projects/_labs/worm-rush/",
+      "tag": "GAME",
+      "title": "WORM RUSH",
+      "description": "AIミミズと餌を奪い合う、オフラインio風ミミズゲーム。ドラッグまたはWASD/矢印で移動し、光る餌を食べて体を伸ばす。DASHで加速できるが体は短くなる。敵の体に頭をぶつけると敗北、相手の頭に体をぶつけると撃破。AIは倒しても数秒後に復活し、常に敵がいる状態で遊べる。カメラ追従、ミニマップ、リーダーボード、キルフィード、ベストスコア保存つき。",
+      "summary": "AIミミズと餌を奪い合う、オフラインio風サバイバル。",
+      "tags": [
+        "io",
+        "ミミズ",
+        "サバイバル",
+        "AI"
+      ],
+      "thumbnail": "projects/_labs/worm-rush/thumb.jpg",
+      "thumbDelay": 1.6,
+      "createdAt": "2026-11-04",
+      "updatedAt": "2026-11-04T23:39:42+09:00",
+      "thumbNoAuto": true
     }
   ]
 }

@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070f">
+  <meta name="description" content="AIミミズと餌を奪い合う、オフラインio風ミミズゲーム。WORM RUSH。">
+  <title>WORM RUSH - オフラインio風ミミズゲーム</title>
+  <link rel="stylesheet" href="style.css?v=20261104-wormrush1">
+</head>
+<body>
+  <div id="app">
+    <main id="stage">
+      <canvas id="arena" width="480" height="800" aria-label="ミミズを操作して餌を食べ、AIと戦うゲーム"></canvas>
+
+      <header id="hud">
+        <div class="hud-top">
+          <div class="brand">WORM <span>RUSH</span></div>
+          <div class="stats">
+            <div><span>SCORE</span><b id="score">0</b></div>
+            <div><span>LENGTH</span><b id="length">10</b></div>
+            <div><span>KILLS</span><b id="kills">0</b></div>
+            <div><span>TIME</span><b id="time">0:00</b></div>
+          </div>
+        </div>
+        <div class="hud-sub"><span>AI ALIVE <b id="ai-alive">10</b></span><span id="status">餌を食べて育て</span></div>
+      </header>
+
+      <aside id="leaderboard" class="panel">
+        <p>LEADERBOARD</p>
+        <ol id="leader-list"></ol>
+      </aside>
+
+      <div id="minimap-wrap" class="panel">
+        <canvas id="minimap" width="120" height="120" aria-label="ミニマップ"></canvas>
+      </div>
+
+      <div id="feed" class="feed"></div>
+
+      <button id="btn-boost" class="boost" type="button">DASH</button>
+
+      <div id="hint" class="hint">ドラッグで操作 / DASHで加速</div>
+
+      <div id="overlay">
+        <section id="screen-start" class="screen visible">
+          <p class="eyebrow">OFFLINE IO ARENA</p>
+          <h1>WORM<br><span>RUSH</span></h1>
+          <p class="subtitle">AIミミズと餌を奪い合え。</p>
+          <ul class="rules">
+            <li>ドラッグ / WASD・矢印キーで移動</li>
+            <li>光る餌を食べて体を伸ばす</li>
+            <li>DASHで加速。ただし体が短くなる</li>
+            <li>敵の体に頭をぶつけると負け。相手の頭に体をぶつけて倒せ</li>
+            <li>AIは倒しても時間差で復活する</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">PLAY</button>
+          <p class="tiny" id="best-start">BEST 0</p>
+        </section>
+
+        <section id="screen-end" class="screen">
+          <p class="eyebrow">RUN OVER</p>
+          <h2 id="end-rank">ROOKIE</h2>
+          <p id="end-detail" class="end-detail"></p>
+          <div class="end-stats">
+            <div><span>SCORE</span><b id="end-score">0</b></div>
+            <div><span>LENGTH</span><b id="end-length">0</b></div>
+            <div><span>KILLS</span><b id="end-kills">0</b></div>
+          </div>
+          <p class="end-sub">TIME <b id="end-time">0:00</b></p>
+          <p class="end-best">BEST <b id="end-best">0</b></p>
+          <button id="btn-again" class="primary" type="button">RETRY</button>
+          <p class="tiny">タップ / Space でもう一度</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="engine.js?v=20261104-wormrush1"></script>
+  <script src="game.js?v=20261104-wormrush1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
