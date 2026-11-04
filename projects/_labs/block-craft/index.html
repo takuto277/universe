@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#78b9e8" />
+  <title>BLOCK CRAFT - 夜明けのボクセル島</title>
+  <link rel="stylesheet" href="styles.css?v=1" />
+</head>
+<body>
+  <main id="app">
+    <div id="game-frame">
+      <canvas id="game" width="480" height="800" aria-label="BLOCK CRAFT"></canvas>
+
+      <header id="hud" class="hidden">
+        <div class="brand"><b>BLOCK CRAFT</b><span>夜明けの島</span></div>
+        <div class="coords" id="coords">X 15 · Y 6 · Z 15</div>
+        <button id="btn-help" class="icon-btn" type="button" aria-label="遊び方">?</button>
+      </header>
+
+      <div id="crosshair" class="hidden" aria-hidden="true"><i></i><i></i></div>
+
+      <div id="hotbar" class="hidden" role="group" aria-label="ブロック選択">
+        <button class="slot selected" type="button" data-index="0" aria-label="草ブロック">草</button>
+        <button class="slot" type="button" data-index="1" aria-label="土ブロック">土</button>
+        <button class="slot" type="button" data-index="2" aria-label="石ブロック">石</button>
+        <button class="slot" type="button" data-index="3" aria-label="木ブロック">木</button>
+        <button class="slot" type="button" data-index="4" aria-label="葉ブロック">葉</button>
+      </div>
+
+      <div id="touch-ui">
+        <div id="joystick" aria-label="移動スティック"><i id="joy-knob"></i></div>
+        <div class="touch-actions">
+          <button id="btn-jump" class="touch-btn" type="button">JUMP</button>
+          <button id="btn-mine" class="touch-btn mine" type="button">掘る</button>
+          <button id="btn-place" class="touch-btn place" type="button">置く</button>
+        </div>
+      </div>
+
+      <div id="overlay">
+        <section id="screen-title" class="screen visible">
+          <p class="kicker">VOXEL SANDBOX · BUILD · EXPLORE</p>
+          <h1>BLOCK<br><span>CRAFT</span></h1>
+          <p class="subtitle">夜明けの島で、掘って、積んで、好きなものを作ろう。</p>
+          <ul class="rules">
+            <li><b>WASD</b> / 左スティックで移動、<b>Space</b>でジャンプ</li>
+            <li>画面ドラッグで視点を回す</li>
+            <li>左クリック / <b>掘る</b>ボタンでブロックを壊す</li>
+            <li>右クリック / <b>置く</b>ボタンでブロックを設置</li>
+            <li><b>1〜5</b>で草・土・石・木・葉を選択</li>
+            <li>落ちても自動でスポーンへ戻る。自由に建築しよう</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">島へ降りる</button>
+          <p class="tiny">Rでワールド再生成 / 右上の?で操作確認</p>
+        </section>
+
+        <section id="screen-help" class="screen">
+          <p class="kicker">HOW TO PLAY</p>
+          <h2>あそびかた</h2>
+          <ul class="rules">
+            <li><b>移動</b>: WASD / 左スティック</li>
+            <li><b>視点</b>: 画面をドラッグ</li>
+            <li><b>掘る</b>: 左クリック / 掘るボタン</li>
+            <li><b>置く</b>: 右クリック / 置くボタン</li>
+            <li><b>ジャンプ</b>: Space / JUMP</li>
+            <li><b>選択</b>: 1〜5 / ホットバー</li>
+            <li><b>再生成</b>: R</li>
+          </ul>
+          <button id="btn-help-close" class="primary" type="button">戻る</button>
+        </section>
+      </div>
+    </div>
+  </main>
+  <script src="vendor/three.min.js"></script>
+  <script src="engine.js?v=1"></script>
+  <script src="game.js?v=1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>

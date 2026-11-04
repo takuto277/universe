@@ -342,6 +342,26 @@
       "thumbDelay": 1.2
     },
     {
+      "id": "block-craft",
+      "path": "projects/_labs/block-craft/",
+      "tag": "GAME",
+      "title": "BLOCK CRAFT",
+      "description": "夜明けの島を自由に歩き、ブロックを掘って積む3Dボクセルサンドボックス。WASD/スティックで移動し、画面ドラッグで視点、左クリック/ボタンで掘削、右クリック/ボタンで設置。草・土・石・木・葉の5種類を選んで建築できる。地形・木・砂浜・海・雲をThree.jsで描画し、モバイルのタッチ操作にも対応。",
+      "tags": [
+        "3D",
+        "ボクセル",
+        "サンドボックス",
+        "建築",
+        "採掘"
+      ],
+      "thumbnail": "projects/_labs/block-craft/thumb.jpg",
+      "summary": "掘って積んで自由に作る、一人称3Dボクセルサンドボックス。",
+      "createdAt": "2026-11-04",
+      "updatedAt": "2026-11-04T22:38:11+09:00",
+      "thumbNoAuto": true,
+      "thumbDelay": 1.2
+    },
+    {
       "id": "sleep-guard",
       "path": "projects/_labs/sleep-guard/",
       "tag": "GAME",
