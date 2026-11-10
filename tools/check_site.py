@@ -36,6 +36,21 @@ class RefCollector(HTMLParser):
                 self.refs.append(value)
 
 
+class AssetCollector(HTMLParser):
+    def __init__(self):
+        super().__init__(convert_charrefs=True)
+        self.refs = []
+
+    def handle_starttag(self, tag, attrs):
+        values = dict(attrs)
+        if tag == "script" and values.get("src"):
+            self.refs.append(values["src"])
+        elif tag == "link" and values.get("href"):
+            rel = (values.get("rel") or "").lower().split()
+            if "stylesheet" in rel:
+                self.refs.append(values["href"])
+
+
 def load_apps():
     try:
         data = json.loads(read(ROOT / "apps.json"))
@@ -184,7 +199,7 @@ def check_refs(html_path, base_dir):
 
 
 def check_asset_versions(html_path, app_dir):
-    parser = RefCollector()
+    parser = AssetCollector()
     parser.feed(read(html_path))
     label = html_path.relative_to(ROOT)
     root = app_dir.resolve()
