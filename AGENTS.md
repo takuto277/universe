@@ -6,6 +6,7 @@ universe は、ゲームを題材に無人開発基盤を育てるモノレポ�
 
 ```sh
 ./tools/setup.sh              # 開発環境の確認（--with-agents で LaunchAgent 登録）
+./tools/new-game.sh my-game   # 新しいゲームの雛形を生成（README・テスト・apps.json 登録まで）
 ./tools/verify.sh             # テスト + サイト検査 + PR スクリプトの構文検査
 ./tools/run-tests.sh          # 全アプリの test-*.js
 python3 tools/check_site.py   # apps.json / index.html / ローカルリンクの検査

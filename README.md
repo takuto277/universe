@@ -116,7 +116,9 @@ http://localhost:8000/ を開きます。
 
 ## アプリを追加する
 
-[docs/adding-an-app.md](docs/adding-an-app.md) の手順に従ってください。`apps.json`（`tags` / `thumbnail` 含む）、アプリの `README.md`、テストを同じ変更で更新します。一覧は `apps.json` から自動生成されます。
+雛形から始める場合は `./tools/new-game.sh my-app --title "My App"` を実行します。`index.html`、`README.md`、`engine.js`、`game.js`、`test-*.js`、`apps.json` の登録、仮サムネイルまで生成されます。
+
+手動で追加する場合は [docs/adding-an-app.md](docs/adding-an-app.md) の手順に従ってください。`apps.json`（`tags` / `thumbnail` 含む）、アプリの `README.md`、テストを同じ変更で更新します。一覧は `apps.json` から自動生成されます。
 
 ## ドキュメント
 
