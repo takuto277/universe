@@ -6,7 +6,7 @@ from datetime import datetime
 from html import escape
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.parse import unquote, urlsplit
+from urllib.parse import parse_qs, unquote, urlsplit
 
 ROOT = Path(__file__).resolve().parent.parent
 ERRORS = []
@@ -183,6 +183,35 @@ def check_refs(html_path, base_dir):
             error(f"{html_path.relative_to(ROOT)}: リンク先がありません: {ref}")
 
 
+def check_asset_versions(html_path, app_dir):
+    parser = RefCollector()
+    parser.feed(read(html_path))
+    label = html_path.relative_to(ROOT)
+    root = app_dir.resolve()
+
+    for ref in parser.refs:
+        if ref.startswith(("#", "mailto:", "tel:", "javascript:", "data:")):
+            continue
+
+        parts = urlsplit(ref)
+        if parts.scheme:
+            continue
+
+        raw_path = unquote(parts.path)
+        if not raw_path or Path(raw_path).suffix.lower() not in (".css", ".js"):
+            continue
+
+        target = (app_dir / raw_path).resolve()
+        try:
+            target.relative_to(root)
+        except ValueError:
+            continue
+
+        version = parse_qs(parts.query).get("v", [""])[0].strip()
+        if not version:
+            error(f"{label}: ?v= がありません: {ref}")
+
+
 def main():
     apps = load_apps()
     check_index(apps)
@@ -193,6 +222,7 @@ def main():
         app_dir = ROOT / app["path"]
         if (app_dir / "index.html").is_file():
             check_refs(app_dir / "index.html", app_dir)
+            check_asset_versions(app_dir / "index.html", app_dir)
 
     if ERRORS:
         for message in ERRORS:
