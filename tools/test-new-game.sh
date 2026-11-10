@@ -41,7 +41,9 @@ import sys
 
 root = sys.argv[1]
 with open(os.path.join(root, "apps.json"), encoding="utf-8") as f:
-    apps = json.load(f)["apps"]
+    raw = f.read()
+assert raw.endswith("\n"), "apps.json の末尾改行が失われています"
+apps = json.loads(raw)["apps"]
 assert len(apps) == 1, apps
 app = apps[0]
 assert app["id"] == "demo-game", app
@@ -65,7 +67,9 @@ import sys
 
 root = sys.argv[1]
 with open(os.path.join(root, "apps.json"), encoding="utf-8") as f:
-    apps = json.load(f)["apps"]
+    raw = f.read()
+assert raw.endswith("\n"), "apps.json の末尾改行が失われています"
+apps = json.loads(raw)["apps"]
 assert [app["id"] for app in apps] == ["demo-game", "second-game"], apps
 assert apps[1]["path"] == "projects/_samples/second-game/", apps[1]
 assert apps[1]["title"] == "Second Game", apps[1]

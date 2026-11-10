@@ -597,6 +597,7 @@ import sys
 apps_path, app_id, app_path, title, tags_json, thumb, created, updated = sys.argv[1:9]
 with open(apps_path, encoding="utf-8") as f:
     text = f.read()
+had_newline = text.endswith("\n")
 data = json.loads(text)
 app = {
     "id": app_id,
@@ -620,7 +621,7 @@ else:
         raise SystemExit("apps.json の末尾形式が想定と違います")
     indented = "\n".join("    " + line for line in json.dumps(app, ensure_ascii=False, indent=2).splitlines())
     text = text[:index] + ",\n" + indented + marker
-    if text.endswith("\n"):
+    if had_newline:
         text += "\n"
 with open(apps_path, "w", encoding="utf-8") as f:
     f.write(text)
