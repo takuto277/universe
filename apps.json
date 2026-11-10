@@ -473,6 +473,24 @@
       "createdAt": "2026-11-04",
       "updatedAt": "2026-11-04T23:39:42+09:00",
       "thumbNoAuto": true
+    },
+    {
+      "id": "tendril",
+      "path": "projects/_labs/tendril/",
+      "tag": "GAME",
+      "title": "TENDRIL",
+      "description": "触手を伸ばして光る餌を捕食する45秒の海中アクション。体は節ごとにしなるプロシージャルな触手で、伸ばすほど遠くまで届く。餌を食べるほど体が伸び、トゲに触れると弾かれてコンボが切れる。",
+      "tags": [
+        "アクション",
+        "1ボタン",
+        "ネオン",
+        "触手"
+      ],
+      "thumbnail": "projects/_labs/tendril/thumb.jpg",
+      "summary": "触手を伸ばして光る餌を捕食する、ネオンの海中アクション。",
+      "thumbDelay": 2.2,
+      "createdAt": "2026-11-11",
+      "updatedAt": "2026-11-11T01:54:43+09:00"
     }
   ]
 }
