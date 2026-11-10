@@ -82,7 +82,7 @@ python3 tools/check_site.py
 python3 -m http.server 8000
 ```
 
-`check_site.py` は一覧とカードの不一致、存在しないリンク、README やテストの欠落を検出します。
+`check_site.py` は一覧とカードの不一致、存在しないリンク、README やテストの欠落、アプリ内のCSS/JS参照の `?v=` 欠落を検出します。
 
 ## 7. コミットする
 
