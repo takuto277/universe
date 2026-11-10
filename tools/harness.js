@@ -15,11 +15,14 @@
  *   tryLoad(['engine.js', 'projects/_labs/baseball-game/engine.js']);
  *   tryLoad(['game.js', 'projects/_labs/baseball-game/game.js']);
  *   Harness.run({ name: 'baseball-game', check: function (state, h) { h.assert(...); } });
+ *   // 終了しないサンドボックス
+ *   Harness.run({ name: 'sandbox', endless: true, maxSteps: 240, check: function (state, h) { ... } });
  *
  * ハーネスが行うこと:
  *   - DOM / Canvas / タイマー / requestAnimationFrame をスタブ化
  *   - ミニイベントループで仮想時間を進めながら自動プレイ
  *   - 終了検知 -> check() 実行 -> OK/NG を print
+ *   - endless: true のときは終了を待たず、maxSteps 回で打ち切る
  */
 (function () {
   'use strict';
@@ -154,6 +157,7 @@
     var name = opts.name || 'game';
     var maxSteps = opts.maxSteps || 100000;
     var afterDone = (opts.afterDone == null) ? 400 : opts.afterDone;
+    var endless = !!opts.endless;
     var GAME = g.__GAME__;
 
     var steps = 0;
@@ -222,17 +226,19 @@
 
           try { GAME.autoPlayStep(); } catch (e) { fail('autoPlayStep: ' + (e && e.stack ? e.stack : e)); }
 
-          var done = false;
-          try { done = !!(GAME.isDone && GAME.isDone()); } catch (e) { fail('isDone: ' + e); }
-          if (done) {
-            if (doneAt < 0) doneAt = steps;
-            if (steps - doneAt > afterDone) break;
+          if (!endless) {
+            var done = false;
+            try { done = !!(GAME.isDone && GAME.isDone()); } catch (e) { fail('isDone: ' + e); }
+            if (done) {
+              if (doneAt < 0) doneAt = steps;
+              if (steps - doneAt > afterDone) break;
+            }
           }
           if (FAILED) break;
           await null;
         }
 
-        if (doneAt < 0) fail(name + ': 制限ステップ内に終了しなかった (maxSteps=' + maxSteps + ')');
+        if (!endless && doneAt < 0) fail(name + ': 制限ステップ内に終了しなかった (maxSteps=' + maxSteps + ')');
 
         var state = null;
         try { state = GAME.getState ? GAME.getState() : null; } catch (e) { fail('getState: ' + e); }
