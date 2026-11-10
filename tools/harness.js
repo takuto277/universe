@@ -66,6 +66,7 @@
     var classes = {};
     var el = {
       id: id || '',
+      dataset: {},
       style: {
         setProperty: function () { },
         removeProperty: function () { },
@@ -117,6 +118,11 @@
       return elements[id];
     },
     createElement: function () { return makeEl(''); },
+    createTextNode: function (text) {
+      var node = makeEl('');
+      node.textContent = text == null ? '' : String(text);
+      return node;
+    },
     addEventListener: function () { },
     body: makeEl('body')
   };
@@ -170,6 +176,23 @@
     return new Promise(function (resolve) {
       async function pump() {
         if (!GAME) { fail('__GAME__ が未定義'); checkAll(null); resolve(); return; }
+
+        var REQUIRED = ['id', 'title', 'start', 'autoPlayStep', 'isDone', 'getState'];
+        var missing = [];
+        for (var k = 0; k < REQUIRED.length; k++) {
+          var key = REQUIRED[k];
+          if (key === 'id' || key === 'title') {
+            if (!GAME[key]) missing.push(key);
+          } else if (typeof GAME[key] !== 'function') {
+            missing.push(key);
+          }
+        }
+        if (missing.length) {
+          fail('__GAME__ の契約違反: ' + missing.join(', '));
+          checkAll(null);
+          resolve();
+          return;
+        }
 
         try {
           var p = GAME.start && GAME.start();
