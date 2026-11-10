@@ -11,6 +11,8 @@ python3 "$ROOT/tools/check_skills.py"
 for script in \
   "$ROOT/tools/agent.sh" \
   "$ROOT/tools/experiment.sh" \
+  "$ROOT/tools/new-game.sh" \
+  "$ROOT/tools/test-new-game.sh" \
   "$ROOT/tools/setup.sh" \
   "$ROOT/tools/automation-root.sh" \
   "$ROOT/tools/automation-run.sh" \
@@ -50,4 +52,5 @@ bash "$ROOT/tools/test-setup.sh"
 bash "$ROOT/tools/test-automation-root.sh"
 bash "$ROOT/tools/test-installers.sh"
 bash "$ROOT/tools/test-auto-pr-retry.sh"
+bash "$ROOT/tools/test-new-game.sh"
 "$ROOT/tools/run-tests.sh"

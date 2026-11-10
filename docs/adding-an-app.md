@@ -2,6 +2,14 @@
 
 新しいアプリは、実装だけでなく一覧・テスト・説明を同じ変更で追加します。
 
+雛形から始める場合は、次のコマンドで配置先・`index.html`・`README.md`・`engine.js`・`game.js`・テスト・`apps.json` 登録・仮サムネイルまで生成できます。生成後に `engine.js` と `game.js` を書き換えてください。
+
+```sh
+./tools/new-game.sh my-app --title "My App" --tags "ジャンル,操作"
+```
+
+以下は手動で作る場合の手順です。
+
 ## 1. 配置先を決めてディレクトリを作る
 
 [`projects/` の分類ルール](../projects/README.md)に従い、公開・継続保守なら `projects/`、実験なら `projects/_labs/`、教材・検証なら `projects/_samples/` に置きます。
