@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#03060f" />
+  <meta name="description" content="TENDRIL — 触手を伸ばして光る餌を捕食する、ネオンの海中アクション。" />
+  <title>TENDRIL</title>
+  <link rel="stylesheet" href="style.css?v=20261111-tendril1" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud">
+      <div class="hud-block">
+        <span class="label">SCORE</span>
+        <span id="score" class="value">0</span>
+      </div>
+      <div id="combo" class="combo"></div>
+      <div class="hud-block right">
+        <span class="label">TIME</span>
+        <span id="time" class="value">45</span>
+      </div>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="panel">
+        <p class="eyebrow">A TENTACLE HUNT</p>
+        <h1>TENDRIL</h1>
+        <p class="lead">触手を伸ばして光る餌を掴め。伸ばすほど遠くまで届く。トゲに触れると弾かれる。</p>
+        <svg class="start-art" viewBox="0 0 260 150" role="img" aria-label="光る餌へ伸びる触手">
+          <path d="M52 108 C 84 108 96 74 130 66 C 158 60 176 44 202 40" fill="none" stroke="#5ef0ff" stroke-width="7" stroke-linecap="round" opacity="0.22" />
+          <path d="M52 108 C 84 108 96 74 130 66 C 158 60 176 44 202 40" fill="none" stroke="#bffcff" stroke-width="2" stroke-linecap="round" />
+          <circle cx="52" cy="108" r="12" fill="#7ff2ff" opacity="0.9" />
+          <circle cx="48" cy="105" r="3" fill="#ffffff" />
+          <circle cx="202" cy="40" r="9" fill="none" stroke="#c46bff" stroke-width="2" />
+          <circle cx="202" cy="40" r="3.2" fill="#f4e6ff" />
+          <circle cx="166" cy="118" r="7" fill="none" stroke="#5ef0ff" stroke-width="1.6" opacity="0.7" />
+          <circle cx="166" cy="118" r="2.4" fill="#eaffff" />
+        </svg>
+        <button id="btn-start" class="primary" type="button">START</button>
+        <p class="tiny">ドラッグで移動 / 押したまま触手を伸ばして離す</p>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay">
+      <div class="panel">
+        <p class="eyebrow">TIME UP</p>
+        <h1 id="result-score">0</h1>
+        <p class="lead">光る餌を <span id="result-eaten">0</span> 個捕食</p>
+        <p id="result-best" class="tiny">BEST 0</p>
+        <button id="btn-retry" class="primary" type="button">AGAIN</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261111-tendril1"></script>
+  <script src="renderer.js?v=20261111-tendril1"></script>
+  <script src="game.js?v=20261111-tendril1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
