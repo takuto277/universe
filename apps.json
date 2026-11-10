@@ -491,6 +491,25 @@
       "thumbDelay": 2.2,
       "createdAt": "2026-11-11",
       "updatedAt": "2026-11-11T01:54:43+09:00"
+    },
+    {
+      "id": "prism",
+      "path": "projects/_labs/prism/",
+      "tag": "GAME",
+      "title": "PRISM",
+      "description": "ミラーを回して光をシグナルへ届ける1画面パズル。エミッターから出た光はミラーで反射し、壁で遮られる。すべてのシグナルを点灯させるとレベルクリア。全5レベル。",
+      "tags": [
+        "パズル",
+        "光",
+        "反射",
+        "1画面"
+      ],
+      "thumbnail": "projects/_labs/prism/thumb.jpg",
+      "summary": "ミラーを回して光を届ける、コード描画の光パズル。",
+      "thumbNoAuto": true,
+      "thumbDelay": 0.8,
+      "createdAt": "2026-11-11",
+      "updatedAt": "2026-11-11T02:37:10+09:00"
     }
   ]
 }
