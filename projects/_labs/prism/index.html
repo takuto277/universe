@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#05060e" />
+  <meta name="description" content="PRISM — ミラーを回して光を目標へ届ける、1画面の光パズル。" />
+  <title>PRISM</title>
+  <link rel="stylesheet" href="style.css?v=20261111-prism1" />
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas"></canvas>
+
+    <div id="hud" class="hud">
+      <div class="hud-row">
+        <div class="hud-block">
+          <span class="label">LEVEL</span>
+          <span id="level" class="value small">LV 1/5</span>
+        </div>
+        <div class="hud-block center">
+          <span class="label">SIGNAL</span>
+          <span id="signals" class="value small">0/1</span>
+        </div>
+        <div class="hud-block right">
+          <span class="label">MOVES</span>
+          <span id="moves" class="value small">0</span>
+        </div>
+      </div>
+      <p id="level-name" class="level-name">FIRST LIGHT</p>
+    </div>
+
+    <div id="level-banner" class="level-banner" aria-live="polite">
+      <span>LEVEL CLEAR</span>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="panel">
+        <p class="eyebrow">A LIGHT PUZZLE</p>
+        <h1>PRISM</h1>
+        <p class="lead">ミラーをタップして回し、光をすべてのシグナルへ届けよう。壁は光を遮る。</p>
+        <svg class="start-art" viewBox="0 0 260 130" role="img" aria-label="プリズムで分かれる光">
+          <path d="M8 92 H84" stroke="#8ef4ff" stroke-width="2" opacity="0.55" />
+          <path d="M8 92 H84" stroke="#eaffff" stroke-width="0.8" />
+          <path d="M84 92 L130 44 L176 92 Z" fill="rgba(120,230,255,0.10)" stroke="rgba(180,250,255,0.7)" stroke-width="1.5" />
+          <path d="M176 92 L250 62" stroke="#5cf7ff" stroke-width="2" opacity="0.8" />
+          <path d="M176 92 L250 92" stroke="#b46bff" stroke-width="2" opacity="0.8" />
+          <path d="M176 92 L250 122" stroke="#ffd66b" stroke-width="2" opacity="0.8" />
+          <circle cx="84" cy="92" r="3" fill="#eaffff" />
+        </svg>
+        <button id="btn-start" class="primary" type="button">START</button>
+        <p class="tiny">ミラーをタップで回転 / 光をシグナルに当てるとクリア</p>
+      </div>
+    </div>
+
+    <div id="result-overlay" class="overlay">
+      <div class="panel">
+        <p class="eyebrow">ALL CLEAR</p>
+        <h1>PRISM</h1>
+        <p class="lead"><span id="result-moves">0</span> 回のミラー操作で全レベル達成</p>
+        <p class="tiny"><span id="result-time">0</span> 秒 / <span id="result-best">BEST 0 MOVES</span></p>
+        <button id="btn-retry" class="primary" type="button">AGAIN</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="engine.js?v=20261111-prism1"></script>
+  <script src="renderer.js?v=20261111-prism1"></script>
+  <script src="game.js?v=20261111-prism1"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
