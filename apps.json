@@ -1,6 +1,40 @@
 {
   "apps": [
     {
+      "id": "twin",
+      "path": "projects/_labs/twin/",
+      "tag": "GAME",
+      "title": "TWIN",
+      "description": "1つの入力で2体を操り、片方に0.4秒の遅延をかけて塔を登る縦スクロールアクション。上下の2体を別々のゲートに通し、SPACE / SWAPで遅延する側を入れ替える。3ステージ、ライフ3。",
+      "tags": [
+        "アクション",
+        "1入力",
+        "遅延",
+        "縦スクロール"
+      ],
+      "thumbnail": "projects/_labs/twin/thumb.jpg",
+      "summary": "1つの入力で2体を操り、0.4秒の遅延で別々のゲートを抜ける縦スクロール。",
+      "createdAt": "2026-11-24",
+      "updatedAt": "2026-11-24T23:49:03+09:00"
+    },
+    {
+      "id": "ammo-share",
+      "path": "projects/_labs/ammo-share/",
+      "tag": "GAME",
+      "title": "AMMO SHARE",
+      "description": "撃った弾が1.5秒後に敵の弾になって返ってくる、60秒の共有弾倉シューター。外した弾も、下に抜けた敵も返球になる。赤い弾は撃ち落とせる。PURGEで返球を全消し。1ライフ。",
+      "tags": [
+        "シューティング",
+        "1ライフ",
+        "返球",
+        "60秒"
+      ],
+      "thumbnail": "projects/_labs/ammo-share/thumb.jpg",
+      "summary": "撃った弾が1.5秒後に敵の弾になって返る、60秒の共有弾倉シューター。",
+      "createdAt": "2026-11-25",
+      "updatedAt": "2026-11-25T00:23:30+09:00"
+    },
+    {
       "id": "baseball-game",
       "path": "projects/_labs/baseball-game/",
       "tag": "GAME",
