@@ -544,6 +544,23 @@
       "thumbDelay": 0.8,
       "createdAt": "2026-11-11",
       "updatedAt": "2026-11-11T02:37:10+09:00"
+    },
+    {
+      "id": "rebel-breakout",
+      "path": "projects/_labs/rebel-breakout/",
+      "tag": "GAME",
+      "title": "REBEL BREAKOUT",
+      "description": "ブロック崩しのブロック側になって、AIのボールを60秒かわすネオン回避ゲーム。ボールは壁とシールドで跳ね、少しずつ自分を狙って加速する。ライフ3、22秒と42秒で増えるマルチボール、SPACEで一番安全なシールドへ瞬間移動するSWAP、ぎりぎり回避のGRAZEボーナス。60秒生き残ればCLEAR。",
+      "tags": [
+        "アクション",
+        "回避",
+        "サバイバル",
+        "ブロック崩し"
+      ],
+      "thumbnail": "projects/_labs/rebel-breakout/thumb.jpg",
+      "summary": "壊される側のブロック崩し。AIのボールを60秒かわし、シールドを逃げ道に使うネオンサバイバル。",
+      "createdAt": "2026-11-25",
+      "updatedAt": "2026-11-25T02:30:21+09:00"
     }
   ]
 }
