@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#05070f">
+  <meta name="description" content="ブロック崩しのブロック側になって、AIのボールを60秒かわすネオン回避ゲーム。REBEL BREAKOUT。">
+  <title>REBEL BREAKOUT - 逃げるブロック</title>
+  <link rel="stylesheet" href="style.css?v=20261125-rebel-breakout-a">
+</head>
+<body>
+  <div id="app">
+    <main id="stage">
+      <canvas id="canvas" aria-label="ボールをかわしてシールドブロックを守る60秒サバイバル"></canvas>
+
+      <header id="hud">
+        <div class="hud-top">
+          <div class="brand">REBEL<span>·</span>BREAKOUT</div>
+          <div class="stats">
+            <div><span>TIME</span><b id="time">60</b></div>
+            <div><span>SCORE</span><b id="score">0</b></div>
+            <div><span>LIVES</span><b id="lives">♥♥♥</b></div>
+            <div><span>SHIELDS</span><b id="shields">0</b></div>
+          </div>
+        </div>
+        <div class="hud-sub">
+          <span id="state">READY</span>
+          <span id="hint">生き残ってシールドを守れ</span>
+        </div>
+        <div class="timebar"><i id="timebar"></i></div>
+      </header>
+
+      <div id="controls">
+        <div class="dpad">
+          <button id="btn-up" class="pad up" type="button" aria-label="上へ">▲</button>
+          <button id="btn-left" class="pad left" type="button" aria-label="左へ">◀</button>
+          <button id="btn-right" class="pad right" type="button" aria-label="右へ">▶</button>
+          <button id="btn-down" class="pad down" type="button" aria-label="下へ">▼</button>
+        </div>
+        <button id="btn-swap" class="swap ready" type="button">SWAP<small id="swap-cd">READY</small></button>
+      </div>
+
+      <div id="overlay">
+        <section id="start-overlay" class="screen visible">
+          <p class="eyebrow">BRICKS STRIKE BACK</p>
+          <h1>REBEL<br><span>BREAKOUT</span></h1>
+          <p class="subtitle">今回は、壊される側だ。AIのボールを60秒かわせ。</p>
+          <ul class="rules">
+            <li>WASD / 矢印 / ドラッグでブロックを動かす</li>
+            <li>ボールはブロックを壊しながら跳ね回り、わずかに君を狙う</li>
+            <li>被弾はライフ3。残り0で終了、60秒生き残れば CLEAR</li>
+            <li>SPACE / SWAPで、一番安全なシールドへ瞬間移動</li>
+            <li>シールドは逃げ道でもある。使いすぎると隠れ場所が消える</li>
+            <li>ぎりぎりをかわすと GRAZE ボーナス</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">SURVIVE</button>
+          <p class="tiny" id="best-start">BEST 0</p>
+        </section>
+
+        <section id="result-overlay" class="screen">
+          <p class="eyebrow">RUN OVER</p>
+          <h2 id="result-title" class="down">DOWN</h2>
+          <p id="result-sub" class="end-detail"></p>
+          <div class="end-stats">
+            <div><span>SCORE</span><b id="result-score">0</b></div>
+            <div><span>TIME</span><b id="result-time">0.0s</b></div>
+            <div><span>GRAZE</span><b id="result-near">0</b></div>
+            <div><span>BROKEN</span><b id="result-shields">0</b></div>
+            <div class="rank"><span>RANK</span><b id="result-rank">D</b></div>
+          </div>
+          <p class="end-best">BEST <b id="result-best">0</b></p>
+          <button id="btn-retry" class="primary" type="button">RETRY</button>
+          <p class="tiny">SPACE / ENTER でもう一度</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="engine.js?v=20261125-rebel-breakout-a"></script>
+  <script src="game.js?v=20261125-rebel-breakout-a"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>

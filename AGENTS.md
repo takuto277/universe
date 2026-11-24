@@ -7,6 +7,11 @@ universe は、ゲームを題材に無人開発基盤を育てるモノレポ�
 ```sh
 ./tools/setup.sh              # 開発環境の確認（--with-agents で LaunchAgent 登録）
 ./tools/new-game.sh my-game   # 新しいゲームの雛形を生成（README・テスト・apps.json 登録まで）
+./tools/seed.sh list          # ゲーム案の一覧（実装済み/確保済み/空き）
+./tools/seed.sh next          # 次の空きを原子的に確保
+./tools/seed.sh claim tutor   # 指定の種を確保
+./tools/seed.sh status        # 確保状況
+./tools/seed.sh release tutor # 確保を解放
 ./tools/verify.sh             # テスト + サイト検査 + PR スクリプトの構文検査
 ./tools/run-tests.sh          # 全アプリの test-*.js
 python3 tools/check_site.py   # apps.json / index.html / ローカルリンクの検査
@@ -53,6 +58,7 @@ python3 -m http.server 8000   # ローカル確認
 - コミットメッセージは `baseball-game: ...` のようにアプリ名または `repo:` で始め、日本語で理由が分かるように書く
 - テストは利用者から見た挙動を検証する。実装の詳細やソース文字列の一致に依存しすぎない
 - コメントはコードを読めば分かることを繰り返さず、なぜそうしたかを短く書く
+- 並行セッションでゲーム案を選ぶときは、実装前に `./tools/seed.sh next`（または `claim <id>`）で確保する。確保は `mkdir` による原子的なロックで、同じリポジトリの全worktreeで共有される。PR作成後に `release` する。詳細は [seedの確保](docs/seed-claims.md)
 - 判断の理由は `docs/`、アプリ固有の使い方は各アプリの `README.md` に書く
 - 無人実装は `agent:ready` ラベルの Issue だけを対象にする。ランナーは push と PR 作成までで、マージは五点ゲートに任せる。停止は `./tools/agent.sh pause`
 - 改善提案は planner が `agent:proposed` で作り、`./tools/agent.sh promote <n>` で実装キューに移す(既定)。詳細は [無人実装ランナー](docs/unattended-agents.md)

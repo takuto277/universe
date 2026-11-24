@@ -470,7 +470,6 @@
       "summary": "星の周りでシールドを回し、全方位のシャードを弾く60秒の360度ディフェンス。"
     },
     {
-
       "id": "one-card-dungeon",
       "path": "projects/_labs/one-card-dungeon/",
       "tag": "GAME",
@@ -544,6 +543,137 @@
       "thumbDelay": 0.8,
       "createdAt": "2026-11-11",
       "updatedAt": "2026-11-11T02:37:10+09:00"
+    },
+    {
+      "id": "afterimage",
+      "path": "projects/_labs/afterimage/",
+      "tag": "GAME",
+      "title": "AFTERIMAGE",
+      "description": "過去のジャンプの頂点が足場になって固まる縦登りアクション。60秒で高度500mを目指し、残像を踏み台にしながら登る。落下すると残像ごと崩れる。",
+      "tags": [
+        "アクション",
+        "ジャンプ",
+        "1ボタン"
+      ],
+      "thumbnail": "projects/_labs/afterimage/thumb.jpg",
+      "summary": "過去のジャンプ軌跡を足場に、60秒で500mを登る縦登りアクション。",
+      "createdAt": "2026-11-11",
+      "updatedAt": "2026-11-11T02:08:40+09:00"
+    },
+    {
+      "id": "gravity-well",
+      "path": "projects/_labs/gravity-well/",
+      "tag": "GAME",
+      "title": "GRAVITY WELL",
+      "description": "12×12のウェルを使う120秒のテトリス。テトリミノは直接回せず、盤面全体を90度回して積み上げを整える。回転後に重力で浮いたセルが落ちる。",
+      "tags": [
+        "パズル",
+        "テトリス",
+        "回転"
+      ],
+      "thumbnail": "projects/_labs/gravity-well/thumb.jpg",
+      "summary": "テトリミノを回さず、盤面と重力を90度回す120秒テトリス。",
+      "createdAt": "2026-11-11",
+      "updatedAt": "2026-11-11T02:08:41+09:00"
+    },
+    {
+      "id": "shift-room",
+      "path": "projects/_labs/shift-room/",
+      "tag": "GAME",
+      "title": "SHIFT ROOM",
+      "description": "暗い部屋を抜け出すトップダウンの脱出ゲーム。鍵と扉は視線の中にある間だけ位置が安定し、視線を外すと別の場所へシフトする。3部屋・各3鍵・3分。",
+      "tags": [
+        "脱出",
+        "ステルス",
+        "視線"
+      ],
+      "thumbnail": "projects/_labs/shift-room/thumb.jpg",
+      "summary": "見ている間だけ位置が固定される鍵と扉を追う、3部屋の脱出ゲーム。",
+      "createdAt": "2026-11-11",
+      "updatedAt": "2026-11-11T02:08:41+09:00"
+    },
+    {
+      "id": "still",
+      "path": "projects/_labs/still/",
+      "tag": "GAME",
+      "title": "STILL",
+      "description": "見下ろしの小部屋を抜ける時間停止シューティング。時間はプレイヤーの移動量に比例して進み、止まれば弾も敵も止まる。1発被弾で終了、60秒で3部屋。",
+      "tags": [
+        "シューティング",
+        "時間停止",
+        "1画面"
+      ],
+      "thumbnail": "projects/_labs/still/thumb.jpg",
+      "summary": "動けば時が進み、止まれば弾も止まる時間停止シューティング。",
+      "createdAt": "2026-11-11",
+      "updatedAt": "2026-11-11T02:08:40+09:00"
+    },
+    {
+      "id": "word-front",
+      "path": "projects/_labs/word-front/",
+      "tag": "GAME",
+      "title": "WORD FRONT",
+      "description": "8×8のひらがな盤面をなぞって、しりとりで陣地を奪い合う3分の対戦ゲーム。2〜6文字の単語で通過したマスを陣地にし、最後に広い方が勝ち。",
+      "tags": [
+        "しりとり",
+        "陣取り",
+        "言葉"
+      ],
+      "thumbnail": "projects/_labs/word-front/thumb.jpg",
+      "summary": "ひらがな盤面をなぞってしりとりで陣地を奪う、8×8の対戦ゲーム。",
+      "createdAt": "2026-11-11",
+      "updatedAt": "2026-11-11T02:08:41+09:00"
+    },
+    {
+      "id": "oops",
+      "path": "projects/_labs/oops/",
+      "tag": "GAME",
+      "title": "OOPS",
+      "description": "時計は止まっている。間違えたときだけ時が進む、90秒の誤答予算で18問に挑む4択クイズ。正解でスコアとコンボ、誤答で残り時間が10秒減る。スキップして守るか、勘で賭けるかの判断が問われる。",
+      "tags": [
+        "クイズ",
+        "ひっかけ",
+        "タイム"
+      ],
+      "thumbnail": "projects/_labs/oops/thumb.jpg",
+      "summary": "間違えたときだけ時が進む、90秒の誤答予算で挑む4択クイズ。",
+      "createdAt": "2026-11-24",
+      "updatedAt": "2026-11-25T00:03:47+09:00"
+    },
+    {
+      "id": "debt",
+      "path": "projects/_labs/debt/",
+      "tag": "GAME",
+      "title": "DEBT",
+      "description": "5日間で借金を返す経済ゲーム。強化を借りて買い、日利10〜20%に耐える。借金が多いほど金利が上がり、最終日に現金が借金を上回れば勝ち。残金がスコア。",
+      "tags": [
+        "経済",
+        "ローグライト",
+        "借金",
+        "経営"
+      ],
+      "thumbnail": "projects/_labs/debt/thumb.jpg",
+      "summary": "5日間で借金を返す、借りて育てる経済ゲーム。",
+      "createdAt": "2026-11-25",
+      "updatedAt": "2026-11-25T00:48:08+09:00",
+      "thumbDelay": 1.4
+    },
+    {
+      "id": "rebel-breakout",
+      "path": "projects/_labs/rebel-breakout/",
+      "tag": "GAME",
+      "title": "REBEL BREAKOUT",
+      "description": "ブロック崩しのブロック側になって、AIのボールを60秒かわすネオン回避ゲーム。ボールは壁とシールドで跳ね、少しずつ自分を狙って加速する。ライフ3、22秒と42秒で増えるマルチボール、SPACEで一番安全なシールドへ瞬間移動するSWAP、ぎりぎり回避のGRAZEボーナス。60秒生き残ればCLEAR。",
+      "tags": [
+        "アクション",
+        "回避",
+        "サバイバル",
+        "ブロック崩し"
+      ],
+      "thumbnail": "projects/_labs/rebel-breakout/thumb.jpg",
+      "summary": "壊される側のブロック崩し。AIのボールを60秒かわし、シールドを逃げ道に使うネオンサバイバル。",
+      "createdAt": "2026-11-25",
+      "updatedAt": "2026-11-25T00:51:51+09:00"
     }
   ]
 }
