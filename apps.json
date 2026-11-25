@@ -674,6 +674,24 @@
       "createdAt": "2026-11-25",
       "updatedAt": "2026-11-25T00:48:08+09:00",
       "thumbDelay": 1.4
+    },
+    {
+      "id": "mapless",
+      "path": "projects/_labs/mapless/",
+      "tag": "GAME",
+      "title": "MAPLESS",
+      "description": "地図はない。足元の灯りと自分の手描きだけを頼りに、暗い迷路を抜ける探索ゲーム。有限インクで道を描き、重ね描きで紙が濁るほどスコアが下がる。3フロア、インク瓶、出口の気配、S〜D評価。",
+      "tags": [
+        "迷路",
+        "探索",
+        "ドローイング",
+        "1画面"
+      ],
+      "thumbnail": "projects/_labs/mapless/thumb.jpg",
+      "summary": "見えない迷路を、有限インクの手描き地図で抜ける探索ゲーム。",
+      "createdAt": "2026-11-26",
+      "updatedAt": "2026-11-26T00:43:23+09:00",
+      "thumbDelay": 1.4
     }
   ]
 }
