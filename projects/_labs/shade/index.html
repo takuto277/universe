@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#04060c">
+  <meta name="description" content="光源を切り替えて影を作り、見張りの視界を避けて10ターンで出口を目指す、光と影のステルスパズル。SHADE。">
+  <title>SHADE - 影渡り</title>
+  <link rel="stylesheet" href="style.css?v=20261125-shade-a">
+</head>
+<body>
+  <div id="app">
+    <main id="stage">
+      <canvas id="canvas" aria-label="光源を動かして影を作り、見張りを避けて出口へ進むステルスパズル"></canvas>
+
+      <header id="hud">
+        <div class="hud-top">
+          <div class="brand">SH<span>A</span>DE</div>
+          <div class="stats">
+            <div><span>STAGE</span><b id="stage-label">1/5</b></div>
+            <div><span>TURN</span><b id="turn">0/10</b></div>
+            <div><span>SHADOWS</span><b id="shadows">◈◈◈</b></div>
+          </div>
+        </div>
+        <div class="hud-sub">
+          <span id="state">READY</span>
+          <span id="hint">影を走り抜けろ</span>
+        </div>
+        <div class="turnbar"><i id="turnbar"></i></div>
+      </header>
+
+      <div id="controls">
+        <div class="dpad">
+          <button id="btn-up" class="pad up" type="button" aria-label="上へ">▲</button>
+          <button id="btn-left" class="pad left" type="button" aria-label="左へ">◀</button>
+          <button id="btn-right" class="pad right" type="button" aria-label="右へ">▶</button>
+          <button id="btn-down" class="pad down" type="button" aria-label="下へ">▼</button>
+        </div>
+        <div class="actions">
+          <button id="btn-lamp" class="lamp" type="button">LAMP<small id="lamp-label">A→B</small></button>
+          <button id="btn-undo" class="undo" type="button">UNDO<small>Z</small></button>
+        </div>
+      </div>
+
+      <div id="overlay">
+        <section id="start-overlay" class="screen visible">
+          <p class="eyebrow">LIGHT MAKES THE TRAP</p>
+          <h1>SH<span>A</span>DE</h1>
+          <p class="subtitle">光を動かし、影を伸ばし、見張りの目をすり抜けろ。</p>
+          <ul class="rules">
+            <li>WASD / 矢印 / パッドで1マス移動</li>
+            <li>L / LAMP で光源を次のソケットへ切り替える（1ターン消費）</li>
+            <li>赤い視界は「光が当たっている見張りの範囲」。入ると見つかる</li>
+            <li>影と、光が届かない場所は安全。光源を変えて安全な道を作る</li>
+            <li>出口 EXIT へ10ターン以内に到達。見つかる・時間切れで残影を1つ失う</li>
+            <li>残影3つで5ステージを抜ければ ESCAPED。Zで一手戻せる</li>
+          </ul>
+          <button id="btn-start" class="primary" type="button">ENTER</button>
+          <p class="tiny" id="best-start">BEST 0</p>
+        </section>
+
+        <section id="result-overlay" class="screen">
+          <p class="eyebrow">RUN OVER</p>
+          <h2 id="result-title" class="down">CAUGHT</h2>
+          <p id="result-sub" class="end-detail"></p>
+          <div class="end-stats">
+            <div><span>STAGE</span><b id="result-stage">0/5</b></div>
+            <div><span>TURNS</span><b id="result-turns">0</b></div>
+            <div><span>SHADOWS</span><b id="result-shadows">0</b></div>
+            <div><span>CAUGHT</span><b id="result-caught">0</b></div>
+            <div class="rank"><span>RANK</span><b id="result-rank">D</b></div>
+          </div>
+          <p class="end-best">BEST <b id="result-best">0</b> <span class="seed">SEED <b id="result-seed">0</b></span></p>
+          <button id="btn-retry" class="primary" type="button">RETRY</button>
+          <p class="tiny">SPACE / ENTER でもう一度</p>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="engine.js?v=20261125-shade-a"></script>
+  <script src="game.js?v=20261125-shade-a"></script>
+  <script src="../../_shared/game-back.js"></script>
+</body>
+</html>
