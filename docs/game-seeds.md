@@ -14,6 +14,13 @@
 - スルメ要素: 描くほど紙が濁るので、どこを記すかの取捨選択が要る。瓶でインクを拾い、3フロアの時間・インク・泥のバランスでスコアを競う
 - 実装メモ: 3フロア（13×9 / 15×11 / 17×13の完全迷路）、視界3.3 / 3.0 / 2.8、インク100 / 110 / 120、瓶2 / 2 / 3、重ね描きで泥が増加、出口のBFS距離を5ピップで表示、S〜D評価、ベスト保存、Canvasの紙・灯り・手描き線・泥の滲み、WebAudio、自動プレイのスモークテスト
 
+### SHADE（影渡り）
+
+- 状態: v1 実装済み（[`shade/`](../projects/_labs/shade/)）
+- 一言: 光源を切り替えて影を伸ばし、見張りの視界を避けて10ターンで出口を目指すステルスパズル
+- スルメ要素: 光は見つかる原因でもあり、影を作る道具でもある。ランプの位置で安全なマスと出口の露出が変わり、1手ごとに「移動」か「切替」を選ぶ。見張りの赤い視界・壁の影・残りターンを読み、手詰まりはUNDOで組み直す。5部屋をシード生成し、常にソルバで解けることを保証する
+- 実装メモ: 13×9グリッド、10ターン/部屋、5部屋、残影3、光源は2〜3ソケットを巡回、見張りは90度コーン×射程3〜5で「光が当たるマス」だけを見る、壁が光と視線を遮る、出口は開始ソケットでは必ず見張りに露出し、壁の影になるソケットへ切り替えると安全になるよう生成、BFSソルバで解けるまで再生成、UNDO、S〜D評価、ベスト保存、Canvasの光・影・コーン描画、自動プレイのスモークテスト
+
 ### TUTOR（教えてロボ）
 
 - 状態: v1 実装済み（[`tutor/`](../projects/_labs/tutor/)）
@@ -217,7 +224,7 @@ AFTERIMAGE / GRAVITY WELL / SHIFT ROOM / STILL / WORD FRONT は v1 実装済み�
 
 公開中32本と上の30案の重複を避け、**操作・時間・資源・UIの前提を1つずつ壊した**案です。順位は「既存にない快感 × 説明の短さ × 実装しやすさ」。実装コストは S=1〜2日 / M=3〜5日。
 
-採用: **1. 間違えると時が進む / OOPS**（[`oops/`](../projects/_labs/oops/)）、**2. 弾は敵のもの / AMMO SHARE**（[`ammo-share/`](../projects/_labs/ammo-share/)）、**3. 借金で強くなる / DEBT**（[`debt/`](../projects/_labs/debt/)）、**4. 一人二役 / TWIN**（[`twin/`](../projects/_labs/twin/)）、**5. 教えてロボ / TUTOR**（[`tutor/`](../projects/_labs/tutor/)）、**6. 地図は自分で描く / MAPLESS**（[`mapless/`](../projects/_labs/mapless/)）は v1 実装済み。REBEL BREAKOUT も実装済み（[`rebel-breakout/`](../projects/_labs/rebel-breakout/)）。
+採用: **1. 間違えると時が進む / OOPS**（[`oops/`](../projects/_labs/oops/)）、**2. 弾は敵のもの / AMMO SHARE**（[`ammo-share/`](../projects/_labs/ammo-share/)）、**3. 借金で強くなる / DEBT**（[`debt/`](../projects/_labs/debt/)）、**4. 一人二役 / TWIN**（[`twin/`](../projects/_labs/twin/)）、**5. 教えてロボ / TUTOR**（[`tutor/`](../projects/_labs/tutor/)）、**6. 地図は自分で描く / MAPLESS**（[`mapless/`](../projects/_labs/mapless/)）は v1 実装済み。**8. 影渡り / SHADE**（[`shade/`](../projects/_labs/shade/)）と REBEL BREAKOUT（[`rebel-breakout/`](../projects/_labs/rebel-breakout/)）も実装済み。
 
 | 順位 | 仮題 | 元ネタ | 壊す前提 | 独自性 | 実装 |
 | --- | --- | --- | --- | --- | --- |

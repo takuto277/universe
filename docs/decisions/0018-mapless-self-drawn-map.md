@@ -1,4 +1,4 @@
-# 0017 MAPLESS を「手描き地図と泥」で設計する
+# 0018 MAPLESS を「手描き地図と泥」で設計する
 
 - Status: Accepted
 - Date: 2026-11-26
