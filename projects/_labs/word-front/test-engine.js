@@ -84,6 +84,17 @@ assert(g1.undoPath() === true, 'undo できない');
 assert(g1.state.path.length === 1, 'undo 後の経路長が不正');
 assert(g1.extendPath(1, 0) === true, 'undo 後に再延長できない');
 
+/* ---- 3b. 直近語も再利用できる（README のルール） ---- */
+assert(E.hasMoveFrom(board1, 0, ['あい']) === true, '直近語しかない局面で手なしになっている');
+var reuseMove = E.findBestMove(board1, g1.state.ownership, 0, E.PLAYER, ['あい']);
+assert(reuseMove && reuseMove.word === 'あい', '直近語を候補から除外している');
+var gReuse = makeGame(board1);
+gReuse.start();
+gReuse.state.recentWords = ['あい'];
+assert(gReuse.beginPath(0, 0) === true, '再利用テストで開始できない');
+assert(gReuse.extendPath(1, 0) === true, '再利用テストで延長できない');
+assert(gReuse.confirmPath() === true, '直近語の再利用を確定できない');
+
 /* ---- 4. 陣地獲得とカーソル前進 ---- */
 var g2 = makeGame(board1);
 g2.start();

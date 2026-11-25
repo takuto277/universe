@@ -162,13 +162,13 @@
 
     function consider() {
       var word = wordFromPath(board, path);
-      if (isRecent(recentWords, word)) return;
+      var recent = isRecent(recentWords, word);
       var steals = 0;
       for (var i = 1; i < path.length; i++) {
         var owner = ownership[path[i]];
         if (owner && owner !== mover) steals++;
       }
-      var score = (path.length - 1) * 100 + steals * 70 + (word.length >= 4 ? 30 : 0);
+      var score = (path.length - 1) * 100 + steals * 70 + (word.length >= 4 ? 30 : 0) - (recent ? 200 : 0);
       if (!best || score > best.score) {
         best = {
           path: path.slice(),
@@ -210,7 +210,7 @@
     var path = [start];
 
     function walk(node, depth) {
-      if (node.end && depth >= MIN_WORD && !isRecent(recentWords, wordFromPath(board, path))) return true;
+      if (node.end && depth >= MIN_WORD) return true;
       if (depth >= MAX_WORD) return false;
       var last = path[path.length - 1];
       var list = NEIGHBORS[last];
@@ -583,7 +583,7 @@
       if (state.cursor && state.path[0] !== state.cursor.index) return false;
       if (!state.cursor && state.validStarts.indexOf(state.path[0]) < 0) return false;
       var word = wordFromPath(state.board, state.path);
-      if (!inDictionary(word) || isRecent(state.recentWords, word)) return false;
+      if (!inDictionary(word)) return false;
       var path = state.path.slice();
       executeMove(PLAYER, path);
       return true;
