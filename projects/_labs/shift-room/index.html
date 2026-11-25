@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#04070d">
+  <meta name="description" content="SHIFT ROOM / 見ていない部屋 — 視線の外に置いた鍵と扉は、0.8秒で別の場所へ跳ぶ。3つの部屋を抜け出すトップダウン脱出ゲーム。">
+  <title>SHIFT ROOM | 見ていない部屋</title>
+  <link rel="stylesheet" href="style.css?v=20261111-shift-room">
+</head>
+<body>
+  <div id="app">
+    <canvas id="canvas" aria-label="SHIFT ROOM game field"></canvas>
+
+    <div id="hud" class="hud is-hidden">
+      <div class="hud-row">
+        <div class="brand">
+          <span class="eyebrow">見ていない部屋</span>
+          <strong>SHIFT ROOM</strong>
+        </div>
+        <div class="stats">
+          <div class="stat"><span>ROOM</span><strong id="room">1/3</strong></div>
+          <div class="stat"><span>KEYS</span><strong id="keys">0/3</strong></div>
+          <div class="stat"><span>TIME</span><strong id="time">3:00</strong></div>
+          <div class="stat"><span>BEST</span><strong id="best">—</strong></div>
+        </div>
+        <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+      </div>
+      <p id="hint" class="hint">KEEP THE KEY IN YOUR CONE · WALLS BLOCK YOU, NOT THE LIGHT</p>
+    </div>
+
+    <div id="start-overlay" class="overlay visible">
+      <div class="start-content">
+        <p class="eyebrow">A TOP-DOWN ESCAPE IN THREE ROOMS</p>
+        <h1>SHIFT<br><span>ROOM</span></h1>
+        <p class="jp-title">見ていない部屋</p>
+        <p class="lead">光の円錐の外に置かれた鍵と扉は、0.8秒で別の場所へ跳ぶ。見続けながら、3つの鍵を集めて扉へ。</p>
+
+        <div class="rules">
+          <p><span class="rule-icon look">GAZE</span><b>視線の円錐（約55°）</b>の中だけ、鍵と扉の位置が固定される。</p>
+          <p><span class="rule-icon shift">SHIFT</span>円錐の外で<b>0.8秒</b>経つと、鍵や扉がランダムな場所へワープする。</p>
+          <p><span class="rule-icon key">KEYS</span>各室3つの鍵を集めると扉が開く。鍵に触れれば回収できる。</p>
+          <p><span class="rule-icon wall">WALL</span>壁は<b>移動だけ</b>を遮る。視線は壁を貫通する。</p>
+          <p><span class="rule-icon time">TIME</span>3部屋・制限時間3分。走りながら見続けよう。</p>
+        </div>
+
+        <div class="controls">
+          <div><span>MOVE</span><b>WASD / 矢印</b></div>
+          <div><span>LOOK</span><b>マウス / 右スティック</b></div>
+          <div><span>MOBILE</span><b>左スティックで移動</b></div>
+        </div>
+
+        <button id="btn-start" class="primary big" type="button">ENTER THE ROOM</button>
+        <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+        <p class="tiny">3 rooms · 9 keys · one beam of light · no combat</p>
+      </div>
+    </div>
+
+    <div id="end-overlay" class="overlay">
+      <div class="end-content">
+        <p id="end-eyebrow" class="eyebrow">TIME UP</p>
+        <h2 id="end-title">THE ROOM KEPT YOU</h2>
+        <div class="rank-ring"><span id="end-rank">D</span><small>RANK</small></div>
+        <p id="end-time" class="end-time">TIME 3:00</p>
+        <p id="end-score" class="end-score">SCORE 0</p>
+        <p id="end-meta" class="end-meta">KEYS 0 · ROOMS 0 · SHIFTS 0</p>
+        <p id="end-best" class="tiny">BEST 0</p>
+        <button id="btn-retry" class="primary big" type="button">AGAIN</button>
+        <button id="btn-result-sound" class="link-btn" type="button">SOUND: ON</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../_shared/game-back.js?v=20261111-shift-room"></script>
+  <script src="engine.js?v=20261111-shift-room"></script>
+  <script src="audio.js?v=20261111-shift-room"></script>
+  <script src="game.js?v=20261111-shift-room"></script>
+</body>
+</html>

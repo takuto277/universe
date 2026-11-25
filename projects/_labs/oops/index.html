@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#080810">
+  <meta name="description" content="時計は止まっている。間違えたときだけ時が進む、90秒の誤答予算で18問に挑む4択クイズ。">
+  <title>OOPS</title>
+  <link rel="stylesheet" href="style.css?v=20261124-oops3">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <p class="eyebrow">TIME MOVES WHEN YOU'RE WRONG</p>
+        <h1>OOPS</h1>
+      </div>
+
+      <div id="clock-card" class="clock-card">
+        <span class="clock-label">TIME LEFT</span>
+        <span id="time-left" class="clock-value">90</span>
+        <span id="clock-state" class="clock-state">FROZEN</span>
+        <span class="time-track"><span id="time-bar" class="time-bar"></span></span>
+        <span id="time-float" class="time-float"></span>
+      </div>
+
+      <div class="stats">
+        <div class="stat"><span class="stat-label">SCORE</span><span id="score" class="stat-value">0</span></div>
+        <div class="stat"><span class="stat-label">COMBO</span><span id="combo" class="stat-value">x0</span></div>
+        <div class="stat"><span class="stat-label">QUESTIONS</span><span id="progress" class="stat-value">0/18</span></div>
+        <button id="btn-sound" class="icon-btn" type="button" aria-label="サウンドの切り替え">SOUND ON</button>
+      </div>
+    </header>
+
+    <main id="stage">
+      <div id="feedback" class="feedback" aria-live="polite"></div>
+      <section id="question-card" class="question-card">
+        <div class="question-meta">
+          <span id="category" class="tag">ひっかけ</span>
+          <span id="q-index" class="q-index">Q 1 / 18</span>
+        </div>
+        <p id="question-text" class="question-text">—</p>
+        <div id="choices" class="choices">
+          <button id="choice-0" class="choice" type="button"><span class="key">1</span><span id="choice-text-0" class="choice-text">—</span></button>
+          <button id="choice-1" class="choice" type="button"><span class="key">2</span><span id="choice-text-1" class="choice-text">—</span></button>
+          <button id="choice-2" class="choice" type="button"><span class="key">3</span><span id="choice-text-2" class="choice-text">—</span></button>
+          <button id="choice-3" class="choice" type="button"><span class="key">4</span><span id="choice-text-3" class="choice-text">—</span></button>
+        </div>
+        <div class="question-foot">
+          <span id="timer-hint" class="timer-hint">7.0s</span>
+          <button id="btn-skip" class="skip-btn" type="button">SKIP（0秒）</button>
+        </div>
+      </section>
+      <p id="hint" class="hint">1〜4 で回答 / S または SPACE でスキップ</p>
+    </main>
+  </div>
+
+  <div id="start-overlay" class="overlay visible">
+    <div class="overlay-card start-card">
+      <p class="eyebrow">DON'T ANSWER. DON'T LOSE TIME.</p>
+      <h1 class="big-title">OOPS</h1>
+      <p class="lead">時計は止まっている。<strong>間違えたときだけ、時が進む。</strong><br>90秒の誤答予算で、18問。迷ったらスキップか、賭けるか。</p>
+      <div class="rules">
+        <div class="rule"><span class="rule-icon ok">○</span><div><strong>正解</strong><p>スコアとコンボ。速いほど高得点（FLASH / FAST / OK）</p></div></div>
+        <div class="rule"><span class="rule-icon ng">×</span><div><strong>誤答</strong><p>残り時間が10秒進む。コンボは消える</p></div></div>
+        <div class="rule"><span class="rule-icon sk">→</span><div><strong>スキップ</strong><p>時間は減らない。ただし得点もコンボもない</p></div></div>
+      </div>
+      <div class="tip"><span class="tip-key">TIP</span>時間は減らない。焦る理由は、スコアだけ。</div>
+      <button id="btn-start" class="primary big" type="button">はじめる</button>
+      <p id="best-start" class="best-label">BEST ---</p>
+      <p class="tiny">音が出ます。右上のSOUNDで切り替え。</p>
+    </div>
+  </div>
+
+  <div id="end-overlay" class="overlay">
+    <div class="overlay-card end-card">
+      <p id="end-eyebrow" class="eyebrow">RUN COMPLETE</p>
+      <div id="end-rank" class="rank">S</div>
+      <h2 id="end-title">CLEAR</h2>
+      <p id="end-sub" class="lead"></p>
+      <div class="stats end-stats">
+        <div><span>SCORE</span><strong id="end-score">0</strong></div>
+        <div><span>CORRECT</span><strong id="end-correct">0</strong></div>
+        <div><span>WRONG</span><strong id="end-wrong">0</strong></div>
+        <div><span>SKIP</span><strong id="end-skip">0</strong></div>
+        <div><span>BEST COMBO</span><strong id="end-combo">0</strong></div>
+        <div><span>TIME BONUS</span><strong id="end-bonus">0</strong></div>
+      </div>
+      <p id="end-best" class="best-label">BEST ---</p>
+      <div class="ending-actions">
+        <button id="btn-again" class="primary" type="button">もう一度</button>
+        <button id="btn-title" class="mini" type="button">タイトルへ</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../_shared/game-back.js"></script>
+  <script src="engine.js?v=20261124-oops3"></script>
+  <script src="audio.js?v=20261124-oops3"></script>
+  <script src="game.js?v=20261124-oops3"></script>
+</body>
+</html>
