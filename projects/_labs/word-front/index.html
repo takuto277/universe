@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#efe5d2">
+  <title>WORD FRONT しりとり陣取り</title>
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%23efe6d5'/%3E%3Cpath d='M18 46c8-22 18-28 28-28-4 9-8 16-16 22-4 3-8 5-12 6z' fill='%23c94a35'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="style.css?v=20261111-word-front">
+</head>
+<body>
+  <main id="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-en">WORD FRONT</span>
+        <span class="brand-jp">しりとり陣取り</span>
+      </div>
+      <button id="btn-mute" class="mute-btn" type="button" aria-label="音のオン・オフ">音 ON</button>
+    </header>
+
+    <section class="hud" aria-label="対戦状況">
+      <div class="hud-side hud-player">
+        <span class="hud-label">あなた</span>
+        <span id="player-score" class="hud-score">0</span>
+        <span class="hud-unit">陣地</span>
+      </div>
+      <div class="hud-mid">
+        <div id="time" class="time">3:00</div>
+        <div class="timer-track"><i id="timer-fill"></i></div>
+        <div id="turn-label" class="turn-label">あなたの番</div>
+      </div>
+      <div class="hud-side hud-cpu">
+        <span class="hud-label">CPU</span>
+        <span id="cpu-score" class="hud-score">0</span>
+        <span class="hud-unit">陣地</span>
+      </div>
+    </section>
+
+    <section class="board-wrap">
+      <canvas id="board" width="720" height="720" aria-label="8×8のひらがな盤面"></canvas>
+    </section>
+    <div id="board-badge" class="board-badge">ことばを なぞる</div>
+
+    <section class="readout" aria-live="polite">
+      <div class="readout-block">
+        <span class="readout-label">ことば</span>
+        <div id="current-word" class="current-word">—</div>
+      </div>
+      <div class="readout-block cursor-block">
+        <span class="readout-label">つぎの かな</span>
+        <div id="cursor-kana" class="cursor-kana">?</div>
+      </div>
+    </section>
+
+    <section class="controls" aria-label="操作">
+      <button id="btn-undo" class="control-btn" type="button">もどす</button>
+      <button id="btn-hint" class="control-btn hint-btn" type="button">ヒント <span class="cost">-5秒</span></button>
+      <button id="btn-confirm" class="control-btn primary" type="button">けってい</button>
+    </section>
+
+    <p id="last-move" class="last-move">はじめの ことばを えらんでください</p>
+
+    <section id="start-overlay" class="overlay visible" aria-label="ゲーム開始">
+      <div class="overlay-card">
+        <p class="eyebrow">SHIRITORI TERRITORY</p>
+        <h1>WORD FRONT</h1>
+        <p class="jp-title">しりとり陣取り</p>
+        <p class="lead">8×8のひらがなをなぞって、ことばで陣地をひろげよう。</p>
+        <ul class="rules">
+          <li><b>2〜6文字</b>の辞書にあることばを、8方向につながるマスで作ります。</li>
+          <li>最初の1語はどこからでも。次の語は<b>前の語の最後のマス</b>から始めます。</li>
+          <li>同じ語の中でマスを重ねることはできません。</li>
+          <li>開始マスより後ろが<b>あなたの陣地</b>。相手の陣地も奪えます。</li>
+          <li>3分で陣地が多い方の勝ち。打てる語がなくなったら負けです。</li>
+          <li>ヒントを使うと残り時間が<b>5秒</b>減ります。</li>
+        </ul>
+        <div class="player-legend">
+          <span><i class="dot vermilion"></i>あなた（朱）</span>
+          <span><i class="dot indigo"></i>CPU（藍）</span>
+        </div>
+        <button id="btn-start" class="start-btn" type="button">はじめる</button>
+        <p class="hint-text">ことばを つなげて 陣地を ぬれ</p>
+      </div>
+    </section>
+
+    <section id="end-overlay" class="overlay" aria-label="対戦結果">
+      <div class="overlay-card result-card">
+        <p id="end-eyebrow" class="eyebrow">FINAL</p>
+        <h2 id="end-title">勝負あり</h2>
+        <p id="end-sub" class="result-sub">陣地の数で決まりました。</p>
+        <div class="result-scores">
+          <div class="result-score player">
+            <span>あなた</span>
+            <strong id="end-player">0</strong>
+          </div>
+          <div class="result-vs">対</div>
+          <div class="result-score cpu">
+            <span>CPU</span>
+            <strong id="end-cpu">0</strong>
+          </div>
+        </div>
+        <p id="end-meta" class="end-meta">ことば 0語 ・ のこり 3:00</p>
+        <button id="btn-retry" class="start-btn" type="button">もういちど</button>
+      </div>
+    </section>
+  </main>
+
+  <script src="../../_shared/game-back.js"></script>
+  <script src="dictionary.js?v=20261111-word-front"></script>
+  <script src="engine.js?v=20261111-word-front"></script>
+  <script src="audio.js?v=20261111-word-front"></script>
+  <script src="game.js?v=20261111-word-front"></script>
+</body>
+</html>

@@ -36,6 +36,7 @@ root = pathlib.Path(sys.argv[1])
 paths = sorted((root / "tools").glob("pr_*.py"))
 paths += [root / "tools/agent_runner.py", root / "tools/test_agent_runner.py",
           root / "tools/check_skills.py", root / "tools/test_skills.py",
+          root / "tools/seed.py", root / "tools/test_seed.py",
           root / "tools/playtest/playtest.py",
           root / "tools/playtest/serve.py",
           root / "tools/thumbnails/generate.py",
@@ -47,6 +48,7 @@ print("auto pr scripts syntax OK")
 PY
 python3 "$ROOT/tools/test_agent_runner.py"
 python3 "$ROOT/tools/test_skills.py"
+python3 "$ROOT/tools/test_seed.py"
 bash "$ROOT/tools/test-auto-pr.sh"
 bash "$ROOT/tools/test-setup.sh"
 bash "$ROOT/tools/test-automation-root.sh"

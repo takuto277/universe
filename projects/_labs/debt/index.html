@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0a0f0c">
+  <meta name="description" content="5日間で借金を返す経済ゲーム。強化を借りて買い、日利10〜20%に耐える。最終日に現金が借金を上回れば勝ち。残金がスコア。">
+  <title>DEBT</title>
+  <link rel="stylesheet" href="style.css?v=20261125-debt">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <p class="eyebrow">BORROW NOW. REPAY IN 5 DAYS.</p>
+        <h1>DEBT</h1>
+      </div>
+      <div class="hud">
+        <div class="stat"><span class="stat-label">DAY</span><span id="day" class="stat-value">1/5</span></div>
+        <div class="stat"><span class="stat-label">CASH</span><span id="cash" class="stat-value">¥0</span></div>
+        <div class="stat"><span class="stat-label">DEBT</span><span id="debt" class="stat-value debt-value">¥0</span></div>
+        <div class="stat"><span class="stat-label">RATE</span><span id="rate" class="stat-value">0%</span></div>
+        <button id="btn-sound" class="icon-btn" type="button" aria-label="サウンドの切り替え">SOUND ON</button>
+      </div>
+    </header>
+
+    <main id="board">
+      <section class="col-left">
+        <div class="panel market-panel">
+          <div class="panel-head"><span>今日の市場</span><span id="event-name" class="event-name">平常運転</span></div>
+          <p id="event-text" class="event-text">市場は静か。</p>
+          <div id="event-mults" class="mults"></div>
+        </div>
+
+        <div class="panel forecast-panel">
+          <div class="panel-head"><span>終了時の見込み</span><span id="forecast-days" class="muted">残り5日</span></div>
+          <div class="forecast-grid">
+            <div class="fc"><span>売上</span><strong id="fc-income" class="pos">+0</strong></div>
+            <div class="fc"><span>利息 <em id="fc-rate">0%</em></span><strong id="fc-interest" class="neg">-0</strong></div>
+            <div class="fc"><span>現金</span><strong id="fc-cash">0</strong></div>
+            <div class="fc"><span>借金</span><strong id="fc-debt" class="neg">0</strong></div>
+          </div>
+          <p id="fc-note" class="fc-note"></p>
+        </div>
+
+        <div class="panel assets-panel">
+          <div class="panel-head"><span>資産</span><span id="asset-income" class="pos">+0/日</span></div>
+          <ul id="asset-list" class="asset-list"></ul>
+        </div>
+
+        <div class="panel actions-panel">
+          <div class="credit-row">
+            <span id="credit" class="credit-label">枠 0/700</span>
+            <span class="credit-track"><span id="credit-bar" class="credit-bar"></span></span>
+          </div>
+          <div class="repay-row">
+            <span class="action-label">返済</span>
+            <button id="repay-50" class="mini" type="button">-50</button>
+            <button id="repay-200" class="mini" type="button">-200</button>
+            <button id="repay-all" class="mini" type="button">ALL</button>
+          </div>
+          <button id="btn-end" class="primary big" type="button">DAY 1 を終える</button>
+          <p class="action-note">返済は現金から。日が終わると利息が乗る。</p>
+        </div>
+      </section>
+
+      <section class="col-right">
+        <div class="panel shop-panel">
+          <div class="panel-head"><span>今日のオファー</span><span id="shop-daysleft" class="muted">残り5日</span></div>
+          <p class="shop-hint">借りて買う。返すのは後。ROIと回収日数を見て選ぶ。</p>
+          <div id="offers" class="offers">
+            <button id="offer-0" class="offer" type="button">
+              <span class="offer-top"><span id="offer-cat-0" class="offer-cat">FOOD</span><span id="offer-roi-0" class="offer-roi">ROI --</span></span>
+              <strong id="offer-name-0" class="offer-name">—</strong>
+              <span class="offer-mid"><span id="offer-price-0" class="offer-price">¥0</span><span id="offer-income-0" class="offer-income">+0/日</span></span>
+              <span id="offer-payback-0" class="offer-payback">回収 --</span>
+              <span id="offer-buy-0" class="offer-buy">BUY</span>
+            </button>
+            <button id="offer-1" class="offer" type="button">
+              <span class="offer-top"><span id="offer-cat-1" class="offer-cat">FOOD</span><span id="offer-roi-1" class="offer-roi">ROI --</span></span>
+              <strong id="offer-name-1" class="offer-name">—</strong>
+              <span class="offer-mid"><span id="offer-price-1" class="offer-price">¥0</span><span id="offer-income-1" class="offer-income">+0/日</span></span>
+              <span id="offer-payback-1" class="offer-payback">回収 --</span>
+              <span id="offer-buy-1" class="offer-buy">BUY</span>
+            </button>
+            <button id="offer-2" class="offer" type="button">
+              <span class="offer-top"><span id="offer-cat-2" class="offer-cat">FOOD</span><span id="offer-roi-2" class="offer-roi">ROI --</span></span>
+              <strong id="offer-name-2" class="offer-name">—</strong>
+              <span class="offer-mid"><span id="offer-price-2" class="offer-price">¥0</span><span id="offer-income-2" class="offer-income">+0/日</span></span>
+              <span id="offer-payback-2" class="offer-payback">回収 --</span>
+              <span id="offer-buy-2" class="offer-buy">BUY</span>
+            </button>
+            <button id="offer-3" class="offer" type="button">
+              <span class="offer-top"><span id="offer-cat-3" class="offer-cat">FOOD</span><span id="offer-roi-3" class="offer-roi">ROI --</span></span>
+              <strong id="offer-name-3" class="offer-name">—</strong>
+              <span class="offer-mid"><span id="offer-price-3" class="offer-price">¥0</span><span id="offer-income-3" class="offer-income">+0/日</span></span>
+              <span id="offer-payback-3" class="offer-payback">回収 --</span>
+              <span id="offer-buy-3" class="offer-buy">BUY</span>
+            </button>
+          </div>
+        </div>
+
+        <div class="panel log-panel">
+          <div class="panel-head"><span>記録</span><span id="log-count" class="muted"></span></div>
+          <ul id="log" class="log"></ul>
+        </div>
+      </section>
+    </main>
+  </div>
+
+  <div id="start-overlay" class="overlay visible">
+    <div class="overlay-card start-card">
+      <p class="eyebrow">5 DAYS. ONE DEADLINE.</p>
+      <h1 class="big-title">DEBT</h1>
+      <p class="lead">5日間で借金を返せ。<strong>強化は借りて買い、利息は日利10〜20%。</strong><br>最終日に現金が借金を上回れば勝ち。残金がスコア。</p>
+      <div class="rules">
+        <div class="rule"><span class="rule-icon">1</span><div><strong>オファーを買う</strong><p>現金が足りなければ、その場で借金になる。買うほど毎日の売上が増える。</p></div></div>
+        <div class="rule"><span class="rule-icon">2</span><div><strong>利息が乗る</strong><p>1日終えるたびに借金へ利息。借金が多いほど金利が10%から20%へ上がる。</p></div></div>
+        <div class="rule"><span class="rule-icon">3</span><div><strong>返すか、増やすか</strong><p>返済は現金から。最終日は返済してから終えると利息を減らせる。</p></div></div>
+      </div>
+      <div class="tip"><span class="tip-key">TIP</span>回収日数が残り日数を超えるオファーは、買うと損をしやすい。</div>
+      <button id="btn-start" class="primary big" type="button">はじめる</button>
+      <p id="best-start" class="best-label">BEST ---</p>
+      <p class="tiny">音が出ます。右上のSOUNDで切り替え。</p>
+    </div>
+  </div>
+
+  <div id="end-overlay" class="overlay">
+    <div class="overlay-card end-card">
+      <p id="end-eyebrow" class="eyebrow">SETTLEMENT</p>
+      <div id="end-rank" class="rank">S</div>
+      <h2 id="end-title">CLEARED</h2>
+      <p id="end-sub" class="lead"></p>
+      <div class="stats end-stats">
+        <div><span>SCORE</span><strong id="end-score">0</strong></div>
+        <div><span>ASSETS</span><strong id="end-assets">0</strong></div>
+        <div><span>TOTAL INCOME</span><strong id="end-income">0</strong></div>
+        <div><span>TOTAL INTEREST</span><strong id="end-interest">0</strong></div>
+        <div><span>FINAL CASH</span><strong id="end-cash">0</strong></div>
+        <div><span>SHORTFALL</span><strong id="end-shortfall">0</strong></div>
+      </div>
+      <div id="history" class="history"></div>
+      <p id="end-best" class="best-label">BEST ---</p>
+      <div class="ending-actions">
+        <button id="btn-again" class="primary" type="button">もう一度</button>
+        <button id="btn-title" class="mini" type="button">タイトルへ</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../_shared/game-back.js"></script>
+  <script src="engine.js?v=20261125-debt"></script>
+  <script src="audio.js?v=20261125-debt"></script>
+  <script src="game.js?v=20261125-debt"></script>
+</body>
+</html>
