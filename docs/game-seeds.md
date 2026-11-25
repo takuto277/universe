@@ -7,6 +7,13 @@
 
 ## 採用中
 
+### TUTOR（教えてロボ）
+
+- 状態: v1 実装済み（[`tutor/`](../projects/_labs/tutor/)）
+- 一言: 3回の手本でロボットAIを鍛え、10回の本番の成績を競う育成ゲーム
+- スルメ要素: 手本の選び方がそのままAIの一般化になる。先回り、ボム回避、コアの優先順位を見せ方で調整する。左右反転の手本も学習に使う
+- 実装メモ: 手本3回×6秒、本番10回×5秒（3倍速）、0.05秒ごとにコア/ボムの相対位置を特徴として記録し、k=5の近傍で行動を重み付き多数決。ボムは0.6秒スタンとコア1個減。左右反転で学習データを補強。Canvas、自動プレイ（貪欲な手本AI）のスモークテスト
+
 ### 30案の実装済み
 
 AFTERIMAGE / GRAVITY WELL / SHIFT ROOM / STILL / WORD FRONT は v1 実装済み（[`projects/_labs/`](../projects/_labs/)）。
@@ -203,7 +210,7 @@ AFTERIMAGE / GRAVITY WELL / SHIFT ROOM / STILL / WORD FRONT は v1 実装済み�
 
 公開中32本と上の30案の重複を避け、**操作・時間・資源・UIの前提を1つずつ壊した**案です。順位は「既存にない快感 × 説明の短さ × 実装しやすさ」。実装コストは S=1〜2日 / M=3〜5日。
 
-採用: **1. 間違えると時が進む / OOPS**（[`oops/`](../projects/_labs/oops/)）、**2. 弾は敵のもの / AMMO SHARE**（[`ammo-share/`](../projects/_labs/ammo-share/)）、**3. 借金で強くなる / DEBT**（[`debt/`](../projects/_labs/debt/)）、**4. 一人二役 / TWIN**（[`twin/`](../projects/_labs/twin/)）は v1 実装済み。REBEL BREAKOUT も実装済み（[`rebel-breakout/`](../projects/_labs/rebel-breakout/)）。
+採用: **1. 間違えると時が進む / OOPS**（[`oops/`](../projects/_labs/oops/)）、**2. 弾は敵のもの / AMMO SHARE**（[`ammo-share/`](../projects/_labs/ammo-share/)）、**3. 借金で強くなる / DEBT**（[`debt/`](../projects/_labs/debt/)）、**4. 一人二役 / TWIN**（[`twin/`](../projects/_labs/twin/)）は v1 実装済み。REBEL BREAKOUT も実装済み（[`rebel-breakout/`](../projects/_labs/rebel-breakout/)）。**5. 教えてロボ / TUTOR**（[`tutor/`](../projects/_labs/tutor/)）も v1 実装済み。
 
 | 順位 | 仮題 | 元ネタ | 壊す前提 | 独自性 | 実装 |
 | --- | --- | --- | --- | --- | --- |
