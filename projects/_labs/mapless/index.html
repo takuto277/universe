@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0c0f13">
+  <meta name="description" content="地図はない。足元の灯りと、自分の手描きだけ。有限インクで迷路を描き、3つの階を抜ける探索ゲーム。">
+  <title>MAPLESS</title>
+  <link rel="stylesheet" href="style.css?v=20261126-mapless">
+</head>
+<body>
+  <div id="app">
+    <header id="topbar">
+      <div class="brand">
+        <p class="eyebrow">A MAP YOU HAVE TO DRAW</p>
+        <h1>MAPLESS</h1>
+      </div>
+      <div class="hud">
+        <div class="stat"><span>FLOOR</span><strong id="floor">1/3</strong></div>
+        <div class="stat"><span>TIME</span><strong id="time">0:00</strong></div>
+        <div class="stat"><span>SCORE</span><strong id="score">0</strong></div>
+        <div class="stat"><span>BOTTLES</span><strong id="bottles">0/2</strong></div>
+        <button id="btn-sound" class="icon-btn" type="button" aria-label="サウンドの切り替え">SOUND ON</button>
+      </div>
+    </header>
+
+    <main id="stage">
+      <div id="frame">
+        <canvas id="canvas" aria-label="MAPLESS の迷路"></canvas>
+        <div id="floor-badge" class="floor-badge">
+          <span id="floor-name">INK CELLAR</span>
+          <small id="floor-sub">第1階 インクの地下室</small>
+        </div>
+        <div id="signal" class="signal" aria-label="出口の近さ">
+          <span class="signal-label">EXIT</span>
+          <span class="pips"><i></i><i></i><i></i><i></i><i></i></span>
+        </div>
+        <div id="toast" class="toast"></div>
+      </div>
+
+      <div id="meters">
+        <div class="meter">
+          <span class="meter-label">INK</span>
+          <div class="bar"><span id="ink-bar" class="fill ink"></span></div>
+          <em id="ink-val">100</em>
+        </div>
+        <div class="meter">
+          <span class="meter-label">CLARITY</span>
+          <div class="bar"><span id="clarity-bar" class="fill clarity"></span></div>
+          <em id="clarity-val">100</em>
+        </div>
+      </div>
+
+      <div id="controls">
+        <div id="dpad" aria-label="移動">
+          <button class="dpad-btn up" data-dir="up" type="button" aria-label="上">▲</button>
+          <button class="dpad-btn left" data-dir="left" type="button" aria-label="左">◀</button>
+          <button class="dpad-btn down" data-dir="down" type="button" aria-label="下">▼</button>
+          <button class="dpad-btn right" data-dir="right" type="button" aria-label="右">▶</button>
+        </div>
+        <button id="btn-pen" class="pen-btn" type="button">PEN OFF</button>
+        <p id="hint" class="hint">WASD / 矢印で移動　ドラッグで地図を描く</p>
+      </div>
+    </main>
+  </div>
+
+  <div id="start-overlay" class="overlay visible">
+    <div class="overlay-card start-card">
+      <div class="compass" aria-hidden="true">
+        <svg viewBox="0 0 100 100" width="92" height="92">
+          <circle cx="50" cy="50" r="44" fill="none" stroke="currentColor" stroke-width="1.5"/>
+          <circle cx="50" cy="50" r="33" fill="none" stroke="currentColor" stroke-width="0.8" stroke-dasharray="2 4"/>
+          <path d="M50 10 L57 50 L50 90 L43 50 Z" fill="currentColor" opacity="0.9"/>
+          <path d="M10 50 L50 43 L90 50 L50 57 Z" fill="currentColor" opacity="0.35"/>
+          <circle cx="50" cy="50" r="4" fill="#0c0f13"/>
+          <text x="50" y="26" text-anchor="middle" font-size="8" fill="currentColor">N</text>
+          <text x="50" y="80" text-anchor="middle" font-size="8" fill="currentColor">S</text>
+          <text x="22" y="53" text-anchor="middle" font-size="8" fill="currentColor">W</text>
+          <text x="78" y="53" text-anchor="middle" font-size="8" fill="currentColor">E</text>
+        </svg>
+      </div>
+      <p class="eyebrow">A MAP YOU HAVE TO DRAW</p>
+      <h1 class="big-title">MAPLESS</h1>
+      <p class="lead">地図は、ない。<strong>足元の灯りと、自分の手描きだけ。</strong><br>有限のインクで迷路を描き、3つの階を抜けろ。</p>
+      <div class="rules">
+        <div class="rule"><span class="rule-icon">1</span><div><strong>灯りの届く範囲だけが見える</strong><p>壁も出口も、近づくまで見えない。出口が近いと信号が脈打つ。</p></div></div>
+        <div class="rule"><span class="rule-icon">2</span><div><strong>ドラッグで地図を描く</strong><p>インクは有限。描きすぎると紙が濁り、地図が読みにくくなる。</p></div></div>
+        <div class="rule"><span class="rule-icon">3</span><div><strong>インク瓶を拾って進む</strong><p>描いた線は暗がりでも光る。出口へ続く道を、自分で記せ。</p></div></div>
+      </div>
+      <div class="controls-grid">
+        <div><strong>WASD / 矢印</strong><span>移動</span></div>
+        <div><strong>マウスドラッグ</strong><span>地図を描く</span></div>
+        <div><strong>スマホ</strong><span>D-padで移動 / PEN ONで描画</span></div>
+      </div>
+      <button id="btn-start" class="primary big" type="button">地図を描きはじめる</button>
+      <p id="best-start" class="best-label">BEST ---</p>
+      <p class="tiny">音が出ます。右上のSOUNDで切り替え。</p>
+    </div>
+  </div>
+
+  <div id="floor-overlay" class="overlay">
+    <div class="overlay-card floor-card">
+      <p class="eyebrow">FLOOR CLEAR</p>
+      <h2 id="floor-clear-title">INK CELLAR</h2>
+      <p id="floor-clear-sub" class="floor-sub">第1階 インクの地下室</p>
+      <div class="floor-stats">
+        <div><span>TIME</span><strong id="fc-time">0:00</strong></div>
+        <div><span>INK LEFT</span><strong id="fc-ink">0</strong></div>
+        <div><span>BOTTLES</span><strong id="fc-bottles">0/0</strong></div>
+        <div><span>CLARITY</span><strong id="fc-clarity">100</strong></div>
+      </div>
+      <div class="score-breakdown">
+        <div><span>BASE</span><strong>1000</strong></div>
+        <div><span>TIME BONUS</span><strong id="fc-time-bonus">+0</strong></div>
+        <div><span>INK BONUS</span><strong id="fc-ink-bonus">+0</strong></div>
+        <div><span>BOTTLE BONUS</span><strong id="fc-bottle-bonus">+0</strong></div>
+        <div><span>MUD PENALTY</span><strong id="fc-mud-penalty" class="neg">-0</strong></div>
+        <div class="total"><span>FLOOR SCORE</span><strong id="fc-score">0</strong></div>
+      </div>
+      <button id="btn-next" class="primary big" type="button">NEXT FLOOR</button>
+    </div>
+  </div>
+
+  <div id="end-overlay" class="overlay">
+    <div class="overlay-card end-card">
+      <p class="eyebrow">MAP COMPLETE</p>
+      <div id="end-rank" class="rank">S</div>
+      <h2 id="end-title">THE MAP IS YOURS</h2>
+      <p id="end-sub" class="lead"></p>
+      <div class="end-score"><span>TOTAL SCORE</span><strong id="end-score">0</strong></div>
+      <div id="end-floors" class="end-floors"></div>
+      <p id="end-best" class="best-label">BEST ---</p>
+      <div class="ending-actions">
+        <button id="btn-again" class="primary" type="button">もう一度</button>
+        <button id="btn-title" class="mini" type="button">タイトルへ</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../../_shared/game-back.js"></script>
+  <script src="engine.js?v=20261126-mapless"></script>
+  <script src="audio.js?v=20261126-mapless"></script>
+  <script src="game.js?v=20261126-mapless"></script>
+</body>
+</html>

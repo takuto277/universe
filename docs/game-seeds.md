@@ -7,6 +7,13 @@
 
 ## 採用中
 
+### MAPLESS（地図は自分で描く）
+
+- 状態: v1 実装済み（[`mapless/`](../projects/_labs/mapless/)）
+- 一言: 灯りの届く範囲だけが見える迷路を、有限インクの手描き地図で抜ける探索ゲーム
+- スルメ要素: 描くほど紙が濁るので、どこを記すかの取捨選択が要る。瓶でインクを拾い、3フロアの時間・インク・泥のバランスでスコアを競う
+- 実装メモ: 3フロア（13×9 / 15×11 / 17×13の完全迷路）、視界3.3 / 3.0 / 2.8、インク100 / 110 / 120、瓶2 / 2 / 3、重ね描きで泥が増加、出口のBFS距離を5ピップで表示、S〜D評価、ベスト保存、Canvasの紙・灯り・手描き線・泥の滲み、WebAudio、自動プレイのスモークテスト
+
 ### TUTOR（教えてロボ）
 
 - 状態: v1 実装済み（[`tutor/`](../projects/_labs/tutor/)）
@@ -210,7 +217,7 @@ AFTERIMAGE / GRAVITY WELL / SHIFT ROOM / STILL / WORD FRONT は v1 実装済み�
 
 公開中32本と上の30案の重複を避け、**操作・時間・資源・UIの前提を1つずつ壊した**案です。順位は「既存にない快感 × 説明の短さ × 実装しやすさ」。実装コストは S=1〜2日 / M=3〜5日。
 
-採用: **1. 間違えると時が進む / OOPS**（[`oops/`](../projects/_labs/oops/)）、**2. 弾は敵のもの / AMMO SHARE**（[`ammo-share/`](../projects/_labs/ammo-share/)）、**3. 借金で強くなる / DEBT**（[`debt/`](../projects/_labs/debt/)）、**4. 一人二役 / TWIN**（[`twin/`](../projects/_labs/twin/)）は v1 実装済み。REBEL BREAKOUT も実装済み（[`rebel-breakout/`](../projects/_labs/rebel-breakout/)）。**5. 教えてロボ / TUTOR**（[`tutor/`](../projects/_labs/tutor/)）も v1 実装済み。
+採用: **1. 間違えると時が進む / OOPS**（[`oops/`](../projects/_labs/oops/)）、**2. 弾は敵のもの / AMMO SHARE**（[`ammo-share/`](../projects/_labs/ammo-share/)）、**3. 借金で強くなる / DEBT**（[`debt/`](../projects/_labs/debt/)）、**4. 一人二役 / TWIN**（[`twin/`](../projects/_labs/twin/)）、**5. 教えてロボ / TUTOR**（[`tutor/`](../projects/_labs/tutor/)）、**6. 地図は自分で描く / MAPLESS**（[`mapless/`](../projects/_labs/mapless/)）は v1 実装済み。REBEL BREAKOUT も実装済み（[`rebel-breakout/`](../projects/_labs/rebel-breakout/)）。
 
 | 順位 | 仮題 | 元ネタ | 壊す前提 | 独自性 | 実装 |
 | --- | --- | --- | --- | --- | --- |
