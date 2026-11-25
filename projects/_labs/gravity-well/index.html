@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#070912">
+  <meta name="description" content="GRAVITY WELL — 盤面ごと回して積む、120秒のスコアアタック。ピースは回せない。ウェルを回せ。">
+  <title>GRAVITY WELL</title>
+  <link rel="stylesheet" href="style.css?v=20261111-gravitywell2">
+</head>
+<body>
+  <canvas id="canvas" aria-label="GRAVITY WELL board"></canvas>
+
+  <div id="hud" class="hud is-hidden">
+    <div class="hud-top">
+      <div class="brand">
+        <p class="eyebrow">ROTATE THE WELL</p>
+        <h1>GRAVITY WELL</h1>
+      </div>
+      <button id="btn-mute" class="sound-btn" type="button">SOUND ON</button>
+    </div>
+    <div class="stats">
+      <div class="stat big"><span class="label">SCORE</span><strong id="score">0</strong></div>
+      <div class="stat"><span class="label">BEST</span><strong id="best">0</strong></div>
+      <div class="stat"><span class="label">TIME</span><strong id="time">120</strong></div>
+      <div class="stat"><span class="label">LINES</span><strong id="lines">0</strong></div>
+    </div>
+    <div class="run-info">
+      <span id="combo-label">COMBO 0</span>
+      <span id="queue-label">NEXT · —</span>
+    </div>
+  </div>
+
+  <div id="start-overlay" class="overlay visible">
+    <div class="start-content">
+      <p class="eyebrow">120-SECOND SCORE ATTACK</p>
+      <h1>GRAVITY<br><span>WELL</span></h1>
+      <p class="lead">The tetromino cannot rotate. Rotate the whole well instead — the stack and the falling piece turn together, then gravity settles everything.</p>
+      <div class="rules">
+        <p><span class="rule-icon move">MOVE</span> Arrow keys or touch buttons to slide and drop.</p>
+        <p><span class="rule-icon rotate">TURN</span> Q / E rotates the entire board 90°. Each turn scores +10.</p>
+        <p><span class="rule-icon drop">DROP</span> Space hard-drops. Lines clear after the board settles and after every lock.</p>
+        <p><span class="rule-icon combo">CHAIN</span> Clear on consecutive locks for a combo bonus. Survive 120 seconds.</p>
+      </div>
+      <button id="btn-start" class="primary big" type="button">START</button>
+      <button id="btn-sound" class="link-btn" type="button">SOUND: ON</button>
+      <p class="tiny">12 × 12 well · 7-bag randomizer · early top-out</p>
+    </div>
+  </div>
+
+  <div id="end-overlay" class="overlay">
+    <div class="result-content">
+      <p class="eyebrow" id="end-eyebrow">TIME UP</p>
+      <h1>GRAVITY WELL</h1>
+      <div class="result-score"><span id="end-score">0</span><small>PTS</small></div>
+      <p id="end-reason" class="lead">The well held.</p>
+      <p id="end-meta" class="result-meta">0 LINES · 0 ROTATIONS</p>
+      <p id="end-best" class="tiny">BEST 0</p>
+      <button id="btn-retry" class="primary big" type="button">PLAY AGAIN</button>
+      <button id="btn-end-mute" class="link-btn" type="button">SOUND: ON</button>
+    </div>
+  </div>
+
+  <div id="touch" class="touch is-hidden">
+    <button id="btn-ccw" class="touch-btn rotate" type="button" aria-label="Rotate board counter-clockwise">⟲</button>
+    <button id="btn-left" class="touch-btn" type="button" aria-label="Move left">◀</button>
+    <button id="btn-down" class="touch-btn" type="button" aria-label="Soft drop">▼</button>
+    <button id="btn-right" class="touch-btn" type="button" aria-label="Move right">▶</button>
+    <button id="btn-cw" class="touch-btn rotate" type="button" aria-label="Rotate board clockwise">⟳</button>
+    <button id="btn-drop" class="touch-btn drop" type="button" aria-label="Hard drop">DROP</button>
+  </div>
+
+  <script src="../../_shared/game-back.js"></script>
+  <script src="engine.js?v=20261111-gravitywell2"></script>
+  <script src="audio.js?v=20261111-gravitywell2"></script>
+  <script src="game.js?v=20261111-gravitywell2"></script>
+</body>
+</html>

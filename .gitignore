@@ -2,6 +2,7 @@
 *.log
 node_modules/
 __pycache__/
+.seed-claims/
 .venv/
 .universe-automation-root
 playtest-screenshots/
